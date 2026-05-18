@@ -1,8 +1,73 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper
-  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.bnk.domain.admin.mapper.AdminUserMapper">
+<mapper namespace="com.bnk.domain.terms.mapper.UserTermsAgreementMapper">
+
+    <resultMap id="agreementMap" type="com.bnk.domain.terms.model.UserTermsAgreement">
+        <id     property="agreementId"           column="agreement_id"/>
+        <result property="userId"                column="user_id"/>
+        <result property="termsId"               column="terms_id"/>
+        <result property="agreedYn"              column="agreed_yn"/>
+        <result property="agreementAction"       column="agreement_action"/>
+        <result property="agreedVersion"         column="agreed_version"/>
+        <result property="agreementChannel"      column="agreement_channel"/>
+        <result property="agreementSource"       column="agreement_source"/>
+        <result property="agreedContentSnapshot" column="agreed_content_snapshot"/>
+        <result property="agreedAt"              column="agreed_at"/>
+        <result property="ipAddress"             column="ip_address"/>
+        <result property="userAgent"             column="user_agent"/>
+    </resultMap>
+
+    <!-- 단건 INSERT (법적 증거 스냅샷 포함) -->
+    <insert id="insertAgreement" useGeneratedKeys="true" keyProperty="agreementId">
+        INSERT INTO USER_TERMS_AGREEMENTS (
+            user_id, terms_id, agreed_yn, agreement_action,
+            agreed_version, agreement_channel, agreement_source,
+            agreed_content_snapshot,
+            agreed_at, ip_address, user_agent
+        ) VALUES (
+            #{userId}, #{termsId}, #{agreedYn}, #{agreementAction},
+            #{agreedVersion},
+            #{agreementChannel,      jdbcType=VARCHAR},
+            #{agreementSource,       jdbcType=VARCHAR},
+            #{agreedContentSnapshot, jdbcType=CLOB},
+            SYSTIMESTAMP,
+            #{ipAddress,             jdbcType=VARCHAR},
+            #{userAgent,             jdbcType=VARCHAR}
+        )
+    </insert>
+
+    <!-- 배치 INSERT -->
+    <insert id="insertAgreements">
+        <foreach collection="agreements" item="a" separator=";">
+            INSERT INTO USER_TERMS_AGREEMENTS (
+                user_id, terms_id, agreed_yn, agreement_action,
+                agreed_version, agreement_channel, agreement_source,
+                agreed_content_snapshot, agreed_at
+            ) VALUES (
+                #{a.userId}, #{a.termsId}, #{a.agreedYn}, #{a.agreementAction},
+                #{a.agreedVersion},
+                #{a.agreementChannel,      jdbcType=VARCHAR},
+                #{a.agreementSource,       jdbcType=VARCHAR},
+                #{a.agreedContentSnapshot, jdbcType=CLOB},
+                SYSTIMESTAMP
+            )
+        </foreach>
+    </insert>
+
+    <select id="findByUserId" resultMap="agreementMap">
+        SELECT * FROM USER_TERMS_AGREEMENTS
+        WHERE  user_id = #{userId}
+        ORDER  BY agreed_at DESC
+    </select>
+
+    <select id="existsAgreement" resultType="boolean">
+        SELECT CASE WHEN COUNT(1) > 0 THEN 1 ELSE 0 END
+        FROM   USER_TERMS_AGREEMENTS
+        WHERE  user_id  = #{userId}
+          AND  terms_id = #{termsId}
+          AND  agreed_yn = 'Y'
+    </select>
 
 </mapper>

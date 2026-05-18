@@ -1,8 +1,78 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper
-  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.bnk.domain.admin.mapper.AdminUserMapper">
+<mapper namespace="com.bnk.domain.card.mapper.CardBenefitMapper">
+
+    <resultMap id="benefitMap" type="com.bnk.domain.card.model.CardBenefit">
+        <id     property="benefitId"            column="benefit_id"/>
+        <result property="cardId"               column="card_id"/>
+        <result property="categoryId"           column="category_id"/>
+        <result property="benefitTitle"         column="benefit_title"/>
+        <result property="benefitType"          column="benefit_type"/>
+        <result property="discountRate"         column="discount_rate"/>
+        <result property="discountAmount"       column="discount_amount"/>
+        <result property="pointRate"            column="point_rate"/>
+        <result property="cashbackRate"         column="cashback_rate"/>
+        <result property="monthlyLimitAmount"   column="monthly_limit_amount"/>
+        <result property="dailyLimitAmount"     column="daily_limit_amount"/>
+        <result property="minimumPaymentAmount" column="minimum_payment_amount"/>
+        <result property="displayText"          column="display_text"/>
+        <result property="displayOrder"         column="display_order"/>
+        <result property="visibleYn"            column="visible_yn"/>
+        <result property="createdAt"            column="created_at"/>
+        <result property="updatedAt"            column="updated_at"/>
+        <result property="categoryName"         column="category_name"/>
+        <result property="iconCode"             column="icon_code"/>
+    </resultMap>
+
+    <select id="findByCardId" resultMap="benefitMap">
+        SELECT cb.*, cc.category_name, cc.icon_code
+        FROM   CARD_BENEFITS cb
+        LEFT JOIN CARD_CATEGORIES cc ON cb.category_id = cc.category_id
+        WHERE  cb.card_id   = #{cardId}
+          AND  cb.visible_yn = 'Y'
+        ORDER  BY cb.display_order ASC NULLS LAST
+    </select>
+
+    <select id="findByCardIds" resultMap="benefitMap">
+        SELECT cb.*, cc.category_name, cc.icon_code
+        FROM   CARD_BENEFITS cb
+        LEFT JOIN CARD_CATEGORIES cc ON cb.category_id = cc.category_id
+        WHERE  cb.card_id IN
+        <foreach collection="cardIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        AND cb.visible_yn = 'Y'
+        ORDER BY cb.card_id, cb.display_order ASC NULLS LAST
+    </select>
+
+    <insert id="insertBenefit" useGeneratedKeys="true" keyProperty="benefitId">
+        INSERT INTO CARD_BENEFITS (
+            card_id, category_id, benefit_title, benefit_type,
+            discount_rate, discount_amount, point_rate, cashback_rate,
+            monthly_limit_amount, daily_limit_amount, minimum_payment_amount,
+            display_text, display_order, visible_yn, created_at
+        ) VALUES (
+            #{cardId},
+            #{categoryId,            jdbcType=NUMERIC},
+            #{benefitTitle},
+            #{benefitType},
+            #{discountRate,          jdbcType=DECIMAL},
+            #{discountAmount,        jdbcType=NUMERIC},
+            #{pointRate,             jdbcType=DECIMAL},
+            #{cashbackRate,          jdbcType=DECIMAL},
+            #{monthlyLimitAmount,    jdbcType=NUMERIC},
+            #{dailyLimitAmount,      jdbcType=NUMERIC},
+            #{minimumPaymentAmount,  jdbcType=NUMERIC},
+            #{displayText,           jdbcType=VARCHAR},
+            #{displayOrder,          jdbcType=NUMERIC},
+            'Y', SYSTIMESTAMP
+        )
+    </insert>
+
+    <delete id="deleteByCardId">
+        DELETE FROM CARD_BENEFITS WHERE card_id = #{cardId}
+    </delete>
 
 </mapper>

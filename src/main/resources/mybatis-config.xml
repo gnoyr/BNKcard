@@ -1,1 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <!--
+        주요 MyBatis 설정은 application.properties 에서 관리합니다.
+        mybatis.configuration.map-underscore-to-camel-case=true
+        mybatis.mapper-locations=classpath:mappers/**/*.xml
+        mybatis.type-aliases-package=com.bnk.domain.**.model
+    -->
+</configuration>
