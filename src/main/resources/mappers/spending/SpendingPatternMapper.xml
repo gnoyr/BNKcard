@@ -1,8 +1,53 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper
-  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.bnk.domain.admin.mapper.AdminUserMapper">
+<mapper namespace="com.bnk.domain.spending.mapper.SpendingPatternMapper">
+
+    <resultMap id="patternMap" type="com.bnk.domain.spending.model.SpendingPattern">
+        <id     property="patternId"     column="pattern_id"/>
+        <result property="userId"        column="user_id"/>
+        <result property="categoryId"    column="category_id"/>
+        <result property="monthlyAmount" column="monthly_amount"/>
+        <result property="source"        column="source"/>
+        <result property="updatedAt"     column="updated_at"/>
+        <result property="categoryName"  column="category_name"/>
+        <result property="iconCode"      column="icon_code"/>
+    </resultMap>
+
+    <!-- 소비패턴 조회 (카테고리명 JOIN) -->
+    <select id="findByUserId" resultMap="patternMap">
+        SELECT usp.*,
+               cc.category_name,
+               cc.icon_code
+        FROM   USER_SPENDING_PATTERNS usp
+        INNER JOIN CARD_CATEGORIES cc ON usp.category_id = cc.category_id
+        WHERE  usp.user_id = #{userId}
+        ORDER  BY usp.monthly_amount DESC
+    </select>
+
+    <!-- 최대 소비 카테고리 ID (우수회원 추천용) -->
+    <select id="findTopCategoryIdByUserId" resultType="long">
+        SELECT category_id
+        FROM   USER_SPENDING_PATTERNS
+        WHERE  user_id = #{userId}
+        ORDER  BY monthly_amount DESC
+        FETCH FIRST 1 ROWS ONLY
+    </select>
+
+    <!-- MERGE INTO UPSERT: user_id + category_id 기준 -->
+    <update id="upsertPattern">
+        MERGE INTO USER_SPENDING_PATTERNS usp
+        USING DUAL
+        ON (usp.user_id = #{userId} AND usp.category_id = #{categoryId})
+        WHEN MATCHED THEN
+            UPDATE SET
+                monthly_amount = #{monthlyAmount},
+                source         = #{source},
+                updated_at     = SYSDATE
+        WHEN NOT MATCHED THEN
+            INSERT (user_id, category_id, monthly_amount, source, updated_at)
+            VALUES (#{userId}, #{categoryId}, #{monthlyAmount}, #{source}, SYSDATE)
+    </update>
 
 </mapper>

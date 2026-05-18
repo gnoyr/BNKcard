@@ -1,8 +1,113 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper
-  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.bnk.domain.admin.mapper.AdminUserMapper">
+<mapper namespace="com.bnk.domain.terms.mapper.TermsMapper">
+
+    <resultMap id="termsMap" type="com.bnk.domain.terms.model.Terms">
+        <id     property="termsId"             column="terms_id"/>
+        <result property="termsMasterId"       column="terms_master_id"/>
+        <result property="version"             column="version"/>
+        <result property="contentHtml"         column="content_html"/>
+        <result property="requiredYn"          column="required_yn"/>
+        <result property="reconsentRequiredYn" column="reconsent_required_yn"/>
+        <result property="status"              column="status"/>
+        <result property="effectiveFrom"       column="effective_from"/>
+        <result property="effectiveTo"         column="effective_to"/>
+        <result property="documentHash"        column="document_hash"/>
+        <result property="internalNote"        column="internal_note"/>
+        <result property="approvedBy"          column="approved_by"/>
+        <result property="approvedAt"          column="approved_at"/>
+        <result property="createdAt"           column="created_at"/>
+        <result property="updatedAt"           column="updated_at"/>
+        <result property="title"               column="terms_title"/>
+        <result property="termsType"           column="terms_type"/>
+    </resultMap>
+
+    <!-- PACKAGE_TERMS → TERMS(PUBLISHED) → TERMS_MASTERS JOIN -->
+    <select id="findByPackageType" resultMap="termsMap">
+        SELECT t.*,
+               tm.title     AS terms_title,
+               tm.terms_type
+        FROM   TERMS_PACKAGES tp
+        INNER JOIN PACKAGE_TERMS  pt ON tp.package_id     = pt.package_id
+        INNER JOIN TERMS          t  ON pt.terms_id       = t.terms_id
+        INNER JOIN TERMS_MASTERS  tm ON t.terms_master_id = tm.terms_master_id
+        WHERE  tp.package_type = #{packageType}
+          AND  t.status        = 'PUBLISHED'
+          AND  t.effective_from &lt;= SYSDATE
+          AND  (t.effective_to IS NULL OR t.effective_to &gt;= SYSDATE)
+        ORDER  BY pt.display_order ASC NULLS LAST
+    </select>
+
+    <select id="findById" resultMap="termsMap">
+        SELECT t.*, tm.title AS terms_title, tm.terms_type
+        FROM   TERMS t
+        INNER JOIN TERMS_MASTERS tm ON t.terms_master_id = tm.terms_master_id
+        WHERE  t.terms_id = #{termsId}
+    </select>
+
+    <insert id="insertTerms" useGeneratedKeys="true" keyProperty="termsId">
+        INSERT INTO TERMS (
+            terms_master_id, version, content_html,
+            required_yn, reconsent_required_yn,
+            status, effective_from, effective_to,
+            document_hash, internal_note,
+            created_at, updated_at
+        ) VALUES (
+            #{termsMasterId}, #{version}, #{contentHtml},
+            #{requiredYn},
+            #{reconsentRequiredYn, jdbcType=VARCHAR},
+            'DRAFT',
+            #{effectiveFrom},
+            #{effectiveTo,         jdbcType=DATE},
+            #{documentHash,        jdbcType=VARCHAR},
+            #{internalNote,        jdbcType=VARCHAR},
+            SYSTIMESTAMP, SYSTIMESTAMP
+        )
+    </insert>
+
+    <update id="updateTermsStatus">
+        UPDATE TERMS
+        SET status     = #{status},
+            updated_at = SYSTIMESTAMP
+        <if test="status == 'APPROVED'">
+            , approved_by = #{changedBy}
+            , approved_at = SYSTIMESTAMP
+        </if>
+        WHERE terms_id = #{termsId}
+    </update>
+
+    <insert id="insertStatusHistory">
+        INSERT INTO TERMS_STATUS_HISTORY (
+            terms_id, previous_status, changed_status,
+            changed_by, changed_reason, changed_at
+        ) VALUES (
+            #{termsId},
+            #{previousStatus,  jdbcType=VARCHAR},
+            #{changedStatus},
+            #{changedBy,       jdbcType=NUMERIC},
+            #{changedReason,   jdbcType=VARCHAR},
+            SYSTIMESTAMP
+        )
+    </insert>
+
+    <!-- reconsent 대상 userId 조회 -->
+    <select id="findUserIdsForReconsent" resultType="long">
+        SELECT DISTINCT uta.user_id
+        FROM   USER_TERMS_AGREEMENTS uta
+        WHERE  uta.terms_id  = #{termsId}
+          AND  uta.agreed_yn = 'Y'
+    </select>
+
+    <insert id="insertNotificationHistory">
+        INSERT INTO TERMS_NOTIFICATION_HISTORY (
+            user_id, terms_id, notification_type,
+            sent_yn, read_yn, created_at
+        ) VALUES (
+            #{userId}, #{termsId}, #{notificationType},
+            'N', 'N', SYSTIMESTAMP
+        )
+    </insert>
 
 </mapper>
