@@ -27,7 +27,7 @@ public class AdminUserController {
     public ResponseEntity<ApiResponse<DashboardResponse>> getDashboard() {
         return ApiResponse.toOk(adminUserService.getDashboard());
     }
-
+    
     /**
      * 관리자 회원 목록 검색 (RQ-B14).
      * name·email·phone LIKE + statusCode= + birthDate BETWEEN 동적 조합.
