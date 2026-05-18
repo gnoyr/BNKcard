@@ -1,8 +1,56 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper
-  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.bnk.domain.admin.mapper.AdminUserMapper">
+<mapper namespace="com.bnk.domain.search.mapper.SearchLogMapper">
+
+    <insert id="insertSearchLog" useGeneratedKeys="true" keyProperty="searchLogId">
+        INSERT INTO SEARCH_LOGS (
+            user_id, keyword_raw, matched_keyword_id,
+            result_count, search_at, ip_address, device_info
+        ) VALUES (
+            #{userId,             jdbcType=NUMERIC},
+            #{keywordRaw},
+            #{matchedKeywordId,   jdbcType=NUMERIC},
+            #{resultCount,        jdbcType=NUMERIC},
+            SYSTIMESTAMP,
+            #{ipAddress,          jdbcType=VARCHAR},
+            #{deviceInfo,         jdbcType=VARCHAR}
+        )
+    </insert>
+
+    <!-- 인기 검색어: 최근 7일, GROUP BY COUNT DESC, LIMIT N -->
+    <select id="findPopularKeywords" resultType="map">
+        SELECT keyword_raw  AS keyword,
+               COUNT(*)     AS searchCount
+        FROM   SEARCH_LOGS
+        WHERE  search_at &gt;= SYSTIMESTAMP - INTERVAL '7' DAY
+        GROUP  BY keyword_raw
+        ORDER  BY COUNT(*) DESC
+        FETCH FIRST #{topN} ROWS ONLY
+    </select>
+
+    <!-- 관리자 검색 통계: 기간별 COUNT / AVG result_count / NULL match_rate -->
+    <select id="findSearchStats" resultType="map">
+        SELECT
+            keyword_raw                                                         AS keyword,
+            COUNT(*)                                                            AS searchCount,
+            ROUND(AVG(result_count), 1)                                        AS avgResultCount,
+            ROUND(
+                SUM(CASE WHEN matched_keyword_id IS NULL THEN 1 ELSE 0 END)
+                * 100.0 / COUNT(*), 1
+            )                                                                   AS nullMatchRate
+        FROM  SEARCH_LOGS
+        WHERE 1 = 1
+        <if test="startDate != null">
+          AND TRUNC(search_at) &gt;= #{startDate}
+        </if>
+        <if test="endDate != null">
+          AND TRUNC(search_at) &lt;= #{endDate}
+        </if>
+        GROUP BY keyword_raw
+        ORDER BY COUNT(*) DESC
+        FETCH FIRST #{topN} ROWS ONLY
+    </select>
 
 </mapper>

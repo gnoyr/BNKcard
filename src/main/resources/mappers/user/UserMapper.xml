@@ -1,8 +1,157 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper
-  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.bnk.domain.admin.mapper.AdminUserMapper">
+<mapper namespace="com.bnk.domain.user.mapper.UserMapper">
+
+    <resultMap id="userMap" type="com.bnk.domain.user.model.User">
+        <id     property="userId"                column="user_id"/>
+        <result property="email"                 column="email"/>
+        <result property="passwordHash"          column="password_hash"/>
+        <result property="name"                  column="name"/>
+        <result property="phone"                 column="phone"/>
+        <result property="birthDate"             column="birth_date"/>
+        <result property="ciValue"               column="ci_value"/>
+        <result property="job"                   column="job"/>
+        <result property="incomeLevelCode"        column="income_level_code"/>
+        <result property="creditScore"           column="credit_score"/>
+        <result property="statusCode"            column="status_code"/>
+        <result property="loginFailCount"        column="login_fail_count"/>
+        <result property="lockedUntil"           column="locked_until"/>
+        <result property="lastLoginAt"           column="last_login_at"/>
+        <result property="lastPasswordChangedAt" column="last_password_changed_at"/>
+        <result property="isEmailVerified"       column="is_email_verified"/>
+        <result property="isPhoneVerified"       column="is_phone_verified"/>
+        <result property="pushEnabled"           column="push_enabled"/>
+        <result property="marketingAgree"        column="marketing_agree"/>
+        <result property="privacyAgree"          column="privacy_agree"/>
+        <result property="dormantAt"             column="dormant_at"/>
+        <result property="withdrawnAt"           column="withdrawn_at"/>
+        <result property="createdAt"             column="created_at"/>
+        <result property="updatedAt"             column="updated_at"/>
+        <result property="deletedYn"             column="deleted_yn"/>
+    </resultMap>
+
+    <select id="findByEmail" resultMap="userMap">
+        SELECT * FROM USERS
+        WHERE  email      = #{email}
+          AND  deleted_yn = 'N'
+    </select>
+
+    <select id="findById" resultMap="userMap">
+        SELECT * FROM USERS
+        WHERE  user_id    = #{userId}
+          AND  deleted_yn = 'N'
+    </select>
+
+    <!-- 아이디찾기: 이름 + 휴대폰 -->
+    <select id="findByNameAndPhone" resultMap="userMap">
+        SELECT * FROM USERS
+        WHERE  name       = #{name}
+          AND  phone      = #{phone}
+          AND  deleted_yn = 'N'
+        FETCH FIRST 1 ROWS ONLY
+    </select>
+
+    <insert id="insertUser" useGeneratedKeys="true" keyProperty="userId">
+        INSERT INTO USERS (
+            email, password_hash, name, phone, birth_date,
+            marketing_agree, privacy_agree,
+            status_code, is_email_verified, is_phone_verified,
+            push_enabled, login_fail_count, created_at, deleted_yn
+        ) VALUES (
+            #{email}, #{passwordHash}, #{name}, #{phone},
+            #{birthDate,       jdbcType=DATE},
+            #{marketingAgree,  jdbcType=VARCHAR},
+            'Y',
+            'ACTIVE', 'N', 'N',
+            'Y', 0, SYSTIMESTAMP, 'N'
+        )
+    </insert>
+
+    <!-- 내 정보 수정: phone 변경 시 is_phone_verified='N' 자동 처리 -->
+    <update id="updateUser">
+        UPDATE USERS
+        <set>
+            <if test="name != null">name              = #{name},</if>
+            <if test="phone != null">
+                phone              = #{phone},
+                is_phone_verified  = 'N',
+            </if>
+            <if test="job != null">job               = #{job},</if>
+            <if test="incomeLevelCode != null">income_level_code  = #{incomeLevelCode},</if>
+            <if test="pushEnabled != null">push_enabled       = #{pushEnabled},</if>
+            <if test="marketingAgree != null">marketing_agree    = #{marketingAgree},</if>
+            updated_at = SYSTIMESTAMP
+        </set>
+        WHERE  user_id    = #{userId}
+          AND  deleted_yn = 'N'
+    </update>
+
+    <update id="updateEmailVerified">
+        UPDATE USERS
+        SET    is_email_verified = #{isEmailVerified},
+               updated_at       = SYSTIMESTAMP
+        WHERE  user_id = #{userId}
+    </update>
+
+    <update id="updatePhoneVerified">
+        UPDATE USERS
+        SET    is_phone_verified = #{isPhoneVerified},
+               updated_at       = SYSTIMESTAMP
+        WHERE  user_id = #{userId}
+    </update>
+
+    <update id="updatePassword">
+        UPDATE USERS
+        SET    password_hash             = #{passwordHash},
+               last_password_changed_at = #{lastPasswordChangedAt},
+               updated_at               = SYSTIMESTAMP
+        WHERE  user_id = #{userId}
+    </update>
+
+    <update id="incrementLoginFailCount">
+        UPDATE USERS
+        SET    login_fail_count = login_fail_count + 1
+        WHERE  user_id = #{userId}
+    </update>
+
+    <update id="resetLoginFailCount">
+        UPDATE USERS
+        SET    login_fail_count = 0,
+               locked_until    = NULL
+        WHERE  user_id = #{userId}
+    </update>
+
+    <update id="updateLockedUntil">
+        UPDATE USERS
+        SET    locked_until = #{lockedUntil}
+        WHERE  user_id = #{userId}
+    </update>
+
+    <update id="updateLastLoginAt">
+        UPDATE USERS
+        SET    last_login_at = #{lastLoginAt}
+        WHERE  user_id = #{userId}
+    </update>
+
+    <!-- 타 기기 세션 revoke (현재 session 제외) -->
+    <update id="revokeOtherSessions">
+        UPDATE USER_SESSIONS
+        SET    revoked_yn = 'Y',
+               revoked_at = SYSTIMESTAMP
+        WHERE  user_id    = #{userId}
+          AND  session_id != #{currentSessionId}
+          AND  revoked_yn = 'N'
+    </update>
+
+    <!-- 전체 세션 revoke (비밀번호 재설정 강제 로그아웃) -->
+    <update id="revokeAllSessions">
+        UPDATE USER_SESSIONS
+        SET    revoked_yn = 'Y',
+               revoked_at = SYSTIMESTAMP
+        WHERE  user_id    = #{userId}
+          AND  revoked_yn = 'N'
+    </update>
 
 </mapper>

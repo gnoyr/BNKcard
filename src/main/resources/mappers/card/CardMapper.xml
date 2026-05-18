@@ -1,8 +1,267 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper
-  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.bnk.domain.admin.mapper.AdminUserMapper">
+<mapper namespace="com.bnk.domain.card.mapper.CardMapper">
+
+    <resultMap id="cardMap" type="com.bnk.domain.card.model.Card">
+        <id     property="cardId"             column="card_id"/>
+        <result property="cardCode"           column="card_code"/>
+        <result property="cardType"           column="card_type"/>
+        <result property="cardName"           column="card_name"/>
+        <result property="companyName"        column="company_name"/>
+        <result property="brandName"          column="brand_name"/>
+        <result property="annualFeeDomestic"  column="annual_fee_domestic"/>
+        <result property="annualFeeOverseas"  column="annual_fee_overseas"/>
+        <result property="previousMonthSpend" column="previous_month_spend"/>
+        <result property="minimumAge"         column="minimum_age"/>
+        <result property="maximumAge"         column="maximum_age"/>
+        <result property="targetUser"         column="target_user"/>
+        <result property="summaryDescription" column="summary_description"/>
+        <result property="searchableYn"       column="searchable_yn"/>
+        <result property="visibleYn"          column="visible_yn"/>
+        <result property="approvalRequiredYn" column="approval_required_yn"/>
+        <result property="cardStatus"         column="card_status"/>
+        <result property="publishStartAt"     column="publish_start_at"/>
+        <result property="publishEndAt"       column="publish_end_at"/>
+        <result property="applicationCount"   column="application_count"/>
+        <result property="viewCount"          column="view_count"/>
+        <result property="createdBy"          column="created_by"/>
+        <result property="createdAt"          column="created_at"/>
+        <result property="updatedAt"          column="updated_at"/>
+        <result property="deletedYn"          column="deleted_yn"/>
+    </resultMap>
+
+    <!-- ── 사용자 카드 목록 동적 검색 ─────────────────────── -->
+    <select id="findAll" resultMap="cardMap">
+        SELECT DISTINCT c.*
+        FROM CARDS c
+        <if test="q != null and q != ''">
+            LEFT JOIN CARD_KEYWORDS  ck ON c.card_id   = ck.card_id
+            LEFT JOIN SEARCH_KEYWORDS sk ON ck.keyword_id = sk.keyword_id
+                                       AND sk.deleted_yn   = 'N'
+        </if>
+        <if test="categoryId != null">
+            LEFT JOIN CARD_BENEFITS cb ON c.card_id = cb.card_id
+        </if>
+        WHERE c.card_status   = 'PUBLISHED'
+          AND c.visible_yn    = 'Y'
+          AND c.searchable_yn = 'Y'
+          AND c.deleted_yn    = 'N'
+          AND c.publish_start_at &lt;= SYSTIMESTAMP
+          AND (c.publish_end_at IS NULL OR c.publish_end_at &gt;= SYSTIMESTAMP)
+        <if test="q != null and q != ''">
+          AND (
+                c.card_name LIKE '%' || #{q} || '%'
+             OR sk.keyword  LIKE '%' || #{q} || '%'
+              )
+        </if>
+        <if test="cardType != null and cardType != ''">
+          AND c.card_type    = #{cardType}
+        </if>
+        <if test="companyName != null and companyName != ''">
+          AND c.company_name LIKE '%' || #{companyName} || '%'
+        </if>
+        <if test="categoryId != null">
+          AND cb.category_id = #{categoryId}
+        </if>
+        <if test="minFee != null">
+          AND c.annual_fee_domestic &gt;= #{minFee}
+        </if>
+        <if test="maxFee != null">
+          AND c.annual_fee_domestic &lt;= #{maxFee}
+        </if>
+        ORDER BY c.created_at DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(DISTINCT c.card_id)
+        FROM CARDS c
+        <if test="q != null and q != ''">
+            LEFT JOIN CARD_KEYWORDS  ck ON c.card_id   = ck.card_id
+            LEFT JOIN SEARCH_KEYWORDS sk ON ck.keyword_id = sk.keyword_id
+                                       AND sk.deleted_yn   = 'N'
+        </if>
+        <if test="categoryId != null">
+            LEFT JOIN CARD_BENEFITS cb ON c.card_id = cb.card_id
+        </if>
+        WHERE c.card_status   = 'PUBLISHED'
+          AND c.visible_yn    = 'Y'
+          AND c.searchable_yn = 'Y'
+          AND c.deleted_yn    = 'N'
+          AND c.publish_start_at &lt;= SYSTIMESTAMP
+          AND (c.publish_end_at IS NULL OR c.publish_end_at &gt;= SYSTIMESTAMP)
+        <if test="q != null and q != ''">
+          AND (c.card_name LIKE '%' || #{q} || '%' OR sk.keyword LIKE '%' || #{q} || '%')
+        </if>
+        <if test="cardType != null and cardType != ''">
+          AND c.card_type = #{cardType}
+        </if>
+        <if test="categoryId != null">
+          AND cb.category_id = #{categoryId}
+        </if>
+    </select>
+
+    <select id="findById" resultMap="cardMap">
+        SELECT * FROM CARDS
+        WHERE  card_id    = #{cardId}
+          AND  deleted_yn = 'N'
+    </select>
+
+    <select id="findTop3ByViewCount" resultMap="cardMap">
+        SELECT * FROM CARDS
+        WHERE  card_status = 'PUBLISHED'
+          AND  visible_yn  = 'Y'
+          AND  deleted_yn  = 'N'
+        ORDER  BY view_count DESC
+        FETCH FIRST 3 ROWS ONLY
+    </select>
+
+    <select id="findTop3ByCategoryId" resultMap="cardMap">
+        SELECT c.* FROM CARDS c
+        INNER JOIN CARD_BENEFITS cb ON c.card_id = cb.card_id
+        WHERE c.card_status  = 'PUBLISHED'
+          AND c.visible_yn   = 'Y'
+          AND c.deleted_yn   = 'N'
+          AND cb.category_id = #{categoryId}
+        ORDER BY cb.discount_rate DESC NULLS LAST,
+                 cb.cashback_rate  DESC NULLS LAST
+        FETCH FIRST 3 ROWS ONLY
+    </select>
+
+    <!-- ── 관리자 다중 조건 동적 검색 (RQ-B13) ──────────── -->
+    <select id="findAdminCards" resultMap="cardMap">
+        SELECT DISTINCT c.*
+        FROM CARDS c
+        <if test="keyword != null and keyword != ''">
+            LEFT JOIN CARD_KEYWORDS  ck ON c.card_id    = ck.card_id
+            LEFT JOIN SEARCH_KEYWORDS sk ON ck.keyword_id = sk.keyword_id
+                                       AND sk.deleted_yn   = 'N'
+        </if>
+        WHERE c.deleted_yn = 'N'
+        <if test="cardName != null and cardName != ''">
+          AND c.card_name    LIKE '%' || #{cardName}    || '%'
+        </if>
+        <if test="companyName != null and companyName != ''">
+          AND c.company_name LIKE '%' || #{companyName} || '%'
+        </if>
+        <if test="cardType != null and cardType != ''">
+          AND c.card_type    = #{cardType}
+        </if>
+        <if test="cardStatus != null and cardStatus != ''">
+          AND c.card_status  = #{cardStatus}
+        </if>
+        <if test="brandName != null and brandName != ''">
+          AND c.brand_name   = #{brandName}
+        </if>
+        <if test="publishStartFrom != null">
+          AND c.publish_start_at &gt;= #{publishStartFrom}
+        </if>
+        <if test="publishStartTo != null">
+          AND c.publish_start_at &lt;= #{publishStartTo}
+        </if>
+        <if test="keyword != null and keyword != ''">
+          AND sk.keyword LIKE '%' || #{keyword} || '%'
+        </if>
+        <choose>
+            <when test="sort == 'cardName'">       ORDER BY c.card_name          ASC</when>
+            <when test="sort == 'annualFee'">      ORDER BY c.annual_fee_domestic ASC</when>
+            <when test="sort == 'applicationCount'">ORDER BY c.application_count DESC</when>
+            <otherwise>                             ORDER BY c.created_at          DESC</otherwise>
+        </choose>
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countAdminCards" resultType="long">
+        SELECT COUNT(DISTINCT c.card_id)
+        FROM CARDS c
+        <if test="keyword != null and keyword != ''">
+            LEFT JOIN CARD_KEYWORDS  ck ON c.card_id    = ck.card_id
+            LEFT JOIN SEARCH_KEYWORDS sk ON ck.keyword_id = sk.keyword_id
+                                       AND sk.deleted_yn   = 'N'
+        </if>
+        WHERE c.deleted_yn = 'N'
+        <if test="cardName != null and cardName != ''">
+          AND c.card_name    LIKE '%' || #{cardName}    || '%'
+        </if>
+        <if test="companyName != null and companyName != ''">
+          AND c.company_name LIKE '%' || #{companyName} || '%'
+        </if>
+        <if test="cardType != null and cardType != ''">
+          AND c.card_type    = #{cardType}
+        </if>
+        <if test="cardStatus != null and cardStatus != ''">
+          AND c.card_status  = #{cardStatus}
+        </if>
+        <if test="brandName != null and brandName != ''">
+          AND c.brand_name   = #{brandName}
+        </if>
+        <if test="publishStartFrom != null">
+          AND c.publish_start_at &gt;= #{publishStartFrom}
+        </if>
+        <if test="publishStartTo != null">
+          AND c.publish_start_at &lt;= #{publishStartTo}
+        </if>
+        <if test="keyword != null and keyword != ''">
+          AND sk.keyword LIKE '%' || #{keyword} || '%'
+        </if>
+    </select>
+
+    <insert id="insertCard" useGeneratedKeys="true" keyProperty="cardId">
+        INSERT INTO CARDS (
+            card_code, card_type, card_name, company_name, brand_name,
+            annual_fee_domestic, annual_fee_overseas, previous_month_spend,
+            minimum_age, maximum_age, target_user, summary_description,
+            searchable_yn, visible_yn, approval_required_yn,
+            card_status, publish_start_at, publish_end_at,
+            application_count, view_count,
+            created_by, created_at, deleted_yn
+        ) VALUES (
+            #{cardCode}, #{cardType}, #{cardName}, #{companyName},
+            #{brandName,         jdbcType=VARCHAR},
+            #{annualFeeDomestic},
+            #{annualFeeOverseas, jdbcType=NUMERIC},
+            #{previousMonthSpend,jdbcType=NUMERIC},
+            #{minimumAge,        jdbcType=NUMERIC},
+            #{maximumAge,        jdbcType=NUMERIC},
+            #{targetUser,        jdbcType=VARCHAR},
+            #{summaryDescription,jdbcType=VARCHAR},
+            'Y', 'Y', 'Y',
+            'DRAFT',
+            #{publishStartAt, jdbcType=TIMESTAMP},
+            #{publishEndAt,   jdbcType=TIMESTAMP},
+            0, 0,
+            #{createdBy, jdbcType=NUMERIC},
+            SYSTIMESTAMP, 'N'
+        )
+    </insert>
+
+    <update id="updateCardStatus">
+        UPDATE CARDS
+        SET    card_status = #{cardStatus},
+               updated_at  = SYSTIMESTAMP
+        WHERE  card_id = #{cardId}
+    </update>
+
+    <update id="incrementViewCount">
+        UPDATE CARDS
+        SET    view_count = NVL(view_count, 0) + 1
+        WHERE  card_id = #{cardId}
+    </update>
+
+    <update id="incrementApplicationCount">
+        UPDATE CARDS
+        SET    application_count = application_count + 1
+        WHERE  card_id = #{cardId}
+    </update>
+
+    <!-- 결재 승인 후 스냅샷 → CARDS 반영: 실제 필드 복원은 서비스단에서 처리 -->
+    <update id="updateCardFromSnapshot">
+        UPDATE CARDS
+        SET    card_status = 'PUBLISHED',
+               updated_at  = SYSTIMESTAMP
+        WHERE  card_id = #{cardId}
+    </update>
 
 </mapper>

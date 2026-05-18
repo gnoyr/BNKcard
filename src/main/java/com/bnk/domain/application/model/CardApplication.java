@@ -1,5 +1,28 @@
 package com.bnk.domain.application.model;
 
-public interface CardApplication {
+import java.time.LocalDateTime;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Getter @Builder @NoArgsConstructor @AllArgsConstructor
+public class CardApplication {
+    private Long applicationId;
+    private Long userId;
+    private Long cardId;
+    private String applicationStatus;   // REQUESTED/REVIEWING/APPROVED/REJECTED/ISSUED
+    private String applyChannel;        // WEB / MOBILE / ADMIN
+    private Long requestedLimit;
+    private Long approvedLimit;
+    private String rejectionReason;
+    private String applicationComment;
+    private LocalDateTime appliedAt;
+    private LocalDateTime reviewedAt;
+    private Long reviewedBy;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    // JOIN
+    private String cardName;
 }

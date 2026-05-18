@@ -1,8 +1,45 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper
-  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.bnk.domain.admin.mapper.AdminUserMapper">
+<mapper namespace="com.bnk.domain.notification.mapper.NotificationMapper">
+
+    <resultMap id="notifMap" type="com.bnk.domain.notification.model.Notification">
+        <id     property="notificationId"   column="notification_id"/>
+        <result property="userId"           column="user_id"/>
+        <result property="notificationType" column="notification_type"/>
+        <result property="title"            column="title"/>
+        <result property="message"          column="message"/>
+        <result property="sentYn"           column="sent_yn"/>
+        <result property="sentAt"           column="sent_at"/>
+        <result property="readYn"           column="read_yn"/>
+        <result property="readAt"           column="read_at"/>
+        <result property="createdAt"        column="created_at"/>
+    </resultMap>
+
+    <insert id="insertNotification" useGeneratedKeys="true" keyProperty="notificationId">
+        INSERT INTO TERMS_NOTIFICATION_HISTORY (
+            user_id, notification_type, notification_title,
+            notification_message, sent_yn, read_yn, created_at
+        ) VALUES (
+            #{userId}, #{notificationType},
+            #{title,   jdbcType=VARCHAR},
+            #{message, jdbcType=VARCHAR},
+            'N', 'N', SYSTIMESTAMP
+        )
+    </insert>
+
+    <select id="findByUserId" resultMap="notifMap">
+        SELECT * FROM TERMS_NOTIFICATION_HISTORY
+        WHERE  user_id = #{userId}
+        ORDER  BY created_at DESC
+    </select>
+
+    <update id="markAsRead">
+        UPDATE TERMS_NOTIFICATION_HISTORY
+        SET    read_yn = 'Y',
+               read_at = SYSTIMESTAMP
+        WHERE  notification_id = #{notificationId}
+    </update>
 
 </mapper>

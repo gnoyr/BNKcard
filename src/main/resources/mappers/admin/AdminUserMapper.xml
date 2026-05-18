@@ -1,8 +1,154 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper
-  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.bnk.domain.admin.mapper.AdminUserMapper">
+
+    <resultMap id="adminMap" type="com.bnk.domain.admin.model.AdminUser">
+        <id     property="adminId"        column="admin_id"/>
+        <result property="username"       column="username"/>
+        <result property="passwordHash"   column="password_hash"/>
+        <result property="name"           column="name"/>
+        <result property="email"          column="email"/>
+        <result property="phone"          column="phone"/>
+        <result property="statusCode"     column="status_code"/>
+        <result property="loginFailCount" column="login_fail_count"/>
+        <result property="lockedUntil"    column="locked_until"/>
+        <result property="lastLoginAt"    column="last_login_at"/>
+        <result property="createdAt"      column="created_at"/>
+        <result property="deletedYn"      column="deleted_yn"/>
+        <collection property="roleCodes" ofType="string"
+                    select="findRoleCodesByAdminId" column="admin_id"/>
+    </resultMap>
+
+    <resultMap id="userMap" type="com.bnk.domain.user.model.User">
+        <id     property="userId"      column="user_id"/>
+        <result property="name"        column="name"/>
+        <result property="email"       column="email"/>
+        <result property="phone"       column="phone"/>
+        <result property="birthDate"   column="birth_date"/>
+        <result property="statusCode"  column="status_code"/>
+        <result property="creditScore" column="credit_score"/>
+        <result property="lastLoginAt" column="last_login_at"/>
+        <result property="createdAt"   column="created_at"/>
+    </resultMap>
+
+    <select id="findByUsername" resultMap="adminMap">
+        SELECT * FROM ADMIN_USERS
+        WHERE  username   = #{username}
+          AND  deleted_yn = 'N'
+    </select>
+
+    <select id="findById" resultMap="adminMap">
+        SELECT * FROM ADMIN_USERS
+        WHERE  admin_id   = #{adminId}
+          AND  deleted_yn = 'N'
+    </select>
+
+    <select id="findRoleCodesByAdminId" resultType="string">
+        SELECT ar.role_code
+        FROM   ADMIN_USER_ROLES aur
+        INNER JOIN ADMIN_ROLES ar ON aur.role_id = ar.role_id
+        WHERE  aur.admin_id   = #{adminId}
+          AND  aur.deleted_yn = 'N'
+    </select>
+
+    <!-- RQ-B14: 관리자 회원 목록 다중 조건 동적 검색 -->
+    <select id="findUsers" resultMap="userMap">
+        SELECT user_id, name, email, phone,
+               birth_date, status_code, credit_score,
+               last_login_at, created_at
+        FROM   USERS
+        WHERE  deleted_yn = 'N'
+        <if test="name != null and name != ''">
+          AND name  LIKE '%' || #{name}  || '%'
+        </if>
+        <if test="email != null and email != ''">
+          AND email LIKE '%' || #{email} || '%'
+        </if>
+        <if test="phone != null and phone != ''">
+          AND phone LIKE '%' || #{phone} || '%'
+        </if>
+        <if test="statusCode != null and statusCode != ''">
+          AND status_code = #{statusCode}
+        </if>
+        <if test="birthDateFrom != null">
+          AND birth_date &gt;= #{birthDateFrom}
+        </if>
+        <if test="birthDateTo != null">
+          AND birth_date &lt;= #{birthDateTo}
+        </if>
+        ORDER  BY created_at DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countUsers" resultType="long">
+        SELECT COUNT(1) FROM USERS
+        WHERE  deleted_yn = 'N'
+        <if test="name != null and name != ''">
+          AND name  LIKE '%' || #{name}  || '%'
+        </if>
+        <if test="email != null and email != ''">
+          AND email LIKE '%' || #{email} || '%'
+        </if>
+        <if test="phone != null and phone != ''">
+          AND phone LIKE '%' || #{phone} || '%'
+        </if>
+        <if test="statusCode != null and statusCode != ''">
+          AND status_code = #{statusCode}
+        </if>
+        <if test="birthDateFrom != null">
+          AND birth_date &gt;= #{birthDateFrom}
+        </if>
+        <if test="birthDateTo != null">
+          AND birth_date &lt;= #{birthDateTo}
+        </if>
+    </select>
+
+    <select id="findUserDetailById" resultMap="userMap">
+        SELECT * FROM USERS
+        WHERE  user_id    = #{userId}
+          AND  deleted_yn = 'N'
+    </select>
+
+    <update id="incrementLoginFailCount">
+        UPDATE ADMIN_USERS
+        SET    login_fail_count = login_fail_count + 1
+        WHERE  admin_id = #{adminId}
+    </update>
+
+    <update id="resetLoginFailCount">
+        UPDATE ADMIN_USERS
+        SET    login_fail_count = 0,
+               locked_until    = NULL
+        WHERE  admin_id = #{adminId}
+    </update>
+
+    <update id="updateLockedUntil">
+        UPDATE ADMIN_USERS
+        SET    locked_until = #{lockedUntil}
+        WHERE  admin_id = #{adminId}
+    </update>
+
+    <update id="updateLastLoginAt">
+        UPDATE ADMIN_USERS
+        SET    last_login_at = #{lastLoginAt}
+        WHERE  admin_id = #{adminId}
+    </update>
+
+    <insert id="insertAuditLog">
+        INSERT INTO AUDIT_LOGS (
+            actor_type_code, actor_id, action_type_code,
+            target_type_code, target_id, description,
+            ip_address, created_at
+        ) VALUES (
+            #{actorType}, #{actorId}, #{actionType},
+            #{targetType},
+            #{targetId,    jdbcType=NUMERIC},
+            #{description, jdbcType=VARCHAR},
+            #{ipAddress,   jdbcType=VARCHAR},
+            SYSTIMESTAMP
+        )
+    </insert>
 
 </mapper>
