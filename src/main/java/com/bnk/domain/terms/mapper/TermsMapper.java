@@ -1,6 +1,9 @@
 package com.bnk.domain.terms.mapper;
 
+import com.bnk.domain.card.dto.response.CardDetailResponse;
 import com.bnk.domain.terms.model.Terms;
+import com.bnk.domain.terms.model.TermsFile;
+
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -20,7 +23,9 @@ public interface TermsMapper {
     int updateTermsStatus(@Param("termsId") Long termsId,
                           @Param("status") String status,
                           @Param("changedBy") Long changedBy);
-
+    // AdminTermsService에서 파일 정보를 DB에 밀어 넣을 때 사용하는 메서드
+    int insertTermsFile(TermsFile termsFile);
+    
     int insertStatusHistory(@Param("termsId") Long termsId,
                             @Param("previousStatus") String previousStatus,
                             @Param("changedStatus") String changedStatus,
@@ -33,4 +38,6 @@ public interface TermsMapper {
     int insertNotificationHistory(@Param("termsId") Long termsId,
                                   @Param("userId") Long userId,
                                   @Param("notificationType") String notificationType);
+    
+    List<CardDetailResponse.TermsFileDto> findTermsFilesByCardId(@Param("cardId") Long cardId);
 }

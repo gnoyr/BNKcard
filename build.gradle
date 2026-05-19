@@ -68,6 +68,11 @@ dependencies {
 	testImplementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter-test:4.0.1'
 	testCompileOnly         'org.projectlombok:lombok'
 	testAnnotationProcessor 'org.projectlombok:lombok'
+
+	// Apache PDFBox (PDF를 이미지로 변환하기 위한 라이브러리)
+    implementation 'org.apache.pdfbox:pdfbox:3.0.3'
+    implementation 'org.apache.pdfbox:pdfbox-io:3.0.3' // PDFBox 3.x 버전 필수 라이브러리
+
 	testRuntimeOnly         'org.junit.platform:junit-platform-launcher'
 }
 
