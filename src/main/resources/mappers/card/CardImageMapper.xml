@@ -46,5 +46,16 @@
         AND image_type = 'FRONT'
         ORDER BY sort_order ASC NULLS LAST
     </select>
+    
+	<select id="findByCardIdsAndType" resultMap="cardImageMap">
+	    SELECT * FROM CARD_IMAGES
+	    WHERE card_id IN
+	    <foreach collection="cardIds" item="id" open="(" separator="," close=")">
+	        #{id}
+	    </foreach>
+	    AND image_type = #{imageType}
+	    ORDER BY sort_order ASC NULLS LAST
+	</select>
+    
 
 </mapper>

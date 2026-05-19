@@ -110,4 +110,29 @@
         )
     </insert>
 
+	<!-- 카드 상세용: CARD_TERMS → TERMS → TERMS_FILES JOIN -->
+	<resultMap id="termsFileMap" type="com.bnk.domain.card.dto.response.CardDetailResponse$TermsFileDto">
+	    <result property="termsId"   column="terms_id"/>
+	    <result property="title"     column="terms_title"/>
+	    <result property="filePath"  column="file_path"/>
+	    <result property="fileType"  column="file_type"/>
+	</resultMap>
+	
+	<select id="findTermsFilesByCardId" resultMap="termsFileMap">
+	    SELECT t.terms_id,
+	           tm.title    AS terms_title,
+	           tf.file_path,
+	           tf.file_type
+	    FROM   CARD_TERMS ct
+	    INNER JOIN TERMS         t  ON ct.terms_id        = t.terms_id
+	    INNER JOIN TERMS_MASTERS tm ON t.terms_master_id  = tm.terms_master_id
+	    LEFT  JOIN TERMS_FILES   tf ON t.terms_id         = tf.terms_id
+	                                AND tf.is_primary      = 'Y'
+	    WHERE  ct.card_id    = #{cardId}
+	      AND  t.status      = 'PUBLISHED'
+	      AND  t.effective_from &lt;= SYSDATE
+	      AND  (t.effective_to IS NULL OR t.effective_to &gt;= SYSDATE)
+	    ORDER  BY ct.display_order ASC NULLS LAST
+	</select>
+	
 </mapper>

@@ -1,5 +1,6 @@
 package com.bnk.domain.terms.mapper;
 
+import com.bnk.domain.card.dto.response.CardDetailResponse;
 import com.bnk.domain.terms.model.Terms;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -33,4 +34,6 @@ public interface TermsMapper {
     int insertNotificationHistory(@Param("termsId") Long termsId,
                                   @Param("userId") Long userId,
                                   @Param("notificationType") String notificationType);
+    
+    List<CardDetailResponse.TermsFileDto> findTermsFilesByCardId(@Param("cardId") Long cardId);
 }
