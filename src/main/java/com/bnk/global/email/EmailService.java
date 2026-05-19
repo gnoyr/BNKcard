@@ -1,13 +1,15 @@
 package com.bnk.global.email;
 
-import jakarta.mail.internet.MimeMessage;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeMessage;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
@@ -27,9 +29,7 @@ public class EmailService {
     // ──────────────────────────────────────────────────────
     @Async
     public void sendVerificationEmail(String to, String code) {
-        String subject = "[BNK카드] 이메일 인증 코드";
-        String content = buildVerificationHtml(code);
-        send(to, subject, content);
+        send(to, "[BNK카드] 이메일 인증 코드", buildVerificationHtml(code));
     }
 
     // ──────────────────────────────────────────────────────
@@ -37,11 +37,8 @@ public class EmailService {
     // ──────────────────────────────────────────────────────
     @Async
     public void sendPasswordResetEmail(String to, String resetToken) {
-        String subject = "[BNK카드] 비밀번호 재설정 안내";
-        // 프론트엔드 도메인에 맞게 URL 조정
         String resetUrl = "http://localhost:8080/reset-password?token=" + resetToken;
-        String content  = buildPasswordResetHtml(resetUrl);
-        send(to, subject, content);
+        send(to, "[BNK카드] 비밀번호 재설정 안내", buildPasswordResetHtml(resetUrl));
     }
 
     // ──────────────────────────────────────────────────────
@@ -51,10 +48,15 @@ public class EmailService {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setFrom(fromAddress, fromName);
+
+            
+            // InternetAddress 에 UTF-8 직접 지정 (MimeMessageHelper.setFrom 은 이중 인코딩 발생)
+            message.setFrom(new InternetAddress(fromAddress, fromName, "UTF-8"));
+
             helper.setTo(to);
             helper.setSubject(subject);
-            helper.setText(htmlContent, true); // true = HTML
+            helper.setText(htmlContent, true);
+
             mailSender.send(message);
             log.info("[이메일발송] 성공: to={}, subject={}", to, subject);
         } catch (Exception e) {
@@ -75,13 +77,11 @@ public class EmailService {
                       <table width="480" cellpadding="0" cellspacing="0"
                              style="background:#fff;border-radius:12px;overflow:hidden;
                                     box-shadow:0 2px 12px rgba(0,0,0,.08);">
-                        <!-- 헤더 -->
                         <tr>
                           <td style="background:#1a3a6c;padding:28px 40px;">
                             <span style="color:#fff;font-size:20px;font-weight:700;">BNK카드</span>
                           </td>
                         </tr>
-                        <!-- 본문 -->
                         <tr>
                           <td style="padding:40px;">
                             <p style="margin:0 0 8px;color:#222;font-size:18px;font-weight:700;">
@@ -91,7 +91,6 @@ public class EmailService {
                               아래 인증 코드를 입력창에 입력해 주세요.<br>
                               코드는 <strong>10분</strong> 동안 유효합니다.
                             </p>
-                            <!-- 인증코드 박스 -->
                             <div style="background:#f0f4ff;border:2px dashed #1a3a6c;border-radius:8px;
                                         padding:20px;text-align:center;margin-bottom:28px;">
                               <span style="font-size:36px;font-weight:800;letter-spacing:12px;color:#1a3a6c;">
@@ -104,12 +103,9 @@ public class EmailService {
                             </p>
                           </td>
                         </tr>
-                        <!-- 푸터 -->
                         <tr>
                           <td style="background:#f8f9fb;padding:20px 40px;border-top:1px solid #eee;">
-                            <p style="margin:0;color:#aaa;font-size:11px;">
-                              ⓒ BNK카드. All rights reserved.
-                            </p>
+                            <p style="margin:0;color:#aaa;font-size:11px;">ⓒ BNK카드. All rights reserved.</p>
                           </td>
                         </tr>
                       </table>
@@ -130,13 +126,11 @@ public class EmailService {
                       <table width="480" cellpadding="0" cellspacing="0"
                              style="background:#fff;border-radius:12px;overflow:hidden;
                                     box-shadow:0 2px 12px rgba(0,0,0,.08);">
-                        <!-- 헤더 -->
                         <tr>
                           <td style="background:#1a3a6c;padding:28px 40px;">
                             <span style="color:#fff;font-size:20px;font-weight:700;">BNK카드</span>
                           </td>
                         </tr>
-                        <!-- 본문 -->
                         <tr>
                           <td style="padding:40px;">
                             <p style="margin:0 0 8px;color:#222;font-size:18px;font-weight:700;">
@@ -146,7 +140,6 @@ public class EmailService {
                               아래 버튼을 클릭하여 비밀번호를 재설정하세요.<br>
                               링크는 <strong>30분</strong> 동안 유효합니다.
                             </p>
-                            <!-- 버튼 -->
                             <div style="text-align:center;margin-bottom:28px;">
                               <a href="%s"
                                  style="display:inline-block;background:#1a3a6c;color:#fff;
@@ -163,12 +156,9 @@ public class EmailService {
                             </p>
                           </td>
                         </tr>
-                        <!-- 푸터 -->
                         <tr>
                           <td style="background:#f8f9fb;padding:20px 40px;border-top:1px solid #eee;">
-                            <p style="margin:0;color:#aaa;font-size:11px;">
-                              ⓒ BNK카드. All rights reserved.
-                            </p>
+                            <p style="margin:0;color:#aaa;font-size:11px;">ⓒ BNK카드. All rights reserved.</p>
                           </td>
                         </tr>
                       </table>
