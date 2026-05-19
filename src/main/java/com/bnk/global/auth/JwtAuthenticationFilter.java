@@ -96,15 +96,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * 토큰 탐색 순서:
-     * 1) Authorization: Bearer {token} 헤더
-     * 2) access_token 쿠키 (폴백)
+     * 토큰 탐색
+     * access_token 쿠키 확인
      */
     private String resolveAccessToken(HttpServletRequest request) {
-        String header = request.getHeader("Authorization");
-        if (header != null && header.startsWith("Bearer ")) {
-            return header.substring(7).strip();
-        }
         return CookieUtil.extractCookieValue(request, "access_token").orElse(null);
     }
 }

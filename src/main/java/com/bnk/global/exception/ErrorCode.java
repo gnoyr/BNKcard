@@ -30,6 +30,7 @@ public enum ErrorCode {
     EMAIL_NOT_VERIFIED       ("U007", "이메일 인증이 필요합니다.",               HttpStatus.FORBIDDEN),
     VERIFY_TOKEN_INVALID     ("U008", "인증 토큰이 유효하지 않거나 만료되었습니다.", HttpStatus.BAD_REQUEST),
     PASSWORD_CONFIRM_MISMATCH("U009", "새 비밀번호와 확인 비밀번호가 일치하지 않습니다.", HttpStatus.BAD_REQUEST),
+    DUPLICATE_PHONE          ("U010", "이미 사용 중인 휴대폰 번호입니다.",         HttpStatus.CONFLICT),
 
     // 카드
     CARD_NOT_FOUND           ("CD001", "카드 상품을 찾을 수 없습니다.",           HttpStatus.NOT_FOUND),
