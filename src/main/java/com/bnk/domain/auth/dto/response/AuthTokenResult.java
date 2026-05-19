@@ -5,7 +5,7 @@ import org.springframework.http.ResponseCookie;
 import lombok.Data;
 
 @Data
-public class AuthTokenResult{
-	private TokenResponse token;
-	private ResponseCookie cookie;
+public class AuthTokenResult {
+    private ResponseCookie accessCookie;
+    private ResponseCookie refreshCookie;
 }
