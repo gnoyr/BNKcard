@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BNKcard Auth Test</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600&display=swap');
+
+    :root {
+      --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a;
+      --border: #2e3250; --accent: #4f8ef7; --accent-dim: rgba(79,142,247,0.12);
+      --success: #3dd68c; --error: #f76f6f; --warn: #f7b94f;
+      --text: #e2e8f0; --text-dim: #7a85a3;
+      --mono: 'IBM Plex Mono', monospace; --sans: 'IBM Plex Sans KR', sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; min-height: 100vh; display: flex; flex-direction: column; }
+
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; gap: 12px; }
+    .logo { font-family: var(--mono); font-weight: 600; font-size: 15px; color: var(--accent); letter-spacing: 1px; }
+    .badge { background: var(--accent-dim); color: var(--accent); font-family: var(--mono); font-size: 10px; padding: 2px 8px; border-radius: 3px; border: 1px solid rgba(79,142,247,0.3); }
+    .hstatus { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-dim); }
+    .dot.on { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .dot.off { background: var(--error); }
+
+    .layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* Sidebar */
+    .sidebar { width: 200px; background: var(--surface); border-right: 1px solid var(--border); padding: 16px 0; flex-shrink: 0; }
+    .sg { padding: 0 12px; margin-bottom: 6px; }
+    .slabel { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 1.5px; text-transform: uppercase; padding: 8px 8px 4px; }
+    .tb { width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: none; background: transparent; color: var(--text-dim); font-family: var(--sans); font-size: 13px; cursor: pointer; border-radius: 6px; text-align: left; transition: all 0.15s; }
+    .tb:hover { background: var(--surface2); color: var(--text); }
+    .tb.active { background: var(--accent-dim); color: var(--accent); font-weight: 500; }
+    .tb .num { font-family: var(--mono); font-size: 10px; background: var(--surface2); padding: 1px 5px; border-radius: 3px; margin-left: auto; color: var(--text-dim); }
+    .tb.active .num { background: var(--accent-dim); color: var(--accent); }
+
+    /* Main */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+    .panel.active { display: flex; }
+    .ph { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); }
+    .pt { font-size: 16px; font-weight: 600; margin-bottom: 3px; }
+    .pd { font-size: 12px; color: var(--text-dim); font-family: var(--mono); }
+    .pb { flex: 1; display: flex; overflow: hidden; }
+
+    /* Form */
+    .fs { width: 420px; flex-shrink: 0; padding: 20px 24px; border-right: 1px solid var(--border); overflow-y: auto; }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 11px; font-weight: 500; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 5px; font-family: var(--mono); }
+    .field label .req { color: var(--accent); margin-left: 2px; }
+    .field input, .field select { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: var(--sans); font-size: 13px; padding: 8px 12px; outline: none; transition: border-color 0.15s; }
+    .field input:focus, .field select:focus { border-color: var(--accent); }
+    .field input::placeholder { color: var(--text-dim); opacity: 0.5; }
+    .field input:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* 인라인 행 */
+    .inline-row { display: flex; gap: 8px; }
+    .inline-row input { flex: 1; }
+    .ibtn { flex-shrink: 0; padding: 8px 14px; border: 1px solid var(--accent); background: var(--accent-dim); color: var(--accent); border-radius: 6px; font-family: var(--mono); font-size: 11px; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
+    .ibtn:hover { background: var(--accent); color: #fff; }
+    .ibtn:disabled { opacity: 0.3; cursor: not-allowed; background: var(--accent-dim); color: var(--accent); }
+    .ibtn.success { border-color: var(--success); background: rgba(61,214,140,0.1); color: var(--success); }
+    .ibtn.success:hover { background: var(--success); color: #0f1117; }
+
+    /* 코드 입력 */
+    .code-input { text-align: center; letter-spacing: 8px; font-family: var(--mono); font-size: 22px; font-weight: 600; text-transform: uppercase; padding: 10px !important; }
+
+    /* 상태 메시지 */
+    .field-msg { font-size: 11px; font-family: var(--mono); padding: 5px 10px; border-radius: 4px; margin-top: 6px; display: none; }
+    .field-msg.ok  { display: block; background: rgba(61,214,140,0.1); color: var(--success); }
+    .field-msg.err { display: block; background: rgba(247,111,111,0.1); color: var(--error); }
+    .field-msg.info { display: block; background: var(--accent-dim); color: var(--accent); }
+
+    /* 타이머 */
+    .timer { font-family: var(--mono); font-size: 11px; color: var(--warn); float: right; }
+
+    /* 단계 바 */
+    .step-bar { display: flex; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); margin-bottom: 18px; }
+    .step { flex: 1; padding: 7px 0; text-align: center; font-family: var(--mono); font-size: 10px; color: var(--text-dim); background: var(--surface2); border-right: 1px solid var(--border); transition: all 0.25s; }
+    .step:last-child { border-right: none; }
+    .step.done   { background: rgba(61,214,140,0.08); color: var(--success); }
+    .step.active { background: var(--accent-dim); color: var(--accent); }
+
+    /* Terms */
+    .load-terms-btn { width: 100%; padding: 7px; margin-bottom: 8px; background: transparent; border: 1px dashed var(--border); border-radius: 6px; color: var(--text-dim); font-family: var(--mono); font-size: 11px; cursor: pointer; transition: all 0.15s; }
+    .load-terms-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .terms-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+    .term-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
+    .term-item:last-child { border-bottom: none; }
+    .term-item:hover { background: rgba(255,255,255,0.02); }
+    .term-item input[type="checkbox"] { accent-color: var(--accent); }
+    .term-label { font-size: 12px; flex: 1; }
+    .tbadge { font-family: var(--mono); font-size: 9px; padding: 2px 6px; border-radius: 3px; }
+    .tbadge.req { background: rgba(247,111,111,0.15); color: var(--error); }
+    .tbadge.opt { background: rgba(122,133,163,0.15); color: var(--text-dim); }
+    .terms-empty { padding: 16px; font-size: 12px; color: var(--text-dim); text-align: center; }
+
+    /* 블록 잠금 */
+    .locked { opacity: 0.3; pointer-events: none; transition: all 0.3s; }
+    .unlocked { opacity: 1; pointer-events: auto; transition: all 0.3s; }
+
+    /* Buttons */
+    .sbtn { width: 100%; padding: 11px; margin-top: 8px; background: var(--accent); border: none; border-radius: 6px; color: #fff; font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+    .sbtn:hover { opacity: 0.88; }
+    .sbtn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .sbtn.danger { background: transparent; border: 1px solid var(--error); color: var(--error); }
+    .sbtn.danger:hover { background: rgba(247,111,111,0.1); }
+
+    .divider { height: 1px; background: var(--border); margin: 16px 0; }
+    .info-box { background: var(--accent-dim); border: 1px solid rgba(79,142,247,0.2); border-radius: 6px; padding: 10px 12px; font-size: 12px; color: var(--text-dim); margin-bottom: 14px; line-height: 1.7; }
+    .info-box strong { color: var(--accent); }
+
+    /* Response */
+    .rs { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .rtb { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--surface); }
+    .rtb span { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
+    .chip { font-family: var(--mono); font-size: 10px; padding: 2px 8px; border-radius: 3px; font-weight: 600; }
+    .chip.ok   { background: rgba(61,214,140,0.15); color: var(--success); }
+    .chip.err  { background: rgba(247,111,111,0.15); color: var(--error); }
+    .chip.idle { background: var(--surface2); color: var(--text-dim); }
+    .cbtn { margin-left: auto; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); font-family: var(--mono); font-size: 10px; padding: 3px 8px; cursor: pointer; }
+    .cbtn:hover { color: var(--text); }
+    .rbody { flex: 1; overflow-y: auto; padding: 16px; }
+    .log-entry { margin-bottom: 16px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; animation: fi 0.2s ease; }
+    @keyframes fi { from { opacity:0; transform:translateY(4px); } to { opacity:1; } }
+    .leh { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+    .lm { font-family: var(--mono); font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 3px; }
+    .lm.post { background: rgba(79,142,247,0.15); color: var(--accent); }
+    .lm.get  { background: rgba(61,214,140,0.15); color: var(--success); }
+    .lp { font-family: var(--mono); font-size: 11px; }
+    .lt { margin-left: auto; font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
+    .leb { padding: 12px; font-family: var(--mono); font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; background: var(--bg); }
+    .log-entry.ok .leh  { border-left: 3px solid var(--success); }
+    .log-entry.err .leh { border-left: 3px solid var(--error); }
+    .empty-log { height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; color: var(--text-dim); }
+    .empty-log .icon { font-size: 32px; opacity: 0.3; }
+    .empty-log p { font-family: var(--mono); font-size: 12px; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">BNKcard</span>
+  <span class="badge">Auth Test Console</span>
+  <div class="hstatus">
+    <div class="dot" id="cdot"></div>
+    <span id="clabel">연결 확인 중...</span>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sg">
+      <div class="slabel">회원</div>
+      <button class="tb active" onclick="sw('signup',this)">회원가입 <span class="num">F-01</span></button>
+    </div>
+    <div class="sg">
+      <div class="slabel">인증</div>
+      <button class="tb" onclick="sw('login',this)">로그인 <span class="num">F-03</span></button>
+      <button class="tb" onclick="sw('refresh',this)">토큰 재발급 <span class="num">F-04</span></button>
+      <button class="tb" onclick="sw('logout',this)">로그아웃 <span class="num">F-05</span></button>
+    </div>
+    <div class="sg">
+      <div class="slabel">계정 찾기</div>
+      <button class="tb" onclick="sw('findid',this)">아이디 찾기 <span class="num">F-21</span></button>
+      <button class="tb" onclick="sw('findpw',this)">비밀번호 요청 <span class="num">F-22</span></button>
+      <button class="tb" onclick="sw('resetpw',this)">비밀번호 재설정 <span class="num">F-23</span></button>
+    </div>
+  </nav>
+
+  <div class="main">
+
+    <!-- ══ F-01 회원가입 ══ -->
+    <div class="panel active" id="panel-signup">
+      <div class="ph">
+        <div class="pt">회원가입</div>
+        <div class="pd">POST /api/auth/send-verify-code → verify-email → signup</div>
+      </div>
+      <div class="pb">
+        <div class="fs">
+
+          <!-- 단계 바 -->
+          <div class="step-bar">
+            <div class="step active" id="s1">1 이메일인증</div>
+            <div class="step" id="s2">2 정보입력</div>
+            <div class="step" id="s3">3 약관동의</div>
+            <div class="step" id="s4">4 완료</div>
+          </div>
+
+          <!-- STEP 1 : 이메일 인증 -->
+          <div class="field">
+            <label>이메일 <span class="req">*</span></label>
+            <div class="inline-row">
+              <input id="su-email" type="email" placeholder="test@example.com">
+              <button class="ibtn" id="send-btn" onclick="sendCode()">인증 요청</button>
+            </div>
+            <div class="field-msg" id="send-msg"></div>
+          </div>
+
+          <div class="field" id="code-field" style="display:none;">
+            <label>
+              인증코드 <span class="req">*</span>
+              <span class="timer" id="timer">10:00</span>
+            </label>
+            <div class="inline-row">
+              <input id="su-code" class="code-input" type="text" maxlength="6" placeholder="000000">
+              <button class="ibtn success" onclick="confirmCode()">확인</button>
+            </div>
+            <div class="field-msg" id="code-msg"></div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- STEP 2 : 기본 정보 -->
+          <div id="block-info" class="locked">
+            <div class="field">
+              <label>비밀번호 <span class="req">*</span></label>
+              <input id="su-pw" type="password" placeholder="영문+숫자+특수문자 8자 이상">
+            </div>
+            <div class="field">
+              <label>이름 <span class="req">*</span></label>
+              <input id="su-name" type="text" placeholder="홍길동">
+            </div>
+            <div class="field">
+              <label>휴대폰 <span class="req">*</span></label>
+              <input id="su-phone" type="text" placeholder="01012345678">
+            </div>
+            <div class="field">
+              <label>생년월일</label>
+              <input id="su-birth" type="text" placeholder="19900101">
+            </div>
+            <div class="field">
+              <label>마케팅 동의</label>
+              <select id="su-mkt"><option value="N">거부</option><option value="Y">동의</option></select>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- STEP 3 : 약관 동의 -->
+          <div id="block-terms" class="locked">
+            <div class="field">
+              <label>약관 동의 <span class="req">*</span></label>
+              <button class="load-terms-btn" onclick="loadTerms()">↓ 약관 목록 불러오기</button>
+              <div class="terms-box" id="terms-box">
+                <div class="terms-empty">이메일 인증 후 이용 가능합니다</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <button class="sbtn" id="signup-btn" onclick="signup()" disabled>회원가입 완료</button>
+
+        </div>
+        <div class="rs" id="res-signup"></div>
+      </div>
+    </div>
+
+    <!-- ══ F-03 로그인 ══ -->
+    <div class="panel" id="panel-login">
+      <div class="ph"><div class="pt">로그인</div><div class="pd">POST /api/auth/login — Access + Refresh 쿠키 발급</div></div>
+      <div class="pb">
+        <div class="fs">
+          <div class="field"><label>이메일 <span class="req">*</span></label><input id="li-email" type="email" placeholder="test@example.com"></div>
+          <div class="field"><label>비밀번호 <span class="req">*</span></label><input id="li-pw" type="password" placeholder="비밀번호"></div>
+          <button class="sbtn" onclick="login()">로그인</button>
+        </div>
+        <div class="rs" id="res-login"></div>
+      </div>
+    </div>
+
+    <!-- ══ F-04 재발급 ══ -->
+    <div class="panel" id="panel-refresh">
+      <div class="ph"><div class="pt">Access Token 재발급</div><div class="pd">POST /api/auth/refresh</div></div>
+      <div class="pb">
+        <div class="fs">
+          <div class="info-box">로그인 후 브라우저에 저장된 <strong>refresh_token 쿠키</strong>를 자동으로 사용합니다.</div>
+          <button class="sbtn" onclick="refresh()">재발급 요청</button>
+        </div>
+        <div class="rs" id="res-refresh"></div>
+      </div>
+    </div>
+
+    <!-- ══ F-05 로그아웃 ══ -->
+    <div class="panel" id="panel-logout">
+      <div class="ph"><div class="pt">로그아웃</div><div class="pd">POST /api/auth/logout — 세션 revoke + 쿠키 삭제</div></div>
+      <div class="pb">
+        <div class="fs">
+          <div class="info-box">로그인 상태에서만 동작합니다.<br>모든 기기의 세션이 <strong>일괄 만료</strong>됩니다.</div>
+          <button class="sbtn danger" onclick="logout()">로그아웃</button>
+        </div>
+        <div class="rs" id="res-logout"></div>
+      </div>
+    </div>
+
+    <!-- ══ F-21 아이디 찾기 ══ -->
+    <div class="panel" id="panel-findid">
+      <div class="ph"><div class="pt">아이디(이메일) 찾기</div><div class="pd">POST /api/auth/find-id</div></div>
+      <div class="pb">
+        <div class="fs">
+          <div class="field"><label>이름 <span class="req">*</span></label><input id="fi-name" type="text" placeholder="홍길동"></div>
+          <div class="field"><label>휴대폰 <span class="req">*</span></label><input id="fi-phone" type="text" placeholder="01012345678"></div>
+          <button class="sbtn" onclick="findId()">아이디 찾기</button>
+        </div>
+        <div class="rs" id="res-findid"></div>
+      </div>
+    </div>
+
+    <!-- ══ F-22 비밀번호 요청 ══ -->
+    <div class="panel" id="panel-findpw">
+      <div class="ph"><div class="pt">비밀번호 재설정 요청</div><div class="pd">POST /api/auth/find-password — 재설정 링크 이메일 발송</div></div>
+      <div class="pb">
+        <div class="fs">
+          <div class="field"><label>이메일 <span class="req">*</span></label><input id="fp-email" type="email" placeholder="test@example.com"></div>
+          <div class="field"><label>이름 <span class="req">*</span></label><input id="fp-name" type="text" placeholder="홍길동"></div>
+          <button class="sbtn" onclick="findPassword()">재설정 링크 요청</button>
+        </div>
+        <div class="rs" id="res-findpw"></div>
+      </div>
+    </div>
+
+    <!-- ══ F-23 비밀번호 재설정 ══ -->
+    <div class="panel" id="panel-resetpw">
+      <div class="ph"><div class="pt">비밀번호 재설정</div><div class="pd">POST /api/auth/reset-password</div></div>
+      <div class="pb">
+        <div class="fs">
+          <div class="info-box">이메일 링크의 URL에서 <strong>?token=</strong> 뒤 값을 복사해 입력하세요. 유효시간 <strong>30분</strong></div>
+          <div class="field"><label>재설정 토큰 <span class="req">*</span></label><input id="rp-token" type="text" placeholder="UUID" style="font-family:var(--mono);font-size:11px;"></div>
+          <div class="field"><label>새 비밀번호 <span class="req">*</span></label><input id="rp-pw" type="password" placeholder="영문+숫자+특수문자 8자 이상"></div>
+          <div class="field"><label>비밀번호 확인 <span class="req">*</span></label><input id="rp-confirm" type="password" placeholder="비밀번호 재입력"></div>
+          <button class="sbtn" onclick="resetPassword()">비밀번호 재설정</button>
+        </div>
+        <div class="rs" id="res-resetpw"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const BASE = 'http://localhost:8080';
+  let emailVerified = false;
+  let timerInterval = null;
+
+  /* ── 탭 전환 ── */
+  function sw(name, btn) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tb').forEach(b => b.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  /* ── 서버 연결 상태 ── */
+  async function checkServer() {
+    try {
+      const r = await fetch(BASE + '/api/terms/packages/SIGNUP', { credentials: 'include' });
+      const on = r.status < 500;
+      document.getElementById('cdot').className = on ? 'dot on' : 'dot off';
+      document.getElementById('clabel').textContent = on ? '서버 연결됨' : '서버 오류';
+    } catch {
+      document.getElementById('cdot').className = 'dot off';
+      document.getElementById('clabel').textContent = '서버 연결 실패';
+    }
+  }
+  checkServer();
+
+  /* ── 공통 fetch ── */
+  async function api(method, path, body, cid) {
+    try {
+      const res = await fetch(BASE + path, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: body ? JSON.stringify(body) : undefined
+      });
+      const json = await res.json().catch(() => ({ status: res.status }));
+      log(cid, method, path, json, res.ok);
+      return { ok: res.ok, data: json };
+    } catch (e) {
+      log(cid, method, path, { error: e.message }, false);
+      return { ok: false };
+    }
+  }
+
+  /* ── 로그 렌더링 ── */
+  function log(cid, method, path, json, ok) {
+    let c = document.getElementById(cid);
+    if (!c.querySelector('.rtb')) {
+      c.innerHTML = `
+        <div class="rtb">
+          <span>RESPONSE</span>
+          <span class="chip idle" id="${cid}-chip">—</span>
+          <button class="cbtn" onclick="clearLog('${cid}')">clear</button>
+        </div>
+        <div class="rbody" id="${cid}-body">
+          <div class="empty-log"><div class="icon">◌</div><p>응답 대기 중</p></div>
+        </div>`;
+    }
+    const chip = document.getElementById(cid + '-chip');
+    chip.textContent = ok ? '200 OK' : 'ERROR';
+    chip.className = 'chip ' + (ok ? 'ok' : 'err');
+
+    const body = document.getElementById(cid + '-body');
+    const empty = body.querySelector('.empty-log');
+    if (empty) empty.remove();
+
+    const now = new Date().toLocaleTimeString('ko-KR');
+    const el = document.createElement('div');
+    el.className = 'log-entry ' + (ok ? 'ok' : 'err');
+    el.innerHTML = `
+      <div class="leh">
+        <span class="lm ${method.toLowerCase()}">${method}</span>
+        <span class="lp">${path}</span>
+        <span class="lt">${now}</span>
+      </div>
+      <div class="leb">${JSON.stringify(json, null, 2)}</div>`;
+    body.prepend(el);
+  }
+
+  function clearLog(cid) {
+    const b = document.getElementById(cid + '-body');
+    if (b) b.innerHTML = '<div class="empty-log"><div class="icon">◌</div><p>응답 대기 중</p></div>';
+    const chip = document.getElementById(cid + '-chip');
+    if (chip) { chip.textContent = '—'; chip.className = 'chip idle'; }
+  }
+
+  /* ── 메시지 헬퍼 ── */
+  function showMsg(id, text, type) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = 'field-msg ' + type;
+  }
+
+  /* ── 단계 업데이트 ── */
+  function setStep(n) {
+    for (let i = 1; i <= 4; i++) {
+      const el = document.getElementById('s' + i);
+      el.className = i < n ? 'step done' : i === n ? 'step active' : 'step';
+    }
+  }
+
+  /* ── 타이머 ── */
+  function startTimer(sec) {
+    clearInterval(timerInterval);
+    const el = document.getElementById('timer');
+    let remain = sec;
+    const tick = () => {
+      const m = String(Math.floor(remain / 60)).padStart(2, '0');
+      const s = String(remain % 60).padStart(2, '0');
+      el.textContent = `${m}:${s}`;
+      el.style.color = remain <= 60 ? 'var(--error)' : 'var(--warn)';
+      if (remain-- <= 0) {
+        clearInterval(timerInterval);
+        el.textContent = '만료';
+        showMsg('code-msg', '인증코드가 만료되었습니다. 다시 요청하세요.', 'err');
+      }
+    };
+    tick();
+    timerInterval = setInterval(tick, 1000);
+  }
+
+  /* ════════════════════════════════════════
+     F-01 회원가입 — 단계별 로직
+  ════════════════════════════════════════ */
+
+  /* STEP 1-A: 인증코드 발송 */
+  async function sendCode() {
+    const email = document.getElementById('su-email').value.trim();
+    if (!email) { showMsg('send-msg', '이메일을 입력하세요.', 'err'); return; }
+
+    const btn = document.getElementById('send-btn');
+    btn.disabled = true;
+    btn.textContent = '발송 중...';
+
+    const result = await api('POST', '/api/auth/send-verify-code', { email }, 'res-signup');
+
+    if (result.ok) {
+      showMsg('send-msg', '✓ 인증코드가 발송되었습니다. 이메일을 확인하세요.', 'ok');
+      document.getElementById('code-field').style.display = 'block';
+      document.getElementById('su-code').value = '';
+      document.getElementById('su-code').focus();
+      startTimer(600);
+      btn.textContent = '재발송';
+      btn.disabled = false;
+    } else {
+      showMsg('send-msg', '✗ 발송 실패. 이메일을 확인하세요.', 'err');
+      btn.textContent = '인증 요청';
+      btn.disabled = false;
+    }
+  }
+
+  /* STEP 1-B: 인증코드 확인 */
+  async function confirmCode() {
+    const email = document.getElementById('su-email').value.trim();
+    const code  = document.getElementById('su-code').value.trim().toUpperCase();
+    if (!code || code.length < 6) { showMsg('code-msg', '6자리 코드를 입력하세요.', 'err'); return; }
+
+    const result = await api('POST', '/api/auth/verify-email', { email, token: code }, 'res-signup');
+
+    if (result.ok) {
+      emailVerified = true;
+      clearInterval(timerInterval);
+      document.getElementById('timer').textContent = '';
+
+      showMsg('code-msg', '✓ 이메일 인증이 완료되었습니다.', 'ok');
+      document.getElementById('su-email').disabled = true;
+      document.getElementById('send-btn').disabled = true;
+      document.getElementById('su-code').disabled = true;
+
+      // STEP 2, 3 잠금 해제
+      document.getElementById('block-info').className = 'unlocked';
+      document.getElementById('block-terms').className = 'unlocked';
+      document.getElementById('signup-btn').disabled = false;
+      setStep(2);
+
+    } else {
+      showMsg('code-msg', '✗ 인증코드가 올바르지 않거나 만료되었습니다.', 'err');
+    }
+  }
+
+  /* STEP 3: 약관 불러오기 */
+  async function loadTerms() {
+    const result = await api('GET', '/api/terms/packages/SIGNUP', null, 'res-signup');
+    const box = document.getElementById('terms-box');
+    const terms = result.data?.data?.terms ?? [];
+    if (!terms.length) { box.innerHTML = '<div class="terms-empty">약관 데이터 없음</div>'; return; }
+    box.innerHTML = terms.map(t => `
+      <label class="term-item">
+        <input type="checkbox" class="term-chk" value="${t.termsId}">
+        <span class="term-label">${t.title ?? t.termsType}</span>
+        <span class="tbadge ${t.requiredYn === 'Y' ? 'req' : 'opt'}">${t.requiredYn === 'Y' ? '필수' : '선택'}</span>
+      </label>`).join('');
+    setStep(3);
+  }
+
+  /* STEP 4: 회원가입 완료 */
+  async function signup() {
+    if (!emailVerified) { alert('이메일 인증을 먼저 완료하세요.'); return; }
+    const checked = [...document.querySelectorAll('.term-chk:checked')].map(c => Number(c.value));
+
+    const result = await api('POST', '/api/auth/signup', {
+      email:          document.getElementById('su-email').value,
+      password:       document.getElementById('su-pw').value,
+      name:           document.getElementById('su-name').value,
+      phone:          document.getElementById('su-phone').value,
+      birthDate:      document.getElementById('su-birth').value || null,
+      marketingAgree: document.getElementById('su-mkt').value,
+      agreedTermsIds: checked
+    }, 'res-signup');
+
+    if (result.ok) {
+      setStep(4);
+      const btn = document.getElementById('signup-btn');
+      btn.textContent = '✓ 회원가입 완료';
+      btn.style.background = 'rgba(61,214,140,0.2)';
+      btn.style.border = '1px solid var(--success)';
+      btn.style.color = 'var(--success)';
+      btn.disabled = true;
+    }
+  }
+
+  /* ════ 나머지 기능 ════ */
+
+  async function login() {
+    await api('POST', '/api/auth/login', {
+      email: document.getElementById('li-email').value,
+      password: document.getElementById('li-pw').value
+    }, 'res-login');
+    checkServer();
+  }
+
+  async function refresh() { await api('POST', '/api/auth/refresh', null, 'res-refresh'); }
+
+  async function logout() {
+    await api('POST', '/api/auth/logout', null, 'res-logout');
+    checkServer();
+  }
+
+  async function findId() {
+    await api('POST', '/api/auth/find-id', {
+      name: document.getElementById('fi-name').value,
+      phone: document.getElementById('fi-phone').value
+    }, 'res-findid');
+  }
+
+  async function findPassword() {
+    await api('POST', '/api/auth/find-password', {
+      email: document.getElementById('fp-email').value,
+      name:  document.getElementById('fp-name').value
+    }, 'res-findpw');
+  }
+
+  async function resetPassword() {
+    const pw  = document.getElementById('rp-pw').value;
+    const pwc = document.getElementById('rp-confirm').value;
+    if (pw !== pwc) { alert('비밀번호가 일치하지 않습니다.'); return; }
+    await api('POST', '/api/auth/reset-password', {
+      token: document.getElementById('rp-token').value,
+      newPassword: pw,
+      newPasswordConfirm: pwc
+    }, 'res-resetpw');
+  }
+</script>
+</body>
+</html>

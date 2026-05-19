@@ -17,7 +17,17 @@
         <result property="createdAt"    column="created_at"/>
     </resultMap>
 
-    <insert id="insertSession" useGeneratedKeys="true" keyProperty="sessionId">
+    <!--
+        [수정] useGeneratedKeys="true" 제거 — Oracle JDBC 드라이버는 이 방식으로
+              시퀀스 기반 PK를 반환하지 못한다(ROWID만 반환).
+              selectKey order="AFTER" + SEQ_USER_SESSIONS.CURRVAL 방식으로 교체.
+              트리거(TRG_USER_SESSIONS_BI)가 NEXTVAL로 session_id를 채번한 직후
+              CURRVAL로 읽어 UserSession.sessionId에 주입한다.
+    -->
+    <insert id="insertSession">
+        <selectKey keyProperty="sessionId" resultType="long" order="AFTER">
+            SELECT SEQ_USER_SESSIONS.CURRVAL FROM DUAL
+        </selectKey>
         INSERT INTO USER_SESSIONS (
             user_id, refresh_token, device_info,
             ip_address, user_agent,
@@ -25,9 +35,9 @@
         ) VALUES (
             #{userId},
             #{refreshToken},
-            #{deviceInfo,   jdbcType=VARCHAR},
-            #{ipAddress,    jdbcType=VARCHAR},
-            #{userAgent,    jdbcType=VARCHAR},
+            #{deviceInfo,  jdbcType=VARCHAR},
+            #{ipAddress,   jdbcType=VARCHAR},
+            #{userAgent,   jdbcType=VARCHAR},
             'N',
             #{expiresAt},
             SYSTIMESTAMP
