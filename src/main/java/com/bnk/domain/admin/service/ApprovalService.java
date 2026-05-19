@@ -6,13 +6,22 @@ import org.springframework.validation.annotation.Validated;
 import com.bnk.domain.admin.dto.request.ApprovalActionRequest;
 import com.bnk.domain.admin.dto.request.ApprovalSearchRequest;
 import com.bnk.domain.admin.dto.response.ApprovalListResponse;
+import com.bnk.domain.admin.mapper.ApprovalMapper;
+import com.bnk.domain.card.mapper.CardMapper;
 import com.bnk.global.response.PageResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @Validated
+@RequiredArgsConstructor
 public class ApprovalService {
+	
+	private final ApprovalMapper approvalMapper;
+	private final CardMapper cardMapper;
+	private final ObjectMapper objectMapper; // JSON 파싱용 Jackson ObjectMapper
 
 	public void approve(Long approvalId, @Valid ApprovalActionRequest request, Long adminId) {
 		// TODO Auto-generated method stub
