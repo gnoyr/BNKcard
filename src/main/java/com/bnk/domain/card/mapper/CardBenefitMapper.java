@@ -16,7 +16,21 @@ public interface CardBenefitMapper {
     List<CardBenefit> findByCardIds(@Param("cardIds") List<Long> cardIds);
 
     int insertBenefit(CardBenefit benefit);
+    
+    // 혜택 리스트 등록
+ 	void insertBenefits(@Param("benefitList") List<CardBenefit> benefits);
+ 	
+ 	// 혜택 수정
+ 	void updateBenefit(CardBenefit benefit);
+ 	
+ 	// 혜택 삭제
+    void deleteBenefit(@Param("benefitId") Long benefitId);
 
     /** 카드 재등록 시 기존 혜택 전체 삭제 후 재INSERT */
     int deleteByCardId(@Param("cardId") Long cardId);
+    
+    
+    List<CardBenefit> findTop1ByCardIds(@Param("cardIds") List<Long> cardIds);
+    
+    
 }
