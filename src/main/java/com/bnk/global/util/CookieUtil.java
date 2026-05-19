@@ -1,27 +1,36 @@
 package com.bnk.global.util;
 
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
+import java.util.Arrays;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 
-import java.util.Arrays;
-import java.util.Optional;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 
 @Component
 public class CookieUtil {
 
+    public static final String ACCESS_TOKEN_COOKIE  = "access_token";
     public static final String REFRESH_TOKEN_COOKIE = "refresh_token";
 
-    /** application.properties: cookie.secure=false (local), true (prod) */
     @Value("${cookie.secure:false}")
     private boolean secure;
 
-    /**
-     * HttpOnly Refresh Token 쿠키 생성.
-     * path=/api/auth/refresh 로 제한 → Refresh 엔드포인트에만 전송
-     */
+    /** Access Token 쿠키 생성 — 전체 경로, SameSite=Lax */
+    public ResponseCookie createAccessCookie(String token, long maxAgeSec) {
+        return ResponseCookie.from(ACCESS_TOKEN_COOKIE, token)
+                .httpOnly(true)
+                .secure(secure)
+                .path("/")
+                .maxAge(maxAgeSec)
+                .sameSite("Lax")
+                .build();
+    }
+
+    /** Refresh Token 쿠키 생성 — 재발급 경로만, SameSite=Strict */
     public ResponseCookie createRefreshCookie(String token, long maxAgeSec) {
         return ResponseCookie.from(REFRESH_TOKEN_COOKIE, token)
                 .httpOnly(true)
@@ -32,7 +41,18 @@ public class CookieUtil {
                 .build();
     }
 
-    /** 쿠키 삭제 — maxAge=0 */
+    /** Access Token 쿠키 삭제 */
+    public ResponseCookie deleteAccessCookie() {
+        return ResponseCookie.from(ACCESS_TOKEN_COOKIE, "")
+                .httpOnly(true)
+                .secure(secure)
+                .path("/")
+                .maxAge(0)
+                .sameSite("Lax")
+                .build();
+    }
+
+    /** Refresh Token 쿠키 삭제 */
     public ResponseCookie deleteRefreshCookie() {
         return ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
                 .httpOnly(true)
@@ -43,17 +63,11 @@ public class CookieUtil {
                 .build();
     }
 
-    /** 요청에서 특정 이름의 쿠키 값 추출 (static — 필터에서도 사용 가능) */
     public static Optional<String> extractCookieValue(HttpServletRequest request, String name) {
         if (request.getCookies() == null) return Optional.empty();
         return Arrays.stream(request.getCookies())
                 .filter(c -> name.equals(c.getName()))
                 .map(Cookie::getValue)
                 .findFirst();
-    }
-
-    /** Refresh Token 쿠키 추출 */
-    public static Optional<String> extractRefreshToken(HttpServletRequest request) {
-        return extractCookieValue(request, REFRESH_TOKEN_COOKIE);
     }
 }
