@@ -1,8 +1,6 @@
 package com.bnk.domain.spending.controller;
 
-import com.bnk.domain.spending.dto.request.AiChatRequest;
 import com.bnk.domain.spending.dto.request.SpendingPatternRequest;
-import com.bnk.domain.spending.dto.response.AiChatResponse;
 import com.bnk.domain.spending.dto.response.SpendingChartResponse;
 import com.bnk.domain.spending.service.SpendingService;
 import com.bnk.global.auth.CustomUserDetails;
@@ -42,18 +40,5 @@ public class SpendingController {
             @AuthenticationPrincipal CustomUserDetails ud) {
         int updatedCount = spendingService.updateSpendingPatterns(ud.getUserId(), request);
         return ApiResponse.toOk(updatedCount);
-    }
-
-    /**
-     * AI 챗봇 대화.
-     * 비로그인 허용 — ud=null 이면 userId=null로 AI_CHAT_LOGS INSERT.
-     * sessionId(UUID)로 대화 맥락 유지.
-     */
-    @PostMapping("/chat")
-    public ResponseEntity<ApiResponse<AiChatResponse>> chat(
-            @RequestBody @Valid AiChatRequest request,
-            @AuthenticationPrincipal(errorOnInvalidType = false) CustomUserDetails ud) {
-        Long userId = ud != null ? ud.getUserId() : null;
-        return ApiResponse.toOk(spendingService.chat(request, userId));
     }
 }
