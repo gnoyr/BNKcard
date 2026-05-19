@@ -13,7 +13,7 @@
         <result property="birthDate"             column="birth_date"/>
         <result property="ciValue"               column="ci_value"/>
         <result property="job"                   column="job"/>
-        <result property="incomeLevelCode"        column="income_level_code"/>
+        <result property="incomeLevelCode"       column="income_level_code"/>
         <result property="creditScore"           column="credit_score"/>
         <result property="statusCode"            column="status_code"/>
         <result property="loginFailCount"        column="login_fail_count"/>
@@ -53,7 +53,25 @@
         FETCH FIRST 1 ROWS ONLY
     </select>
 
-    <insert id="insertUser" useGeneratedKeys="true" keyProperty="userId">
+    <!-- 이메일 중복 체크 (deleted_yn 무관 — 탈퇴 후 재가입 방지) -->
+    <select id="existsByEmail" resultType="int">
+        SELECT COUNT(1) FROM USERS WHERE email = #{email}
+    </select>
+
+    <!-- 휴대폰 중복 체크 (deleted_yn 무관) -->
+    <select id="existsByPhone" resultType="int">
+        SELECT COUNT(1) FROM USERS WHERE phone = #{phone}
+    </select>
+
+    <!--
+              selectKey order="AFTER" + SEQ_USERS.CURRVAL 방식
+              트리거(TRG_USERS_BI)가 SEQ_USERS.NEXTVAL로 user_id를 채번한 직후,
+              CURRVAL로 해당 값을 읽어 User.userId에 주입한다.
+    -->
+    <insert id="insertUser">
+        <selectKey keyProperty="userId" resultType="long" order="AFTER">
+            SELECT SEQ_USERS.CURRVAL FROM DUAL
+        </selectKey>
         INSERT INTO USERS (
             email, password_hash, name, phone, birth_date,
             marketing_agree, privacy_agree,
@@ -61,8 +79,8 @@
             push_enabled, login_fail_count, created_at, deleted_yn
         ) VALUES (
             #{email}, #{passwordHash}, #{name}, #{phone},
-            #{birthDate,       jdbcType=DATE},
-            #{marketingAgree,  jdbcType=VARCHAR},
+            #{birthDate,      jdbcType=DATE},
+            #{marketingAgree, jdbcType=VARCHAR},
             'Y',
             'ACTIVE', 'N', 'N',
             'Y', 0, SYSTIMESTAMP, 'N'
