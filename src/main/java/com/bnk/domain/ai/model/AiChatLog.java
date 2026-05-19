@@ -1,4 +1,4 @@
-package com.bnk.domain.spending.model;
+package com.bnk.domain.ai.model;
 
 import lombok.*;
 import java.time.LocalDate;

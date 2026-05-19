@@ -1,4 +1,4 @@
-package com.bnk.domain.spending.dto.request;
+package com.bnk.domain.ai.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
