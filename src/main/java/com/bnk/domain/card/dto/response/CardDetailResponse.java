@@ -1,9 +1,11 @@
 package com.bnk.domain.card.dto.response;
 
+import java.util.List;
+
+import com.bnk.domain.card.model.CardBenefit;
+
 import lombok.Builder;
 import lombok.Getter;
-
-import java.util.List;
 
 @Getter @Builder
 public class CardDetailResponse {
@@ -14,7 +16,7 @@ public class CardDetailResponse {
     private Long annualFeeDomestic;
     private Long annualFeeOverseas;
     private String summaryDescription;
-    private List<BenefitDto> benefits;
+    private List<CardBenefit> benefits;
     private List<ImageDto> images;
     private List<ContentDto> contents;  // display_order ASC
     private List<TermsFileDto> termsFiles;

@@ -1,18 +1,31 @@
 package com.bnk.domain.auth.controller;
 
-import com.bnk.domain.auth.dto.request.*;
-import com.bnk.domain.auth.dto.response.FindIdResponse;
-import com.bnk.domain.auth.dto.response.TokenResponse;
-import com.bnk.domain.auth.service.AuthService;
-import com.bnk.global.auth.CustomUserDetails;
-import com.bnk.global.response.ApiResponse;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.bnk.domain.auth.dto.request.EmailVerifyRequest;
+import com.bnk.domain.auth.dto.request.FindIdRequest;
+import com.bnk.domain.auth.dto.request.FindPasswordRequest;
+import com.bnk.domain.auth.dto.request.LoginRequest;
+import com.bnk.domain.auth.dto.request.ResetPasswordRequest;
+import com.bnk.domain.auth.dto.request.SendVerifyCodeRequest;
+import com.bnk.domain.auth.dto.request.SignupRequest;
+import com.bnk.domain.auth.dto.response.AuthTokenResult;
+import com.bnk.domain.auth.dto.response.FindIdResponse;
+import com.bnk.domain.auth.service.AuthService;
+import com.bnk.global.auth.CustomUserDetails;
+import com.bnk.global.response.ApiResponse;
+import com.bnk.global.util.CookieUtil;
+
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -20,16 +33,22 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final CookieUtil cookieUtil;
 
-    /** 회원가입 */
-    @PostMapping("/signup")
-    public ResponseEntity<ApiResponse<Long>> signup(
-            @RequestBody @Valid SignupRequest request) {
-        Long userId = authService.signup(request);
-        return ApiResponse.toCreated(userId);
+    /**
+     * 이메일 인증코드 발송 (회원가입 전 단계)
+     * 비로그인 허용 — 이메일 중복 체크 후 6자리 코드 발송
+     */
+    @PostMapping("/send-verify-code")
+    public ResponseEntity<ApiResponse<Void>> sendVerifyCode(
+            @RequestBody @Valid SendVerifyCodeRequest request) {
+        authService.sendVerifyCode(request);
+        return ApiResponse.toOk(null);
     }
 
-    /** 이메일 인증 */
+    /**
+     * 이메일 인증코드 확인
+     */
     @PostMapping("/verify-email")
     public ResponseEntity<ApiResponse<Void>> verifyEmail(
             @RequestBody @Valid EmailVerifyRequest request) {
@@ -38,56 +57,63 @@ public class AuthController {
     }
 
     /**
-     * 로그인.
-     * Access Token → 응답 바디.
-     * Refresh Token → HttpOnly 쿠키(Set-Cookie).
+     * 회원가입 — 이메일 인증 완료 후 호출
+     */
+    @PostMapping("/signup")
+    public ResponseEntity<ApiResponse<Long>> signup(
+            @RequestBody @Valid SignupRequest request) {
+        return ApiResponse.toCreated(authService.signup(request));
+    }
+
+    /**
+     * 로그인 — Access + Refresh 쿠키 발급
      */
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<TokenResponse>> login(
+    public ResponseEntity<ApiResponse<Void>> login(
             @RequestBody @Valid LoginRequest request,
             HttpServletResponse response) {
-
-        var result = authService.login(request);          // Pair<TokenResponse, ResponseCookie>
-        response.addHeader(HttpHeaders.SET_COOKIE, result.getCookie().toString());
-        return ApiResponse.toOk(result.getToken());
+        AuthTokenResult result = authService.login(request);
+        response.addHeader(HttpHeaders.SET_COOKIE, result.getAccessCookie().toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, result.getRefreshCookie().toString());
+        return ResponseEntity.ok(ApiResponse.message("로그인에 성공했습니다."));
     }
 
     /**
-     * Access Token 재발급.
-     * @CookieValue 로 HttpOnly 쿠키에서 Refresh Token 직접 수신.
+     * Access Token 재발급 — Refresh 쿠키로 새 Access 쿠키 발급
      */
     @PostMapping("/refresh")
-    public ResponseEntity<ApiResponse<TokenResponse>> refresh(
+    public ResponseEntity<ApiResponse<Void>> refresh(
             @CookieValue(name = "refresh_token") String refreshToken,
             HttpServletResponse response) {
-
-        var result = authService.refresh(refreshToken);   // Pair<TokenResponse, ResponseCookie>
-        response.addHeader(HttpHeaders.SET_COOKIE, result.getCookie().toString());
-        return ApiResponse.toOk(result.getToken());
+        response.addHeader(HttpHeaders.SET_COOKIE, authService.refresh(refreshToken).toString());
+        return ApiResponse.toOk(null);
     }
 
     /**
-     * 로그아웃.
-     * DB USER_SESSIONS revoke + 쿠키 삭제.
+     * 로그아웃 — DB 세션 revoke + 쿠키 삭제
      */
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
             @AuthenticationPrincipal CustomUserDetails ud,
             HttpServletResponse response) {
-
-        var deleteCookie = authService.logout(ud.getUserId());
-        response.addHeader(HttpHeaders.SET_COOKIE, deleteCookie.toString());
+        authService.logout(ud.getUserId());
+        response.addHeader(HttpHeaders.SET_COOKIE, cookieUtil.deleteAccessCookie().toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, cookieUtil.deleteRefreshCookie().toString());
         return ApiResponse.toNoContent();
     }
 
-    /** 아이디 찾기 (이름 + 휴대폰) */
+    /**
+     * 아이디 찾기
+     */
     @PostMapping("/find-id")
     public ResponseEntity<ApiResponse<FindIdResponse>> findId(
             @RequestBody @Valid FindIdRequest request) {
         return ApiResponse.toOk(authService.findId(request));
     }
 
-    /** 비밀번호 재설정 링크 발송 (Redis UUID 30분 TTL) */
+    /**
+     * 비밀번호 재설정 링크 요청
+     */
     @PostMapping("/find-password")
     public ResponseEntity<ApiResponse<Void>> findPassword(
             @RequestBody @Valid FindPasswordRequest request) {
@@ -95,7 +121,9 @@ public class AuthController {
         return ApiResponse.toOk(null);
     }
 
-    /** 비밀번호 재설정 (Redis 토큰 검증 + BCrypt + 전세션 revoke) */
+    /**
+     * 비밀번호 재설정
+     */
     @PostMapping("/reset-password")
     public ResponseEntity<ApiResponse<Void>> resetPassword(
             @RequestBody @Valid ResetPasswordRequest request) {

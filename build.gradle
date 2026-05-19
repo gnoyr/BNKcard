@@ -13,6 +13,11 @@ java {
 	}
 }
 
+// ── Spring 6+ @PathVariable / @CookieValue / @RequestParam 파라미터 이름 인식 ──
+tasks.withType(JavaCompile).configureEach {
+	options.compilerArgs += ['-parameters']
+}
+
 repositories {
 	mavenCentral()
 	maven { url 'https://repo.spring.io/milestone' }
@@ -23,6 +28,7 @@ ext {
 }
 
 dependencies {
+
 	implementation platform('org.springframework.ai:spring-ai-bom:2.0.0-M6')
 	//genai
     implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
@@ -31,29 +37,61 @@ dependencies {
     implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+
+	// ── Spring Boot Starters ───────────────────────────────
 	implementation 'org.springframework.boot:spring-boot-starter-security'
-	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
-	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
-	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:4.0.1'
-	implementation 'org.springframework.ai:spring-ai-starter-vector-store-qdrant'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+	implementation 'org.springframework.boot:spring-boot-starter-mail'
+
+	// ── Security + Thymeleaf 통합 ──────────────────────────
 	implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
-	compileOnly 'org.projectlombok:lombok'
+
+	// ── MyBatis ───────────────────────────────────────────
+	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:4.0.1'
+
+	// ── JWT ───────────────────────────────────────────────
+	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+	runtimeOnly    'io.jsonwebtoken:jjwt-impl:0.12.6'
+	runtimeOnly    'io.jsonwebtoken:jjwt-jackson:0.12.6'
+
+	// ── AI / Vector Store ─────────────────────────────────
+	implementation 'org.springframework.ai:spring-ai-starter-vector-store-qdrant'
+
+	// ── DB Driver ─────────────────────────────────────────
 	runtimeOnly 'com.oracle.database.jdbc:ojdbc11'
 	//oci
-implementation 'com.oracle.database.security:oraclepki:21.11.0.0'
-implementation 'com.oracle.database.security:osdt_cert:21.11.0.0'
-implementation 'com.oracle.database.security:osdt_core:21.11.0.0'
+	implementation 'com.oracle.database.security:oraclepki:21.11.0.0'
+	implementation 'com.oracle.database.security:osdt_cert:21.11.0.0'
+	implementation 'com.oracle.database.security:osdt_core:21.11.0.0'
 	
 	annotationProcessor 'org.projectlombok:lombok'
+
+
+	// ── Oracle Wallet (Autonomous DB SSL 접속 필수) ───────
+	runtimeOnly 'com.oracle.database.security:oraclepki'
+
+	// ── Lombok ────────────────────────────────────────────
+	compileOnly           'org.projectlombok:lombok'
+	annotationProcessor   'org.projectlombok:lombok'
+
+	// ── Test ──────────────────────────────────────────────
+
 	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-thymeleaf-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-thymeleaf-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-mail-test'
 	testImplementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter-test:4.0.1'
-	testCompileOnly 'org.projectlombok:lombok'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	testCompileOnly         'org.projectlombok:lombok'
 	testAnnotationProcessor 'org.projectlombok:lombok'
+
+	// Apache PDFBox (PDF를 이미지로 변환하기 위한 라이브러리)
+    implementation 'org.apache.pdfbox:pdfbox:3.0.3'
+    implementation 'org.apache.pdfbox:pdfbox-io:3.0.3' // PDFBox 3.x 버전 필수 라이브러리
+
+	testRuntimeOnly         'org.junit.platform:junit-platform-launcher'
 }
 
 dependencyManagement {
