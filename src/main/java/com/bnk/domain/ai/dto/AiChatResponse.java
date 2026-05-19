@@ -1,4 +1,4 @@
-package com.bnk.domain.spending.dto.response;
+package com.bnk.domain.ai.dto;
 
 import lombok.Builder;
 import lombok.Getter;
