@@ -1,79 +1,117 @@
-{
-  "properties": [
-    {
-      "name": "spring.datasource.url",
-      "type": "java.lang.String",
-      "description": "데이터베이스 접속 URL. Oracle Cloud Wallet 사용 시 'jdbc:oracle:thin:@{서비스명}?TNS_ADMIN={Wallet 경로}' 형식으로 입력합니다."
-    },
-    {
-      "name": "spring.datasource.username",
-      "type": "java.lang.String",
-      "description": "데이터베이스 접속 계정명."
-    },
-    {
-      "name": "spring.datasource.password",
-      "type": "java.lang.String",
-      "description": "데이터베이스 접속 비밀번호."
-    },
-    {
-      "name": "spring.datasource.driver-class-name",
-      "type": "java.lang.String",
-      "description": "JDBC 드라이버 클래스명. Oracle DB 사용 시 'oracle.jdbc.OracleDriver'로 설정합니다."
-    },
-    {
-      "name": "mybatis.mapper-locations",
-      "type": "java.lang.String",
-      "description": "MyBatis XML 매퍼 파일 위치. 예: 'classpath:mappers/**/*.xml'"
-    },
-    {
-      "name": "mybatis.type-aliases-package",
-      "type": "java.lang.String",
-      "description": "MyBatis 타입 별칭으로 등록할 모델 클래스의 기본 패키지 경로. 예: 'com.bnk.domain.**.model'"
-    },
-    {
-      "name": "mybatis.configuration.map-underscore-to-camel-case",
-      "type": "java.lang.String",
-      "description": "DB 컬럼의 snake_case를 Java 필드의 camelCase로 자동 매핑할지 여부. 기본값: true"
-    },
-    {
-      "name": "mybatis.configuration.default-statement-timeout",
-      "type": "java.lang.String",
-      "description": "MyBatis SQL 실행 타임아웃(초). 설정 시간 초과 시 예외가 발생합니다. 기본값: 30"
-    },
-    {
-      "name": "mybatis.configuration.cache-enabled",
-      "type": "java.lang.String",
-      "description": "MyBatis 2차 캐시 사용 여부. 기본값: false"
-    },
-    {
-      "name": "jwt.secret",
-      "type": "java.lang.String",
-      "description": "JWT 토큰 서명에 사용되는 비밀 키. 충분한 길이의 무작위 문자열을 사용하며, 외부에 노출되지 않도록 주의합니다."
-    },
-    {
-      "name": "jwt.access-expiration",
-      "type": "java.lang.String",
-      "description": "JWT Access 토큰 만료 시간(밀리초). 예: 7200000 = 2시간"
-    },
-    {
-      "name": "jwt.refresh-expiration",
-      "type": "java.lang.String",
-      "description": "JWT Refresh 토큰 만료 시간(밀리초). 예: 604800000 = 7일"
-    },
-    {
-      "name": "aes.secret-key",
-      "type": "java.lang.String",
-      "description": "AES 대칭키 암복호화에 사용되는 비밀 키. 외부에 노출되지 않도록 주의합니다."
-    },
-    {
-      "name": "cors.allowed-origins",
-      "type": "java.lang.String",
-      "description": "CORS 허용 Origin 목록. 쉼표(,)로 구분하여 여러 도메인을 입력합니다. 예: 'http://localhost:3000,https://example.com'"
-    },
-    {
-      "name": "cookie.secure",
-      "type": "java.lang.String",
-      "description": "쿠키의 Secure 속성 설정. true 설정 시 HTTPS 연결에서만 쿠키가 전송됩니다. 로컬 개발: false, 운영: true"
-    }
-  ]
-}
+{"properties": [
+  {
+    "name": "spring.datasource.url",
+    "type": "java.lang.String",
+    "description": "데이터베이스 접속 URL. Oracle Cloud Wallet 사용 시 'jdbc:oracle:thin:@{서비스명}?TNS_ADMIN={Wallet 경로}' 형식으로 입력합니다."
+  },
+  {
+    "name": "spring.datasource.username",
+    "type": "java.lang.String",
+    "description": "데이터베이스 접속 계정명."
+  },
+  {
+    "name": "spring.datasource.password",
+    "type": "java.lang.String",
+    "description": "데이터베이스 접속 비밀번호."
+  },
+  {
+    "name": "spring.datasource.driver-class-name",
+    "type": "java.lang.String",
+    "description": "JDBC 드라이버 클래스명. Oracle DB 사용 시 'oracle.jdbc.OracleDriver'로 설정합니다."
+  },
+  {
+    "name": "mybatis.mapper-locations",
+    "type": "java.lang.String",
+    "description": "MyBatis XML 매퍼 파일 위치. 예: 'classpath:mappers/**/*.xml'"
+  },
+  {
+    "name": "mybatis.type-aliases-package",
+    "type": "java.lang.String",
+    "description": "MyBatis 타입 별칭으로 등록할 모델 클래스의 기본 패키지 경로. 예: 'com.bnk.domain.**.model'"
+  },
+  {
+    "name": "mybatis.configuration.map-underscore-to-camel-case",
+    "type": "java.lang.String",
+    "description": "DB 컬럼의 snake_case를 Java 필드의 camelCase로 자동 매핑할지 여부. 기본값: true"
+  },
+  {
+    "name": "mybatis.configuration.default-statement-timeout",
+    "type": "java.lang.String",
+    "description": "MyBatis SQL 실행 타임아웃(초). 설정 시간 초과 시 예외가 발생합니다. 기본값: 30"
+  },
+  {
+    "name": "mybatis.configuration.cache-enabled",
+    "type": "java.lang.String",
+    "description": "MyBatis 2차 캐시 사용 여부. 기본값: false"
+  },
+  {
+    "name": "jwt.secret",
+    "type": "java.lang.String",
+    "description": "JWT 토큰 서명에 사용되는 비밀 키. 충분한 길이의 무작위 문자열을 사용하며, 외부에 노출되지 않도록 주의합니다."
+  },
+  {
+    "name": "jwt.access-expiration",
+    "type": "java.lang.String",
+    "description": "JWT Access 토큰 만료 시간(밀리초). 예: 7200000 = 2시간"
+  },
+  {
+    "name": "jwt.refresh-expiration",
+    "type": "java.lang.String",
+    "description": "JWT Refresh 토큰 만료 시간(밀리초). 예: 604800000 = 7일"
+  },
+  {
+    "name": "aes.secret-key",
+    "type": "java.lang.String",
+    "description": "AES 대칭키 암복호화에 사용되는 비밀 키. 외부에 노출되지 않도록 주의합니다."
+  },
+  {
+    "name": "cors.allowed-origins",
+    "type": "java.lang.String",
+    "description": "CORS 허용 Origin 목록. 쉼표(,)로 구분하여 여러 도메인을 입력합니다. 예: 'http://localhost:3000,https://example.com'"
+  },
+  {
+    "name": "cookie.secure",
+    "type": "java.lang.String",
+    "description": "쿠키의 Secure 속성 설정. true 설정 시 HTTPS 연결에서만 쿠키가 전송됩니다. 로컬 개발: false, 운영: true"
+  },
+  {
+    "name": "mail.from.name",
+    "type": "java.lang.String",
+    "description": "A description for 'mail.from.name'"
+  },
+  {
+    "name": "spring.mail.host",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.mail.host'"
+  },
+  {
+    "name": "spring.mail.password",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.mail.password'"
+  },
+  {
+    "name": "spring.mail.port",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.mail.port'"
+  },
+  {
+    "name": "spring.mail.properties.mail.smtp.auth",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.mail.properties.mail.smtp.auth'"
+  },
+  {
+    "name": "spring.mail.properties.mail.smtp.starttls.enable",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.mail.properties.mail.smtp.starttls.enable'"
+  },
+  {
+    "name": "spring.mail.properties.mail.smtp.starttls.required",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.mail.properties.mail.smtp.starttls.required'"
+  },
+  {
+    "name": "spring.mail.username",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.mail.username'"
+  }
+]}
