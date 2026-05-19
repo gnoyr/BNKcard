@@ -17,6 +17,12 @@ public interface UserMapper {
     Optional<User> findByNameAndPhone(@Param("name") String name,
                                       @Param("phone") String phone);
 
+    /** 이메일 중복 여부 — 0: 없음, 1 이상: 이미 존재 */
+    int existsByEmail(@Param("email") String email);
+
+    /** 휴대폰 중복 여부 — 0: 없음, 1 이상: 이미 존재 */
+    int existsByPhone(@Param("phone") String phone);
+
     int insertUser(User user);
 
     int updateUser(User user);

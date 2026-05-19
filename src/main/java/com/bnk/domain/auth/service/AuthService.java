@@ -21,6 +21,7 @@ import com.bnk.domain.auth.dto.request.FindIdRequest;
 import com.bnk.domain.auth.dto.request.FindPasswordRequest;
 import com.bnk.domain.auth.dto.request.LoginRequest;
 import com.bnk.domain.auth.dto.request.ResetPasswordRequest;
+import com.bnk.domain.auth.dto.request.SendVerifyCodeRequest;
 import com.bnk.domain.auth.dto.request.SignupRequest;
 import com.bnk.domain.auth.dto.response.AuthTokenResult;
 import com.bnk.domain.auth.dto.response.FindIdResponse;
@@ -43,12 +44,6 @@ import com.bnk.global.util.MemoryTokenStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * 인증/회원 서비스
- * 담당: 회원가입(F-01), 이메일인증(F-02), 로그인(F-03), 토큰재발급(F-04),
- *       로그아웃(F-05), 아이디찾기(F-21), 비밀번호재설정요청(F-22), 비밀번호재설정(F-23),
- *       관리자로그인(B-01)
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -65,30 +60,91 @@ public class AuthService {
     private final MemoryTokenStore tokenStore;
     private final EmailService emailService;
 
-    private static final String MEMORY_EMAIL_VERIFY  = "email:verify:";
-    private static final String MEMORY_PW_RESET      = "pw:reset:";
+    // 인증코드 저장 키 : 코드 검증용 (10분 TTL)
+    private static final String KEY_VERIFY_CODE = "email:verify:";
+    // 인증 완료 플래그 키 : 회원가입 허용 증표 (30분 TTL)
+    private static final String KEY_VERIFIED    = "email:verified:";
+    // 비밀번호 재설정 토큰 키 (30분 TTL)
+    private static final String KEY_PW_RESET    = "pw:reset:";
 
-    private static final int  MAX_LOGIN_FAIL          = 5;
-    private static final long LOCK_DURATION_MIN        = 30;
-    private static final long EMAIL_TOKEN_TTL_MIN      = 10;
-    private static final long PW_RESET_TOKEN_TTL_MIN   = 30;
+    private static final int  MAX_LOGIN_FAIL         = 5;
+    private static final long LOCK_DURATION_MIN       = 30;
+    private static final long CODE_TTL_MIN            = 10;
+    private static final long VERIFIED_TTL_MIN        = 30;
+    private static final long PW_RESET_TTL_MIN        = 30;
 
     // ──────────────────────────────────────────────────────────────────
-    // F-01 | 회원가입 — 계정 생성 → 약관 저장 → 인증 이메일 발송
+    // F-00 | 이메일 인증코드 발송
+    //        - 이미 가입된 이메일이면 거부
+    //        - 6자리 코드 생성 → 메모리 저장(10분) → 이메일 발송
+    // ──────────────────────────────────────────────────────────────────
+    public void sendVerifyCode(SendVerifyCodeRequest request) {
+
+    	if (userMapper.existsByEmail(request.getEmail()) > 0) {
+    	    throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+    	}
+    	
+        String code = UUID.randomUUID().toString()
+                .replaceAll("-", "").substring(0, 6).toUpperCase();
+
+        tokenStore.set(KEY_VERIFY_CODE + request.getEmail(), code, CODE_TTL_MIN);
+        emailService.sendVerificationEmail(request.getEmail(), code);
+
+        log.info("[인증코드발송] email={}", request.getEmail());
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // F-02 | 이메일 인증코드 확인
+    //        - 코드 일치 시 → 코드 삭제 + 인증완료 플래그 저장(30분)
+    //        - 이후 signup() 에서 플래그를 확인해 DB 반영
+    // ──────────────────────────────────────────────────────────────────
+    public void verifyEmail(EmailVerifyRequest request) {
+
+        String codeKey  = KEY_VERIFY_CODE + request.getEmail();
+        String savedCode = tokenStore.get(codeKey);
+
+        if (savedCode == null || !savedCode.equals(request.getToken())) {
+            throw new BusinessException(ErrorCode.VERIFY_TOKEN_INVALID);
+        }
+
+        // 코드 삭제 + 인증완료 플래그 저장
+        tokenStore.delete(codeKey);
+        tokenStore.set(KEY_VERIFIED + request.getEmail(), "Y", VERIFIED_TTL_MIN);
+
+        log.info("[이메일인증] 완료: email={}", request.getEmail());
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // F-01 | 회원가입
+    //        - 인증완료 플래그 필수 → 없으면 400
+    //        - DB INSERT (is_email_verified = 'N' 기본값)
+    //        - updateEmailVerified('Y') 로 즉시 업데이트
+    //        - 약관 동의 저장
+    //        - 인증완료 플래그 삭제
     // ──────────────────────────────────────────────────────────────────
     @Transactional
     public Long signup(SignupRequest request) {
 
-        userMapper.findByEmail(request.getEmail())
-                .ifPresent(u -> { throw new BusinessException(ErrorCode.DUPLICATE_EMAIL); });
+        // 중복 체크
+    	if (userMapper.existsByEmail(request.getEmail()) > 0) {
+    	    throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+    	}
+    	if (userMapper.existsByPhone(request.getPhone()) > 0) {
+    	    throw new BusinessException(ErrorCode.DUPLICATE_PHONE);
+    	}
+        // 이메일 인증 완료 여부 확인
+        if (tokenStore.get(KEY_VERIFIED + request.getEmail()) == null) {
+            throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
+        }
 
+        // 필수 약관 체크
         List<Terms> signupTerms = termsMapper.findByPackageType("SIGNUP");
-        Set<Long> requiredTermsIds = signupTerms.stream()
+        Set<Long> requiredIds = signupTerms.stream()
                 .filter(t -> "Y".equals(t.getRequiredYn()))
                 .map(Terms::getTermsId)
                 .collect(Collectors.toSet());
 
-        if (!request.getAgreedTermsIds().containsAll(requiredTermsIds)) {
+        if (!request.getAgreedTermsIds().containsAll(requiredIds)) {
             throw new BusinessException(ErrorCode.REQUIRED_TERMS_NOT_AGREED);
         }
 
@@ -97,6 +153,7 @@ public class AuthService {
             birthDate = LocalDate.parse(request.getBirthDate(), DateTimeFormatter.BASIC_ISO_DATE);
         }
 
+        // 사용자 INSERT (is_email_verified = 'N' 으로 들어감)
         User user = User.builder()
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
@@ -109,6 +166,10 @@ public class AuthService {
 
         userMapper.insertUser(user);
 
+        // is_email_verified = 'Y' 로 즉시 업데이트
+        userMapper.updateEmailVerified(user.getUserId(), "Y");
+
+        // 약관 동의 저장
         List<UserTermsAgreement> agreements = signupTerms.stream()
                 .filter(t -> request.getAgreedTermsIds().contains(t.getTermsId()))
                 .map(t -> UserTermsAgreement.builder()
@@ -127,40 +188,15 @@ public class AuthService {
             userTermsAgreementMapper.insertAgreements(agreements);
         }
 
-        // 6자리 인증코드 생성 → 메모리 저장(10분) → 이메일 발송
-        String verifyCode = UUID.randomUUID().toString()
-                .replaceAll("-", "").substring(0, 6).toUpperCase();
-        tokenStore.set(MEMORY_EMAIL_VERIFY + request.getEmail(), verifyCode, EMAIL_TOKEN_TTL_MIN);
-        emailService.sendVerificationEmail(request.getEmail(), verifyCode);
+        // 인증완료 플래그 제거
+        tokenStore.delete(KEY_VERIFIED + request.getEmail());
 
-        log.info("[회원가입] 이메일 인증코드 발송: userId={}", user.getUserId());
+        log.info("[회원가입] 완료: userId={}, email={}", user.getUserId(), request.getEmail());
         return user.getUserId();
     }
 
     // ──────────────────────────────────────────────────────────────────
-    // F-02 | 이메일 인증 — 코드 검증 → is_email_verified = 'Y'
-    // ──────────────────────────────────────────────────────────────────
-    @Transactional
-    public void verifyEmail(EmailVerifyRequest request) {
-
-        String key       = MEMORY_EMAIL_VERIFY + request.getEmail();
-        String savedCode = tokenStore.get(key);
-
-        if (savedCode == null || !savedCode.equals(request.getToken())) {
-            throw new BusinessException(ErrorCode.VERIFY_TOKEN_INVALID);
-        }
-
-        User user = userMapper.findByEmail(request.getEmail())
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-
-        userMapper.updateEmailVerified(user.getUserId(), "Y");
-        tokenStore.delete(key);
-
-        log.info("[이메일인증] 완료: userId={}", user.getUserId());
-    }
-
-    // ──────────────────────────────────────────────────────────────────
-    // F-03 | 로그인 → Access + Refresh 쿠키 발급
+    // F-03 | 로그인
     // ──────────────────────────────────────────────────────────────────
     @Transactional
     public AuthTokenResult login(LoginRequest request) {
@@ -179,13 +215,12 @@ public class AuthService {
             userMapper.resetLoginFailCount(user.getUserId());
         }
 
-        // User 테이블에 roleCode 컬럼 없음 → 일반 사용자는 ROLE_USER 고정
         String accessToken = jwtTokenProvider.generateAccessToken(user.getUserId(), "ROLE_USER");
         return buildAuthCookies(accessToken, user.getUserId(), request.getDeviceInfo());
     }
 
     // ──────────────────────────────────────────────────────────────────
-    // F-04 | Access Token 재발급 → 새 Access 쿠키만 반환
+    // F-04 | Access Token 재발급
     // ──────────────────────────────────────────────────────────────────
     @Transactional(readOnly = true)
     public ResponseCookie refresh(String refreshToken) {
@@ -202,7 +237,7 @@ public class AuthService {
     }
 
     // ──────────────────────────────────────────────────────────────────
-    // F-05 | 로그아웃 — DB 세션 revoke (쿠키 삭제는 컨트롤러에서)
+    // F-05 | 로그아웃
     // ──────────────────────────────────────────────────────────────────
     @Transactional
     public void logout(Long userId) {
@@ -211,7 +246,7 @@ public class AuthService {
     }
 
     // ──────────────────────────────────────────────────────────────────
-    // F-21 | 아이디(이메일) 찾기
+    // F-21 | 아이디 찾기
     // ──────────────────────────────────────────────────────────────────
     @Transactional(readOnly = true)
     public FindIdResponse findId(FindIdRequest request) {
@@ -226,7 +261,7 @@ public class AuthService {
     }
 
     // ──────────────────────────────────────────────────────────────────
-    // F-22 | 비밀번호 재설정 요청 — UUID 토큰 발급 → 이메일 발송
+    // F-22 | 비밀번호 재설정 요청
     // ──────────────────────────────────────────────────────────────────
     @Transactional(readOnly = true)
     public void findPassword(FindPasswordRequest request) {
@@ -238,19 +273,15 @@ public class AuthService {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
-        if ("N".equals(user.getIsEmailVerified())) {
-            throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
-        }
-
         String resetToken = UUID.randomUUID().toString();
-        tokenStore.set(MEMORY_PW_RESET + resetToken, user.getEmail(), PW_RESET_TOKEN_TTL_MIN);
+        tokenStore.set(KEY_PW_RESET + resetToken, user.getEmail(), PW_RESET_TTL_MIN);
         emailService.sendPasswordResetEmail(user.getEmail(), resetToken);
 
         log.info("[비밀번호찾기] 재설정 링크 발송: userId={}", user.getUserId());
     }
 
     // ──────────────────────────────────────────────────────────────────
-    // F-23 | 비밀번호 재설정 — 토큰 검증 → BCrypt → 전세션 revoke
+    // F-23 | 비밀번호 재설정
     // ──────────────────────────────────────────────────────────────────
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
@@ -259,7 +290,7 @@ public class AuthService {
             throw new BusinessException(ErrorCode.PASSWORD_CONFIRM_MISMATCH);
         }
 
-        String key   = MEMORY_PW_RESET + request.getToken();
+        String key   = KEY_PW_RESET + request.getToken();
         String email = tokenStore.get(key);
 
         if (email == null) {
@@ -314,10 +345,9 @@ public class AuthService {
     }
 
     // ──────────────────────────────────────────────────────────────────
-    // private — Access + Refresh 쿠키 생성 및 세션 저장 공통 처리
+    // private helpers
     // ──────────────────────────────────────────────────────────────────
     private AuthTokenResult buildAuthCookies(String accessToken, Long userId, String deviceInfo) {
-
         String refreshToken  = jwtTokenProvider.generateRefreshToken(userId);
         long   refreshExpSec = jwtTokenProvider.getRefreshExpirationSec();
 
