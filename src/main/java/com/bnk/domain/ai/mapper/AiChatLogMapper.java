@@ -1,8 +1,9 @@
-package com.bnk.domain.spending.mapper;
+package com.bnk.domain.ai.mapper;
 
-import com.bnk.domain.spending.model.AiChatLog;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+
+import com.bnk.domain.ai.model.AiChatLog;
 
 import java.util.List;
 

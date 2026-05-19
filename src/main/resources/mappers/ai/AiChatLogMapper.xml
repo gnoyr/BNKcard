@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.bnk.domain.spending.mapper.AiChatLogMapper">
+<mapper namespace="com.bnk.domain.ai.mapper.AiChatLogMapper">
 
     <!-- user_id nullable — 비로그인 허용 -->
     <insert id="insertChatLog" useGeneratedKeys="true" keyProperty="chatId">
@@ -17,7 +17,7 @@
         )
     </insert>
 
-    <select id="findBySessionId" resultType="com.bnk.domain.spending.model.AiChatLog">
+    <select id="findBySessionId" resultType="com.bnk.domain.ai.model.AiChatLog">
         SELECT chat_id     AS chatId,
                user_id     AS userId,
                session_id  AS sessionId,
