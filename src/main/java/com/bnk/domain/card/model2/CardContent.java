@@ -1,18 +1,14 @@
 package com.bnk.domain.card.model2;
 
+import lombok.*;
 import java.time.LocalDateTime;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+@Getter @Builder @NoArgsConstructor @AllArgsConstructor
 public class CardContent {
 	
 	private Long contentId;
@@ -28,14 +24,15 @@ public class CardContent {
     @NotBlank(message = "콘텐츠 제목은 필수입니다.")
     @Size(max = 300, message = "콘텐츠 제목은 300자 이하여야 합니다.")
     private String title;                   // VARCHAR2(300) NN
-
+    
     private String contentHtml;            // CLOB NULL
     private String mobileContentHtml;      // CLOB NULL
-
+    
     private Integer displayOrder;          // NUMBER(5) NULL
 
     @NotBlank(message = "노출 여부는 필수입니다.")
     @Pattern(regexp = "Y|N", message = "노출 여부는 Y 또는 N이어야 합니다.")
+    @Builder.Default
     private String visibleYn = "Y";        // CHAR(1) DEFAULT 'Y' NN
 
     private Long createdBy;       // NUMBER(19) NULL

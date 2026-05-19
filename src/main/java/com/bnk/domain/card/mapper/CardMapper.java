@@ -17,7 +17,7 @@ public interface CardMapper {
 
     long countAll(CardSearchRequest request);
 
-    Optional<Card> findById(@Param("cardId") Long cardId);
+    Card findById(@Param("cardId") Long cardId);
 
     List<Card> findTop3ByViewCount();
 
