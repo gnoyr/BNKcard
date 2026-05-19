@@ -32,7 +32,7 @@ public class AiChatService {
         this.aiChatLogMapper = aiChatLogMapper;
     }
 	
-    @Transactional
+    @Transactional	
 	public AiChatResponse chat(@Valid AiChatRequest request, Long userId) {
         String userInput = request.getUserInput();
 

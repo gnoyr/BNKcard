@@ -9,6 +9,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -32,7 +33,6 @@ public class GlobalExceptionHandler {
     }
 
     // ── @Valid / @Validated 검증 실패 ─────────────────────
-    // jakarta.validation.constraints (spring-boot-starter-validation)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
         List<ErrorResponse.FieldError> fieldErrors = ex.getBindingResult()
@@ -71,6 +71,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest()
                 .body(ErrorResponse.of(ErrorCode.INVALID_INPUT,
                         String.format("필수 파라미터 '%s'가 없습니다.", ex.getParameterName())));
+    }
+
+    // ── 정적 리소스 없음 (favicon.ico 등) — 404, ERROR 로그 제외 ──
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Void> handleNoResource(NoResourceFoundException ex) {
+        log.debug("정적 리소스 없음: {}", ex.getMessage());
+        return ResponseEntity.notFound().build();
     }
 
     // ── 500 폴백 ──────────────────────────────────────────

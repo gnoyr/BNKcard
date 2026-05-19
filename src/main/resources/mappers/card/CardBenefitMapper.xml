@@ -74,5 +74,20 @@
     <delete id="deleteByCardId">
         DELETE FROM CARD_BENEFITS WHERE card_id = #{cardId}
     </delete>
+    
+    <select id="findTop1ByCardIds" resultMap="benefitMap">
+    	SELECT cb.*, cc.category_name, cc.icon_code
+	    FROM CARD_BENEFITS cb
+	    LEFT JOIN CARD_CATEGORIES cc ON cb.category_id = cc.category_id
+	    WHERE cb.card_id IN
+	    <foreach collection="cardIds" item="id" open="(" separator="," close=")">
+	        #{id}
+	    </foreach>
+	    AND cb.visible_yn = 'Y'
+	    AND cb.display_order = (
+	        SELECT MIN(display_order) FROM CARD_BENEFITS
+	        WHERE card_id = cb.card_id AND visible_yn = 'Y'
+	    )
+    </select>
 
 </mapper>

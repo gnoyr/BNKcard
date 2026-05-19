@@ -21,10 +21,10 @@ import com.bnk.domain.auth.dto.request.FindIdRequest;
 import com.bnk.domain.auth.dto.request.FindPasswordRequest;
 import com.bnk.domain.auth.dto.request.LoginRequest;
 import com.bnk.domain.auth.dto.request.ResetPasswordRequest;
+import com.bnk.domain.auth.dto.request.SendVerifyCodeRequest;
 import com.bnk.domain.auth.dto.request.SignupRequest;
 import com.bnk.domain.auth.dto.response.AuthTokenResult;
 import com.bnk.domain.auth.dto.response.FindIdResponse;
-import com.bnk.domain.auth.dto.response.TokenResponse;
 import com.bnk.domain.auth.mapper.UserSessionMapper;
 import com.bnk.domain.auth.model.UserSession;
 import com.bnk.domain.terms.mapper.TermsMapper;
@@ -34,76 +34,126 @@ import com.bnk.domain.terms.model.UserTermsAgreement;
 import com.bnk.domain.user.mapper.UserMapper;
 import com.bnk.domain.user.model.User;
 import com.bnk.global.auth.JwtTokenProvider;
+import com.bnk.global.email.EmailService;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.util.CookieUtil;
 import com.bnk.global.util.MaskingUtil;
-import com.bnk.global.util.MemoryTokenStore; // 내장 메모리 임포트
+import com.bnk.global.util.MemoryTokenStore;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * 인증/회원 서비스 — AuthController, AdminAuthController 전용
- * 담당: 회원가입(F-01), 이메일인증(F-02), 로그인(F-03), 토큰재발급(F-04),
- * 로그아웃(F-05), 아이디찾기(F-21), 비밀번호재설정요청(F-22), 비밀번호재설정(F-23),
- * 관리자로그인(B-01)
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
-    private final UserMapper               userMapper;
-    private final UserSessionMapper        userSessionMapper;
+    private final UserMapper userMapper;
+    private final UserSessionMapper userSessionMapper;
     private final UserTermsAgreementMapper userTermsAgreementMapper;
-    private final TermsMapper              termsMapper;
-    private final AdminUserMapper          adminUserMapper;
-    private final JwtTokenProvider         jwtTokenProvider;
-    private final CookieUtil               cookieUtil;
-    private final PasswordEncoder          passwordEncoder;
-    private final MemoryTokenStore         tokenStore; // RedisTemplate 제거 후 커스텀 저장소 주입
+    private final TermsMapper termsMapper;
+    private final AdminUserMapper adminUserMapper;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final CookieUtil cookieUtil;
+    private final PasswordEncoder passwordEncoder;
+    private final MemoryTokenStore tokenStore;
+    private final EmailService emailService;
 
-    // 내장 메모리용 키 접두사
-    private static final String MEMORY_EMAIL_VERIFY = "email:verify:";
-    private static final String MEMORY_PW_RESET     = "pw:reset:";
+    // 인증코드 저장 키 : 코드 검증용 (10분 TTL)
+    private static final String KEY_VERIFY_CODE = "email:verify:";
+    // 인증 완료 플래그 키 : 회원가입 허용 증표 (30분 TTL)
+    private static final String KEY_VERIFIED    = "email:verified:";
+    // 비밀번호 재설정 토큰 키 (30분 TTL)
+    private static final String KEY_PW_RESET    = "pw:reset:";
 
-    // 계정 잠금 기준 및 만료 설정 값
-    private static final int  MAX_LOGIN_FAIL     = 5;
-    private static final long LOCK_DURATION_MIN  = 30;
-    private static final long EMAIL_TOKEN_TTL_MIN = 10;
-    private static final long PW_RESET_TOKEN_TTL_MIN = 30;
+    private static final int  MAX_LOGIN_FAIL         = 5;
+    private static final long LOCK_DURATION_MIN       = 30;
+    private static final long CODE_TTL_MIN            = 10;
+    private static final long VERIFIED_TTL_MIN        = 30;
+    private static final long PW_RESET_TTL_MIN        = 30;
 
     // ──────────────────────────────────────────────────────────────────
-    // F-01 | 회원가입 (RQ-F05, RQ-F06)
-    // USERS INSERT → USER_TERMS_AGREEMENTS 배치 INSERT → 이메일 인증 토큰 발행
+    // F-00 | 이메일 인증코드 발송
+    //        - 이미 가입된 이메일이면 거부
+    //        - 6자리 코드 생성 → 메모리 저장(10분) → 이메일 발송
+    // ──────────────────────────────────────────────────────────────────
+    public void sendVerifyCode(SendVerifyCodeRequest request) {
+
+    	if (userMapper.existsByEmail(request.getEmail()) > 0) {
+    	    throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+    	}
+    	
+        String code = UUID.randomUUID().toString()
+                .replaceAll("-", "").substring(0, 6).toUpperCase();
+
+        tokenStore.set(KEY_VERIFY_CODE + request.getEmail(), code, CODE_TTL_MIN);
+        emailService.sendVerificationEmail(request.getEmail(), code);
+
+        log.info("[인증코드발송] email={}", request.getEmail());
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // F-02 | 이메일 인증코드 확인
+    //        - 코드 일치 시 → 코드 삭제 + 인증완료 플래그 저장(30분)
+    //        - 이후 signup() 에서 플래그를 확인해 DB 반영
+    // ──────────────────────────────────────────────────────────────────
+    public void verifyEmail(EmailVerifyRequest request) {
+
+        String codeKey  = KEY_VERIFY_CODE + request.getEmail();
+        String savedCode = tokenStore.get(codeKey);
+
+        if (savedCode == null || !savedCode.equals(request.getToken())) {
+            throw new BusinessException(ErrorCode.VERIFY_TOKEN_INVALID);
+        }
+
+        // 코드 삭제 + 인증완료 플래그 저장
+        tokenStore.delete(codeKey);
+        tokenStore.set(KEY_VERIFIED + request.getEmail(), "Y", VERIFIED_TTL_MIN);
+
+        log.info("[이메일인증] 완료: email={}", request.getEmail());
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // F-01 | 회원가입
+    //        - 인증완료 플래그 필수 → 없으면 400
+    //        - DB INSERT (is_email_verified = 'N' 기본값)
+    //        - updateEmailVerified('Y') 로 즉시 업데이트
+    //        - 약관 동의 저장
+    //        - 인증완료 플래그 삭제
     // ──────────────────────────────────────────────────────────────────
     @Transactional
     public Long signup(SignupRequest request) {
 
-        // 이메일 중복 검사 (U002)
-        userMapper.findByEmail(request.getEmail())
-                .ifPresent(u -> { throw new BusinessException(ErrorCode.DUPLICATE_EMAIL); });
+        // 중복 체크
+    	if (userMapper.existsByEmail(request.getEmail()) > 0) {
+    	    throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+    	}
+    	if (userMapper.existsByPhone(request.getPhone()) > 0) {
+    	    throw new BusinessException(ErrorCode.DUPLICATE_PHONE);
+    	}
+        // 이메일 인증 완료 여부 확인
+        if (tokenStore.get(KEY_VERIFIED + request.getEmail()) == null) {
+            throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
+        }
 
-        // 필수 약관 동의 검증 — RQ-F05
+        // 필수 약관 체크
         List<Terms> signupTerms = termsMapper.findByPackageType("SIGNUP");
-        Set<Long> requiredTermsIds = signupTerms.stream()
+        Set<Long> requiredIds = signupTerms.stream()
                 .filter(t -> "Y".equals(t.getRequiredYn()))
                 .map(Terms::getTermsId)
                 .collect(Collectors.toSet());
 
-        boolean allRequiredAgreed = request.getAgreedTermsIds().containsAll(requiredTermsIds);
-        if (!allRequiredAgreed) {
+        if (!request.getAgreedTermsIds().containsAll(requiredIds)) {
             throw new BusinessException(ErrorCode.REQUIRED_TERMS_NOT_AGREED);
         }
 
-        // 생년월일 변환 yyyyMMdd → LocalDate
         LocalDate birthDate = null;
         if (request.getBirthDate() != null && !request.getBirthDate().isBlank()) {
             birthDate = LocalDate.parse(request.getBirthDate(), DateTimeFormatter.BASIC_ISO_DATE);
         }
 
-        // USERS INSERT
+        // 사용자 INSERT (is_email_verified = 'N' 으로 들어감)
         User user = User.builder()
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
@@ -116,7 +166,10 @@ public class AuthService {
 
         userMapper.insertUser(user);
 
-        // 약관 동의 이력 배치 저장 — USER_TERMS_AGREEMENTS (RQ-F05)
+        // is_email_verified = 'Y' 로 즉시 업데이트
+        userMapper.updateEmailVerified(user.getUserId(), "Y");
+
+        // 약관 동의 저장
         List<UserTermsAgreement> agreements = signupTerms.stream()
                 .filter(t -> request.getAgreedTermsIds().contains(t.getTermsId()))
                 .map(t -> UserTermsAgreement.builder()
@@ -135,46 +188,15 @@ public class AuthService {
             userTermsAgreementMapper.insertAgreements(agreements);
         }
 
-        // 이메일 인증 토큰 발행 → 로컬 메모리 스토어 TTL 10분 저장 (RQ-F06)
-        String verifyToken = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
-        tokenStore.set(
-                MEMORY_EMAIL_VERIFY + request.getEmail(),
-                verifyToken,
-                EMAIL_TOKEN_TTL_MIN
-        );
+        // 인증완료 플래그 제거
+        tokenStore.delete(KEY_VERIFIED + request.getEmail());
 
-        log.info("[회원가입] 이메일 인증 토큰 발행 (로컬메모리): email={}, token={}", request.getEmail(), verifyToken);
-
+        log.info("[회원가입] 완료: userId={}, email={}", user.getUserId(), request.getEmail());
         return user.getUserId();
     }
 
     // ──────────────────────────────────────────────────────────────────
-    // F-02 | 이메일 인증 (RQ-F06)
-    // 메모리 토큰 검증 → USERS.is_email_verified='Y' 업데이트 → 토큰 삭제
-    // ──────────────────────────────────────────────────────────────────
-    @Transactional
-    public void verifyEmail(EmailVerifyRequest request) {
-
-        String key        = MEMORY_EMAIL_VERIFY + request.getEmail();
-        String savedToken = tokenStore.get(key);
-
-        // 토큰 불일치 또는 만료 (U008)
-        if (savedToken == null || !savedToken.equals(request.getToken())) {
-            throw new BusinessException(ErrorCode.VERIFY_TOKEN_INVALID);
-        }
-
-        User user = userMapper.findByEmail(request.getEmail())
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-
-        userMapper.updateEmailVerified(user.getUserId(), "Y");
-        tokenStore.delete(key);
-
-        log.info("[이메일인증] 완료: userId={}", user.getUserId());
-    }
-
-    // ──────────────────────────────────────────────────────────────────
-    // F-03 | 로그인 (RQ-F03)
-    // 계정 검증 → BCrypt 비교 → 실패카운트 관리 → JWT 발급 → USER_SESSIONS INSERT
+    // F-03 | 로그인
     // ──────────────────────────────────────────────────────────────────
     @Transactional
     public AuthTokenResult login(LoginRequest request) {
@@ -189,56 +211,42 @@ public class AuthService {
             throw new BusinessException(ErrorCode.INVALID_PASSWORD);
         }
 
-        if ("N".equals(user.getIsEmailVerified())) {
-            throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
+        if (user.getLoginFailCount() > 0) {
+            userMapper.resetLoginFailCount(user.getUserId());
         }
 
-        userMapper.resetLoginFailCount(user.getUserId());
-        userMapper.updateLastLoginAt(user.getUserId(), LocalDateTime.now());
-
-        return buildTokenResult(user.getUserId(), "ROLE_USER", request.getDeviceInfo());
+        String accessToken = jwtTokenProvider.generateAccessToken(user.getUserId(), "ROLE_USER");
+        return buildAuthCookies(accessToken, user.getUserId(), request.getDeviceInfo());
     }
 
     // ──────────────────────────────────────────────────────────────────
     // F-04 | Access Token 재발급
     // ──────────────────────────────────────────────────────────────────
     @Transactional(readOnly = true)
-    public AuthTokenResult refresh(String refreshToken) {
+    public ResponseCookie refresh(String refreshToken) {
 
         UserSession session = userSessionMapper.findByRefreshToken(refreshToken)
                 .orElseThrow(() -> new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID));
 
+        if (session.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
+        }
+
         String newAccessToken = jwtTokenProvider.generateAccessToken(session.getUserId(), "ROLE_USER");
-
-        TokenResponse tokenResponse = TokenResponse.builder()
-                .accessToken(newAccessToken)
-                .tokenType("Bearer")
-                .expiresIn(jwtTokenProvider.getRefreshExpirationSec())
-                .userId(session.getUserId())
-                .role("ROLE_USER")
-                .build();
-
-        ResponseCookie cookie = cookieUtil.createRefreshCookie(
-                refreshToken, jwtTokenProvider.getRefreshExpirationSec());
-
-        AuthTokenResult result = new AuthTokenResult();
-        result.setToken(tokenResponse);
-        result.setCookie(cookie);
-        return result;
+        return cookieUtil.createAccessCookie(newAccessToken, jwtTokenProvider.getAccessExpirationSec());
     }
 
     // ──────────────────────────────────────────────────────────────────
-    // F-05 | 로그아웃 (RQ-F05)
+    // F-05 | 로그아웃
     // ──────────────────────────────────────────────────────────────────
     @Transactional
-    public ResponseCookie logout(Long userId) {
+    public void logout(Long userId) {
         userSessionMapper.revokeAllByUserId(userId);
         log.info("[로그아웃] userId={}", userId);
-        return cookieUtil.deleteRefreshCookie();
     }
 
     // ──────────────────────────────────────────────────────────────────
-    // F-21 | 아이디(이메일) 찾기 (RQ-F20)
+    // F-21 | 아이디 찾기
     // ──────────────────────────────────────────────────────────────────
     @Transactional(readOnly = true)
     public FindIdResponse findId(FindIdRequest request) {
@@ -253,8 +261,7 @@ public class AuthService {
     }
 
     // ──────────────────────────────────────────────────────────────────
-    // F-22 | 비밀번호 재설정 요청 (RQ-F21)
-    // 이메일+이름 검증 → 로컬 메모리 UUID 토큰 TTL 30분
+    // F-22 | 비밀번호 재설정 요청
     // ──────────────────────────────────────────────────────────────────
     @Transactional(readOnly = true)
     public void findPassword(FindPasswordRequest request) {
@@ -266,24 +273,15 @@ public class AuthService {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
-        if ("N".equals(user.getIsEmailVerified())) {
-            throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
-        }
-
-        // 로컬 메모리 스토어에 UUID 토큰 저장 (TTL 30분)
         String resetToken = UUID.randomUUID().toString();
-        tokenStore.set(
-                MEMORY_PW_RESET + resetToken,
-                user.getEmail(),
-                PW_RESET_TOKEN_TTL_MIN
-        );
+        tokenStore.set(KEY_PW_RESET + resetToken, user.getEmail(), PW_RESET_TTL_MIN);
+        emailService.sendPasswordResetEmail(user.getEmail(), resetToken);
 
-        log.info("[비밀번호찾기] 재설정 링크 발송 (로컬메모리): email={}, token={}", user.getEmail(), resetToken);
+        log.info("[비밀번호찾기] 재설정 링크 발송: userId={}", user.getUserId());
     }
 
     // ──────────────────────────────────────────────────────────────────
-    // F-23 | 비밀번호 재설정 (RQ-F22)
-    // 메모리 토큰 검증 → BCrypt → USERS.password_hash UPDATE → 전세션 revoke
+    // F-23 | 비밀번호 재설정
     // ──────────────────────────────────────────────────────────────────
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
@@ -292,8 +290,7 @@ public class AuthService {
             throw new BusinessException(ErrorCode.PASSWORD_CONFIRM_MISMATCH);
         }
 
-        // 메모리 토큰 검증 및 유효성 확인
-        String key   = MEMORY_PW_RESET + request.getToken();
+        String key   = KEY_PW_RESET + request.getToken();
         String email = tokenStore.get(key);
 
         if (email == null) {
@@ -303,19 +300,17 @@ public class AuthService {
         User user = userMapper.findByEmail(email)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        String encodedPw = passwordEncoder.encode(request.getNewPassword());
-        userMapper.updatePassword(user.getUserId(), encodedPw, LocalDateTime.now());
+        userMapper.updatePassword(user.getUserId(),
+                passwordEncoder.encode(request.getNewPassword()), LocalDateTime.now());
 
         userSessionMapper.revokeAllByUserId(user.getUserId());
-
-        // 사용한 토큰 즉시 제거
         tokenStore.delete(key);
 
         log.info("[비밀번호재설정] 완료 — 전세션 무효화: userId={}", user.getUserId());
     }
 
     // ──────────────────────────────────────────────────────────────────
-    // B-01 | 관리자 로그인 (RQ-B01)
+    // B-01 | 관리자 로그인
     // ──────────────────────────────────────────────────────────────────
     @Transactional
     public AuthTokenResult adminLogin(AdminLoginRequest request) {
@@ -345,69 +340,27 @@ public class AuthService {
                 ? String.join(",", admin.getRoleCodes())
                 : "ADMIN";
 
-        String accessToken  = jwtTokenProvider.generateAdminAccessToken(admin.getAdminId(), roles);
-        String refreshToken = jwtTokenProvider.generateRefreshToken(admin.getAdminId());
-
-        LocalDateTime expiresAt = LocalDateTime.now()
-                .plusSeconds(jwtTokenProvider.getRefreshExpirationSec());
-        UserSession session = UserSession.builder()
-                .userId(admin.getAdminId())
-                .refreshToken(refreshToken)
-                .expiresAt(expiresAt)
-                .build();
-        userSessionMapper.insertSession(session);
-
-        TokenResponse tokenResponse = TokenResponse.builder()
-                .accessToken(accessToken)
-                .tokenType("Bearer")
-                .expiresIn(jwtTokenProvider.getRefreshExpirationSec())
-                .userId(admin.getAdminId())
-                .role(roles)
-                .build();
-
-        ResponseCookie cookie = cookieUtil.createRefreshCookie(
-                refreshToken, jwtTokenProvider.getRefreshExpirationSec());
-
-        AuthTokenResult result = new AuthTokenResult();
-        result.setToken(tokenResponse);
-        result.setCookie(cookie);
-        return result;
+        String accessToken = jwtTokenProvider.generateAdminAccessToken(admin.getAdminId(), roles);
+        return buildAuthCookies(accessToken, admin.getAdminId(), null);
     }
 
     // ──────────────────────────────────────────────────────────────────
-    // private 헬퍼 메서드
+    // private helpers
     // ──────────────────────────────────────────────────────────────────
+    private AuthTokenResult buildAuthCookies(String accessToken, Long userId, String deviceInfo) {
+        String refreshToken  = jwtTokenProvider.generateRefreshToken(userId);
+        long   refreshExpSec = jwtTokenProvider.getRefreshExpirationSec();
 
-    private AuthTokenResult buildTokenResult(Long userId, String role, String deviceInfo) {
-
-        String accessToken  = jwtTokenProvider.generateAccessToken(userId, role);
-        String refreshToken = jwtTokenProvider.generateRefreshToken(userId);
-
-        LocalDateTime expiresAt = LocalDateTime.now()
-                .plusSeconds(jwtTokenProvider.getRefreshExpirationSec());
-
-        UserSession session = UserSession.builder()
+        userSessionMapper.insertSession(UserSession.builder()
                 .userId(userId)
                 .refreshToken(refreshToken)
                 .deviceInfo(deviceInfo)
-                .expiresAt(expiresAt)
-                .build();
-        userSessionMapper.insertSession(session);
-
-        ResponseCookie cookie = cookieUtil.createRefreshCookie(
-                refreshToken, jwtTokenProvider.getRefreshExpirationSec());
-
-        TokenResponse tokenResponse = TokenResponse.builder()
-                .accessToken(accessToken)
-                .tokenType("Bearer")
-                .expiresIn(jwtTokenProvider.getRefreshExpirationSec())
-                .userId(userId)
-                .role(role)
-                .build();
+                .expiresAt(LocalDateTime.now().plusSeconds(refreshExpSec))
+                .build());
 
         AuthTokenResult result = new AuthTokenResult();
-        result.setToken(tokenResponse);
-        result.setCookie(cookie);
+        result.setAccessCookie(cookieUtil.createAccessCookie(accessToken, jwtTokenProvider.getAccessExpirationSec()));
+        result.setRefreshCookie(cookieUtil.createRefreshCookie(refreshToken, refreshExpSec));
         return result;
     }
 
@@ -417,7 +370,7 @@ public class AuthService {
         }
         String status = user.getStatusCode();
         if ("SUSPENDED".equals(status)) throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED);
-        if ("WITHDRAWN".equals(status)) throw new BusinessException(ErrorCode.ACCOUNT_WITHDRAWN);
+        if ("WITHDRAWN".equals(status))  throw new BusinessException(ErrorCode.ACCOUNT_WITHDRAWN);
     }
 
     private void handleLoginFail(User user) {

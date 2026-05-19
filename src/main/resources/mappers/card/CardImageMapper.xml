@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.bnk.domain.card.mapper.CardImageMapper">
+
+    <resultMap id="cardImageMap" type="com.bnk.domain.card.model.CardImage">
+        <id     property="imageId"      column="image_id"/>
+        <result property="cardId"       column="card_id"/>
+        <result property="imageType"    column="image_type"/>
+        <result property="imageUrl"     column="image_url"/>
+        <result property="originalName" column="original_name"/>
+        <result property="storedName"   column="stored_name"/>
+        <result property="fileSize"     column="file_size"/>
+        <result property="mimeType"     column="mime_type"/>
+        <result property="sortOrder"    column="sort_order"/>
+        <result property="createdAt"    column="created_at"/>
+    </resultMap>
+
+    <!-- 카드 단건 이미지 전체 조회 -->
+    <select id="findByCardId" resultMap="cardImageMap">
+        SELECT *
+        FROM   CARD_IMAGES
+        WHERE  card_id = #{cardId}
+        ORDER  BY sort_order ASC NULLS LAST
+    </select>
+
+    <!-- 카드 단건 특정 타입 이미지 조회 -->
+    <select id="findByCardIdAndType" resultMap="cardImageMap">
+        SELECT *
+        FROM   CARD_IMAGES
+        WHERE  card_id    = #{cardId}
+          AND  image_type = #{imageType}
+        ORDER  BY sort_order ASC NULLS LAST
+        FETCH FIRST 1 ROWS ONLY
+    </select>
+
+    <!-- 여러 카드의 FRONT 이미지 한 번에 조회 (배너/목록용) -->
+    <select id="findFrontImagesByCardIds" resultMap="cardImageMap">
+        SELECT *
+        FROM   CARD_IMAGES
+        WHERE  card_id IN
+        <foreach collection="list" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        AND image_type = 'FRONT'
+        ORDER BY sort_order ASC NULLS LAST
+    </select>
+    
+	<select id="findByCardIdsAndType" resultMap="cardImageMap">
+	    SELECT * FROM CARD_IMAGES
+	    WHERE card_id IN
+	    <foreach collection="cardIds" item="id" open="(" separator="," close=")">
+	        #{id}
+	    </foreach>
+	    AND image_type = #{imageType}
+	    ORDER BY sort_order ASC NULLS LAST
+	</select>
+    
+
+</mapper>
