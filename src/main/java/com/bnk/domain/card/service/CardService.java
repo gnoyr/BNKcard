@@ -31,7 +31,6 @@ import com.bnk.domain.search.mapper.SearchLogMapper;
 import com.bnk.domain.search.model.SearchLog;
 import com.bnk.domain.spending.mapper.SpendingPatternMapper;
 import com.bnk.domain.terms.mapper.TermsMapper;
-import com.bnk.domain.terms.model.Terms;
 import com.bnk.global.response.PageResponse;
 
 import jakarta.validation.Valid;

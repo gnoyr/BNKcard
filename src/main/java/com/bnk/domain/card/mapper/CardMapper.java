@@ -1,13 +1,13 @@
 package com.bnk.domain.card.mapper;
 
-import com.bnk.domain.card.dto.request.AdminCardSearchRequest;
-import com.bnk.domain.card.dto.request.CardSearchRequest;
-import com.bnk.domain.card.model.Card;
+import java.util.List;
+
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-import java.util.List;
-import java.util.Optional;
+import com.bnk.domain.card.dto.request.AdminCardSearchRequest;
+import com.bnk.domain.card.dto.request.CardSearchRequest;
+import com.bnk.domain.card.model.Card;
 
 @Mapper
 public interface CardMapper {
