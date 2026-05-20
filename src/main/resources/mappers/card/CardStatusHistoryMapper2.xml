@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.bnk.domain.card.mapper.CardStatusHistoryMapper2">
+
+    <!-- CARD_STATUS_HISTORIES INSERT — Oracle trigger(TRG_CARD_STATUS_HISTORIES_BI) + SEQ_CARD_STATUS_HISTORIES -->
+    <insert id="insertCardStatusHistory">
+        INSERT INTO CARD_STATUS_HISTORIES (
+            card_id, previous_status, changed_status,
+            changed_by, changed_reason, changed_at
+        ) VALUES (
+            #{cardId},
+            #{previousStatus, jdbcType=VARCHAR},
+            #{changedStatus},
+            #{changedBy,      jdbcType=NUMERIC},
+            #{changedReason,  jdbcType=VARCHAR},
+            SYSTIMESTAMP
+        )
+    </insert>
+
+</mapper>
