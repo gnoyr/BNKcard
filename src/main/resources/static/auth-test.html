@@ -799,11 +799,15 @@ async function api(method, path, body, logId) {
   if (body) flog(JSON.stringify(body, null, 2).slice(0, 200), 'req');
 
   try {
-    const r   = await fetch(url, opts);
-    let data;
-    try { data = await r.json(); } catch { data = await r.text(); }
+    const r    = await fetch(url, opts);
 
-    const pretty = JSON.stringify(data, null, 2);
+    // body 스트림은 한 번만 읽을 수 있음
+    // text()로 먼저 읽은 뒤 JSON 파싱 시도 (204 No Content 등 빈 body 대응)
+    const raw  = await r.text();
+    let data;
+    try { data = raw ? JSON.parse(raw) : null; } catch { data = raw || null; }
+
+    const pretty = data != null ? JSON.stringify(data, null, 2) : '(응답 없음)';
     const logTxt =
       `▶ ${method} ${url}\n` +
       (body ? JSON.stringify(body, null, 2) + '\n\n' : '') +
