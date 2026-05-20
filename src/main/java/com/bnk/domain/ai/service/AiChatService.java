@@ -7,6 +7,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 
 import com.bnk.domain.ai.dto.AiChatRequest;
 import com.bnk.domain.ai.dto.AiChatResponse;
@@ -17,6 +18,7 @@ import com.bnk.domain.spending.service.CardSearchService;
 import jakarta.validation.Valid;
 
 @Service
+@Validated
 public class AiChatService {
 	
 	private final ChatClient chatClient;
