@@ -212,25 +212,25 @@ COMMIT;
 -- 05. ADMIN_USERS
 -- ==============================================================
 INSERT INTO ADMIN_USERS (username, password_hash, name, email, phone, status_code, created_at, deleted_yn)
-VALUES ('super_admin', '$2a$12$AdminPlaceholderHashXXXXXXXXXXXXXXXXXXXXXXXXXXXXX01', '김슈퍼', 'super@bnkfinance.co.kr', '010-9001-0001', 'ACTIVE', SYSTIMESTAMP, 'N');
+VALUES ('super_admin', '$2a$12$TB8JjfqqjuPpyOaCM15nE.0fCY8ZWwjjywZ6rYshngwPefDxphRIm', '김슈퍼', 'super@bnkfinance.co.kr', '010-9001-0001', 'ACTIVE', SYSTIMESTAMP, 'N');
 INSERT INTO ADMIN_USERS (username, password_hash, name, email, phone, status_code, created_at, deleted_yn)
-VALUES ('card_manager1', '$2a$12$AdminPlaceholderHashXXXXXXXXXXXXXXXXXXXXXXXXXXXXX02', '이카드', 'card1@bnkfinance.co.kr', '010-9001-0002', 'ACTIVE', SYSTIMESTAMP, 'N');
+VALUES ('card_manager1', '$2a$12$TB8JjfqqjuPpyOaCM15nE.0fCY8ZWwjjywZ6rYshngwPefDxphRIm', '이카드', 'card1@bnkfinance.co.kr', '010-9001-0002', 'ACTIVE', SYSTIMESTAMP, 'N');
 INSERT INTO ADMIN_USERS (username, password_hash, name, email, phone, status_code, created_at, deleted_yn)
-VALUES ('card_manager2', '$2a$12$AdminPlaceholderHashXXXXXXXXXXXXXXXXXXXXXXXXXXXXX03', '박상품', 'card2@bnkfinance.co.kr', '010-9001-0003', 'ACTIVE', SYSTIMESTAMP, 'N');
+VALUES ('card_manager2', '$2a$12$TB8JjfqqjuPpyOaCM15nE.0fCY8ZWwjjywZ6rYshngwPefDxphRIm', '박상품', 'card2@bnkfinance.co.kr', '010-9001-0003', 'ACTIVE', SYSTIMESTAMP, 'N');
 INSERT INTO ADMIN_USERS (username, password_hash, name, email, phone, status_code, created_at, deleted_yn)
-VALUES ('card_manager3', '$2a$12$AdminPlaceholderHashXXXXXXXXXXXXXXXXXXXXXXXXXXXXX04', '최운영', 'card3@bnkfinance.co.kr', '010-9001-0004', 'ACTIVE', SYSTIMESTAMP, 'N');
+VALUES ('card_manager3', '$2a$12$TB8JjfqqjuPpyOaCM15nE.0fCY8ZWwjjywZ6rYshngwPefDxphRIm', '최운영', 'card3@bnkfinance.co.kr', '010-9001-0004', 'ACTIVE', SYSTIMESTAMP, 'N');
 INSERT INTO ADMIN_USERS (username, password_hash, name, email, phone, status_code, created_at, deleted_yn)
-VALUES ('terms_manager1', '$2a$12$AdminPlaceholderHashXXXXXXXXXXXXXXXXXXXXXXXXXXXXX05', '정약관', 'terms1@bnkfinance.co.kr', '010-9001-0005', 'ACTIVE', SYSTIMESTAMP, 'N');
+VALUES ('terms_manager1', '$2a$12$TB8JjfqqjuPpyOaCM15nE.0fCY8ZWwjjywZ6rYshngwPefDxphRIm', '정약관', 'terms1@bnkfinance.co.kr', '010-9001-0005', 'ACTIVE', SYSTIMESTAMP, 'N');
 INSERT INTO ADMIN_USERS (username, password_hash, name, email, phone, status_code, created_at, deleted_yn)
-VALUES ('terms_manager2', '$2a$12$AdminPlaceholderHashXXXXXXXXXXXXXXXXXXXXXXXXXXXXX06', '한법무', 'terms2@bnkfinance.co.kr', '010-9001-0006', 'ACTIVE', SYSTIMESTAMP, 'N');
+VALUES ('terms_manager2', '$2a$12$TB8JjfqqjuPpyOaCM15nE.0fCY8ZWwjjywZ6rYshngwPefDxphRIm', '한법무', 'terms2@bnkfinance.co.kr', '010-9001-0006', 'ACTIVE', SYSTIMESTAMP, 'N');
 INSERT INTO ADMIN_USERS (username, password_hash, name, email, phone, status_code, created_at, deleted_yn)
-VALUES ('viewer1', '$2a$12$AdminPlaceholderHashXXXXXXXXXXXXXXXXXXXXXXXXXXXXX07', '윤조회', 'view1@bnkfinance.co.kr', '010-9001-0007', 'ACTIVE', SYSTIMESTAMP, 'N');
+VALUES ('viewer1', '$2a$12$TB8JjfqqjuPpyOaCM15nE.0fCY8ZWwjjywZ6rYshngwPefDxphRIm', '윤조회', 'view1@bnkfinance.co.kr', '010-9001-0007', 'ACTIVE', SYSTIMESTAMP, 'N');
 INSERT INTO ADMIN_USERS (username, password_hash, name, email, phone, status_code, created_at, deleted_yn)
-VALUES ('viewer2', '$2a$12$AdminPlaceholderHashXXXXXXXXXXXXXXXXXXXXXXXXXXXXX08', '임뷰어', 'view2@bnkfinance.co.kr', '010-9001-0008', 'ACTIVE', SYSTIMESTAMP, 'N');
+VALUES ('viewer2', '$2a$12$TB8JjfqqjuPpyOaCM15nE.0fCY8ZWwjjywZ6rYshngwPefDxphRIm', '임뷰어', 'view2@bnkfinance.co.kr', '010-9001-0008', 'ACTIVE', SYSTIMESTAMP, 'N');
 INSERT INTO ADMIN_USERS (username, password_hash, name, email, phone, status_code, created_at, deleted_yn)
-VALUES ('viewer3', '$2a$12$AdminPlaceholderHashXXXXXXXXXXXXXXXXXXXXXXXXXXXXX09', '신열람', 'view3@bnkfinance.co.kr', '010-9001-0009', 'ACTIVE', SYSTIMESTAMP, 'N');
+VALUES ('viewer3', '$2a$12$TB8JjfqqjuPpyOaCM15nE.0fCY8ZWwjjywZ6rYshngwPefDxphRIm', '신열람', 'view3@bnkfinance.co.kr', '010-9001-0009', 'ACTIVE', SYSTIMESTAMP, 'N');
 INSERT INTO ADMIN_USERS (username, password_hash, name, email, phone, status_code, created_at, deleted_yn)
-VALUES ('viewer4', '$2a$12$AdminPlaceholderHashXXXXXXXXXXXXXXXXXXXXXXXXXXXXX10', '권뷰어', 'view4@bnkfinance.co.kr', '010-9001-0010', 'ACTIVE', SYSTIMESTAMP, 'N');
+VALUES ('viewer4', '$2a$12$TB8JjfqqjuPpyOaCM15nE.0fCY8ZWwjjywZ6rYshngwPefDxphRIm', '권뷰어', 'view4@bnkfinance.co.kr', '010-9001-0010', 'ACTIVE', SYSTIMESTAMP, 'N');
 
 COMMIT;
 
@@ -1690,6 +1690,214 @@ INSERT INTO CARD_BENEFITS (card_id, category_id, benefit_title, benefit_type,
 VALUES (10101018, 22, '사업지원서비스(부가세환급지원/전자세금계산서/온라인 세무상담/상권분석서비스)', 'FREE',
     NULL, NULL, NULL, NULL,
     NULL, '사업지원서비스(부가세환급지원/전자세금계산서/온라인 세무상담/상권분석서비스)', 3, 'Y', SYSTIMESTAMP);
+
+COMMIT;
+
+-- ==============================================================
+
+-- ==============================================================
+-- XX. CARD_IMAGES
+-- ==============================================================
+-- XX. CARD_IMAGES (카드 디자인 이미지 데이터 — SEQ_CARD_IMAGES 반영)
+-- ==============================================================
+
+-- ──────────────────────────────────────────────
+-- [01] REX2_포인트형(개인) (card_id: 10101001)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101001, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000558/%EB%B6%80%EC%82%B0REX2_%EA%B0%9C%EC%9D%B8_%ED%8F%AC%EC%9D%B8%ED%8A%B8_metal.png', 'FRONT', 1);
+
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101001, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000558/%EB%B6%80%EC%82%B0REX2_%EA%B0%9C%EC%9D%B8_%ED%8F%AC%EC%9D%B8%ED%8A%B8_pvc%20(1).png', 'FRONT', 2);
+
+-- ──────────────────────────────────────────────
+-- [02] REX2_대한항공마일리지형(개인) (card_id: 10101002)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101002, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000558/%EB%B6%80%EC%82%B0REX2_%EA%B0%9C%EC%9D%B8_%ED%8F%AC%EC%9D%B8%ED%8A%B8_metal.png', 'FRONT', 1);
+
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101002, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000558/%EB%B6%80%EC%82%B0REX2_%EA%B0%9C%EC%9D%B8_%ED%8F%AC%EC%9D%B8%ED%8A%B8_pvc%20(1).png', 'FRONT', 2);
+
+-- ──────────────────────────────────────────────
+-- [03] 빵빵체크카드 (card_id: 10201001)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10201001, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000504/bbangbbang_check.png', 'FRONT', 1);
+
+-- ──────────────────────────────────────────────
+-- [04] 캐쉬백카드 (card_id: 10101003)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101003, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000209/%5B%EB%B6%80%EC%82%B0%EC%9D%80%ED%96%89%5D%20%EC%BA%90%EC%89%AC%EB%B0%B1%EC%B9%B4%EB%93%9C-01.png', 'FRONT', 1);
+
+-- ──────────────────────────────────────────────
+-- [05] 국민행복체크카드 (card_id: 10201002)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10201002, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000128/people_happy_check.png', 'FRONT', 1);
+
+-- ──────────────────────────────────────────────
+-- [06] 부산 동백전 체크카드 (card_id: 10201003)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10201003, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000124/%EB%8F%99%EB%B0%B1%EC%A0%84%EC%B2%B4%ED%81%AC%EC%B9%B4%EB%93%9C.png', 'FRONT', 1);
+
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10201003, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000124/%EB%8F%99%EB%B0%B1%EC%A0%84%EC%B2%B4%ED%81%AC%EC%B9%B4%EB%93%9C2.png', 'FRONT', 2);
+
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10201003, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000124/%EB%8F%99%EB%B0%B1%EC%A0%84%EC%B2%B4%ED%81%AC%EC%B9%B4%EB%93%9C3.png', 'FRONT', 3);
+
+-- ──────────────────────────────────────────────
+-- [07] 딩딩 체크카드 (card_id: 10201004)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10201004, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000123/%EB%94%A9%EB%94%A9%EC%B2%B4%ED%81%AC%EC%B9%B4%EB%93%9C2.png', 'FRONT', 1);
+
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10201004, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000123/%EB%94%A9%EB%94%A9%EC%B2%B4%ED%81%AC%EC%B9%B4%EB%93%9C3.png', 'FRONT', 2);
+
+-- ──────────────────────────────────────────────
+-- [08] 어디로든 그린체크카드 (card_id: 10201005)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10201005, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000116/%EA%B7%B8%EB%A6%B0%EC%B2%B4%ED%81%AC_%EB%8C%80(%EC%84%B8%EB%A1%9C).png', 'FRONT', 1);
+
+-- ──────────────────────────────────────────────
+-- [09] 2030 언택트 체크카드 (card_id: 10201006)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10201006, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000115/%EC%98%A3%ED%83%9D%ED%8A%B8%EC%B2%B4%ED%81%AC%EC%B9%B4%EB%93%9C_%EB%8C%80(%EC%84%B8%EB%A1%9C).png', 'FRONT', 1);
+
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10201006, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000115/%5B%EB%B6%80%EC%82%B0%EC%9D%80%ED%96%89%5D%202030%20%EC%96%B8%ED%83%9D%ED%8A%B8%20%EC%B2%B4%ED%81%AC%EC%B9%B4%EB%93%9C-01.png', 'FRONT', 2);
+
+-- ──────────────────────────────────────────────
+-- [10] 오늘의 E 체크카드 (card_id: 10201007)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10201007, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000114/%EC%98%A4%EB%8A%98%EC%9D%80e%EC%B2%B4%ED%81%AC%EC%B9%B4%EB%93%9C_%EC%84%B8%EB%A1%9C.png', 'FRONT', 1);
+
+-- ──────────────────────────────────────────────
+-- [11] ZIPL 체크카드 (card_id: 10201008)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10201008, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000103/zipl_%EC%B2%B4%ED%81%AC%EC%B9%B4%EB%93%9C_%EB%8C%80(%EC%84%B8%EB%A1%9C).png', 'FRONT', 1);
+
+-- ──────────────────────────────────────────────
+-- [12] 후불 하이패스카드(기업) (card_id: 10101004)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101004, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000099/%ED%9B%84%EB%B6%88%EB%B6%80%EC%82%B0%ED%95%98%EC%9D%B4%ED%8C%A8%EC%8A%A4_l.png', 'FRONT', 1);
+
+-- ──────────────────────────────────────────────
+-- [13] SOHO-BIZ카드 (card_id: 10101005)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101005, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000093/soho-biz(%EB%8C%80,%EB%B9%84%EC%9E%90).jpg', 'FRONT', 1);
+
+-- ──────────────────────────────────────────────
+-- [14] 국민행복카드 (card_id: 10101006)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101006, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000062/people_happy.png', 'FRONT', 1);
+
+-- ──────────────────────────────────────────────
+-- [15] 후불 하이패스카드(개인) (card_id: 10101007)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101007, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000058/hipass_88.png', 'FRONT', 1);
+
+-- ──────────────────────────────────────────────
+-- [16] 오늘은e 신용카드 (card_id: 10101008)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101008, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000034/[%EB%B6%80%EC%82%B0%EC%9D%80%ED%96%89]%20%EC%98%A4%EB%8A%98%EC%9D%98e%EC%B9%B4%EB%93%9C(%EC%8B%A0%EC%9A%A9-%EC%B2%B4%ED%81%AC)-05.png', 'FRONT', 1);
+
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101008, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000034/[%EB%B6%80%EC%82%B0%EC%9D%80%ED%96%89]%20%EC%98%A4%EB%8A%98%EC%9D%98e%EC%B9%B4%EB%93%9C(%EC%8B%A0%EC%9A%A9-%EC%B2%B4%ED%81%AC)-03.png', 'FRONT', 2);
+
+-- ──────────────────────────────────────────────
+-- [17] BNK 부자되세요 홈쇼핑카드 (card_id: 10101009)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101009, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000031/4.IChomesVISA.png', 'FRONT', 1);
+
+-- ──────────────────────────────────────────────
+-- [18] 부산체육사랑카드 (card_id: 10101010)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101010, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000025/%EB%B6%80%EC%82%B0%EC%B2%B4%EC%9C%A0%EC%82%AC%EB%9E%91%EC%B9%B4%EB%93%9C_%EB%8C%80_%EC%84%B8%EB%A1%9C.png', 'FRONT', 1);
+
+-- ──────────────────────────────────────────────
+-- [19] 팟(pod) 카드 (card_id: 10101011)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101011, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000024/[%EB%B6%80%EC%82%B0%EC%9D%80%ED%96%89]%20%ED%8C%9F(pod)%EC%B9%B4%EB%93%9C-03.jpg', 'FRONT', 1);
+
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101011, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000024/[%EB%B6%80%EC%82%B0%EC%9D%80%ED%96%89]%20%ED%8C%9F(pod)%EC%B9%B4%EB%93%9C-01.png', 'FRONT', 2);
+
+-- ──────────────────────────────────────────────
+-- [20] ZipL 신용카드 (card_id: 10101012)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101012, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000020/ZipL_%EC%8B%A0%EC%9A%A9%EC%B9%B4%EB%93%9C_%EB%8C%80(%EC%84%B8%EB%A1%9C).jpg', 'FRONT', 1);
+
+-- ──────────────────────────────────────────────
+-- [21] SK OIL&LPG카드 (card_id: 10101013)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101013, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000019/SK_OIL_%EC%84%B8%EB%A1%9C%EC%88%98%EC%A0%95.png', 'FRONT', 1);
+
+-- ──────────────────────────────────────────────
+-- [22] BNK 프렌즈 신용카드 (card_id: 10101014)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101014, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000015/[%EB%B6%80%EC%82%B0%EC%9D%80%ED%96%89]%20BNK%20%ED%94%84%EB%A0%8C%EC%A6%88%20%EC%8B%A0%EC%9A%A9%EC%B9%B4%EB%93%9C-01.png', 'FRONT', 1);
+
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101014, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000015/[%EB%B6%80%EC%82%B0%EC%9D%80%ED%96%89]%20BNK%20%ED%94%84%EB%A0%8C%EC%A6%88%20%EC%8B%A0%EC%9A%A9%EC%B9%B4%EB%93%9C-03.png', 'FRONT', 2);
+
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101014, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000015/[%EB%B6%80%EC%82%B0%EC%9D%80%ED%96%89]%20BNK%20%ED%94%84%EB%A0%8C%EC%A6%88%20%EC%8B%A0%EC%9A%A9%EC%B9%B4%EB%93%9C-05.png', 'FRONT', 3);
+
+-- ──────────────────────────────────────────────
+-- [23] 딩딩 신용카드 (card_id: 10101015)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101015, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000010/[%EB%B6%80%EC%82%B0%EC%9D%80%ED%96%89]%20%EB%94%A9%EB%94%A9%EC%B9%B4%EB%93%9C(%EC%B2%B4%ED%81%AC-%EC%8B%A0%EC%9A%A9)-01.png', 'FRONT', 1);
+
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101015, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000010/[%EB%B6%80%EC%82%B0%EC%9D%80%ED%96%89]%20%EB%94%A9%EB%94%A9%EC%B9%B4%EB%93%9C(%EC%B2%B4%ED%81%AC-%EC%8B%A0%EC%9A%A9)-05.png', 'FRONT', 2);
+
+-- ──────────────────────────────────────────────
+-- [24] 팜코카드 (card_id: 10101016)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101016, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000551/%ED%8C%9C%EC%BD%94%EC%B9%B4%EB%93%9C_%EB%8C%80.png', 'FRONT', 1);
+
+-- ──────────────────────────────────────────────
+-- [25] 부산 동백전 선불카드 (card_id: 10301001)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10301001, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000539/%EB%8F%99%EB%B0%B1%EC%A0%84%EC%84%A0%EB%B6%88%EC%B9%B4%EB%93%9C1.png', 'FRONT', 1);
+
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10301001, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000539/%EB%8F%99%EB%B0%B1%EC%A0%84%EC%84%A0%EB%B6%88%EC%B9%B4%EB%93%9C2.png', 'FRONT', 2);
+
+-- ──────────────────────────────────────────────
+-- [26] BNK SIMPLE AMEX BLUE BUSINESS 카드 (card_id: 10101017)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101017, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000074/Amex_220x140.png', 'FRONT', 1);
+
+-- ──────────────────────────────────────────────
+-- [27] BNK Simple카드 (card_id: 10101018)
+-- ──────────────────────────────────────────────
+INSERT INTO CARD_IMAGES (IMAGE_ID, CARD_ID, IMAGE_URL, IMAGE_TYPE, SORT_ORDER)
+VALUES (SEQ_CARD_IMAGES.NEXTVAL, 10101018, 'https://www.busanbank.co.kr/SSPCTS/LTIV/CARD/0600000073/simple(3).png', 'FRONT', 1);
 
 COMMIT;
 
