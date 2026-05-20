@@ -3,610 +3,1232 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BNKcard Auth Test</title>
+  <title>BNKcard 인증 테스트</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600&display=swap');
+    /* ── reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; font-size: 14px; background: #f2f2f2; color: #111; }
 
-    :root {
-      --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a;
-      --border: #2e3250; --accent: #4f8ef7; --accent-dim: rgba(79,142,247,0.12);
-      --success: #3dd68c; --error: #f76f6f; --warn: #f7b94f;
-      --text: #e2e8f0; --text-dim: #7a85a3;
-      --mono: 'IBM Plex Mono', monospace; --sans: 'IBM Plex Sans KR', sans-serif;
+    /* ── header ── */
+    header {
+      background: #fff;
+      border-bottom: 2px solid #DC2626;
+      padding: 0 28px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; min-height: 100vh; display: flex; flex-direction: column; }
+    .logo { font-size: 15px; font-weight: 700; color: #DC2626; letter-spacing: -0.3px; }
+    nav a {
+      color: #555;
+      font-size: 13px;
+      text-decoration: none;
+      cursor: pointer;
+      margin-left: 2px;
+      padding: 4px 8px;
+    }
+    nav a:hover { color: #DC2626; }
+    nav .sep { color: #ddd; }
+    #nav-logout { display: none; color: #DC2626; font-weight: 700; }
 
-    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; gap: 12px; }
-    .logo { font-family: var(--mono); font-weight: 600; font-size: 15px; color: var(--accent); letter-spacing: 1px; }
-    .badge { background: var(--accent-dim); color: var(--accent); font-family: var(--mono); font-size: 10px; padding: 2px 8px; border-radius: 3px; border: 1px solid rgba(79,142,247,0.3); }
-    .hstatus { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); }
-    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-dim); }
-    .dot.on { background: var(--success); box-shadow: 0 0 6px var(--success); }
-    .dot.off { background: var(--error); }
+    /* ── config bar ── */
+    .cfg-bar {
+      background: #fff8f8;
+      border-bottom: 1px solid #fca5a5;
+      padding: 7px 28px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+    }
+    .cfg-bar label { color: #DC2626; font-weight: 700; white-space: nowrap; }
+    .cfg-bar input {
+      flex: 1;
+      padding: 4px 9px;
+      border: 1px solid #e0e0e0;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+    .cfg-bar small { color: #bbb; }
 
-    .layout { display: flex; flex: 1; overflow: hidden; }
+    /* ── page container ── */
+    main { max-width: 600px; margin: 36px auto; padding: 0 16px 60px; }
 
-    /* Sidebar */
-    .sidebar { width: 200px; background: var(--surface); border-right: 1px solid var(--border); padding: 16px 0; flex-shrink: 0; }
-    .sg { padding: 0 12px; margin-bottom: 6px; }
-    .slabel { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 1.5px; text-transform: uppercase; padding: 8px 8px 4px; }
-    .tb { width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: none; background: transparent; color: var(--text-dim); font-family: var(--sans); font-size: 13px; cursor: pointer; border-radius: 6px; text-align: left; transition: all 0.15s; }
-    .tb:hover { background: var(--surface2); color: var(--text); }
-    .tb.active { background: var(--accent-dim); color: var(--accent); font-weight: 500; }
-    .tb .num { font-family: var(--mono); font-size: 10px; background: var(--surface2); padding: 1px 5px; border-radius: 3px; margin-left: auto; color: var(--text-dim); }
-    .tb.active .num { background: var(--accent-dim); color: var(--accent); }
+    /* ── view (one active at a time) ── */
+    .view { display: none; background: #fff; border: 1px solid #e0e0e0; padding: 30px 32px; }
+    .view.on { display: block; }
 
-    /* Main */
-    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-    .panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
-    .panel.active { display: flex; }
-    .ph { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); }
-    .pt { font-size: 16px; font-weight: 600; margin-bottom: 3px; }
-    .pd { font-size: 12px; color: var(--text-dim); font-family: var(--mono); }
-    .pb { flex: 1; display: flex; overflow: hidden; }
+    h2 { font-size: 20px; margin-bottom: 22px; }
 
-    /* Form */
-    .fs { width: 420px; flex-shrink: 0; padding: 20px 24px; border-right: 1px solid var(--border); overflow-y: auto; }
-    .field { margin-bottom: 14px; }
-    .field label { display: block; font-size: 11px; font-weight: 500; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 5px; font-family: var(--mono); }
-    .field label .req { color: var(--accent); margin-left: 2px; }
-    .field input, .field select { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: var(--sans); font-size: 13px; padding: 8px 12px; outline: none; transition: border-color 0.15s; }
-    .field input:focus, .field select:focus { border-color: var(--accent); }
-    .field input::placeholder { color: var(--text-dim); opacity: 0.5; }
-    .field input:disabled { opacity: 0.35; cursor: not-allowed; }
+    /* ── step indicator ── */
+    .stepbar { display: flex; align-items: center; gap: 5px; margin-bottom: 24px; font-size: 12px; }
+    .st {
+      padding: 3px 12px;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      color: #bbb;
+      white-space: nowrap;
+    }
+    .st.cur { background: #DC2626; border-color: #DC2626; color: #fff; }
+    .st.done { border-color: #DC2626; color: #DC2626; }
+    .st-sep { color: #ddd; }
 
-    /* 인라인 행 */
-    .inline-row { display: flex; gap: 8px; }
-    .inline-row input { flex: 1; }
-    .ibtn { flex-shrink: 0; padding: 8px 14px; border: 1px solid var(--accent); background: var(--accent-dim); color: var(--accent); border-radius: 6px; font-family: var(--mono); font-size: 11px; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
-    .ibtn:hover { background: var(--accent); color: #fff; }
-    .ibtn:disabled { opacity: 0.3; cursor: not-allowed; background: var(--accent-dim); color: var(--accent); }
-    .ibtn.success { border-color: var(--success); background: rgba(61,214,140,0.1); color: var(--success); }
-    .ibtn.success:hover { background: var(--success); color: #0f1117; }
+    /* ── form fields ── */
+    .f { margin-bottom: 14px; }
+    .f > label {
+      display: block;
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+    .f .req { color: #DC2626; }
+    input[type=text], input[type=email], input[type=password], input[type=tel], input[type=date], select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      background: #fff;
+      transition: border-color 0.15s;
+    }
+    input:focus, select:focus { outline: none; border-color: #DC2626; }
+    input.verified { border-color: #22c55e; }
+    input.error { border-color: #DC2626; }
 
-    /* 코드 입력 */
-    .code-input { text-align: center; letter-spacing: 8px; font-family: var(--mono); font-size: 22px; font-weight: 600; text-transform: uppercase; padding: 10px !important; }
+    .irow { display: flex; gap: 7px; }
+    .irow input { flex: 1; min-width: 0; }
 
-    /* 상태 메시지 */
-    .field-msg { font-size: 11px; font-family: var(--mono); padding: 5px 10px; border-radius: 4px; margin-top: 6px; display: none; }
-    .field-msg.ok  { display: block; background: rgba(61,214,140,0.1); color: var(--success); }
-    .field-msg.err { display: block; background: rgba(247,111,111,0.1); color: var(--error); }
-    .field-msg.info { display: block; background: var(--accent-dim); color: var(--accent); }
+    /* ── terms scroll box ── */
+    .terms-wrap { margin-bottom: 18px; }
+    .terms-scroll {
+      border: 1px solid #ddd;
+      height: 112px;
+      overflow-y: auto;
+      padding: 12px;
+      font-size: 12px;
+      color: #666;
+      background: #fafafa;
+      line-height: 1.8;
+      margin-bottom: 7px;
+    }
+    .terms-ck {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .terms-ck input[type=checkbox] { accent-color: #DC2626; width: 14px; height: 14px; cursor: pointer; }
+    .terms-req { font-size: 11px; color: #DC2626; margin-left: 3px; }
+    .terms-opt { font-size: 11px; color: #888; margin-left: 3px; }
 
-    /* 타이머 */
-    .timer { font-family: var(--mono); font-size: 11px; color: var(--warn); float: right; }
+    /* ── buttons ── */
+    .btn {
+      padding: 10px 28px;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .btn-r { background: #DC2626; color: #fff; }
+    .btn-r:hover { background: #b91c1c; }
+    .btn-g { background: #e5e7eb; color: #444; }
+    .btn-g:hover { background: #d1d5db; }
 
-    /* 단계 바 */
-    .step-bar { display: flex; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); margin-bottom: 18px; }
-    .step { flex: 1; padding: 7px 0; text-align: center; font-family: var(--mono); font-size: 10px; color: var(--text-dim); background: var(--surface2); border-right: 1px solid var(--border); transition: all 0.25s; }
-    .step:last-child { border-right: none; }
-    .step.done   { background: rgba(61,214,140,0.08); color: var(--success); }
-    .step.active { background: var(--accent-dim); color: var(--accent); }
+    /* inline small button */
+    .ibtn {
+      padding: 0 14px;
+      height: 40px;
+      font-size: 12px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      background: #DC2626;
+      color: #fff;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .ibtn:hover { background: #b91c1c; }
+    .ibtn.outline { background: #fff; color: #DC2626; border: 1px solid #DC2626; }
+    .ibtn.outline:hover { background: #fef2f2; }
+    .ibtn.gray { background: #e5e7eb; color: #444; border: none; }
+    .ibtn.gray:hover { background: #d1d5db; }
 
-    /* Terms */
-    .load-terms-btn { width: 100%; padding: 7px; margin-bottom: 8px; background: transparent; border: 1px dashed var(--border); border-radius: 6px; color: var(--text-dim); font-family: var(--mono); font-size: 11px; cursor: pointer; transition: all 0.15s; }
-    .load-terms-btn:hover { border-color: var(--accent); color: var(--accent); }
-    .terms-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
-    .term-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
-    .term-item:last-child { border-bottom: none; }
-    .term-item:hover { background: rgba(255,255,255,0.02); }
-    .term-item input[type="checkbox"] { accent-color: var(--accent); }
-    .term-label { font-size: 12px; flex: 1; }
-    .tbadge { font-family: var(--mono); font-size: 9px; padding: 2px 6px; border-radius: 3px; }
-    .tbadge.req { background: rgba(247,111,111,0.15); color: var(--error); }
-    .tbadge.opt { background: rgba(122,133,163,0.15); color: var(--text-dim); }
-    .terms-empty { padding: 16px; font-size: 12px; color: var(--text-dim); text-align: center; }
+    .brow { display: flex; gap: 10px; margin-top: 24px; }
 
-    /* 블록 잠금 */
-    .locked { opacity: 0.3; pointer-events: none; transition: all 0.3s; }
-    .unlocked { opacity: 1; pointer-events: auto; transition: all 0.3s; }
+    /* ── links row ── */
+    .links {
+      display: flex;
+      justify-content: center;
+      margin-top: 16px;
+      font-size: 12px;
+    }
+    .links a {
+      color: #DC2626;
+      text-decoration: none;
+      cursor: pointer;
+      padding: 0 10px;
+    }
+    .links a:hover { text-decoration: underline; }
+    .links .sep { color: #ddd; }
 
-    /* Buttons */
-    .sbtn { width: 100%; padding: 11px; margin-top: 8px; background: var(--accent); border: none; border-radius: 6px; color: #fff; font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
-    .sbtn:hover { opacity: 0.88; }
-    .sbtn:disabled { opacity: 0.3; cursor: not-allowed; }
-    .sbtn.danger { background: transparent; border: 1px solid var(--error); color: var(--error); }
-    .sbtn.danger:hover { background: rgba(247,111,111,0.1); }
+    /* ── success block ── */
+    .ok-block {
+      border: 2px dashed #DC2626;
+      border-radius: 4px;
+      padding: 26px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .ok-ico {
+      width: 58px;
+      height: 58px;
+      background: #DC2626;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+    .ok-ico svg {
+      stroke: #fff;
+      fill: none;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      width: 28px;
+      height: 28px;
+    }
+    .ok-title { font-size: 15px; font-weight: 700; }
 
-    .divider { height: 1px; background: var(--border); margin: 16px 0; }
-    .info-box { background: var(--accent-dim); border: 1px solid rgba(79,142,247,0.2); border-radius: 6px; padding: 10px 12px; font-size: 12px; color: var(--text-dim); margin-bottom: 14px; line-height: 1.7; }
-    .info-box strong { color: var(--accent); }
+    /* ── info box ── */
+    .ibox {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 18px;
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 16px;
+      text-align: center;
+      line-height: 2.5;
+    }
+    .ibox .k { display: block; font-size: 11px; color: #aaa; }
+    .ibox .v { font-size: 15px; color: #111; font-weight: 700; }
 
-    /* Response */
-    .rs { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-    .rtb { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--surface); }
-    .rtb span { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
-    .chip { font-family: var(--mono); font-size: 10px; padding: 2px 8px; border-radius: 3px; font-weight: 600; }
-    .chip.ok   { background: rgba(61,214,140,0.15); color: var(--success); }
-    .chip.err  { background: rgba(247,111,111,0.15); color: var(--error); }
-    .chip.idle { background: var(--surface2); color: var(--text-dim); }
-    .cbtn { margin-left: auto; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); font-family: var(--mono); font-size: 10px; padding: 3px 8px; cursor: pointer; }
-    .cbtn:hover { color: var(--text); }
-    .rbody { flex: 1; overflow-y: auto; padding: 16px; }
-    .log-entry { margin-bottom: 16px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; animation: fi 0.2s ease; }
-    @keyframes fi { from { opacity:0; transform:translateY(4px); } to { opacity:1; } }
-    .leh { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--surface2); border-bottom: 1px solid var(--border); }
-    .lm { font-family: var(--mono); font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 3px; }
-    .lm.post { background: rgba(79,142,247,0.15); color: var(--accent); }
-    .lm.get  { background: rgba(61,214,140,0.15); color: var(--success); }
-    .lp { font-family: var(--mono); font-size: 11px; }
-    .lt { margin-left: auto; font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
-    .leb { padding: 12px; font-family: var(--mono); font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; background: var(--bg); }
-    .log-entry.ok .leh  { border-left: 3px solid var(--success); }
-    .log-entry.err .leh { border-left: 3px solid var(--error); }
-    .empty-log { height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; color: var(--text-dim); }
-    .empty-log .icon { font-size: 32px; opacity: 0.3; }
-    .empty-log p { font-family: var(--mono); font-size: 12px; }
+    /* ── result box ── */
+    .rbox {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 16px;
+      min-height: 64px;
+      font-size: 13px;
+      color: #555;
+      background: #fafafa;
+      margin-bottom: 16px;
+    }
 
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    /* ── notice badges ── */
+    .notice {
+      padding: 9px 13px;
+      border-radius: 3px;
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
+    .notice-i { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .notice-e { background: #fef2f2; color: #DC2626; border: 1px solid #fca5a5; }
+    .notice-s { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+
+    /* ── divider ── */
+    hr { border: none; border-top: 1px solid #eee; margin: 20px 0; }
+
+    /* ── api log section ── */
+    .log-sect { margin-top: 18px; border-top: 1px solid #eee; padding-top: 14px; }
+    .log-lbl { font-size: 11px; color: #bbb; margin-bottom: 5px; letter-spacing: .4px; }
+    pre.lg {
+      background: #111;
+      color: #6ee7b7;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 11px;
+      padding: 11px 13px;
+      border-radius: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      line-height: 1.6;
+    }
+    pre.lg.err { color: #fca5a5; }
+
+    /* ── floating log ── */
+    #flog-wrap {
+      position: fixed;
+      bottom: 0;
+      right: 0;
+      z-index: 999;
+    }
+    #flog-toggle {
+      display: block;
+      background: #DC2626;
+      color: #fff;
+      font-size: 11px;
+      font-family: monospace;
+      padding: 5px 14px;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px 0 0 0;
+      text-align: right;
+    }
+    #flog-panel {
+      display: none;
+      width: 440px;
+      max-height: 300px;
+      background: #111;
+      overflow-y: auto;
+      padding: 10px 13px;
+      border-left: 2px solid #DC2626;
+      border-top: 2px solid #DC2626;
+    }
+    #flog-panel.open { display: block; }
+    .flog-line {
+      font-family: monospace;
+      font-size: 11px;
+      color: #6ee7b7;
+      white-space: pre-wrap;
+      word-break: break-all;
+      border-top: 1px solid #1f1f1f;
+      padding: 5px 0;
+    }
+    .flog-line.err { color: #fca5a5; }
+    .flog-line.req { color: #93c5fd; }
+
+    /* ── extra test buttons (login page) ── */
+    .extra-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+    .ebtn {
+      padding: 7px 14px;
+      font-size: 12px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      background: #fff;
+      cursor: pointer;
+      color: #444;
+    }
+    .ebtn:hover { border-color: #DC2626; color: #DC2626; }
+    .ebtn.danger { border-color: #fca5a5; color: #DC2626; }
+    .ebtn.danger:hover { background: #fef2f2; }
+
+    /* ── checkbox ── */
+    input[type=checkbox] { accent-color: #DC2626; }
+    .chk-label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; color: #555; }
+
+    footer { text-align: center; padding: 20px; color: #ccc; font-size: 12px; }
+
+    /* ── session status bar ── */
+    #session-bar {
+      display: none;
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 8px 28px;
+      align-items: center;
+      gap: 0;
+      font-size: 12px;
+    }
+    #session-bar.on { display: flex; }
+    .sb-dot {
+      width: 8px; height: 8px;
+      background: #22c55e;
+      border-radius: 50%;
+      margin-right: 8px;
+      flex-shrink: 0;
+      box-shadow: 0 0 0 2px rgba(34,197,94,.2);
+    }
+    .sb-dot.expiring { background: #f97316; box-shadow: 0 0 0 2px rgba(249,115,22,.2); }
+    .sb-dot.expired  { background: #DC2626; box-shadow: 0 0 0 2px rgba(220,38,38,.2); }
+    .sb-label { color: #888; white-space: nowrap; margin-right: 6px; }
+    .sb-sep { color: #ddd; margin: 0 14px; }
+    .sb-token {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .sb-name { color: #aaa; font-size: 11px; white-space: nowrap; }
+    .sb-time {
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: #111;
+      min-width: 68px;
+      letter-spacing: .3px;
+    }
+    .sb-time.ok       { color: #22c55e; }
+    .sb-time.expiring { color: #f97316; }
+    .sb-time.expired  { color: #DC2626; }
+    .sb-refresh-btn {
+      margin-left: 10px;
+      padding: 4px 12px;
+      border: 1px solid #DC2626;
+      border-radius: 10px;
+      background: #fff;
+      color: #DC2626;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .sb-refresh-btn:hover { background: #fef2f2; }
   </style>
 </head>
 <body>
 
+<!-- ════════════════════════════════════
+     HEADER
+════════════════════════════════════ -->
 <header>
-  <span class="logo">BNKcard</span>
-  <span class="badge">Auth Test Console</span>
-  <div class="hstatus">
-    <div class="dot" id="cdot"></div>
-    <span id="clabel">연결 확인 중...</span>
-  </div>
+  <span class="logo">BNK 부산은행</span>
+  <nav>
+    <a onclick="goTo('signup-1')">회원가입</a>
+    <span class="sep">|</span>
+    <a onclick="goTo('login')">로그인</a>
+    <a id="nav-logout" onclick="doLogout()">로그아웃</a>
+  </nav>
 </header>
 
-<div class="layout">
-  <nav class="sidebar">
-    <div class="sg">
-      <div class="slabel">회원</div>
-      <button class="tb active" onclick="sw('signup',this)">회원가입 <span class="num">F-01</span></button>
-    </div>
-    <div class="sg">
-      <div class="slabel">인증</div>
-      <button class="tb" onclick="sw('login',this)">로그인 <span class="num">F-03</span></button>
-      <button class="tb" onclick="sw('refresh',this)">토큰 재발급 <span class="num">F-04</span></button>
-      <button class="tb" onclick="sw('logout',this)">로그아웃 <span class="num">F-05</span></button>
-    </div>
-    <div class="sg">
-      <div class="slabel">계정 찾기</div>
-      <button class="tb" onclick="sw('findid',this)">아이디 찾기 <span class="num">F-21</span></button>
-      <button class="tb" onclick="sw('findpw',this)">비밀번호 요청 <span class="num">F-22</span></button>
-      <button class="tb" onclick="sw('resetpw',this)">비밀번호 재설정 <span class="num">F-23</span></button>
-    </div>
-  </nav>
-
-  <div class="main">
-
-    <!-- ══ F-01 회원가입 ══ -->
-    <div class="panel active" id="panel-signup">
-      <div class="ph">
-        <div class="pt">회원가입</div>
-        <div class="pd">POST /api/auth/send-verify-code → verify-email → signup</div>
-      </div>
-      <div class="pb">
-        <div class="fs">
-
-          <!-- 단계 바 -->
-          <div class="step-bar">
-            <div class="step active" id="s1">1 이메일인증</div>
-            <div class="step" id="s2">2 정보입력</div>
-            <div class="step" id="s3">3 약관동의</div>
-            <div class="step" id="s4">4 완료</div>
-          </div>
-
-          <!-- STEP 1 : 이메일 인증 -->
-          <div class="field">
-            <label>이메일 <span class="req">*</span></label>
-            <div class="inline-row">
-              <input id="su-email" type="email" placeholder="test@example.com">
-              <button class="ibtn" id="send-btn" onclick="sendCode()">인증 요청</button>
-            </div>
-            <div class="field-msg" id="send-msg"></div>
-          </div>
-
-          <div class="field" id="code-field" style="display:none;">
-            <label>
-              인증코드 <span class="req">*</span>
-              <span class="timer" id="timer">10:00</span>
-            </label>
-            <div class="inline-row">
-              <input id="su-code" class="code-input" type="text" maxlength="6" placeholder="000000">
-              <button class="ibtn success" onclick="confirmCode()">확인</button>
-            </div>
-            <div class="field-msg" id="code-msg"></div>
-          </div>
-
-          <div class="divider"></div>
-
-          <!-- STEP 2 : 기본 정보 -->
-          <div id="block-info" class="locked">
-            <div class="field">
-              <label>비밀번호 <span class="req">*</span></label>
-              <input id="su-pw" type="password" placeholder="영문+숫자+특수문자 8자 이상">
-            </div>
-            <div class="field">
-              <label>이름 <span class="req">*</span></label>
-              <input id="su-name" type="text" placeholder="홍길동">
-            </div>
-            <div class="field">
-              <label>휴대폰 <span class="req">*</span></label>
-              <input id="su-phone" type="text" placeholder="01012345678">
-            </div>
-            <div class="field">
-              <label>생년월일</label>
-              <input id="su-birth" type="text" placeholder="19900101">
-            </div>
-            <div class="field">
-              <label>마케팅 동의</label>
-              <select id="su-mkt"><option value="N">거부</option><option value="Y">동의</option></select>
-            </div>
-          </div>
-
-          <div class="divider"></div>
-
-          <!-- STEP 3 : 약관 동의 -->
-          <div id="block-terms" class="locked">
-            <div class="field">
-              <label>약관 동의 <span class="req">*</span></label>
-              <button class="load-terms-btn" onclick="loadTerms()">↓ 약관 목록 불러오기</button>
-              <div class="terms-box" id="terms-box">
-                <div class="terms-empty">이메일 인증 후 이용 가능합니다</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="divider"></div>
-
-          <button class="sbtn" id="signup-btn" onclick="signup()" disabled>회원가입 완료</button>
-
-        </div>
-        <div class="rs" id="res-signup"></div>
-      </div>
-    </div>
-
-    <!-- ══ F-03 로그인 ══ -->
-    <div class="panel" id="panel-login">
-      <div class="ph"><div class="pt">로그인</div><div class="pd">POST /api/auth/login — Access + Refresh 쿠키 발급</div></div>
-      <div class="pb">
-        <div class="fs">
-          <div class="field"><label>이메일 <span class="req">*</span></label><input id="li-email" type="email" placeholder="test@example.com"></div>
-          <div class="field"><label>비밀번호 <span class="req">*</span></label><input id="li-pw" type="password" placeholder="비밀번호"></div>
-          <button class="sbtn" onclick="login()">로그인</button>
-        </div>
-        <div class="rs" id="res-login"></div>
-      </div>
-    </div>
-
-    <!-- ══ F-04 재발급 ══ -->
-    <div class="panel" id="panel-refresh">
-      <div class="ph"><div class="pt">Access Token 재발급</div><div class="pd">POST /api/auth/refresh</div></div>
-      <div class="pb">
-        <div class="fs">
-          <div class="info-box">로그인 후 브라우저에 저장된 <strong>refresh_token 쿠키</strong>를 자동으로 사용합니다.</div>
-          <button class="sbtn" onclick="refresh()">재발급 요청</button>
-        </div>
-        <div class="rs" id="res-refresh"></div>
-      </div>
-    </div>
-
-    <!-- ══ F-05 로그아웃 ══ -->
-    <div class="panel" id="panel-logout">
-      <div class="ph"><div class="pt">로그아웃</div><div class="pd">POST /api/auth/logout — 세션 revoke + 쿠키 삭제</div></div>
-      <div class="pb">
-        <div class="fs">
-          <div class="info-box">로그인 상태에서만 동작합니다.<br>모든 기기의 세션이 <strong>일괄 만료</strong>됩니다.</div>
-          <button class="sbtn danger" onclick="logout()">로그아웃</button>
-        </div>
-        <div class="rs" id="res-logout"></div>
-      </div>
-    </div>
-
-    <!-- ══ F-21 아이디 찾기 ══ -->
-    <div class="panel" id="panel-findid">
-      <div class="ph"><div class="pt">아이디(이메일) 찾기</div><div class="pd">POST /api/auth/find-id</div></div>
-      <div class="pb">
-        <div class="fs">
-          <div class="field"><label>이름 <span class="req">*</span></label><input id="fi-name" type="text" placeholder="홍길동"></div>
-          <div class="field"><label>휴대폰 <span class="req">*</span></label><input id="fi-phone" type="text" placeholder="01012345678"></div>
-          <button class="sbtn" onclick="findId()">아이디 찾기</button>
-        </div>
-        <div class="rs" id="res-findid"></div>
-      </div>
-    </div>
-
-    <!-- ══ F-22 비밀번호 요청 ══ -->
-    <div class="panel" id="panel-findpw">
-      <div class="ph"><div class="pt">비밀번호 재설정 요청</div><div class="pd">POST /api/auth/find-password — 재설정 링크 이메일 발송</div></div>
-      <div class="pb">
-        <div class="fs">
-          <div class="field"><label>이메일 <span class="req">*</span></label><input id="fp-email" type="email" placeholder="test@example.com"></div>
-          <div class="field"><label>이름 <span class="req">*</span></label><input id="fp-name" type="text" placeholder="홍길동"></div>
-          <button class="sbtn" onclick="findPassword()">재설정 링크 요청</button>
-        </div>
-        <div class="rs" id="res-findpw"></div>
-      </div>
-    </div>
-
-    <!-- ══ F-23 비밀번호 재설정 ══ -->
-    <div class="panel" id="panel-resetpw">
-      <div class="ph"><div class="pt">비밀번호 재설정</div><div class="pd">POST /api/auth/reset-password</div></div>
-      <div class="pb">
-        <div class="fs">
-          <div class="info-box">이메일 링크의 URL에서 <strong>?token=</strong> 뒤 값을 복사해 입력하세요. 유효시간 <strong>30분</strong></div>
-          <div class="field"><label>재설정 토큰 <span class="req">*</span></label><input id="rp-token" type="text" placeholder="UUID" style="font-family:var(--mono);font-size:11px;"></div>
-          <div class="field"><label>새 비밀번호 <span class="req">*</span></label><input id="rp-pw" type="password" placeholder="영문+숫자+특수문자 8자 이상"></div>
-          <div class="field"><label>비밀번호 확인 <span class="req">*</span></label><input id="rp-confirm" type="password" placeholder="비밀번호 재입력"></div>
-          <button class="sbtn" onclick="resetPassword()">비밀번호 재설정</button>
-        </div>
-        <div class="rs" id="res-resetpw"></div>
-      </div>
-    </div>
-
-  </div>
+<!-- BASE URL config bar -->
+<div class="cfg-bar">
+  <label>BASE URL</label>
+  <input id="baseUrl" value="http://localhost:8080">
+  <small>쿠키 자동 포함 (withCredentials: true)</small>
 </div>
 
-<script>
-  const BASE = 'http://localhost:8080';
-  let emailVerified = false;
-  let timerInterval = null;
+<!-- 세션 상태 바 (로그인 후 표시) -->
+<div id="session-bar">
+  <div class="sb-dot" id="sb-dot"></div>
+  <span class="sb-label" id="sb-label">로그인 중</span>
+  <span class="sb-sep"></span>
+  <span class="sb-name">Access</span>
+  <span class="sb-time" id="sb-access-time">--:--:--</span>
+  <span class="sb-sep"></span>
+  <span class="sb-name">Refresh</span>
+  <span class="sb-time" id="sb-refresh-time">--일 --:--:--</span>
+  <button class="sb-refresh-btn" onclick="doRefresh()">↻ 재발급</button>
+</div>
 
-  /* ── 탭 전환 ── */
-  function sw(name, btn) {
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.tb').forEach(b => b.classList.remove('active'));
-    document.getElementById('panel-' + name).classList.add('active');
-    btn.classList.add('active');
-  }
+<!-- ════════════════════════════════════
+     MAIN CONTENT
+════════════════════════════════════ -->
+<main>
 
-  /* ── 서버 연결 상태 ── */
-  async function checkServer() {
-    try {
-      const r = await fetch(BASE + '/api/terms/packages/SIGNUP', { credentials: 'include' });
-      const on = r.status < 500;
-      document.getElementById('cdot').className = on ? 'dot on' : 'dot off';
-      document.getElementById('clabel').textContent = on ? '서버 연결됨' : '서버 오류';
-    } catch {
-      document.getElementById('cdot').className = 'dot off';
-      document.getElementById('clabel').textContent = '서버 연결 실패';
-    }
-  }
-  checkServer();
+  <!-- ══════════════════════════════════
+       LOGIN  [F-03]
+       와이어프레임: 로그인
+  ══════════════════════════════════ -->
+  <div class="view on" id="v-login">
+    <h2>로그인</h2>
 
-  /* ── 공통 fetch ── */
-  async function api(method, path, body, cid) {
-    try {
-      const res = await fetch(BASE + path, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: body ? JSON.stringify(body) : undefined
-      });
-      const json = await res.json().catch(() => ({ status: res.status }));
-      log(cid, method, path, json, res.ok);
-      return { ok: res.ok, data: json };
-    } catch (e) {
-      log(cid, method, path, { error: e.message }, false);
-      return { ok: false };
-    }
-  }
+    <div class="f">
+      <label>아이디 (이메일)</label>
+      <input id="li-email" type="email" placeholder="example@bnk.com" onkeydown="if(event.key==='Enter') goField('li-pw')">
+    </div>
+    <div class="f">
+      <label>비밀번호</label>
+      <input id="li-pw" type="password" placeholder="비밀번호" onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
 
-  /* ── 로그 렌더링 ── */
-  function log(cid, method, path, json, ok) {
-    let c = document.getElementById(cid);
-    if (!c.querySelector('.rtb')) {
-      c.innerHTML = `
-        <div class="rtb">
-          <span>RESPONSE</span>
-          <span class="chip idle" id="${cid}-chip">—</span>
-          <button class="cbtn" onclick="clearLog('${cid}')">clear</button>
-        </div>
-        <div class="rbody" id="${cid}-body">
-          <div class="empty-log"><div class="icon">◌</div><p>응답 대기 중</p></div>
-        </div>`;
-    }
-    const chip = document.getElementById(cid + '-chip');
-    chip.textContent = ok ? '200 OK' : 'ERROR';
-    chip.className = 'chip ' + (ok ? 'ok' : 'err');
+    <div class="brow">
+      <button class="btn btn-r" style="padding:10px 36px" onclick="doLogin()">로그인</button>
+    </div>
 
-    const body = document.getElementById(cid + '-body');
-    const empty = body.querySelector('.empty-log');
-    if (empty) empty.remove();
+    <div class="links">
+      <a onclick="goTo('signup-1')">회원가입</a>
+      <span class="sep">|</span>
+      <a onclick="goTo('find-id')">아이디 찾기</a>
+      <span class="sep">|</span>
+      <a onclick="goTo('reset-pw-1')">비밀번호 찾기</a>
+    </div>
 
-    const now = new Date().toLocaleTimeString('ko-KR');
-    const el = document.createElement('div');
-    el.className = 'log-entry ' + (ok ? 'ok' : 'err');
-    el.innerHTML = `
-      <div class="leh">
-        <span class="lm ${method.toLowerCase()}">${method}</span>
-        <span class="lp">${path}</span>
-        <span class="lt">${now}</span>
+    <hr>
+
+    <div class="log-lbl" style="margin-bottom:8px">기타 기능 테스트</div>
+    <div class="extra-btns">
+      <button class="ebtn" onclick="doRefresh()">Access Token 재발급</button>
+      <button class="ebtn" onclick="checkMe()">내 정보 조회 (/api/users/me)</button>
+      <button class="ebtn" onclick="promptAdminLogin()">관리자 로그인</button>
+      <button class="ebtn danger" onclick="doLogout()">로그아웃</button>
+    </div>
+
+    <div class="log-sect">
+      <div class="log-lbl">▸ API 응답 로그</div>
+      <pre class="lg" id="log-login">—</pre>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════
+       SIGNUP STEP 1 — 약관동의  [F-05/F-16]
+       와이어프레임: 회원가입 1단계 (약관동의)
+  ══════════════════════════════════ -->
+  <div class="view" id="v-signup-1">
+    <h2>회원가입</h2>
+
+    <div class="stepbar">
+      <span class="st cur">1 약관동의</span>
+      <span class="st-sep">|</span>
+      <span class="st" id="sp-s2">2</span>
+      <span class="st-sep">|</span>
+      <span class="st" id="sp-s3">3</span>
+    </div>
+
+    <!-- 약관 로딩 상태 -->
+    <div id="terms-loading" class="notice notice-i">약관을 불러오는 중...</div>
+    <div id="terms-error" class="notice notice-e" style="display:none">
+      약관 로딩 실패. API 서버 연결을 확인하세요.
+      <button onclick="loadTerms()" style="margin-left:8px;background:#DC2626;color:#fff;border:none;padding:3px 10px;border-radius:3px;cursor:pointer;font-size:12px">재시도</button>
+    </div>
+
+    <!-- 약관 1 : 홈페이지 회원약관 -->
+    <div class="terms-wrap" id="terms-wrap-1" style="display:none">
+      <div class="terms-scroll" id="tc-1"></div>
+      <label class="terms-ck">
+        <input type="checkbox" id="ck-t1">
+        이용동의 ✓
+        <span class="terms-req" id="req-t1">(필수)</span>
+      </label>
+    </div>
+
+    <!-- 약관 2 : 개인정보처리취급방침 -->
+    <div class="terms-wrap" id="terms-wrap-2" style="display:none">
+      <div class="terms-scroll" id="tc-2"></div>
+      <label class="terms-ck">
+        <input type="checkbox" id="ck-t2">
+        이용동의 ✓
+        <span class="terms-req" id="req-t2">(필수)</span>
+      </label>
+    </div>
+
+    <!-- 추가 약관이 있을 경우 -->
+    <div id="tc-extra"></div>
+
+    <div class="brow">
+      <button class="btn btn-r" onclick="goSignupStep2()">다음</button>
+      <button class="btn btn-g" onclick="goTo('login')">취소</button>
+    </div>
+
+    <div class="log-sect">
+      <div class="log-lbl">▸ GET /api/terms/packages/SIGNUP</div>
+      <pre class="lg" id="log-terms">—</pre>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════
+       SIGNUP STEP 2 — 회원정보 입력  [F-01/F-06]
+       와이어프레임: 회원가입 2단계 (회원정보 입력)
+  ══════════════════════════════════ -->
+  <div class="view" id="v-signup-2">
+    <h2>회원가입</h2>
+
+    <div class="stepbar">
+      <span class="st done">1</span>
+      <span class="st-sep">|</span>
+      <span class="st cur">2 실명확인</span>
+      <span class="st-sep">|</span>
+      <span class="st">3</span>
+    </div>
+
+    <div class="f">
+      <label>이름 <span class="req">*</span></label>
+      <input id="su-name" type="text" placeholder="홍길동">
+    </div>
+
+    <!-- 이메일 + 인증코드 발송 -->
+    <div class="f">
+      <label>이메일 <span class="req">*</span></label>
+      <div class="irow">
+        <input id="su-email" type="email" placeholder="example@email.com">
+        <button class="ibtn" onclick="sendVerifyCode()">인증코드 발송</button>
       </div>
-      <div class="leb">${JSON.stringify(json, null, 2)}</div>`;
-    body.prepend(el);
+    </div>
+
+    <!-- 인증코드 입력 -->
+    <div class="f">
+      <label>이메일 인증코드 <span class="req">*</span></label>
+      <div class="irow">
+        <input id="su-code" type="text" placeholder="6자리 코드" maxlength="6">
+        <button class="ibtn outline" onclick="verifyEmail()">인증</button>
+      </div>
+    </div>
+
+    <div class="f">
+      <label>비밀번호 <span class="req">*</span></label>
+      <input id="su-pw" type="password" placeholder="영문+숫자+특수문자 8자 이상">
+    </div>
+    <div class="f">
+      <label>비밀번호 확인 <span class="req">*</span></label>
+      <input id="su-pw2" type="password" placeholder="비밀번호 재입력">
+    </div>
+    <div class="f">
+      <label>휴대폰 <span class="req">*</span></label>
+      <input id="su-phone" type="tel" placeholder="01012345678">
+    </div>
+    <div class="f">
+      <label>생년월일</label>
+      <input id="su-birth" type="date">
+    </div>
+    <div class="f">
+      <label>마케팅 동의</label>
+      <label class="chk-label" style="margin-top:5px">
+        <input type="checkbox" id="su-mkt">
+        마케팅 정보 수신 동의 (선택)
+      </label>
+    </div>
+
+    <div class="brow">
+      <button class="btn btn-r" onclick="doSignup()">다음</button>
+      <button class="btn btn-g" onclick="goTo('login')">취소</button>
+    </div>
+
+    <div class="log-sect">
+      <div class="log-lbl">▸ API 응답 로그</div>
+      <pre class="lg" id="log-signup">—</pre>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════
+       SIGNUP STEP 3 — 가입완료  [F-01/F-06]
+       와이어프레임: 회원가입 3단계 (가입완료)
+  ══════════════════════════════════ -->
+  <div class="view" id="v-signup-3">
+    <h2>회원가입</h2>
+
+    <div class="stepbar">
+      <span class="st done">1</span>
+      <span class="st-sep">|</span>
+      <span class="st done">2</span>
+      <span class="st-sep">|</span>
+      <span class="st cur">3 가입완료</span>
+    </div>
+
+    <div class="ok-block">
+      <div class="ok-ico">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <p class="ok-title"><span id="done-name">OO</span>님의 회원가입이 정상적으로 처리 되었습니다.</p>
+    </div>
+
+    <div class="ibox">
+      <div>
+        <span class="k">성명</span>
+        <span class="v" id="done-name2">—</span>
+      </div>
+      <div>
+        <span class="k">아이디 (이메일)</span>
+        <span class="v" id="done-email">—</span>
+      </div>
+      <div>
+        <span class="k">비밀번호</span>
+        <span class="v">• • • • • • • •</span>
+      </div>
+    </div>
+
+    <div class="brow">
+      <button class="btn btn-r" onclick="goTo('login')">다음 (로그인)</button>
+      <button class="btn btn-g" onclick="goTo('login')">취소</button>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════
+       FIND ID — 입력  [F-20/F-21]
+       와이어프레임: 아이디 찾기 (입력)
+  ══════════════════════════════════ -->
+  <div class="view" id="v-find-id">
+    <h2>아이디 찾기</h2>
+
+    <div class="notice notice-i">
+      가입 시 등록한 이름과 휴대폰 번호로 아이디(이메일)를 확인합니다.
+    </div>
+
+    <!-- 이름 + 전화번호 입력 -->
+    <div class="f">
+      <label>이름 / 전화번호</label>
+      <div class="irow">
+        <input id="fi-name" type="text" placeholder="이름" style="flex:.8">
+        <input id="fi-phone" type="tel" placeholder="01012345678">
+      </div>
+    </div>
+
+    <div class="brow">
+      <button class="btn btn-r" onclick="doFindId()">아이디 찾기</button>
+      <button class="btn btn-g" onclick="goTo('login')">취소</button>
+    </div>
+
+    <div class="log-sect">
+      <div class="log-lbl">▸ POST /api/auth/find-id</div>
+      <pre class="lg" id="log-find-id">—</pre>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════
+       FIND ID — 결과  [F-20/F-21]
+       와이어프레임: 아이디 찾기 (결과)
+  ══════════════════════════════════ -->
+  <div class="view" id="v-find-id-result">
+    <h2>아이디 찾기</h2>
+
+    <div class="rbox" id="find-id-result-box">
+      <p style="font-size:12px;color:#aaa;margin-bottom:8px">아이디 찾기 결과</p>
+    </div>
+
+    <div class="brow">
+      <button class="btn btn-r" onclick="goTo('login')">로그인 하기</button>
+      <button class="btn btn-g" onclick="goTo('reset-pw-1')">비밀번호 찾기</button>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════
+       RESET PW — 재설정 링크 발송  [F-22]
+       와이어프레임: 비밀번호 재설정 (본인 인증)
+  ══════════════════════════════════ -->
+  <div class="view" id="v-reset-pw-1">
+    <h2>비밀번호 재설정</h2>
+
+    <div class="notice notice-i">
+      등록된 이메일과 이름을 입력하면 비밀번호 재설정 링크를 발송합니다.
+    </div>
+
+    <div class="f">
+      <label>이메일 (아이디)</label>
+      <input id="rp-email" type="email" placeholder="example@email.com">
+    </div>
+    <div class="f">
+      <label>이름</label>
+      <input id="rp-name" type="text" placeholder="홍길동">
+    </div>
+
+    <div class="brow">
+      <button class="btn btn-r" onclick="sendResetLink()">재설정 링크 발송</button>
+      <button class="btn btn-g" onclick="goTo('login')">취소</button>
+    </div>
+
+    <div class="log-sect">
+      <div class="log-lbl">▸ POST /api/auth/find-password</div>
+      <pre class="lg" id="log-reset1">—</pre>
+    </div>
+  </div>
+
+</main>
+
+<footer>BNK부산은행 카드 플랫폼 · Auth 기능 테스트 v2.0</footer>
+
+<!-- ════════════════════════════════════
+     FLOATING API LOG
+════════════════════════════════════ -->
+<div id="flog-wrap">
+  <button id="flog-toggle" onclick="toggleFlog()">📋 API LOG</button>
+  <div id="flog-panel"></div>
+</div>
+
+<!-- ════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════ -->
+<script>
+/* ══════════════════════════
+   STATE
+══════════════════════════ */
+const S = {
+  agreedTermsIds: [],
+  termsData:      [],
+  emailVerified:  false,
+  signupEmail:    '',
+  signupName:     '',
+  resetEmail:     '',
+  resetToken:     '',
+  isAdmin:        false,   // 관리자 세션 여부
+};
+
+/* ══════════════════════════
+   UTILS
+══════════════════════════ */
+const $  = id => document.getElementById(id);
+const B  = () => $('baseUrl').value.replace(/\/$/, '');
+const ts = () => new Date().toLocaleTimeString('ko-KR');
+
+function goField(nextId) { $(nextId)?.focus(); }
+
+/* ── floating log ── */
+function toggleFlog() {
+  const p = $('flog-panel');
+  p.classList.toggle('open');
+}
+
+function flog(text, type = 'ok') {
+  const p = $('flog-panel');
+  const d = document.createElement('div');
+  d.className = `flog-line${type === 'err' ? ' err' : type === 'req' ? ' req' : ''}`;
+  d.textContent = `[${ts()}] ${text}`;
+  p.appendChild(d);
+  p.scrollTop = p.scrollHeight;
+}
+
+/* ── inline log ── */
+function setLog(id, text, isErr = false) {
+  const el = $(id);
+  if (!el) return;
+  el.textContent = `[${ts()}]\n${text}`;
+  el.className = isErr ? 'lg err' : 'lg';
+}
+
+/* ── api call ── */
+async function api(method, path, body, logId) {
+  const url = B() + path;
+  const opts = {
+    method,
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+  };
+  if (body) opts.body = JSON.stringify(body);
+
+  flog(`▶ ${method} ${path}`, 'req');
+  if (body) flog(JSON.stringify(body, null, 2).slice(0, 200), 'req');
+
+  try {
+    const r   = await fetch(url, opts);
+    let data;
+    try { data = await r.json(); } catch { data = await r.text(); }
+
+    const pretty = JSON.stringify(data, null, 2);
+    const logTxt =
+      `▶ ${method} ${url}\n` +
+      (body ? JSON.stringify(body, null, 2) + '\n\n' : '') +
+      `◀ ${r.status}\n${pretty}`;
+
+    if (logId) setLog(logId, logTxt, !r.ok);
+    flog(`◀ ${r.status}  ${pretty.slice(0, 120)}`, r.ok ? 'ok' : 'err');
+
+    return { ok: r.ok, status: r.status, data };
+  } catch (e) {
+    const msg = `네트워크 오류: ${e.message}`;
+    if (logId) setLog(logId, msg, true);
+    flog(msg, 'err');
+    return { ok: false, status: 0, data: { message: e.message } };
+  }
+}
+
+/* ══════════════════════════
+   NAVIGATION
+══════════════════════════ */
+const VIEW_MAP = {
+  'login':            'v-login',
+  'signup-1':         'v-signup-1',
+  'signup-2':         'v-signup-2',
+  'signup-3':         'v-signup-3',
+  'find-id':          'v-find-id',
+  'find-id-result':   'v-find-id-result',
+  'reset-pw-1':       'v-reset-pw-1',
+  'reset-pw-2':       'v-reset-pw-2',
+};
+
+function goTo(key) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('on'));
+  const el = $(VIEW_MAP[key]);
+  if (el) el.classList.add('on');
+  window.scrollTo(0, 0);
+
+  // 회원가입 step1 진입 시 약관 자동 로딩
+  if (key === 'signup-1') loadTerms();
+}
+
+/* ══════════════════════════
+   ▌TERMS  GET /api/terms/packages/SIGNUP
+══════════════════════════ */
+async function loadTerms() {
+  $('terms-loading').style.display = 'block';
+  $('terms-error').style.display   = 'none';
+  $('terms-wrap-1').style.display  = 'none';
+  $('terms-wrap-2').style.display  = 'none';
+  $('tc-extra').innerHTML          = '';
+
+  const r = await api('GET', '/api/terms/packages/SIGNUP', null, 'log-terms');
+
+  $('terms-loading').style.display = 'none';
+
+  if (!r.ok) {
+    $('terms-error').style.display = 'block';
+    // Fallback: show static terms boxes
+    renderFallbackTerms();
+    return;
   }
 
-  function clearLog(cid) {
-    const b = document.getElementById(cid + '-body');
-    if (b) b.innerHTML = '<div class="empty-log"><div class="icon">◌</div><p>응답 대기 중</p></div>';
-    const chip = document.getElementById(cid + '-chip');
-    if (chip) { chip.textContent = '—'; chip.className = 'chip idle'; }
-  }
+  // response.data.terms 또는 response.data.data.terms 처리
+  const payload = r.data?.data ?? r.data;
+  const terms   = payload?.terms ?? [];
+  S.termsData   = terms;
 
-  /* ── 메시지 헬퍼 ── */
-  function showMsg(id, text, type) {
-    const el = document.getElementById(id);
-    el.textContent = text;
-    el.className = 'field-msg ' + type;
-  }
+  if (!terms.length) { renderFallbackTerms(); return; }
 
-  /* ── 단계 업데이트 ── */
-  function setStep(n) {
-    for (let i = 1; i <= 4; i++) {
-      const el = document.getElementById('s' + i);
-      el.className = i < n ? 'step done' : i === n ? 'step active' : 'step';
-    }
-  }
+  terms.forEach((t, idx) => {
+    const wrapId    = `terms-wrap-${idx + 1}`;
+    const tcId      = `tc-${idx + 1}`;
+    const ckId      = `ck-t${idx + 1}`;
+    const reqBadge  = `req-t${idx + 1}`;
+    const isReq     = t.requiredYn === 'Y';
 
-  /* ── 타이머 ── */
-  function startTimer(sec) {
-    clearInterval(timerInterval);
-    const el = document.getElementById('timer');
-    let remain = sec;
-    const tick = () => {
-      const m = String(Math.floor(remain / 60)).padStart(2, '0');
-      const s = String(remain % 60).padStart(2, '0');
-      el.textContent = `${m}:${s}`;
-      el.style.color = remain <= 60 ? 'var(--error)' : 'var(--warn)';
-      if (remain-- <= 0) {
-        clearInterval(timerInterval);
-        el.textContent = '만료';
-        showMsg('code-msg', '인증코드가 만료되었습니다. 다시 요청하세요.', 'err');
-      }
-    };
-    tick();
-    timerInterval = setInterval(tick, 1000);
-  }
-
-  /* ════════════════════════════════════════
-     F-01 회원가입 — 단계별 로직
-  ════════════════════════════════════════ */
-
-  /* STEP 1-A: 인증코드 발송 */
-  async function sendCode() {
-    const email = document.getElementById('su-email').value.trim();
-    if (!email) { showMsg('send-msg', '이메일을 입력하세요.', 'err'); return; }
-
-    const btn = document.getElementById('send-btn');
-    btn.disabled = true;
-    btn.textContent = '발송 중...';
-
-    const result = await api('POST', '/api/auth/send-verify-code', { email }, 'res-signup');
-
-    if (result.ok) {
-      showMsg('send-msg', '✓ 인증코드가 발송되었습니다. 이메일을 확인하세요.', 'ok');
-      document.getElementById('code-field').style.display = 'block';
-      document.getElementById('su-code').value = '';
-      document.getElementById('su-code').focus();
-      startTimer(600);
-      btn.textContent = '재발송';
-      btn.disabled = false;
+    if (idx < 2) {
+      // 기존 DOM 재사용
+      $(tcId).innerHTML = buildTermsContent(t);
+      $(reqBadge).textContent = isReq ? '(필수)' : '(선택)';
+      $(reqBadge).className   = isReq ? 'terms-req' : 'terms-opt';
+      $(wrapId).style.display = 'block';
     } else {
-      showMsg('send-msg', '✗ 발송 실패. 이메일을 확인하세요.', 'err');
-      btn.textContent = '인증 요청';
-      btn.disabled = false;
+      // 3번째 이상 약관은 동적 생성
+      $('tc-extra').insertAdjacentHTML('beforeend', `
+        <div class="terms-wrap">
+          <div class="terms-scroll">${buildTermsContent(t)}</div>
+          <label class="terms-ck">
+            <input type="checkbox" class="ck-extra" data-terms-id="${t.termsId}">
+            이용동의 ✓
+            <span class="${isReq ? 'terms-req' : 'terms-opt'}">${isReq ? '(필수)' : '(선택)'}</span>
+          </label>
+        </div>`);
     }
+  });
+}
+
+function buildTermsContent(t) {
+  const title = t.title ?? t.termsType ?? '약관';
+  const body  = t.contentHtml ?? t.content ?? '(내용 없음)';
+  return `<strong>[${title}]</strong><br><br>${body.replace(/<[^>]*>/g, ' ')}`;
+}
+
+function renderFallbackTerms() {
+  // 서버 미연결 시 더미 약관 표시
+  const fallback = [
+    { termsId: 1, title: '홈페이지 회원약관', requiredYn: 'Y',
+      content: 'BNK 부산은행 카드 홈페이지 이용약관입니다. 본 약관은 부산은행 카드 홈페이지의 이용에 관한 제반 사항을 규정합니다. 회원은 본 약관에 동의함으로써 서비스를 이용할 수 있습니다.' },
+    { termsId: 2, title: '개인정보처리취급방침', requiredYn: 'Y',
+      content: '개인정보처리방침. 당사는 고객의 개인정보를 소중히 여기며, 개인정보보호법에 따라 안전하게 관리합니다. 수집하는 개인정보 항목: 이름, 이메일, 휴대폰번호, 생년월일.' },
+  ];
+  S.termsData = fallback;
+  fallback.forEach((t, idx) => {
+    $(`tc-${idx + 1}`).textContent    = `[${t.title}]\n\n${t.content}`;
+    $(`req-t${idx + 1}`).textContent  = '(필수)';
+    $(`terms-wrap-${idx + 1}`).style.display = 'block';
+  });
+}
+
+/* ══════════════════════════
+   ▌SIGNUP STEP 1 → 2
+══════════════════════════ */
+function goSignupStep2() {
+  const checked = [];
+  if ($('ck-t1')?.checked && S.termsData[0]) checked.push(S.termsData[0].termsId);
+  if ($('ck-t2')?.checked && S.termsData[1]) checked.push(S.termsData[1].termsId);
+
+  // 추가 약관
+  document.querySelectorAll('.ck-extra:checked').forEach(c => {
+    checked.push(Number(c.dataset.termsId));
+  });
+
+  // 필수 약관 체크 검증
+  const requiredIds = S.termsData.filter(t => t.requiredYn === 'Y').map(t => t.termsId);
+  if (requiredIds.length && !requiredIds.every(id => checked.includes(id))) {
+    alert('필수 약관에 모두 동의해 주세요.');
+    return;
   }
 
-  /* STEP 1-B: 인증코드 확인 */
-  async function confirmCode() {
-    const email = document.getElementById('su-email').value.trim();
-    const code  = document.getElementById('su-code').value.trim().toUpperCase();
-    if (!code || code.length < 6) { showMsg('code-msg', '6자리 코드를 입력하세요.', 'err'); return; }
+  S.agreedTermsIds  = checked;
+  S.emailVerified   = false;
+  $('su-code').classList.remove('verified');
+  goTo('signup-2');
+}
 
-    const result = await api('POST', '/api/auth/verify-email', { email, token: code }, 'res-signup');
+/* ══════════════════════════
+   ▌EMAIL VERIFY  (signup step2)
+   POST /api/auth/send-verify-code
+   POST /api/auth/verify-email
+══════════════════════════ */
+async function sendVerifyCode() {
+  const email = $('su-email').value.trim();
+  if (!email) { alert('이메일을 입력해 주세요.'); return; }
 
-    if (result.ok) {
-      emailVerified = true;
-      clearInterval(timerInterval);
-      document.getElementById('timer').textContent = '';
+  const r = await api('POST', '/api/auth/send-verify-code', { email }, 'log-signup');
+  if (r.ok) {
+    S.signupEmail = email;
+    alert('인증코드가 이메일로 발송되었습니다. (유효시간 10분)');
+  }
+}
 
-      showMsg('code-msg', '✓ 이메일 인증이 완료되었습니다.', 'ok');
-      document.getElementById('su-email').disabled = true;
-      document.getElementById('send-btn').disabled = true;
-      document.getElementById('su-code').disabled = true;
+async function verifyEmail() {
+  const email = $('su-email').value.trim();
+  const token = $('su-code').value.trim();
+  if (!email || !token) { alert('이메일과 인증코드를 입력해 주세요.'); return; }
 
-      // STEP 2, 3 잠금 해제
-      document.getElementById('block-info').className = 'unlocked';
-      document.getElementById('block-terms').className = 'unlocked';
-      document.getElementById('signup-btn').disabled = false;
-      setStep(2);
+  const r = await api('POST', '/api/auth/verify-email', { email, token }, 'log-signup');
+  if (r.ok) {
+    S.emailVerified = true;
+    $('su-code').classList.add('verified');
+    alert('이메일 인증이 완료되었습니다 ✓');
+  }
+}
 
-    } else {
-      showMsg('code-msg', '✗ 인증코드가 올바르지 않거나 만료되었습니다.', 'err');
-    }
+/* ══════════════════════════
+   ▌SIGNUP  POST /api/auth/signup
+══════════════════════════ */
+async function doSignup() {
+  const email = $('su-email').value.trim();
+  const name  = $('su-name').value.trim();
+  const pw    = $('su-pw').value;
+  const pw2   = $('su-pw2').value;
+  const phone = $('su-phone').value.trim().replace(/-/g, '');
+  const birth = $('su-birth').value.replace(/-/g, '') || null;
+  const mkt   = $('su-mkt').checked ? 'Y' : 'N';
+
+  if (!name || !email || !pw || !phone) {
+    alert('필수 항목(*)을 모두 입력해 주세요.');
+    return;
+  }
+  if (pw !== pw2) {
+    alert('비밀번호가 일치하지 않습니다.');
+    return;
   }
 
-  /* STEP 3: 약관 불러오기 */
-  async function loadTerms() {
-    const result = await api('GET', '/api/terms/packages/SIGNUP', null, 'res-signup');
-    const box = document.getElementById('terms-box');
-    const terms = result.data?.data?.terms ?? [];
-    if (!terms.length) { box.innerHTML = '<div class="terms-empty">약관 데이터 없음</div>'; return; }
-    box.innerHTML = terms.map(t => `
-      <label class="term-item">
-        <input type="checkbox" class="term-chk" value="${t.termsId}">
-        <span class="term-label">${t.title ?? t.termsType}</span>
-        <span class="tbadge ${t.requiredYn === 'Y' ? 'req' : 'opt'}">${t.requiredYn === 'Y' ? '필수' : '선택'}</span>
-      </label>`).join('');
-    setStep(3);
+  const body = {
+    email,
+    password:       pw,
+    name,
+    phone,
+    birthDate:      birth,
+    marketingAgree: mkt,
+    agreedTermsIds: S.agreedTermsIds,
+  };
+
+  const r = await api('POST', '/api/auth/signup', body, 'log-signup');
+  if (r.ok) {
+    S.signupEmail = email;
+    S.signupName  = name;
+    $('done-name').textContent  = name;
+    $('done-name2').textContent = name;
+    $('done-email').textContent = email;
+    goTo('signup-3');
   }
+}
 
-  /* STEP 4: 회원가입 완료 */
-  async function signup() {
-    if (!emailVerified) { alert('이메일 인증을 먼저 완료하세요.'); return; }
-    const checked = [...document.querySelectorAll('.term-chk:checked')].map(c => Number(c.value));
+/* ══════════════════════════
+   ▌LOGIN  POST /api/auth/login
+══════════════════════════ */
+async function doLogin() {
+  const email = $('li-email').value.trim();
+  const pw    = $('li-pw').value;
 
-    const result = await api('POST', '/api/auth/signup', {
-      email:          document.getElementById('su-email').value,
-      password:       document.getElementById('su-pw').value,
-      name:           document.getElementById('su-name').value,
-      phone:          document.getElementById('su-phone').value,
-      birthDate:      document.getElementById('su-birth').value || null,
-      marketingAgree: document.getElementById('su-mkt').value,
-      agreedTermsIds: checked
-    }, 'res-signup');
+  if (!email || !pw) { alert('이메일과 비밀번호를 입력해 주세요.'); return; }
 
-    if (result.ok) {
-      setStep(4);
-      const btn = document.getElementById('signup-btn');
-      btn.textContent = '✓ 회원가입 완료';
-      btn.style.background = 'rgba(61,214,140,0.2)';
-      btn.style.border = '1px solid var(--success)';
-      btn.style.color = 'var(--success)';
-      btn.disabled = true;
-    }
+  const r = await api('POST', '/api/auth/login', {
+    email, password: pw, deviceInfo: 'auth-test-browser'
+  }, 'log-login');
+
+  if (r.ok) {
+    S.isAdmin = false;
+    $('nav-logout').style.display = '';
+    startSession('일반');
   }
+}
 
-  /* ════ 나머지 기능 ════ */
-
-  async function login() {
-    await api('POST', '/api/auth/login', {
-      email: document.getElementById('li-email').value,
-      password: document.getElementById('li-pw').value
-    }, 'res-login');
-    checkServer();
+/* ══════════════════════════
+   ▌LOGOUT
+   일반: POST /api/auth/logout        (@AuthenticationPrincipal CustomUserDetails)
+   관리자: POST /api/admin/auth/logout (@AuthenticationPrincipal CustomAdminDetails)
+   → 토큰 타입이 다르므로 엔드포인트를 분리해야 NPE 방지
+══════════════════════════ */
+async function doLogout() {
+  const endpoint = S.isAdmin ? '/api/admin/auth/logout' : '/api/auth/logout';
+  const r = await api('POST', endpoint, null, 'log-login');
+  $('nav-logout').style.display = 'none';
+  if (r.ok) {
+    S.isAdmin = false;
+    clearSession();
+    goTo('login');
+    alert('로그아웃 완료. 쿠키가 삭제되었습니다.');
   }
+}
 
-  async function refresh() { await api('POST', '/api/auth/refresh', null, 'res-refresh'); }
+/* ══════════════════════════
+   ▌REFRESH  POST /api/auth/refresh
+══════════════════════════ */
+async function doRefresh() {
+  const r = await api('POST', '/api/auth/refresh', null, 'log-login');
+  if (r.ok) resetAccessTimer();
+}
 
-  async function logout() {
-    await api('POST', '/api/auth/logout', null, 'res-logout');
-    checkServer();
+/* ══════════════════════════
+   ▌MY INFO  GET /api/users/me
+══════════════════════════ */
+async function checkMe() {
+  await api('GET', '/api/users/me', null, 'log-login');
+}
+
+/* ══════════════════════════
+   ▌ADMIN LOGIN  POST /api/admin/auth/login
+══════════════════════════ */
+async function promptAdminLogin() {
+  const username = prompt('관리자 아이디 (username)\n예: super_admin, card_manager1');
+  if (!username) return;
+  const pw = prompt('관리자 비밀번호');
+  if (!pw) return;
+  const r = await api('POST', '/api/admin/auth/login',
+    { username, password: pw }, 'log-login');
+  if (r.ok) {
+    S.isAdmin = true;
+    $('nav-logout').style.display = '';
+    startSession('관리자');
   }
+}
 
-  async function findId() {
-    await api('POST', '/api/auth/find-id', {
-      name: document.getElementById('fi-name').value,
-      phone: document.getElementById('fi-phone').value
-    }, 'res-findid');
-  }
+/* ══════════════════════════
+   ▌FIND ID  POST /api/auth/find-id
+   [F-20/F-21] name + phone → maskedEmail
+══════════════════════════ */
+async function doFindId() {
+  const name  = $('fi-name').value.trim();
+  const phone = $('fi-phone').value.trim().replace(/-/g, '');
 
-  async function findPassword() {
-    await api('POST', '/api/auth/find-password', {
-      email: document.getElementById('fp-email').value,
-      name:  document.getElementById('fp-name').value
-    }, 'res-findpw');
-  }
+  if (!name || !phone) { alert('이름과 휴대폰 번호를 입력해 주세요.'); return; }
 
-  async function resetPassword() {
-    const pw  = document.getElementById('rp-pw').value;
-    const pwc = document.getElementById('rp-confirm').value;
-    if (pw !== pwc) { alert('비밀번호가 일치하지 않습니다.'); return; }
-    await api('POST', '/api/auth/reset-password', {
-      token: document.getElementById('rp-token').value,
-      newPassword: pw,
-      newPasswordConfirm: pwc
-    }, 'res-resetpw');
+  const r = await api('POST', '/api/auth/find-id', { name, phone }, 'log-find-id');
+
+  if (r.ok) {
+    const payload = r.data?.data ?? r.data;
+    // 서버 응답 필드명에 따라 유연하게 추출
+    const email =
+      payload?.maskedEmail ?? payload?.email ??
+      payload?.maskedId    ?? JSON.stringify(payload);
+
+    $('find-id-result-box').innerHTML =
+      `<p style="font-size:12px;color:#aaa;margin-bottom:10px">고객님의 아이디(이메일)를 찾았습니다.</p>
+       <p style="font-size:20px;font-weight:700;color:#111;letter-spacing:.5px">${email}</p>
+       <p style="font-size:11px;color:#bbb;margin-top:8px">보안을 위해 일부가 마스킹되어 표시됩니다.</p>`;
+    goTo('find-id-result');
   }
+}
+
+/* ══════════════════════════
+   ▌RESET PW  POST /api/auth/find-password
+   [F-22] email + name → UUID 링크 이메일 발송 → 로그인으로 이동
+══════════════════════════ */
+async function sendResetLink() {
+  const email = $('rp-email').value.trim();
+  const name  = $('rp-name').value.trim();
+  if (!email || !name) { alert('이메일과 이름을 입력해 주세요.'); return; }
+
+  const r = await api('POST', '/api/auth/find-password', { email, name }, 'log-reset1');
+  if (r.ok) {
+    // 발송 완료 → 로그인 화면으로 전환 (이후 흐름은 이메일 링크 → reset-password.html)
+    goTo('login');
+    alert('비밀번호 재설정 링크를 이메일로 발송했습니다.\n(유효시간 30분)\n\n이메일을 확인하여 링크를 클릭해 주세요.');
+  }
+}
+
+/* ══════════════════════════
+   SESSION TIMER
+   access: 2h  (7200s)
+   refresh: 7d (604800s)
+══════════════════════════ */
+const TTL = {
+  access:  7200,     // seconds — jwt.access-expiration=7200000ms
+  refresh: 604800,   // seconds — jwt.refresh-expiration=604800000ms
+};
+
+let T = {
+  accessExpiry:  null,   // Date ms
+  refreshExpiry: null,   // Date ms
+  ticker:        null,   // setInterval id
+};
+
+function startSession(role = '로그인') {
+  const now = Date.now();
+  T.accessExpiry  = now + TTL.access  * 1000;
+  T.refreshExpiry = now + TTL.refresh * 1000;
+  $('sb-label').textContent = role === '관리자' ? '관리자 로그인 중' : '로그인 중';
+  $('session-bar').classList.add('on');
+  if (T.ticker) clearInterval(T.ticker);
+  T.ticker = setInterval(tickSession, 1000);
+  tickSession();
+}
+
+function resetAccessTimer() {
+  T.accessExpiry = Date.now() + TTL.access * 1000;
+  tickSession();
+}
+
+function clearSession() {
+  if (T.ticker) { clearInterval(T.ticker); T.ticker = null; }
+  T.accessExpiry  = null;
+  T.refreshExpiry = null;
+  $('session-bar').classList.remove('on');
+}
+
+function tickSession() {
+  const now   = Date.now();
+  const aLeft = Math.max(0, Math.round((T.accessExpiry  - now) / 1000));
+  const rLeft = Math.max(0, Math.round((T.refreshExpiry - now) / 1000));
+
+  // ── Access Token ──
+  const aEl  = $('sb-access-time');
+  const aCls = aLeft > 600 ? 'ok' : aLeft > 60 ? 'expiring' : 'expired';
+  aEl.textContent = fmtHMS(aLeft);
+  aEl.className   = `sb-time ${aCls}`;
+
+  // ── Refresh Token ──
+  const rEl  = $('sb-refresh-time');
+  const rCls = rLeft > 86400 ? 'ok' : rLeft > 3600 ? 'expiring' : 'expired';
+  rEl.textContent = fmtDHMS(rLeft);
+  rEl.className   = `sb-time ${rCls}`;
+
+  // ── dot 색상 ──
+  $('sb-dot').className = `sb-dot${aCls === 'ok' ? '' : ' ' + aCls}`;
+
+  if (aLeft === 300) flog('⚠ Access Token 5분 후 만료 — 재발급을 권장합니다', 'err');
+  if (aLeft === 0)   flog('✕ Access Token 만료. 재로그인 또는 재발급이 필요합니다', 'err');
+}
+
+function fmtHMS(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  return `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+
+function fmtDHMS(sec) {
+  if (sec <= 0) return '만료됨';
+  const d = Math.floor(sec / 86400);
+  const h = Math.floor((sec % 86400) / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  return d > 0 ? `${d}일 ${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+
+function pad(n) { return String(n).padStart(2, '0'); }
+
+/* ══════════════════════════
+   INIT
+══════════════════════════ */
+// 약관 페이지 진입 시 자동 로딩은 goTo() 내에서 처리
+// Enter 키 대응
+window.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.view.on').forEach(v => {
+      flog('ESC 키 — 로그인으로 이동', 'ok');
+      goTo('login');
+    });
+  }
+});
 </script>
+
 </body>
 </html>
