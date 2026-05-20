@@ -5,10 +5,14 @@ import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -35,6 +39,21 @@ public class SecurityConfig {
     @Bean
     PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    /**
+     * UserDetailsService 빈이 2개(userDetailsServiceImpl, adminDetailsServiceImpl)이므로
+     * 일반 유저용을 명시적으로 지정하여 WARN 제거.
+     * JWT 쿠키 인증 구조에서 이 빈이 직접 호출되진 않으나,
+     * Spring Security Global AuthenticationManager의 모호성을 해소한다.
+     */
+    @Bean
+    AuthenticationManager authenticationManager(UserDetailsService userDetailsServiceImpl) {
+        // Spring Security 7.x: DaoAuthenticationProvider(UserDetailsService) 생성자 사용
+        // UserDetailsService를 명시하여 2개 빈(userDetailsServiceImpl/adminDetailsServiceImpl)의 모호성 제거
+        DaoAuthenticationProvider provider =
+                new DaoAuthenticationProvider(userDetailsServiceImpl);
+        return new ProviderManager(provider);
     }
 
     @Bean

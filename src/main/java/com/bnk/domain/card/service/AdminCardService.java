@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import com.bnk.domain.admin.mapper.ApprovalMapper;
-import com.bnk.domain.admin.model.ApprovalLine;
 import com.bnk.domain.admin.model.ApprovalRequest;
 import com.bnk.domain.card.dto.request.AdminCardSearchRequest;
 import com.bnk.domain.card.dto.request.BenefitCreateRequest;
@@ -25,7 +24,6 @@ import com.bnk.domain.card.model.CardBenefit;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.response.PageResponse;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 

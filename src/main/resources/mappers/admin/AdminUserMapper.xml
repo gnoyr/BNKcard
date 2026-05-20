@@ -117,6 +117,13 @@
         WHERE  admin_id = #{adminId}
     </update>
 
+    <!-- Race Condition 방지: increment 직후 DB에서 실제 카운트 재조회 -->
+    <select id="getLoginFailCount" resultType="int">
+        SELECT login_fail_count
+        FROM   ADMIN_USERS
+        WHERE  admin_id = #{adminId}
+    </select>
+
     <update id="resetLoginFailCount">
         UPDATE ADMIN_USERS
         SET    login_fail_count = 0,
@@ -134,6 +141,16 @@
         UPDATE ADMIN_USERS
         SET    last_login_at = #{lastLoginAt}
         WHERE  admin_id = #{adminId}
+    </update>
+
+    <!-- 관리자가 일반 유저 계정 잠금을 강제 해제 -->
+    <update id="unlockUser">
+        UPDATE USERS
+        SET    locked_until     = NULL,
+               login_fail_count = 0,
+               updated_at       = SYSTIMESTAMP
+        WHERE  user_id    = #{userId}
+          AND  deleted_yn = 'N'
     </update>
 
     <insert id="insertAuditLog">
