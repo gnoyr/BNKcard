@@ -134,6 +134,13 @@
         WHERE  user_id = #{userId}
     </update>
 
+    <!-- Race Condition 방지: increment 직후 DB에서 실제 카운트 재조회 -->
+    <select id="getLoginFailCount" resultType="int">
+        SELECT login_fail_count
+        FROM   USERS
+        WHERE  user_id = #{userId}
+    </select>
+
     <update id="resetLoginFailCount">
         UPDATE USERS
         SET    login_fail_count = 0,
