@@ -4,13 +4,26 @@
 
 <mapper namespace="com.bnk.domain.card.mapper.CardContentMapper">
 
-    <select id="findByCardId"
-            resultType="com.bnk.domain.card.model2.CardContent">
+    <resultMap id="contentMap" type="com.bnk.domain.card.model2.CardContent">
+        <id     property="contentId"         column="content_id"/>
+        <result property="cardId"            column="card_id"/>
+        <result property="contentType"       column="content_type"/>
+        <result property="title"             column="title"/>
+        <result property="contentHtml"       column="content_html"/>
+        <result property="mobileContentHtml" column="mobile_content_html"/>
+        <result property="displayOrder"      column="display_order"/>
+        <result property="visibleYn"         column="visible_yn"/>
+        <result property="createdBy"         column="created_by"/>
+        <result property="createdAt"         column="created_at"/>
+        <result property="updatedAt"         column="updated_at"/>
+    </resultMap>
+
+    <select id="findByCardId" resultMap="contentMap">
         SELECT *
-        FROM CARD_CONTENT
-        WHERE card_id = #{cardId}
-        AND visible_yn = 'Y'
-        ORDER BY display_order ASC NULLS LAST
+        FROM   CARD_CONTENTS
+        WHERE  card_id    = #{cardId}
+          AND  visible_yn = 'Y'
+        ORDER  BY display_order ASC NULLS LAST
     </select>
 
 </mapper>
