@@ -51,4 +51,17 @@ public class AdminUserController {
             @AuthenticationPrincipal CustomAdminDetails ad) {
         return ApiResponse.toOk(adminUserService.getUserDetail(userId, ad.getAdminId()));
     }
+
+    /**
+     * [개선 #2] 유저 계정 잠금 강제 해제.
+     * USERS.locked_until = NULL, login_fail_count = 0.
+     * AUDIT_LOGS INSERT.
+     */
+    @PatchMapping("/users/{userId}/unlock")
+    public ResponseEntity<ApiResponse<Void>> unlockUser(
+            @PathVariable Long userId,
+            @AuthenticationPrincipal CustomAdminDetails ad) {
+        adminUserService.unlockUser(userId, ad.getAdminId());
+        return ApiResponse.toOk(null);
+    }
 }

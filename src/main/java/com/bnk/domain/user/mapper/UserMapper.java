@@ -39,6 +39,9 @@ public interface UserMapper {
 
     int incrementLoginFailCount(@Param("userId") Long userId);
 
+    /** Race Condition 방지: increment 후 DB에서 현재 카운트를 재조회 */
+    int getLoginFailCount(@Param("userId") Long userId);
+
     int resetLoginFailCount(@Param("userId") Long userId);
 
     int updateLockedUntil(@Param("userId") Long userId,
