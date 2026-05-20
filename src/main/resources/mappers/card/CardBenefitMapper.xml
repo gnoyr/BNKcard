@@ -47,30 +47,65 @@
         ORDER BY cb.card_id, cb.display_order ASC NULLS LAST
     </select>
 
-    <insert id="insertBenefit" useGeneratedKeys="true" keyProperty="benefitId">
-        INSERT INTO CARD_BENEFITS (
-            card_id, category_id, benefit_title, benefit_type,
-            discount_rate, discount_amount, point_rate, cashback_rate,
-            monthly_limit_amount, daily_limit_amount, minimum_payment_amount,
-            display_text, display_order, visible_yn, created_at
-        ) VALUES (
-            #{cardId},
-            #{categoryId,            jdbcType=NUMERIC},
-            #{benefitTitle},
-            #{benefitType},
-            #{discountRate,          jdbcType=DECIMAL},
-            #{discountAmount,        jdbcType=NUMERIC},
-            #{pointRate,             jdbcType=DECIMAL},
-            #{cashbackRate,          jdbcType=DECIMAL},
-            #{monthlyLimitAmount,    jdbcType=NUMERIC},
-            #{dailyLimitAmount,      jdbcType=NUMERIC},
-            #{minimumPaymentAmount,  jdbcType=NUMERIC},
-            #{displayText,           jdbcType=VARCHAR},
-            #{displayOrder,          jdbcType=NUMERIC},
-            'Y', SYSTIMESTAMP
-        )
-    </insert>
-
+    <insert id="insertBenefit">
+    <selectKey keyProperty="benefitId" resultType="long" order="AFTER">
+        SELECT SEQ_CARD_BENEFITS.CURRVAL FROM DUAL
+    </selectKey>
+	    INSERT INTO CARD_BENEFITS (
+	        card_id, category_id, benefit_title, benefit_type,
+	        discount_rate, discount_amount, point_rate, cashback_rate,
+	        monthly_limit_amount, daily_limit_amount, minimum_payment_amount,
+	        benefit_condition, display_text, display_order, visible_yn, created_at
+	    ) VALUES (
+	        #{cardId},
+	        #{categoryId,              jdbcType=NUMERIC},
+	        #{benefitTitle},
+	        #{benefitType},
+	        #{discountRate,            jdbcType=NUMERIC},
+	        #{discountAmount,          jdbcType=NUMERIC},
+	        #{pointRate,               jdbcType=NUMERIC},
+	        #{cashbackRate,            jdbcType=NUMERIC},
+	        #{monthlyLimitAmount,      jdbcType=NUMERIC},
+	        #{dailyLimitAmount,        jdbcType=NUMERIC},
+	        #{minimumPaymentAmount,    jdbcType=NUMERIC},
+	        #{benefitCondition,        jdbcType=CLOB},
+	        #{displayText,             jdbcType=VARCHAR},
+	        #{displayOrder,            jdbcType=NUMERIC},
+	        NVL(#{visibleYn,           jdbcType=CHAR}, 'Y'),
+	        SYSTIMESTAMP
+	    )
+	</insert>
+	
+	<insert id="insertBenefits">
+	    INSERT INTO CARD_BENEFITS (
+	        card_id, category_id, benefit_title, benefit_type,
+	        discount_rate, discount_amount, point_rate, cashback_rate,
+	        monthly_limit_amount, daily_limit_amount, minimum_payment_amount,
+	        benefit_condition, display_text, display_order, visible_yn, created_at
+	    )
+	    <foreach collection="benefitList" item="b" separator=" UNION ALL ">
+	        SELECT
+	            #{b.cardId},
+	            #{b.categoryId,           jdbcType=NUMERIC},
+	            #{b.benefitTitle},
+	            #{b.benefitType},
+	            #{b.discountRate,         jdbcType=NUMERIC},
+	            #{b.discountAmount,       jdbcType=NUMERIC},
+	            #{b.pointRate,            jdbcType=NUMERIC},
+	            #{b.cashbackRate,         jdbcType=NUMERIC},
+	            #{b.monthlyLimitAmount,   jdbcType=NUMERIC},
+	            #{b.dailyLimitAmount,     jdbcType=NUMERIC},
+	            #{b.minimumPaymentAmount, jdbcType=NUMERIC},
+	            #{b.benefitCondition,     jdbcType=CLOB},
+	            #{b.displayText,          jdbcType=VARCHAR},
+	            #{b.displayOrder,         jdbcType=NUMERIC},
+	            NVL(#{b.visibleYn,        jdbcType=CHAR}, 'Y'),
+	            SYSTIMESTAMP
+	        FROM DUAL
+	    </foreach>
+	</insert>
+	
+	
     <delete id="deleteByCardId">
         DELETE FROM CARD_BENEFITS WHERE card_id = #{cardId}
     </delete>
