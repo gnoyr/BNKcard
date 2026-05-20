@@ -74,10 +74,10 @@ dependencies {
 		exclude group: 'com.oracle.database.xml', module: 'xmlparserv2'
 	}
 	
-	//oci
-	runtimeOnly 'com.oracle.database.jdbc:ojdbc11-production:23.3.0.23.09'
-	
-	annotationProcessor 'org.projectlombok:lombok'
+	// ── Oracle OCI SDK (Object Storage) ───────────────────
+	implementation 'com.oracle.oci.sdk:oci-java-sdk-objectstorage:3.42.0'
+    implementation 'com.oracle.oci.sdk:oci-java-sdk-common:3.42.0'
+    implementation 'com.oracle.oci.sdk:oci-java-sdk-common-httpclient-jersey3:3.42.0'
 
 
 	// ── Lombok ────────────────────────────────────────────
