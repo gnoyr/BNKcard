@@ -37,7 +37,7 @@ public class ObjectStorageConfig {
 
     // 반환 타입을 AuthenticationDetailsProvider → AbstractAuthenticationDetailsProvider 로 변경
     @Bean
-    public AbstractAuthenticationDetailsProvider ociAuthProvider() throws IOException {
+    AbstractAuthenticationDetailsProvider ociAuthProvider() throws IOException {
 
         if ("simple".equalsIgnoreCase(authType)) {
             log.info("[OCI] 인증 방식: SimpleAuthenticationDetailsProvider (로컬 API Key)");
@@ -56,7 +56,7 @@ public class ObjectStorageConfig {
     }
 
     @Bean
-    public ObjectStorageClient objectStorageClient(
+    ObjectStorageClient objectStorageClient(
             AbstractAuthenticationDetailsProvider authProvider) {
 
         ObjectStorageClient client = ObjectStorageClient.builder()

@@ -6,6 +6,11 @@
       "description": "데이터베이스 접속 URL. Oracle Cloud Wallet 사용 시 jdbc:oracle:thin:@{서비스명}?TNS_ADMIN={Wallet 경로} 형식으로 입력합니다."
     },
     {
+      "name": "spring.datasource.driver-class-name",
+      "type": "java.lang.String",
+      "description": "JDBC 드라이버 클래스명. Oracle DB 사용 시 oracle.jdbc.OracleDriver 로 설정합니다."
+    },
+    {
       "name": "spring.datasource.username",
       "type": "java.lang.String",
       "description": "데이터베이스 접속 계정명."
@@ -13,12 +18,7 @@
     {
       "name": "spring.datasource.password",
       "type": "java.lang.String",
-      "description": "데이터베이스 접속 비밀번호."
-    },
-    {
-      "name": "spring.datasource.driver-class-name",
-      "type": "java.lang.String",
-      "description": "JDBC 드라이버 클래스명. Oracle DB 사용 시 oracle.jdbc.OracleDriver 로 설정합니다."
+      "description": "데이터베이스 접속 비밀번호. 외부에 노출되지 않도록 주의합니다."
     },
     {
       "name": "mybatis.mapper-locations",
@@ -119,6 +119,46 @@
       "name": "file.upload-dir",
       "type": "java.lang.String",
       "description": "파일 업로드 저장 경로. 절대 경로 또는 서버 루트 기준 상대 경로를 입력합니다. 예: /data/uploads"
+    },
+    {
+      "name": "oci.auth.type",
+      "type": "java.lang.String",
+      "description": "OCI 인증 방식. API 키 인증 사용 시 'API_KEY'로 설정합니다."
+    },
+    {
+      "name": "oci.region",
+      "type": "java.lang.String",
+      "description": "OCI 리소스가 위치한 리전 코드. 예: ap-seoul-1"
+    },
+    {
+      "name": "oci.tenancy-id",
+      "type": "java.lang.String",
+      "description": "OCI 테넌시 OCID. OCI 콘솔 → 프로파일 → 테넌시 정보에서 확인합니다."
+    },
+    {
+      "name": "oci.user-id",
+      "type": "java.lang.String",
+      "description": "OCI API 호출에 사용할 사용자 OCID. OCI 콘솔 → 프로파일 → 사용자 정보에서 확인합니다."
+    },
+    {
+      "name": "oci.fingerprint",
+      "type": "java.lang.String",
+      "description": "OCI API 서명 키의 지문(Fingerprint). API 키 등록 후 OCI 콘솔에서 확인합니다. 예: xx:xx:xx:...:xx"
+    },
+    {
+      "name": "oci.private-key-path",
+      "type": "java.lang.String",
+      "description": "OCI API 요청 서명에 사용할 RSA 개인키 파일 경로. 외부에 노출되지 않도록 주의합니다. 예: /home/user/.oci/oci_api_key.pem"
+    },
+    {
+      "name": "oci.namespace",
+      "type": "java.lang.String",
+      "description": "OCI Object Storage 네임스페이스. OCI 콘솔 → Object Storage → 버킷 목록 상단에서 확인합니다."
+    },
+    {
+      "name": "oci.bucket-name",
+      "type": "java.lang.String",
+      "description": "파일을 저장할 OCI Object Storage 버킷 이름. 예: bnkcard-files"
     }
   ]
 }
