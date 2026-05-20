@@ -4,8 +4,10 @@
 
 <mapper namespace="com.bnk.domain.ai.mapper.AiChatLogMapper">
 
-    <!-- user_id nullable — 비로그인 허용 -->
-    <insert id="insertChatLog" useGeneratedKeys="true" keyProperty="chatId">
+    <insert id="insertChatLog" parameterType="com.bnk.domain.ai.model.AiChatLog">
+	    <selectKey keyProperty="chatId" resultType="long" order="BEFORE">
+	        SELECT SEQ_AI_CHAT_LOGS.NEXTVAL FROM DUAL
+	    </selectKey>
         INSERT INTO AI_CHAT_LOGS (
             user_id, session_id, user_input, ai_response, created_at
         ) VALUES (
