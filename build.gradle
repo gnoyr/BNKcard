@@ -4,6 +4,13 @@ plugins {
 	id 'io.spring.dependency-management' version '1.1.7'
 }
 
+configurations {
+    all {
+        // 프로젝트 전체에서 Oracle XML 파서 강제 제외
+        exclude group: 'com.oracle.database.xml', module: 'xmlparserv2'
+    }
+}
+
 group = 'com.bnk'
 version = '0.0.1-SNAPSHOT'
 
@@ -30,9 +37,11 @@ ext {
 dependencies {
 
 	implementation platform('org.springframework.ai:spring-ai-bom:2.0.0-M6')
+	
 	//genai
     implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
     implementation 'org.springframework.ai:spring-ai-starter-model-google-genai-embedding'
+    
  	// JWT
     implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
@@ -60,17 +69,16 @@ dependencies {
 	implementation 'org.springframework.ai:spring-ai-starter-vector-store-qdrant'
 
 	// ── DB Driver ─────────────────────────────────────────
-	runtimeOnly 'com.oracle.database.jdbc:ojdbc11'
+	runtimeOnly('com.oracle.database.jdbc:ojdbc11-production:23.3.0.23.09') {
+		// MyBatis XML 파싱 충돌을 일으키는 Oracle XML 파서 제외
+		exclude group: 'com.oracle.database.xml', module: 'xmlparserv2'
+	}
+	
 	//oci
-	implementation 'com.oracle.database.security:oraclepki:21.11.0.0'
-	implementation 'com.oracle.database.security:osdt_cert:21.11.0.0'
-	implementation 'com.oracle.database.security:osdt_core:21.11.0.0'
+	runtimeOnly 'com.oracle.database.jdbc:ojdbc11-production:23.3.0.23.09'
 	
 	annotationProcessor 'org.projectlombok:lombok'
 
-
-	// ── Oracle Wallet (Autonomous DB SSL 접속 필수) ───────
-	runtimeOnly 'com.oracle.database.security:oraclepki'
 
 	// ── Lombok ────────────────────────────────────────────
 	compileOnly           'org.projectlombok:lombok'
