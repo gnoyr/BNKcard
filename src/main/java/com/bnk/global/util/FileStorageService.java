@@ -1,89 +1,80 @@
 package com.bnk.global.util;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.UUID;
-
-import org.springframework.beans.factory.annotation.Value;
+import lombok.Builder;
+import lombok.Getter;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import lombok.Builder;
-import lombok.Getter;
+import java.util.UUID;
 
+/**
+ * 파일 메타데이터 추출 서비스.
+ * <p>
+ * 변경 전: save() — 로컬 디스크 저장 + 메타데이터 반환.
+ * 변경 후: extractMeta() — 메타데이터만 추출. 실제 저장은 ObjectStorageService가 담당.
+ * </p>
+ * UploadResult 내부 클래스는 그대로 유지 — AdminTermsService에서 계속 사용.
+ */
 @Service
 public class FileStorageService {
 
-    @Value("${file.upload-dir}") //수정해야함
-    private String uploadDir;
+    // uploadDir 필드 제거 — 더 이상 로컬 저장 안 함
 
     /**
-     * 파일을 실제 물리 디렉토리에 저장하고, TermsFile에 바인딩할 상세 메타데이터 정보를 반환합니다.
+     * MultipartFile에서 저장에 필요한 메타데이터를 추출.
+     * <p>
+     * 기존 save()를 대체. 로컬 저장은 하지 않고 메타만 반환.
+     * filePath는 이 시점에서 비어있고, ObjectStorageService.upload() 완료 후
+     * AdminTermsService에서 반환된 URL로 채워 TermsFile에 저장.
+     * </p>
+     *
+     * @param file    업로드된 MultipartFile
+     * @param subDir  Object Storage 내 하위 경로 (예: "terms")
+     * @return 파일 메타데이터 (storedName, originalName, extension, size, mimeType)
      */
-    public UploadResult save(MultipartFile file, String subDir) {
+    public UploadResult extractMeta(MultipartFile file, String subDir) {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("업로드할 파일이 존재하지 않습니다.");
         }
 
-        // 1. 디렉토리 풀 경로 설정 및 자동 생성
-        String targetDirPath = uploadDir + File.separator + subDir;
-        File targetDir = new File(targetDirPath);
-        if (!targetDir.exists()) {
-            targetDir.mkdirs();
-        }
-
-        // 2. 오리지널 명칭 및 확장자 추출
         String originalFilename = file.getOriginalFilename();
         String extension = "";
         if (originalFilename != null && originalFilename.contains(".")) {
-            extension = originalFilename.substring(originalFilename.lastIndexOf(".")); // 예: .pdf
-        }
-        
-        // 3. 중복 방지용 UUID 파일 이름 생성
-        String storedName = UUID.randomUUID().toString() + extension;
-
-        // 4. 서버 저장 처리
-        File destinationFile = new File(targetDir, storedName);
-        try {
-            file.transferTo(destinationFile);
-        } catch (IOException e) {
-            throw new RuntimeException("물리 파일 저장 실패: " + originalFilename, e);
+            extension = originalFilename.substring(originalFilename.lastIndexOf("."));
         }
 
-        // 5. 파일 컨텐츠를 분석하여 MIME 타입 획득
-        String mimeType = "application/octet-stream";
-        try {
-            String detectedMime = Files.probeContentType(destinationFile.toPath());
-            if (detectedMime != null) {
-                mimeType = detectedMime;
-            }
-        } catch (IOException e) {
-            // MIME 인식 실패 시 기본 스트림 형식 유지
-        }
+        // Object Storage objectName: "terms/UUID.pdf"
+        String storedName = UUID.randomUUID() + extension;
+        String objectName = subDir + "/" + storedName;  // 버킷 내 저장 경로
 
-        // DB 기록용 웹 상대 경로 리턴
-        String filePath = "/" + subDir + "/" + storedName;
+        // MIME 타입: MultipartFile의 contentType 우선 사용
+        String mimeType = (file.getContentType() != null && !file.getContentType().isBlank())
+                ? file.getContentType()
+                : "application/octet-stream";
 
         return UploadResult.builder()
                 .originalName(originalFilename)
                 .storedName(storedName)
-                .filePath(filePath)
-                .fileExtension(extension.replace(".", "")) // 온점 제거한 순수 확장자 (예: pdf)
+                .objectName(objectName)   // Object Storage 경로 추가
+                .filePath("")             // 업로드 완료 후 URL로 설정
+                .fileExtension(extension.replace(".", ""))
                 .fileSize(file.getSize())
                 .mimeType(mimeType)
                 .build();
     }
 
     /**
-     * 파일 업로드 처리 결과를 모아서 반환하는 내부 DTO 컴포넌트
+     * 파일 메타데이터 결과 DTO.
+     * 기존 UploadResult 구조 유지 + objectName 필드 추가.
+     * AdminTermsService에서 계속 이 타입을 사용.
      */
     @Getter
     @Builder
     public static class UploadResult {
         private final String originalName;
         private final String storedName;
-        private final String filePath;
+        private final String objectName;   // Object Storage 내 경로 (예: "terms/UUID.pdf")
+        private final String filePath;     // Object Storage URL (업로드 후 채워짐)
         private final String fileExtension;
         private final Long fileSize;
         private final String mimeType;
