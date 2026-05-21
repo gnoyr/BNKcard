@@ -70,7 +70,7 @@ public class CardController {
     @GetMapping("/cards/top3")
     public ResponseEntity<ApiResponse<List<CardListResponse>>> getTop3Cards(
             @AuthenticationPrincipal(errorOnInvalidType = false) CustomUserDetails ud,
-            @RequestParam(required = false) String surveyResult) {
+            @RequestParam(name = "surveyResult", required = false) String surveyResult) {
         Long userId = ud != null ? ud.getUserId() : null;
         return ApiResponse.toOk(cardService.getTop3Cards(userId, surveyResult));
     }
@@ -81,7 +81,7 @@ public class CardController {
      */
     @GetMapping("/cards/{cardId}")
     public ResponseEntity<ApiResponse<CardDetailResponse>> getCardDetail(
-            @PathVariable Long cardId) {
+            @PathVariable("cardId") Long cardId) {
         return ApiResponse.toOk(cardService.getCardDetail(cardId));
     }
 
