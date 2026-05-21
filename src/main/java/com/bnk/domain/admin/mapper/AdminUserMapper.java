@@ -26,6 +26,9 @@ public interface AdminUserMapper {
 
     int incrementLoginFailCount(@Param("adminId") Long adminId);
 
+    /** Race Condition 방지: increment 후 DB에서 현재 카운트를 재조회 */
+    int getLoginFailCount(@Param("adminId") Long adminId);
+
     int resetLoginFailCount(@Param("adminId") Long adminId);
 
     int updateLockedUntil(@Param("adminId") Long adminId,
@@ -33,6 +36,9 @@ public interface AdminUserMapper {
 
     int updateLastLoginAt(@Param("adminId") Long adminId,
                           @Param("lastLoginAt") LocalDateTime lastLoginAt);
+
+    /** 관리자가 일반 유저 계정 잠금을 강제 해제 */
+    int unlockUser(@Param("userId") Long userId);
 
     /** AUDIT_LOGS INSERT */
     int insertAuditLog(@Param("actorType") String actorType,

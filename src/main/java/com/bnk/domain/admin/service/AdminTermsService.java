@@ -8,70 +8,146 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.bnk.domain.terms.dto.request.TermsCreateRequest;
+import com.bnk.domain.terms.dto.request.TermsStatusRequest;
 import com.bnk.domain.terms.mapper.TermsMapper;
 import com.bnk.domain.terms.model.Terms;
 import com.bnk.domain.terms.model.TermsFile;
 import com.bnk.domain.terms.service.PdfConvertService;
+import com.bnk.global.exception.BusinessException;
+import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.util.FileStorageService;
 import com.bnk.global.util.FileStorageService.UploadResult;
+import com.bnk.global.util.ObjectStorageService;  // ← 추가
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AdminTermsService {
-	
-	private final TermsMapper termsMapper;
-	private final PdfConvertService pdfConvertService; // 🔥 final 키워드 추가로 정상 주입 보장
-	private final FileStorageService fileStorageService; // 🔥 주입 누락되었던 필드 추가 및 연동
-	
-	@Transactional
-	public void registerTermsWithPdf(TermsCreateRequest request, MultipartFile pdfFile) throws IOException {
 
-	    // 1. TERMS 테이블에 약관 기본 정보 저장
-	    Terms terms = Terms.builder()
-	            .termsMasterId(request.getTermsMasterId())
-	            .version(request.getVersion())
-	            .contentHtml(request.getContentHtml())
-	            .requiredYn(request.getRequiredYn())
-	            .effectiveFrom(request.getEffectiveFrom())
-	            .build();
-	    termsMapper.insertTerms(terms);  // MyBatis 실행 후 래퍼 객체 내부 keyProperty에 의해 terms_id가 자동 생성 할당됨
+    private final TermsMapper termsMapper;
+    private final PdfConvertService pdfConvertService;
+    private final FileStorageService fileStorageService;
+    private final ObjectStorageService objectStorageService;  // ← 추가
 
-	    // 2. PDF 원본 저장 및 TermsFile 풍부한 도메인 스펙 바인딩
-	    UploadResult pdfResult = fileStorageService.save(pdfFile, "terms");
-	    
-	    TermsFile pdfTermsFile = TermsFile.builder()
-	            .termsId(terms.getTermsId())
-	            .fileType("PDF")
-	            .filePath(pdfResult.getFilePath())
-	            .originalName(pdfResult.getOriginalName())
-	            .storedName(pdfResult.getStoredName())
-	            .fileExtension(pdfResult.getFileExtension())
-	            .fileSize(pdfResult.getFileSize())
-	            .mimeType(pdfResult.getMimeType())
-	            .isPrimary("Y") // 원본 도큐먼트를 대표 플래그 처리
-	            .build();
-	    termsMapper.insertTermsFile(pdfTermsFile);
+    /**
+     * B-11 약관 신규 버전 등록 + PDF 변환 (RQ-B11, B-13).
+     * <p>
+     * 변경 전: 로컬 디스크에 PDF/JPG 저장 → 로컬 경로 DB 저장.
+     * 변경 후: Object Storage에 PDF/JPG 업로드 → Object Storage URL DB 저장.
+     * </p>
+     * Controller, Mapper, TermsFile 모델은 변경 없음.
+     */
+    @Transactional
+    public void registerTermsWithPdf(TermsCreateRequest request, MultipartFile pdfFile) throws IOException {
 
-	    // 3. PDF → JPG 변환 엔진 가동 후 페이지별 이미지 객체 생성 및 순차 저장
-	    List<String> imagePaths = pdfConvertService.convertPdfToImages(pdfFile);
-	    for (String imagePath : imagePaths) {
-	        // 파일 경로로부터 파일 단독 명칭만 파싱 처리
-	        String storedImageName = imagePath.substring(imagePath.lastIndexOf("/") + 1);
-	        String originalImageName = pdfResult.getOriginalName().replace(".pdf", ".jpg");
+        // ── 1. TERMS 기본 정보 INSERT (변경 없음) ─────────────────────────
+        Terms terms = Terms.builder()
+                .termsMasterId(request.getTermsMasterId())
+                .version(request.getVersion())
+                .contentHtml(request.getContentHtml())
+                .requiredYn(request.getRequiredYn())
+                .effectiveFrom(request.getEffectiveFrom())
+                .build();
+        termsMapper.insertTerms(terms);
 
-	        TermsFile imageTermsFile = TermsFile.builder()
-	                .termsId(terms.getTermsId())
-	                .fileType("IMAGE")
-	                .filePath(imagePath)
-	                .originalName(originalImageName)
-	                .storedName(storedImageName)
-	                .fileExtension("jpg")
-	                .mimeType("image/jpeg")
-	                .isPrimary("N")
-	                .build();
-	        termsMapper.insertTermsFile(imageTermsFile);
-	    }
-	}
+        // ── 2. PDF 메타데이터 추출 (로컬 저장 X) ──────────────────────────
+        // 기존: fileStorageService.save(pdfFile, "terms")  ← 로컬 저장
+        // 변경: fileStorageService.extractMeta(pdfFile, "terms")  ← 메타만 추출
+        UploadResult pdfMeta = fileStorageService.extractMeta(pdfFile, "terms");
+
+        // ── 3. Object Storage에 PDF 원본 업로드 ───────────────────────────
+        // pdfMeta.getObjectName() = "terms/UUID.pdf"
+        String pdfUrl = objectStorageService.upload(
+                pdfMeta.getObjectName(),
+                pdfFile.getBytes(),
+                pdfMeta.getMimeType()
+        );
+
+        // ── 4. TERMS_FILES INSERT (PDF) — filePath에 Object Storage URL 저장 ─
+        // 기존과 동일한 TermsFile 빌더 사용, filePath만 로컬경로 → OCI URL로 변경
+        termsMapper.insertTermsFile(TermsFile.builder()
+                .termsId(terms.getTermsId())
+                .fileType("PDF")
+                .filePath(pdfUrl)                      // ← Object Storage URL
+                .originalName(pdfMeta.getOriginalName())
+                .storedName(pdfMeta.getStoredName())
+                .fileExtension(pdfMeta.getFileExtension())
+                .fileSize(pdfMeta.getFileSize())
+                .mimeType(pdfMeta.getMimeType())
+                .isPrimary("Y")
+                .build());
+
+        // ── 5. PDF → JPG 변환 (메모리 기반) ──────────────────────────────
+        // 기존: pdfConvertService.convertPdfToImages()  ← 로컬 파일로 저장
+        // 변경: pdfConvertService.convertPdfToImageBytes()  ← byte[] 반환
+        List<byte[]> imageBytesList = pdfConvertService.convertPdfToImageBytes(pdfFile);
+
+        // ── 6. 페이지별 JPG Object Storage 업로드 + TERMS_FILES INSERT ────
+        // baseName = PDF UUID 부분만 추출 ("UUID") → JPG는 "UUID_page1.jpg" 형식
+        String baseName = pdfMeta.getStoredName()
+                .substring(0, pdfMeta.getStoredName().lastIndexOf("."));
+
+        for (int i = 0; i < imageBytesList.size(); i++) {
+            String imageStoredName = baseName + "_page" + (i + 1) + ".jpg";
+            String imageObjectName = "terms/" + imageStoredName;  // "terms/UUID_page1.jpg"
+
+            // Object Storage에 JPG 업로드
+            String imageUrl = objectStorageService.upload(
+                    imageObjectName,
+                    imageBytesList.get(i),
+                    "image/jpeg"
+            );
+
+            // 기존과 동일한 TermsFile 빌더 사용
+            termsMapper.insertTermsFile(TermsFile.builder()
+                    .termsId(terms.getTermsId())
+                    .fileType("IMAGE")
+                    .filePath(imageUrl)                // ← Object Storage URL
+                    .originalName(pdfMeta.getOriginalName().replace(".pdf", ".jpg"))
+                    .storedName(imageStoredName)
+                    .fileExtension("jpg")
+                    .mimeType("image/jpeg")
+                    .isPrimary("N")
+                    .build());
+        }
+
+        log.info("[약관등록] 완료: termsId={}, version={}, pdfUrl={}, pages={}",
+                terms.getTermsId(), request.getVersion(), pdfUrl, imageBytesList.size());
+    }
+
+    /**
+     * B-12 약관 상태 변경 — 변경 없음
+     */
+    @Transactional
+    public void changeTermsStatus(Long termsId, TermsStatusRequest request, Long adminId) {
+
+        Terms terms = termsMapper.findById(termsId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TERMS_NOT_FOUND));
+
+        String previousStatus = terms.getStatus();
+        String newStatus = request.getNewStatus();
+
+        if (previousStatus.equals(newStatus)) {
+            return;
+        }
+
+        termsMapper.updateTermsStatus(termsId, newStatus, adminId);
+        termsMapper.insertStatusHistory(termsId, previousStatus, newStatus,
+                adminId, request.getChangedReason());
+
+        if ("PUBLISHED".equals(newStatus) && "Y".equals(terms.getReconsentRequiredYn())) {
+            List<Long> userIds = termsMapper.findUserIdsForReconsent(termsId);
+            for (Long userId : userIds) {
+                termsMapper.insertNotificationHistory(termsId, userId, "EMAIL");
+            }
+            log.info("[약관상태변경] PUBLISHED → 재동의 알림 발송 대상: {}명, termsId={}",
+                    userIds.size(), termsId);
+        }
+
+        log.info("[약관상태변경] termsId={}, {} → {}, adminId={}",
+                termsId, previousStatus, newStatus, adminId);
+    }
 }
