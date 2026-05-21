@@ -198,7 +198,9 @@ public class AuthService {
     // ──────────────────────────────────────────────────────────────────
     // F-03 | 로그인
     // ──────────────────────────────────────────────────────────────────
-    @Transactional
+    // noRollbackFor: BusinessException(RuntimeException) 발생 시에도
+    // incrementLoginFailCount / updateLockedUntil 이 롤백되지 않도록 보장
+    @Transactional(noRollbackFor = BusinessException.class)
     public AuthTokenResult login(LoginRequest request) {
 
         User user = userMapper.findByEmail(request.getEmail())
@@ -312,7 +314,7 @@ public class AuthService {
     // ──────────────────────────────────────────────────────────────────
     // B-01 | 관리자 로그인
     // ──────────────────────────────────────────────────────────────────
-    @Transactional
+    @Transactional(noRollbackFor = BusinessException.class)
     public AuthTokenResult adminLogin(AdminLoginRequest request) {
 
         AdminUser admin = adminUserMapper.findByUsername(request.getUsername())

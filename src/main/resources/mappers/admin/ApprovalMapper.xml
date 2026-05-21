@@ -85,18 +85,21 @@
         </if>
     </select>
 
-    <insert id="insertApprovalRequest" useGeneratedKeys="true" keyProperty="approvalId">
-        INSERT INTO APPROVAL_REQUESTS (
-            request_type_code, requester_admin_id,
-            target_id, status_code, request_comment, requested_at
-        ) VALUES (
-            #{requestTypeCode}, #{requesterAdminId},
-            #{targetId,       jdbcType=NUMERIC},
-            'PENDING',
-            #{requestComment, jdbcType=VARCHAR},
-            SYSTIMESTAMP
-        )
-    </insert>
+    <insert id="insertApprovalRequest">
+	    <selectKey keyProperty="approvalId" resultType="long" order="AFTER">
+	        SELECT SEQ_APPROVAL_REQUESTS.CURRVAL FROM DUAL
+	    </selectKey>
+	    INSERT INTO APPROVAL_REQUESTS (
+	        request_type_code, requester_admin_id,
+	        target_id, status_code, request_comment, requested_at
+	    ) VALUES (
+	        #{requestTypeCode}, #{requesterAdminId},
+	        #{targetId,       jdbcType=NUMERIC},
+	        'PENDING',
+	        #{requestComment, jdbcType=VARCHAR},
+	        SYSTIMESTAMP
+	    )
+	</insert>
 
     <insert id="insertApprovalLine" useGeneratedKeys="true" keyProperty="approvalLineId">
         INSERT INTO APPROVAL_LINES (

@@ -1,55 +1,70 @@
 package com.bnk.domain.terms.service;
 
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-
-import javax.imageio.ImageIO;
-
+import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
-
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * PDF → JPG 변환 서비스.
+ * <p>
+ * 변경 전: 로컬 디스크에 JPG 파일로 저장 후 경로 반환.
+ * 변경 후: 메모리(byte[]) 기반으로 변환, Object Storage 업로드용 byte[] 리스트 반환.
+ *          → uploadDir 의존성 완전 제거.
+ * </p>
+ * AdminTermsService에서 호출:
+ *   List&lt;byte[]&gt; imageBytesList = pdfConvertService.convertPdfToImageBytes(pdfFile);
+ */
+@Slf4j
 @Service
 public class PdfConvertService {
 
-    @Value("${file.upload-dir}") //수정해야함
-    private String uploadDir;
-	
-    /**
-     * PDF 파일 → JPG 이미지 변환 후 파일로 기록 보관
-     * @return 저장 완료된 상대 경로 모음 컬렉션
-     */
-    public List<String> convertPdfToImages(MultipartFile pdfFile) throws IOException {
+    // uploadDir 필드 제거 — Object Storage 방식에서는 로컬 경로 불필요
 
-        List<String> savedPaths = new ArrayList<>();
-        String baseName = UUID.randomUUID().toString();
+    /**
+     * PDF → JPG 변환 (메모리 기반).
+     * <p>
+     * 기존 convertPdfToImages() 대체 메서드.
+     * 로컬 파일 생성 없이 페이지별 JPG를 byte[]로 반환.
+     * 반환된 byte[]를 ObjectStorageService.upload()로 바로 전달.
+     * </p>
+     *
+     * @param pdfFile 업로드된 PDF MultipartFile
+     * @return 페이지 순서대로 정렬된 JPG byte[] 목록 (1페이지 = index 0)
+     */
+    public List<byte[]> convertPdfToImageBytes(MultipartFile pdfFile) throws IOException {
+        List<byte[]> result = new ArrayList<>();
 
         try (PDDocument document = Loader.loadPDF(pdfFile.getBytes())) {
             PDFRenderer renderer = new PDFRenderer(document);
+            int totalPages = document.getNumberOfPages();
 
-            for (int page = 0; page < document.getNumberOfPages(); page++) {
-                // 150 DPI 렌더링 세팅
+            log.info("[PDF변환] 변환 시작: 파일명={}, 총 페이지={}", 
+                    pdfFile.getOriginalFilename(), totalPages);
+
+            for (int page = 0; page < totalPages; page++) {
+                // 150 DPI — 기존 설정 그대로 유지
                 BufferedImage image = renderer.renderImageWithDPI(page, 150, ImageType.RGB);
 
-                String fileName = baseName + "_page" + (page + 1) + ".jpg";
-                String filePath = uploadDir + "/terms/" + fileName;
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                ImageIO.write(image, "JPEG", baos);
+                result.add(baos.toByteArray());
 
-                File output = new File(filePath);
-                output.getParentFile().mkdirs();
-                ImageIO.write(image, "JPEG", output);
-
-                savedPaths.add("/terms/" + fileName); // 웹 연동용 공통 가상 경로 주입
+                log.debug("[PDF변환] 페이지 변환 완료: {}/{}", page + 1, totalPages);
             }
         }
-        return savedPaths;
+
+        log.info("[PDF변환] 변환 완료: 총 {}페이지", result.size());
+        return result;
     }
 }
