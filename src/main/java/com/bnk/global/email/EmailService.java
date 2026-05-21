@@ -46,7 +46,7 @@ public class EmailService {
     // ──────────────────────────────────────────────────────────────────
     @Async
     public void sendPasswordResetEmail(String to, String resetToken) {
-        String resetUrl = "http://localhost:8080/reset-password?token=" + resetToken;
+        String resetUrl = "http://localhost:8080/reset-password.html?token=" + resetToken;
         send(to,
              "[BNK\uce74\ub4dc] \ube44\ubc00\ubc88\ud638 \uc7ac\uc124\uc815 \uc548\ub0b4",
              buildPasswordResetHtml(resetUrl));

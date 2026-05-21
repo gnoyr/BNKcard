@@ -208,34 +208,40 @@
         </if>
     </select>
 
-    <insert id="insertCard" useGeneratedKeys="true" keyProperty="cardId">
-        INSERT INTO CARDS (
-            card_code, card_type, card_name, company_name, brand_name,
-            annual_fee_domestic, annual_fee_overseas, previous_month_spend,
-            minimum_age, maximum_age, target_user, summary_description,
-            searchable_yn, visible_yn, approval_required_yn,
-            card_status, publish_start_at, publish_end_at,
-            application_count, view_count,
-            created_by, created_at, deleted_yn
-        ) VALUES (
-            #{cardCode}, #{cardType}, #{cardName}, #{companyName},
-            #{brandName,         jdbcType=VARCHAR},
-            #{annualFeeDomestic},
-            #{annualFeeOverseas, jdbcType=NUMERIC},
-            #{previousMonthSpend,jdbcType=NUMERIC},
-            #{minimumAge,        jdbcType=NUMERIC},
-            #{maximumAge,        jdbcType=NUMERIC},
-            #{targetUser,        jdbcType=VARCHAR},
-            #{summaryDescription,jdbcType=VARCHAR},
-            'Y', 'Y', 'Y',
-            'DRAFT',
-            #{publishStartAt, jdbcType=TIMESTAMP},
-            #{publishEndAt,   jdbcType=TIMESTAMP},
-            0, 0,
-            #{createdBy, jdbcType=NUMERIC},
-            SYSTIMESTAMP, 'N'
-        )
-    </insert>
+	<insert id="insertCard">
+	    <selectKey keyProperty="cardId" resultType="long" order="AFTER">
+	        SELECT card_id
+	        FROM   CARDS
+	        WHERE  card_code = #{cardCode}
+	        FETCH FIRST 1 ROWS ONLY
+	    </selectKey>
+	    INSERT INTO CARDS (
+	        card_code, card_type, card_name, company_name, brand_name,
+	        annual_fee_domestic, annual_fee_overseas, previous_month_spend,
+	        minimum_age, maximum_age, target_user, summary_description,
+	        searchable_yn, visible_yn, approval_required_yn,
+	        card_status, publish_start_at, publish_end_at,
+	        application_count, view_count,
+	        created_by, created_at, deleted_yn
+	    ) VALUES (
+	        #{cardCode}, #{cardType}, #{cardName}, #{companyName},
+	        #{brandName,          jdbcType=VARCHAR},
+	        #{annualFeeDomestic},
+	        #{annualFeeOverseas,  jdbcType=NUMERIC},
+	        #{previousMonthSpend, jdbcType=NUMERIC},
+	        #{minimumAge,         jdbcType=NUMERIC},
+	        #{maximumAge,         jdbcType=NUMERIC},
+	        #{targetUser,         jdbcType=VARCHAR},
+	        #{summaryDescription, jdbcType=VARCHAR},
+	        'Y', 'Y', 'Y',
+	        'DRAFT',
+	        #{publishStartAt, jdbcType=TIMESTAMP},
+	        #{publishEndAt,   jdbcType=TIMESTAMP},
+	        0, 0,
+	        #{createdBy, jdbcType=NUMERIC},
+	        SYSTIMESTAMP, 'N'
+	    )
+	</insert>
 
     <update id="updateCardStatus">
         UPDATE CARDS

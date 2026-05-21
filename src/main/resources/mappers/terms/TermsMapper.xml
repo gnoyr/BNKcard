@@ -47,45 +47,27 @@
         WHERE  t.terms_id = #{termsId}
     </select>
 
-    <insert id="insertTerms" useGeneratedKeys="true" keyProperty="termsId">
-        INSERT INTO TERMS (
-            terms_master_id, version, content_html,
-            required_yn, reconsent_required_yn,
-            status, effective_from, effective_to,
-            document_hash, internal_note,
-            created_at, updated_at
-        ) VALUES (
-            #{termsMasterId}, #{version}, #{contentHtml},
-            #{requiredYn},
-            #{reconsentRequiredYn, jdbcType=VARCHAR},
-            'DRAFT',
-            #{effectiveFrom},
-            #{effectiveTo,         jdbcType=DATE},
-            #{documentHash,        jdbcType=VARCHAR},
-            #{internalNote,        jdbcType=VARCHAR},
-            SYSTIMESTAMP, SYSTIMESTAMP
-        )
-    </insert>
+    <insert id="insertTermsFile">
+	    <selectKey keyProperty="fileId" resultType="long" order="AFTER">
+	        SELECT SEQ_TERMS_FILES.CURRVAL FROM DUAL
+	    </selectKey>
+	    INSERT INTO TERMS_FILES (
+	        terms_id, file_type, file_path,
+	        original_name, stored_name, file_extension,
+	        file_size, mime_type, is_primary,
+	        uploaded_at
+	    ) VALUES (
+	        #{termsId}, #{fileType}, #{filePath},
+	        #{originalName},
+	        #{storedName,      jdbcType=VARCHAR},
+	        #{fileExtension,   jdbcType=VARCHAR},
+	        #{fileSize,        jdbcType=NUMERIC},
+	        #{mimeType,        jdbcType=VARCHAR},
+	        #{isPrimary},
+	        SYSTIMESTAMP
+	    )
+	</insert>
     
-    <!-- AdminTermsService에서 호출하는 약관 파일 저장 쿼리 -->
-    <insert id="insertTermsFile" useGeneratedKeys="true" keyProperty="fileId">
-    INSERT INTO TERMS_FILES (
-        terms_id, file_type, file_path,
-        original_name, stored_name, file_extension,
-        file_size, mime_type, is_primary,
-        uploaded_at
-    ) VALUES (
-        #{termsId}, #{fileType}, #{filePath},
-        #{originalName},
-        #{storedName,      jdbcType=VARCHAR},
-        #{fileExtension,   jdbcType=VARCHAR},
-        #{fileSize,        jdbcType=NUMERIC},
-        #{mimeType,        jdbcType=VARCHAR},
-        #{isPrimary},
-        SYSTIMESTAMP
-    )
-</insert>
-
     <update id="updateTermsStatus">
         UPDATE TERMS
         SET status     = #{status},
@@ -153,5 +135,15 @@
 	      AND  (t.effective_to IS NULL OR t.effective_to &gt;= SYSDATE)
 	    ORDER  BY ct.display_order ASC NULLS LAST
 	</select>
+	
+	<!-- TermsMapper.xml -->
+	<select id="findFilesByTermsId" resultType="com.bnk.domain.terms.model.TermsFile">
+	    SELECT file_id, terms_id, file_type, file_path,
+	           original_name, stored_name, file_extension,
+	           file_size, mime_type, is_primary, uploaded_at
+	    FROM   TERMS_FILES
+	    WHERE  terms_id = #{termsId}
+	    ORDER  BY is_primary DESC, uploaded_at ASC
+	</select>	
 	
 </mapper>
