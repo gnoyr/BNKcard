@@ -4,6 +4,10 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 비밀번호 재설정 링크 요청 DTO (F-22)
+ *
+ */
 @Getter
 @NoArgsConstructor
 public class FindPasswordRequest {
