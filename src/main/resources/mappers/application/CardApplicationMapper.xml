@@ -22,20 +22,23 @@
         <result property="cardName"           column="card_name"/>
     </resultMap>
 
-    <insert id="insertApplication" useGeneratedKeys="true" keyProperty="applicationId">
-        INSERT INTO CARD_APPLICATIONS (
-            user_id, card_id, application_status, apply_channel,
-            requested_limit, application_comment,
-            applied_at, created_at, updated_at
-        ) VALUES (
-            #{userId}, #{cardId},
-            'REQUESTED',
-            #{applyChannel},
-            #{requestedLimit,     jdbcType=NUMERIC},
-            #{applicationComment, jdbcType=VARCHAR},
-            SYSTIMESTAMP, SYSTIMESTAMP, SYSTIMESTAMP
-        )
-    </insert>
+	<insert id="insertApplication">
+	    <selectKey keyProperty="applicationId" resultType="long" order="AFTER">
+	        SELECT SEQ_CARD_APPLICATIONS.CURRVAL FROM DUAL
+	    </selectKey>
+	    INSERT INTO CARD_APPLICATIONS (
+	        user_id, card_id, application_status, apply_channel,
+	        requested_limit, application_comment,
+	        applied_at, created_at, updated_at
+	    ) VALUES (
+	        #{userId}, #{cardId},
+	        'REQUESTED',
+	        #{applyChannel},
+	        #{requestedLimit,     jdbcType=NUMERIC},
+	        #{applicationComment, jdbcType=VARCHAR},
+	        SYSTIMESTAMP, SYSTIMESTAMP, SYSTIMESTAMP
+	    )
+	</insert>
 
     <select id="findById" resultMap="appMap">
         SELECT ca.*, c.card_name

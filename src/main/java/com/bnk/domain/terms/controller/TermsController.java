@@ -1,6 +1,7 @@
 package com.bnk.domain.terms.controller;
 
 import com.bnk.domain.terms.dto.request.TermsAgreementRequest;
+import com.bnk.domain.terms.dto.response.TermsFileResponse;
 import com.bnk.domain.terms.dto.response.TermsPackageResponse;
 import com.bnk.domain.terms.service.TermsService;
 import com.bnk.global.auth.CustomUserDetails;
@@ -42,4 +43,15 @@ public class TermsController {
             @AuthenticationPrincipal CustomUserDetails ud) {
         return ApiResponse.toCreated(termsService.agreeTerms(request, ud.getUserId()));
     }
+    
+    /**
+     * 약관 파일 URL 조회 (PDF 다운로드용).
+     * TERMS_FILES에서 is_primary='Y'인 PDF URL 반환.
+     */
+    @GetMapping("/{termsId}/files")
+    public ResponseEntity<ApiResponse<List<TermsFileResponse>>> getTermsFiles(
+            @PathVariable Long termsId) {
+        return ApiResponse.toOk(termsService.getTermsFiles(termsId));
+    }
+    
 }

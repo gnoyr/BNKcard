@@ -10,10 +10,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import com.bnk.domain.terms.dto.request.TermsAgreementRequest;
+import com.bnk.domain.terms.dto.response.TermsFileResponse;
 import com.bnk.domain.terms.dto.response.TermsPackageResponse;
 import com.bnk.domain.terms.mapper.TermsMapper;
 import com.bnk.domain.terms.mapper.UserTermsAgreementMapper;
 import com.bnk.domain.terms.model.Terms;
+import com.bnk.domain.terms.model.TermsFile;
 import com.bnk.domain.terms.model.UserTermsAgreement;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
@@ -95,6 +97,29 @@ public class TermsService {
 
         return agreements.stream()
                 .map(UserTermsAgreement::getTermsId)
+                .collect(Collectors.toList());
+    }
+    
+    // TermsService.java에 추가
+    public List<TermsFileResponse> getTermsFiles(Long termsId) {
+    	// 약관 존재 여부 확인
+        termsMapper.findById(termsId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TERMS_NOT_FOUND));
+
+        List<TermsFile> files = termsMapper.findFilesByTermsId(termsId);
+        
+        return files.stream()
+                .map(f -> TermsFileResponse.builder()
+                        .fileId(f.getFileId())
+                        .termsId(f.getTermsId())
+                        .fileType(f.getFileType())
+                        .filePath(f.getFilePath())
+                        .originalName(f.getOriginalName())
+                        .fileExtension(f.getFileExtension())
+                        .fileSize(f.getFileSize())
+                        .mimeType(f.getMimeType())
+                        .isPrimary(f.getIsPrimary())
+                        .build())
                 .collect(Collectors.toList());
     }
 }
