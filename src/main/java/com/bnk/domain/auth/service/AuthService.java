@@ -3,7 +3,6 @@ package com.bnk.domain.auth.service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -199,7 +198,9 @@ public class AuthService {
     // ──────────────────────────────────────────────────────────────────
     // F-03 | 로그인
     // ──────────────────────────────────────────────────────────────────
-    @Transactional
+    // noRollbackFor: BusinessException(RuntimeException) 발생 시에도
+    // incrementLoginFailCount / updateLockedUntil 이 롤백되지 않도록 보장
+    @Transactional(noRollbackFor = BusinessException.class)
     public AuthTokenResult login(LoginRequest request) {
 
         User user = userMapper.findByEmail(request.getEmail())
@@ -313,17 +314,24 @@ public class AuthService {
     // ──────────────────────────────────────────────────────────────────
     // B-01 | 관리자 로그인
     // ──────────────────────────────────────────────────────────────────
-    @Transactional
+    @Transactional(noRollbackFor = BusinessException.class)
     public AuthTokenResult adminLogin(AdminLoginRequest request) {
 
         AdminUser admin = adminUserMapper.findByUsername(request.getUsername())
                 .orElseThrow(() -> new BusinessException(ErrorCode.ADMIN_NOT_FOUND));
 
-        // 계정 잠금 여부 검증 — 잔여 시간 detail 포함 (개선 #3)
-        validateAdminStatus(admin);
+        if (admin.getLockedUntil() != null && admin.getLockedUntil().isAfter(LocalDateTime.now())) {
+            throw new BusinessException(ErrorCode.ADMIN_ACCOUNT_LOCKED);
+        }
 
         if (!passwordEncoder.matches(request.getPassword(), admin.getPasswordHash())) {
-            handleAdminLoginFail(admin);
+            adminUserMapper.incrementLoginFailCount(admin.getAdminId());
+            int newFailCount = admin.getLoginFailCount() + 1;
+            if (newFailCount >= MAX_LOGIN_FAIL) {
+                LocalDateTime lockUntil = LocalDateTime.now().plusMinutes(LOCK_DURATION_MIN);
+                adminUserMapper.updateLockedUntil(admin.getAdminId(), lockUntil);
+                log.warn("[관리자로그인] 계정 잠금: adminId={}, until={}", admin.getAdminId(), lockUntil);
+            }
             throw new BusinessException(ErrorCode.INVALID_PASSWORD);
         }
 
@@ -358,65 +366,22 @@ public class AuthService {
         return result;
     }
 
-    /**
-     * [개선 #3] 일반 유저 계정 상태 검증.
-     * 잠금 상태일 경우 잔여 시간을 ErrorResponse.detail에 포함하여 throw.
-     * 프론트엔드에서 "N분 후 재시도 가능합니다" 메시지를 직접 렌더링할 수 있다.
-     */
     private void validateUserStatus(User user) {
         if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(LocalDateTime.now())) {
-            long minutesLeft = ChronoUnit.MINUTES.between(LocalDateTime.now(), user.getLockedUntil()) + 1;
-            String detail = String.format("%d분 후 재시도 가능합니다. (잠금 해제: %s)",
-                    minutesLeft,
-                    user.getLockedUntil().format(DateTimeFormatter.ofPattern("HH:mm")));
-            throw new BusinessException(ErrorCode.ACCOUNT_LOCKED, detail);
+            throw new BusinessException(ErrorCode.ACCOUNT_LOCKED);
         }
         String status = user.getStatusCode();
         if ("SUSPENDED".equals(status)) throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED);
         if ("WITHDRAWN".equals(status))  throw new BusinessException(ErrorCode.ACCOUNT_WITHDRAWN);
     }
 
-    /**
-     * [개선 #2·#3] 관리자 계정 상태 검증 — validateUserStatus와 대칭 구조.
-     * 기존 adminLogin 내 인라인 체크를 헬퍼로 분리하여 일관성 확보.
-     * 잠금 잔여 시간을 detail에 포함하여 throw.
-     */
-    private void validateAdminStatus(AdminUser admin) {
-        if (admin.getLockedUntil() != null && admin.getLockedUntil().isAfter(LocalDateTime.now())) {
-            long minutesLeft = ChronoUnit.MINUTES.between(LocalDateTime.now(), admin.getLockedUntil()) + 1;
-            String detail = String.format("%d분 후 재시도 가능합니다. (잠금 해제: %s)",
-                    minutesLeft,
-                    admin.getLockedUntil().format(DateTimeFormatter.ofPattern("HH:mm")));
-            throw new BusinessException(ErrorCode.ADMIN_ACCOUNT_LOCKED, detail);
-        }
-    }
-
-    /**
-     * [개선 #1] 일반 유저 로그인 실패 처리 — Race Condition 방지.
-     * increment 후 애플리케이션 레벨 계산(user.getLoginFailCount() + 1) 대신
-     * DB에서 현재 카운트를 재조회하여 동시 요청이 몰려도 정확한 기준으로 잠금을 적용한다.
-     */
     private void handleLoginFail(User user) {
         userMapper.incrementLoginFailCount(user.getUserId());
-        int currentFailCount = userMapper.getLoginFailCount(user.getUserId()); // DB 재조회
-        if (currentFailCount >= MAX_LOGIN_FAIL) {
+        int newFailCount = user.getLoginFailCount() + 1;
+        if (newFailCount >= MAX_LOGIN_FAIL) {
             LocalDateTime lockUntil = LocalDateTime.now().plusMinutes(LOCK_DURATION_MIN);
             userMapper.updateLockedUntil(user.getUserId(), lockUntil);
             log.warn("[로그인실패] 계정 잠금: userId={}, until={}", user.getUserId(), lockUntil);
-        }
-    }
-
-    /**
-     * [개선 #1·#2] 관리자 로그인 실패 처리 — Race Condition 방지 + 헬퍼 분리.
-     * handleLoginFail과 동일한 패턴으로 DB 재조회 방식 적용.
-     */
-    private void handleAdminLoginFail(AdminUser admin) {
-        adminUserMapper.incrementLoginFailCount(admin.getAdminId());
-        int currentFailCount = adminUserMapper.getLoginFailCount(admin.getAdminId()); // DB 재조회
-        if (currentFailCount >= MAX_LOGIN_FAIL) {
-            LocalDateTime lockUntil = LocalDateTime.now().plusMinutes(LOCK_DURATION_MIN);
-            adminUserMapper.updateLockedUntil(admin.getAdminId(), lockUntil);
-            log.warn("[관리자로그인] 계정 잠금: adminId={}, until={}", admin.getAdminId(), lockUntil);
         }
     }
 }
