@@ -12,5 +12,5 @@ public class EmailVerifyRequest {
     private String email;
 
     @NotBlank(message = "인증 토큰을 입력해주세요.")
-    private String token;
+    private String code;
 }
