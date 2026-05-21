@@ -203,8 +203,6 @@ footer { text-align: center; font-size: 11px; color: #9CA3AF;
   <span id="sb-label">로그인 중</span>
   <span style="color:#9CA3AF">Access</span>
   <span class="sb-time" id="sb-access-time">--:--:--</span>
-  <span style="color:#9CA3AF">Refresh</span>
-  <span class="sb-time" id="sb-refresh-time">--일 --:--:--</span>
   <button class="sb-refresh-btn" onclick="doRefresh()">↻ 재발급</button>
 </div>
 
@@ -547,13 +545,12 @@ async function api(method, path, body, logId) {
 /* ════════════════════════════════════
    SESSION TIMER
 ════════════════════════════════════ */
-const TTL = { access: 7200, refresh: 604800 };
-let T = { accessExpiry: null, refreshExpiry: null, ticker: null };
+const TTL = { access: 7200 };
+let T = { accessExpiry: null, ticker: null };
 
 function startSession(role = '일반') {
   const now = Date.now();
-  T.accessExpiry  = now + TTL.access  * 1000;
-  T.refreshExpiry = now + TTL.refresh * 1000;
+  T.accessExpiry = now + TTL.access * 1000;
   $('sb-label').textContent = role === '관리자' ? '관리자 로그인 중' : '로그인 중';
   $('nav-session-label').textContent = role === '관리자' ? '👑 관리자' : '👤 일반';
   $('nav-logout').style.display = '';
@@ -570,7 +567,7 @@ function resetAccessTimer() {
 
 function clearSession() {
   if (T.ticker) { clearInterval(T.ticker); T.ticker = null; }
-  T.accessExpiry = T.refreshExpiry = null;
+  T.accessExpiry = null;
   $('session-bar').classList.remove('on');
   $('nav-logout').style.display = 'none';
   $('nav-session-label').textContent = '';
@@ -578,18 +575,12 @@ function clearSession() {
 
 function tickSession() {
   const now   = Date.now();
-  const aLeft = Math.max(0, Math.round((T.accessExpiry  - now) / 1000));
-  const rLeft = Math.max(0, Math.round((T.refreshExpiry - now) / 1000));
+  const aLeft = Math.max(0, Math.round((T.accessExpiry - now) / 1000));
 
   const aEl  = $('sb-access-time');
   const aCls = aLeft > 120 ? 'ok' : aLeft > 30 ? 'expiring' : 'expired';
   aEl.textContent = fmtHMS(aLeft);
   aEl.className = `sb-time ${aCls}`;
-
-  const rEl  = $('sb-refresh-time');
-  const rCls = rLeft > 86400 ? 'ok' : rLeft > 3600 ? 'expiring' : 'expired';
-  rEl.textContent = fmtDHMS(rLeft);
-  rEl.className = `sb-time ${rCls}`;
 
   $('sb-dot').className = `sb-dot${aCls === 'ok' ? '' : ' ' + aCls}`;
 
@@ -603,15 +594,6 @@ function fmtHMS(sec) {
   const s = String(sec % 60).padStart(2, '0');
   return `${h}:${m}:${s}`;
 }
-function fmtDHMS(sec) {
-  if (sec <= 0) return '만료됨';
-  const d = Math.floor(sec / 86400);
-  const h = String(Math.floor((sec % 86400) / 3600)).padStart(2, '0');
-  const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
-  const s = String(sec % 60).padStart(2, '0');
-  return d > 0 ? `${d}일 ${h}:${m}:${s}` : `${h}:${m}:${s}`;
-}
-
 /* ════════════════════════════════════
    LOGIN  [F-03]
 ════════════════════════════════════ */
