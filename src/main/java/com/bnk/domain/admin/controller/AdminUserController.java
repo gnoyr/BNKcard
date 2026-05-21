@@ -47,7 +47,7 @@ public class AdminUserController {
      */
     @GetMapping("/users/{userId}")
     public ResponseEntity<ApiResponse<AdminUserResponse>> getUserDetail(
-            @PathVariable Long userId,
+            @PathVariable("userId") Long userId,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         return ApiResponse.toOk(adminUserService.getUserDetail(userId, ad.getAdminId()));
     }
@@ -59,7 +59,7 @@ public class AdminUserController {
      */
     @PatchMapping("/users/{userId}/unlock")
     public ResponseEntity<ApiResponse<Void>> unlockUser(
-            @PathVariable Long userId,
+            @PathVariable("userId") Long userId,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         adminUserService.unlockUser(userId, ad.getAdminId());
         return ApiResponse.toOk(null);

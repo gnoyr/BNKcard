@@ -30,11 +30,11 @@ public class ApprovalController {
     /**
      * 결재 승인 (RQ-B07).
      * @Transactional: APPROVAL_LINES → APPROVAL_REQUESTS → CARD_VERSIONS.snapshot_json 역직렬화
-     * → CARDS UPDATE → CARDS.card_status='PUBLISHED'
+     * → CARDS UPDATE → CARDS.card_status='APPROVED'
      */
     @PostMapping("/{approvalId}/approve")
     public ResponseEntity<ApiResponse<Void>> approveRequest(
-            @PathVariable Long approvalId,
+            @PathVariable("approvalId") Long approvalId,
             @RequestBody @Valid ApprovalActionRequest request,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         approvalService.approve(approvalId, request, ad.getAdminId());
@@ -48,7 +48,7 @@ public class ApprovalController {
      */
     @PostMapping("/{approvalId}/reject")
     public ResponseEntity<ApiResponse<Void>> rejectRequest(
-            @PathVariable Long approvalId,
+            @PathVariable("approvalId") Long approvalId,
             @RequestBody @Valid ApprovalActionRequest request,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         approvalService.reject(approvalId, request, ad.getAdminId());
