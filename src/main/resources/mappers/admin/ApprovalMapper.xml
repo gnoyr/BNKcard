@@ -101,13 +101,16 @@
 	    )
 	</insert>
 
-    <insert id="insertApprovalLine" useGeneratedKeys="true" keyProperty="approvalLineId">
-        INSERT INTO APPROVAL_LINES (
-            approval_id, approver_admin_id, approval_order, status_code
-        ) VALUES (
-            #{approvalId}, #{approverAdminId}, #{approvalOrder}, 'PENDING'
-        )
-    </insert>
+	<insert id="insertApprovalLine">
+	    <selectKey keyProperty="approvalLineId" resultType="long" order="AFTER">
+	        SELECT SEQ_APPROVAL_LINES.CURRVAL FROM DUAL
+	    </selectKey>
+	    INSERT INTO APPROVAL_LINES (
+	        approval_id, approver_admin_id, approval_order, status_code
+	    ) VALUES (
+	        #{approvalId}, #{approverAdminId}, #{approvalOrder}, 'PENDING'
+	    )
+	</insert>
 
     <update id="updateLineStatus">
         UPDATE APPROVAL_LINES
