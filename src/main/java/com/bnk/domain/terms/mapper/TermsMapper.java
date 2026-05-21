@@ -40,4 +40,8 @@ public interface TermsMapper {
                                   @Param("notificationType") String notificationType);
     
     List<CardDetailResponse.TermsFileDto> findTermsFilesByCardId(@Param("cardId") Long cardId);
+    
+    // TermsMapper.java
+    /** termsId로 파일 목록 조회 (PDF + IMAGE 전체) */
+    List<TermsFile> findFilesByTermsId(@Param("termsId") Long termsId);
 }
