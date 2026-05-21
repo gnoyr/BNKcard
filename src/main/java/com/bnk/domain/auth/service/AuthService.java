@@ -103,7 +103,7 @@ public class AuthService {
         String codeKey  = KEY_VERIFY_CODE + request.getEmail();
         String savedCode = tokenStore.get(codeKey);
 
-        if (savedCode == null || !savedCode.equals(request.getToken())) {
+        if (savedCode == null || !savedCode.equals(request.getCode())) {
             throw new BusinessException(ErrorCode.VERIFY_TOKEN_INVALID);
         }
 
