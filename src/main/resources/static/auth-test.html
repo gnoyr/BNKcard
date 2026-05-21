@@ -652,7 +652,7 @@ async function promptAdminLogin() {
    SIGNUP
 ════════════════════════════════════ */
 async function loadTerms() {
-  const r = await api('GET', '/api/terms/package?type=SIGNUP', null, 'log-terms');
+  const r = await api('GET', '/api/terms/packages/SIGNUP', null, 'log-terms');
   const list = $('terms-list');
   $('terms-loading').style.display = 'none';
 
