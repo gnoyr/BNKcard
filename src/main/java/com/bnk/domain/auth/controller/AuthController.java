@@ -91,19 +91,28 @@ public class AuthController {
 
     /**
      * 로그아웃 — DB 세션 revoke + 쿠키 삭제
+     *
+     * 비로그인 상태의 로그아웃 요청은 쿠키만 삭제하고 정상 응답 반환한다.
      */
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
-            @AuthenticationPrincipal CustomUserDetails ud,
+            @AuthenticationPrincipal(errorOnInvalidType = false) CustomUserDetails ud,
             HttpServletResponse response) {
-        authService.logout(ud.getUserId());
+
+        // [FIX] ud == null: 비로그인(토큰 없음 또는 만료) 상태 → DB revoke 생략, 쿠키만 삭제
+        if (ud != null) {
+            authService.logout(ud.getUserId());
+        }
+
+        // 쿠키는 인증 상태와 무관하게 항상 삭제 (브라우저 잔류 쿠키 제거)
         response.addHeader(HttpHeaders.SET_COOKIE, cookieUtil.deleteAccessCookie().toString());
         response.addHeader(HttpHeaders.SET_COOKIE, cookieUtil.deleteRefreshCookie().toString());
         return ApiResponse.toNoContent();
     }
 
     /**
-     * 아이디 찾기
+     * 아이디 찾기 (F-20)
+     * 명세 경로: /api/auth/find-id (AuthController 처리 — 명세서 업데이트 완료)
      */
     @PostMapping("/find-id")
     public ResponseEntity<ApiResponse<FindIdResponse>> findId(
@@ -112,7 +121,8 @@ public class AuthController {
     }
 
     /**
-     * 비밀번호 재설정 링크 요청
+     * 비밀번호 재설정 링크 요청 (F-22)
+     * 명세 경로: /api/auth/find-password (AuthController 처리 — 명세서 업데이트 완료)
      */
     @PostMapping("/find-password")
     public ResponseEntity<ApiResponse<Void>> findPassword(
