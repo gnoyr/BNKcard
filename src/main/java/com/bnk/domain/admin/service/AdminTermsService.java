@@ -58,13 +58,13 @@ public class AdminTermsService {
         // 변경: fileStorageService.extractMeta(pdfFile, "terms")  ← 메타만 추출
         UploadResult pdfMeta = fileStorageService.extractMeta(pdfFile, "terms");
 
-        // ── 3. Object Storage에 PDF 원본 업로드 ───────────────────────────
-        // pdfMeta.getObjectName() = "terms/UUID.pdf"
-        String pdfUrl = objectStorageService.upload(
-                pdfMeta.getObjectName(),
-                pdfFile.getBytes(),
-                pdfMeta.getMimeType()
-        );
+     // ── 3. Object Storage에 PDF 원본 업로드 ───────────────────────────
+        objectStorageService.upload(
+        		pdfMeta.getObjectName(),
+        		pdfFile.getBytes(), 
+        		pdfMeta.getMimeType());
+        // PAR URL을 filePath에 저장 (외부 접근 가능)
+        String pdfUrl = objectStorageService.createDownloadUrl(pdfMeta.getObjectName());
 
         // ── 4. TERMS_FILES INSERT (PDF) — filePath에 Object Storage URL 저장 ─
         // 기존과 동일한 TermsFile 빌더 사용, filePath만 로컬경로 → OCI URL로 변경
@@ -94,12 +94,12 @@ public class AdminTermsService {
             String imageStoredName = baseName + "_page" + (i + 1) + ".jpg";
             String imageObjectName = "terms/" + imageStoredName;  // "terms/UUID_page1.jpg"
 
-            // Object Storage에 JPG 업로드
-            String imageUrl = objectStorageService.upload(
-                    imageObjectName,
-                    imageBytesList.get(i),
-                    "image/jpeg"
-            );
+            objectStorageService.upload(
+            		imageObjectName, 
+            		imageBytesList.get(i), 
+            		"image/jpeg");
+            
+            String imageUrl = objectStorageService.createDownloadUrl(imageObjectName);
 
             // 기존과 동일한 TermsFile 빌더 사용
             termsMapper.insertTermsFile(TermsFile.builder()

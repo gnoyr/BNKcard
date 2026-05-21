@@ -63,44 +63,45 @@
     </select>
 
     <insert id="insertCard">
-        <selectKey keyProperty="cardId" resultType="long" order="AFTER">
-            SELECT card_id FROM CARDS WHERE card_code = #{cardCode}
-            FETCH FIRST 1 ROWS ONLY
-        </selectKey>
-        INSERT INTO CARDS (
-            card_code, card_type, card_name, company_name, company_code,
-            brand_name,
-            annual_fee_domestic, annual_fee_overseas, previous_month_spend,
-            minimum_age, maximum_age,
-            credit_limit_min, credit_limit_max,
-            target_user, summary_description,
-            searchable_yn, visible_yn, approval_required_yn,
-            card_status, publish_start_at, publish_end_at,
-            application_count,
-            created_by, created_at, deleted_yn
-        ) VALUES (
-            #{cardCode}, #{cardType}, #{cardName}, #{companyName}, '01',
-            #{brandName,          jdbcType=VARCHAR},
-            #{annualFeeDomestic},
-            #{annualFeeOverseas,  jdbcType=NUMERIC},
-            #{previousMonthSpend, jdbcType=NUMERIC},
-            #{minimumAge,         jdbcType=NUMERIC},
-            #{maximumAge,         jdbcType=NUMERIC},
-            #{creditLimitMin,     jdbcType=NUMERIC},
-            #{creditLimitMax,     jdbcType=NUMERIC},
-            #{targetUser,         jdbcType=VARCHAR},
-            #{summaryDescription, jdbcType=VARCHAR},
-            NVL(#{searchableYn,       jdbcType=CHAR}, 'Y'),
-            NVL(#{visibleYn,          jdbcType=CHAR}, 'Y'),
-            NVL(#{approvalRequiredYn, jdbcType=CHAR}, 'Y'),
-            NVL(#{cardStatus,         jdbcType=VARCHAR}, 'DRAFT'),
-            #{publishStartAt, jdbcType=TIMESTAMP},
-            #{publishEndAt,   jdbcType=TIMESTAMP},
-            0,
-            #{createdBy,  jdbcType=NUMERIC},
-            SYSTIMESTAMP, 'N'
-        )
-    </insert>
+	    <selectKey keyProperty="cardId" resultType="long" order="AFTER">
+	        SELECT card_id FROM CARDS WHERE card_code = #{cardCode}
+	        FETCH FIRST 1 ROWS ONLY
+	    </selectKey>
+	    INSERT INTO CARDS (
+	        card_code, card_type, card_name, company_name, company_code,
+	        brand_name,
+	        annual_fee_domestic, annual_fee_overseas, previous_month_spend,
+	        minimum_age, maximum_age,
+	        credit_limit_min, credit_limit_max,
+	        target_user, summary_description,
+	        searchable_yn, visible_yn, approval_required_yn,
+	        card_status, publish_start_at, publish_end_at,
+	        application_count,
+	        created_by, created_at, deleted_yn
+	    ) VALUES (
+	        #{cardCode}, #{cardType}, #{cardName}, #{companyName},
+	        NVL(#{companyCode, jdbcType=VARCHAR}, '01'),   <!-- ← 파라미터로 변경, 기본값 '01' 유지 -->
+	        #{brandName,          jdbcType=VARCHAR},
+	        #{annualFeeDomestic},
+	        #{annualFeeOverseas,  jdbcType=NUMERIC},
+	        #{previousMonthSpend, jdbcType=NUMERIC},
+	        #{minimumAge,         jdbcType=NUMERIC},
+	        #{maximumAge,         jdbcType=NUMERIC},
+	        #{creditLimitMin,     jdbcType=NUMERIC},
+	        #{creditLimitMax,     jdbcType=NUMERIC},
+	        #{targetUser,         jdbcType=VARCHAR},
+	        #{summaryDescription, jdbcType=VARCHAR},
+	        NVL(#{searchableYn,       jdbcType=CHAR}, 'Y'),
+	        NVL(#{visibleYn,          jdbcType=CHAR}, 'Y'),
+	        NVL(#{approvalRequiredYn, jdbcType=CHAR}, 'Y'),
+	        NVL(#{cardStatus,         jdbcType=VARCHAR}, 'DRAFT'),
+	        #{publishStartAt, jdbcType=TIMESTAMP},
+	        #{publishEndAt,   jdbcType=TIMESTAMP},
+	        0,
+	        #{createdBy,  jdbcType=NUMERIC},
+	        SYSTIMESTAMP, 'N'
+	    )
+	</insert>
 
     <update id="updateCard">
         UPDATE CARDS
