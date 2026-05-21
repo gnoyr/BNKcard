@@ -49,26 +49,25 @@
         각 행의 agreement_id를 SEQ_USER_TERMS_AGREEMENTS.NEXTVAL로 자동 채번한다.
     -->
     <insert id="insertAgreements">
-        INSERT ALL
-        <foreach collection="agreements" item="a">
-            INTO USER_TERMS_AGREEMENTS (
-                user_id, terms_id, agreed_yn, agreement_action,
-                agreed_version, agreement_channel, agreement_source,
-                agreed_content_snapshot, agreed_at
-            ) VALUES (
-                #{a.userId},
-                #{a.termsId},
-                #{a.agreedYn},
-                #{a.agreementAction},
-                #{a.agreedVersion},
-                #{a.agreementChannel,      jdbcType=VARCHAR},
-                #{a.agreementSource,       jdbcType=VARCHAR},
-                #{a.agreedContentSnapshot, jdbcType=CLOB},
-                SYSTIMESTAMP
-            )
-        </foreach>
-        SELECT 1 FROM DUAL
-    </insert>
+	    INSERT ALL
+	    <foreach collection="agreements" item="a">
+	        INTO USER_TERMS_AGREEMENTS (
+	            agreement_id,
+	            user_id, terms_id, agreed_yn, agreement_action,
+	            agreed_version, agreement_channel, agreement_source,
+	            agreed_content_snapshot, agreed_at
+	        ) VALUES (
+	            SEQ_USER_TERMS_AGREEMENTS.NEXTVAL,
+	            #{a.userId}, #{a.termsId}, #{a.agreedYn}, #{a.agreementAction},
+	            #{a.agreedVersion},
+	            #{a.agreementChannel,      jdbcType=VARCHAR},
+	            #{a.agreementSource,       jdbcType=VARCHAR},
+	            #{a.agreedContentSnapshot, jdbcType=CLOB},
+	            SYSTIMESTAMP
+	        )
+	    </foreach>
+	    SELECT 1 FROM DUAL
+	</insert>
 
     <select id="findByUserId" resultMap="agreementMap">
         SELECT * FROM USER_TERMS_AGREEMENTS

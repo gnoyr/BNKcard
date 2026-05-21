@@ -53,5 +53,13 @@
         FROM   CARD_VERSIONS
         WHERE  version_id = #{versionId}
     </select>
+    
+    <select id="getLatestVersionSeq" resultType="int">
+	    SELECT NVL(MAX(
+	        TO_NUMBER(REGEXP_SUBSTR(version_no, '\d+', 1, 1))
+	    ), 0)
+	    FROM   CARD_VERSIONS
+	    WHERE  card_id = #{cardId}
+	</select>
 
 </mapper>

@@ -52,30 +52,38 @@
         ORDER  BY ca.applied_at DESC
     </select>
 
-    <select id="findAdminList" resultMap="appMap">
-        SELECT ca.*, c.card_name
-        FROM   CARD_APPLICATIONS ca
-        INNER JOIN CARDS c ON ca.card_id = c.card_id
-        WHERE  1 = 1
-        <if test="applicationStatus != null and applicationStatus != ''">
-          AND  ca.application_status = #{applicationStatus}
-        </if>
-        <if test="applyChannel != null and applyChannel != ''">
-          AND  ca.apply_channel = #{applyChannel}
-        </if>
-        <if test="cardId != null">
-          AND  ca.card_id = #{cardId}
-        </if>
-        ORDER  BY ca.applied_at DESC
-    </select>
+    <select id="findAdminList" resultMap="applicationMap">
+	    SELECT *
+	    FROM   CARD_APPLICATIONS
+	    WHERE  1 = 1
+	    <if test="userId != null">
+	        AND user_id = #{userId}
+	    </if>
+	    <if test="cardId != null">
+	        AND card_id = #{cardId}
+	    </if>
+	    <if test="applicationStatus != null and applicationStatus != ''">
+	        AND application_status = #{applicationStatus}
+	    </if>
+	    <!-- 페이지네이션 필수 추가 -->
+	    ORDER  BY applied_at DESC
+	    OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+	</select>
 
-    <select id="countAdminList" resultType="long">
-        SELECT COUNT(1) FROM CARD_APPLICATIONS ca
-        WHERE 1 = 1
-        <if test="applicationStatus != null and applicationStatus != ''">
-          AND ca.application_status = #{applicationStatus}
-        </if>
-    </select>
+	<select id="countAdminList" resultType="long">
+	    SELECT COUNT(1)
+	    FROM   CARD_APPLICATIONS
+	    WHERE  1 = 1
+	    <if test="userId != null">
+	        AND user_id = #{userId}
+	    </if>
+	    <if test="cardId != null">
+	        AND card_id = #{cardId}
+	    </if>
+	    <if test="applicationStatus != null and applicationStatus != ''">
+	        AND application_status = #{applicationStatus}
+	    </if>
+	</select>
 
     <update id="updateStatus">
         UPDATE CARD_APPLICATIONS
