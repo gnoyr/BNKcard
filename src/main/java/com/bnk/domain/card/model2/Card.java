@@ -9,12 +9,14 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@Builder
 public class Card {
 	
 	private Long cardId;
@@ -34,6 +36,9 @@ public class Card {
 	@NotBlank(message = "카드사는 필수입니다.")
 	@Size(max =100, message = "카드사명은 100자 이하여야 합니다.")
 	private String companyName;	
+	
+	// Card model2 클래스 내 기존 필드들 사이에 추가
+	private String companyCode;   // DEFAULT '01', FN_GEN_CARD_ID 계산 기준
 	
 	@Pattern(regexp = "VISA|MASTER|LOCAL|AMEX|UNIONPAY", message = "네트워크는 VISA, MASTERCARD, LOCAL, AMEX, UNIONPAY 중 하나여야 합니다.")
 	private String brandName;

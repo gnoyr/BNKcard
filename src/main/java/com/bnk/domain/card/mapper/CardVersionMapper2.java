@@ -20,5 +20,7 @@ public interface CardVersionMapper2 {
     // versionId로 단건 조회 (결재 화면에서 snapshot 조회)
     CardVersion getCardVersion(@Param("versionId") Long versionId);
    
+    /** 카드의 현재 최대 버전 번호 조회 (v1.0 → 1, v2.0 → 2) */
+    int getLatestVersionSeq(@Param("cardId") Long cardId);
    
 }
