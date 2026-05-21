@@ -6,17 +6,17 @@
 <title>BNK카드 · Auth 기능 테스트</title>
 <style>
 :root {
-  --red:   #DC2626;
-  --red2:  #B91C1C;
-  --red-bg:#FEF2F2;
-  --gray:  #6B7280;
-  --line:  #E5E7EB;
-  --bg:    #F9FAFB;
-  --white: #FFFFFF;
-  --text:  #111827;
-  --sub:   #374151;
-  --ok:    #16A34A;
-  --warn:  #D97706;
+  --red:    #DC2626;
+  --red2:   #B91C1C;
+  --red-bg: #FEF2F2;
+  --gray:   #6B7280;
+  --line:   #E5E7EB;
+  --bg:     #F9FAFB;
+  --white:  #FFFFFF;
+  --text:   #111827;
+  --sub:    #374151;
+  --ok:     #16A34A;
+  --warn:   #D97706;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -92,10 +92,10 @@ h2 { font-size: 20px; font-weight: 700; margin-bottom: 20px;
 .brow { display: flex; gap: 8px; margin-top: 20px; }
 .btn { flex: 1; padding: 11px; border: none; border-radius: 6px;
        font-size: 14px; font-weight: 600; cursor: pointer; }
-.btn-r { background: var(--red); color: #fff; }
+.btn-r  { background: var(--red); color: #fff; }
 .btn-r:hover { background: var(--red2); }
-.btn-g { background: #fff; color: var(--sub); border: 1px solid var(--line); }
-.btn-o { background: var(--warn); color: #fff; }
+.btn-g  { background: #fff; color: var(--sub); border: 1px solid var(--line); }
+.btn-o  { background: var(--warn); color: #fff; }
 .btn-ok { background: var(--ok); color: #fff; }
 
 /* ── EXTRA BTNS ── */
@@ -121,10 +121,10 @@ h2 { font-size: 20px; font-weight: 700; margin-bottom: 20px;
 
 /* ── NOTICE ── */
 .notice { padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; line-height: 1.6; }
-.notice-i { background: #EFF6FF; color: #1D4ED8; border-left: 3px solid #3B82F6; }
-.notice-w { background: #FFFBEB; color: #92400E; border-left: 3px solid var(--warn); }
-.notice-e { background: var(--red-bg); color: #991B1B; border-left: 3px solid var(--red); }
-.notice-ok{ background: #F0FDF4; color: #166534; border-left: 3px solid var(--ok); }
+.notice-i  { background: #EFF6FF; color: #1D4ED8; border-left: 3px solid #3B82F6; }
+.notice-w  { background: #FFFBEB; color: #92400E; border-left: 3px solid var(--warn); }
+.notice-e  { background: var(--red-bg); color: #991B1B; border-left: 3px solid var(--red); }
+.notice-ok { background: #F0FDF4; color: #166534; border-left: 3px solid var(--ok); }
 
 /* ── RESULT BOX ── */
 .rbox {
@@ -384,7 +384,7 @@ footer { text-align: center; font-size: 11px; color: #9CA3AF;
 
 
 <!-- ════════════════════════════════════
-     FIND ID  [F-20/F-21]
+     FIND ID  [F-20]
 ════════════════════════════════════ -->
 <div class="view" id="v-find-id">
   <h2>아이디 찾기</h2>
@@ -416,7 +416,7 @@ footer { text-align: center; font-size: 11px; color: #9CA3AF;
 ════════════════════════════════════ -->
 <div class="view" id="v-find-id-result">
   <h2>아이디 찾기</h2>
-  <div class="rbox" id="find-id-result-box">
+  <div class="rbox">
     <p style="font-size:12px;color:#9CA3AF;margin-bottom:10px">고객님의 아이디(이메일)를 찾았습니다.</p>
     <p style="font-size:20px;font-weight:700" id="found-email-text">—</p>
     <p style="font-size:11px;color:#9CA3AF;margin-top:8px">보안을 위해 일부가 마스킹되어 표시됩니다.</p>
@@ -433,14 +433,14 @@ footer { text-align: center; font-size: 11px; color: #9CA3AF;
 ════════════════════════════════════ -->
 <div class="view" id="v-reset-pw-1">
   <h2>비밀번호 재설정</h2>
-  <div class="notice notice-i">등록된 이메일과 이름을 입력하면 재설정 링크를 발송합니다. (유효 30분)</div>
+  <div class="notice notice-i">등록된 이메일과 이름을 입력하면 재설정 링크를 발송합니다.</div>
 
   <div class="f">
-    <label>이메일</label>
-    <input id="rp-email" type="email" placeholder="example@email.com">
+    <label>이메일 <span class="req">*</span></label>
+    <input id="rp-email" type="email" placeholder="가입한 이메일">
   </div>
   <div class="f">
-    <label>이름</label>
+    <label>이름 <span class="req">*</span></label>
     <input id="rp-name" type="text" placeholder="홍길동">
   </div>
 
@@ -455,79 +455,75 @@ footer { text-align: center; font-size: 11px; color: #9CA3AF;
   </div>
 </div>
 
-
-
-
 </main>
-
-<footer>BNK부산은행 카드 플랫폼 · Auth 기능 테스트 v2.1</footer>
 
 <!-- ── FLOATING LOG ── -->
 <div id="flog-wrap">
-  <button id="flog-toggle" onclick="toggleFlog()">📋 API LOG</button>
+  <button id="flog-toggle" onclick="toggleFlog()">▸ 실시간 로그</button>
   <div id="flog-panel"></div>
 </div>
 
+<footer>BNK카드 Auth 테스트 콘솔 &nbsp;|&nbsp; Spring Boot + JWT Cookie Auth</footer>
+
 <script>
-/* ══════════════════════════
+/* ════════════════════════════════════
    STATE
-══════════════════════════ */
-const S = {
-  agreedTermsIds: [],
-  termsData:      [],
-  emailVerified:  false,
-  signupEmail:    '',
-  isAdmin:        false,
-};
+════════════════════════════════════ */
+const S = { isAdmin: false, agreedTermsIds: [] };
 
-/* ══════════════════════════
+/* ════════════════════════════════════
    UTILS
-══════════════════════════ */
-const $  = id => document.getElementById(id);
-const B  = () => $('baseUrl').value.replace(/\/$/, '');
-const ts = () => new Date().toLocaleTimeString('ko-KR');
+════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+const baseUrl = () => $('baseUrl').value.replace(/\/$/, '');
 
-function goField(id) { $(id)?.focus(); }
-
-function goTo(page) {
+function goTo(view) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('on'));
-  $(`v-${page}`)?.classList.add('on');
+  $(`v-${view}`)?.classList.add('on');
   window.scrollTo(0, 0);
 }
 
-/* ── floating log ── */
-function toggleFlog() { $('flog-panel').classList.toggle('open'); }
-
-function flog(text, type = 'ok') {
-  const p = $('flog-panel');
-  const d = document.createElement('div');
-  d.className = `flog-line${type === 'err' ? ' err' : type === 'req' ? ' req' : ''}`;
-  d.textContent = `[${ts()}] ${text}`;
-  p.appendChild(d);
-  p.scrollTop = p.scrollHeight;
-}
+function goField(id) { $(id)?.focus(); }
 
 function setLog(id, text, isErr = false) {
   const el = $(id);
   if (!el) return;
-  el.textContent = `[${ts()}]\n${text}`;
+  el.textContent = text;
   el.className = isErr ? 'lg err' : 'lg';
 }
 
-/* ── api call ── */
-async function api(method, path, body, logId) {
-  const url  = B() + path;
-  const opts = { method, credentials: 'include', headers: { 'Content-Type': 'application/json' } };
-  if (body) opts.body = JSON.stringify(body);
+/* ── FLOATING LOG ── */
+function flog(msg, cls = '') {
+  const p = $('flog-panel');
+  const line = document.createElement('div');
+  const ts = new Date().toLocaleTimeString('ko-KR', { hour12: false });
+  line.className = `flog-line ${cls}`;
+  line.textContent = `[${ts}] ${msg}`;
+  p.appendChild(line);
+  p.scrollTop = p.scrollHeight;
+}
+function toggleFlog() {
+  $('flog-panel').classList.toggle('open');
+}
 
-  flog(`▶ ${method} ${path}`, 'req');
-  if (body) flog(JSON.stringify(body, null, 2).slice(0, 300), 'req');
+/* ════════════════════════════════════
+   API HELPER
+════════════════════════════════════ */
+async function api(method, path, body, logId) {
+  const url = baseUrl() + path;
+  flog(`► ${method} ${path}`, 'req');
 
   try {
-    const r   = await fetch(url, opts);
-    const raw = await r.text();
-    let data;
-    try { data = raw ? JSON.parse(raw) : null; } catch { data = raw || null; }
+    const opts = {
+      method,
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    };
+    if (body) opts.body = JSON.stringify(body);
+
+    const r = await fetch(url, opts);
+    let raw, data;
+    try { raw = await r.text(); data = raw ? JSON.parse(raw) : null; } catch { data = raw || null; }
 
     const pretty = data != null ? JSON.stringify(data, null, 2) : '(응답 없음)';
     const logTxt =
@@ -548,11 +544,10 @@ async function api(method, path, body, logId) {
   }
 }
 
-/* ══════════════════════════
+/* ════════════════════════════════════
    SESSION TIMER
-══════════════════════════ */
-const TTL = { access: 600, refresh: 604800 }; // access: 10분, refresh: 7일
-
+════════════════════════════════════ */
+const TTL = { access: 7200, refresh: 604800 };
 let T = { accessExpiry: null, refreshExpiry: null, ticker: null };
 
 function startSession(role = '일반') {
@@ -586,41 +581,40 @@ function tickSession() {
   const aLeft = Math.max(0, Math.round((T.accessExpiry  - now) / 1000));
   const rLeft = Math.max(0, Math.round((T.refreshExpiry - now) / 1000));
 
-  const aEl = $('sb-access-time');
+  const aEl  = $('sb-access-time');
   const aCls = aLeft > 120 ? 'ok' : aLeft > 30 ? 'expiring' : 'expired';
   aEl.textContent = fmtHMS(aLeft);
   aEl.className = `sb-time ${aCls}`;
 
-  const rEl = $('sb-refresh-time');
+  const rEl  = $('sb-refresh-time');
   const rCls = rLeft > 86400 ? 'ok' : rLeft > 3600 ? 'expiring' : 'expired';
   rEl.textContent = fmtDHMS(rLeft);
   rEl.className = `sb-time ${rCls}`;
 
   $('sb-dot').className = `sb-dot${aCls === 'ok' ? '' : ' ' + aCls}`;
 
-  if (aLeft === 60)  flog('⚠ Access Token 1분 후 만료 — 재발급을 권장합니다', 'err');
-  if (aLeft === 0)   flog('✕ Access Token 만료. 재로그인 또는 재발급이 필요합니다', 'err');
+  if (aLeft === 60) flog('⚠ Access Token 1분 후 만료 — 재발급을 권장합니다', 'err');
+  if (aLeft === 0)  flog('✕ Access Token 만료. 재로그인 또는 재발급이 필요합니다', 'err');
 }
 
 function fmtHMS(sec) {
-  const h = String(Math.floor(sec / 3600)).padStart(2,'0');
-  const m = String(Math.floor((sec % 3600) / 60)).padStart(2,'0');
-  const s = String(sec % 60).padStart(2,'0');
+  const h = String(Math.floor(sec / 3600)).padStart(2, '0');
+  const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
+  const s = String(sec % 60).padStart(2, '0');
   return `${h}:${m}:${s}`;
 }
 function fmtDHMS(sec) {
   if (sec <= 0) return '만료됨';
   const d = Math.floor(sec / 86400);
-  const h = String(Math.floor((sec % 86400) / 3600)).padStart(2,'0');
-  const m = String(Math.floor((sec % 3600) / 60)).padStart(2,'0');
-  const s = String(sec % 60).padStart(2,'0');
+  const h = String(Math.floor((sec % 86400) / 3600)).padStart(2, '0');
+  const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
+  const s = String(sec % 60).padStart(2, '0');
   return d > 0 ? `${d}일 ${h}:${m}:${s}` : `${h}:${m}:${s}`;
 }
 
-
-/* ══════════════════════════
+/* ════════════════════════════════════
    LOGIN  [F-03]
-══════════════════════════ */
+════════════════════════════════════ */
 async function doLogin() {
   const email = $('li-email').value.trim();
   const pw    = $('li-pw').value;
@@ -635,31 +629,28 @@ async function doLogin() {
   }
 }
 
-/* ══════════════════════════
+/* ════════════════════════════════════
    LOGOUT
-══════════════════════════ */
+════════════════════════════════════ */
 async function doLogout() {
   const endpoint = S.isAdmin ? '/api/admin/auth/logout' : '/api/auth/logout';
-  const r = await api('POST', endpoint, null, 'log-login');
-  if (r.ok) {
-    S.isAdmin = false;
-    clearSession();
-    goTo('login');
-    alert('로그아웃 완료. 쿠키가 삭제되었습니다.');
-  }
+  await api('POST', endpoint, null, 'log-login');
+  S.isAdmin = false;
+  clearSession();
+  goTo('login');
 }
 
-/* ══════════════════════════
+/* ════════════════════════════════════
    REFRESH  [F-04]
-══════════════════════════ */
+════════════════════════════════════ */
 async function doRefresh() {
   const r = await api('POST', '/api/auth/refresh', null, 'log-login');
   if (r.ok) resetAccessTimer();
 }
 
-/* ══════════════════════════
+/* ════════════════════════════════════
    ADMIN LOGIN
-══════════════════════════ */
+════════════════════════════════════ */
 async function promptAdminLogin() {
   const username = prompt('관리자 아이디 (username)\n예: super_admin');
   if (!username) return;
@@ -675,95 +666,103 @@ async function promptAdminLogin() {
   }
 }
 
-/* ══════════════════════════
+/* ════════════════════════════════════
    SIGNUP
-══════════════════════════ */
+════════════════════════════════════ */
 async function loadTerms() {
   const r = await api('GET', '/api/terms/package?type=SIGNUP', null, 'log-terms');
+  const list = $('terms-list');
+  $('terms-loading').style.display = 'none';
+
   if (r.ok) {
     const items = r.data?.data?.terms ?? r.data?.terms ?? [];
-    S.termsData = items;
-    renderTerms(items);
-    $('terms-loading').style.display = 'none';
+    if (items.length === 0) {
+      $('terms-error').style.display = '';
+      loadDummyTerms();
+      return;
+    }
+    items.forEach(t => {
+      const div = document.createElement('div');
+      div.className = 'terms-item';
+      div.innerHTML = `
+        <div class="trow">
+          <input type="checkbox" id="terms-${t.termsId}" data-id="${t.termsId}" data-required="${t.requiredYn}">
+          <label for="terms-${t.termsId}">${t.title}</label>
+          <span class="tag ${t.requiredYn === 'Y' ? '' : 'opt'}">${t.requiredYn === 'Y' ? '필수' : '선택'}</span>
+        </div>`;
+      list.appendChild(div);
+    });
   } else {
-    $('terms-loading').style.display = 'none';
     $('terms-error').style.display = '';
-    // 더미 폴백
-    const dummy = [
-      { termsId: 1, title: '서비스 이용약관', requiredYn: 'Y' },
-      { termsId: 2, title: '개인정보 수집·이용 동의', requiredYn: 'Y' },
-      { termsId: 3, title: '마케팅 정보 수신 동의', requiredYn: 'N' },
-    ];
-    S.termsData = dummy;
-    renderTerms(dummy);
+    loadDummyTerms();
   }
 }
 
-function renderTerms(items) {
+function loadDummyTerms() {
   const list = $('terms-list');
-  list.innerHTML = '';
-  items.forEach(t => {
-    list.innerHTML += `
-      <div class="terms-item">
-        <div class="trow">
-          <input type="checkbox" id="t-${t.termsId}" onchange="syncTerms()">
-          <label for="t-${t.termsId}">${t.title}</label>
-          <span class="tag ${t.requiredYn === 'Y' ? '' : 'opt'}">${t.requiredYn === 'Y' ? '필수' : '선택'}</span>
-        </div>
+  const dummies = [
+    { id: 1, title: '서비스 이용약관', required: 'Y' },
+    { id: 2, title: '개인정보 수집 및 이용 동의', required: 'Y' },
+    { id: 3, title: '마케팅 정보 수신 동의', required: 'N' },
+  ];
+  dummies.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'terms-item';
+    div.innerHTML = `
+      <div class="trow">
+        <input type="checkbox" id="terms-${t.id}" data-id="${t.id}" data-required="${t.required}">
+        <label for="terms-${t.id}">${t.title}</label>
+        <span class="tag ${t.required === 'Y' ? '' : 'opt'}">${t.required === 'Y' ? '필수' : '선택'}</span>
       </div>`;
+    list.appendChild(div);
   });
 }
 
-function syncTerms() {
-  S.agreedTermsIds = S.termsData
-    .filter(t => $(`t-${t.termsId}`)?.checked)
-    .map(t => t.termsId);
-}
-
 function goToSignup2() {
-  const required = S.termsData.filter(t => t.requiredYn === 'Y');
-  const missing  = required.filter(t => !S.agreedTermsIds.includes(t.termsId));
-  if (missing.length > 0) {
-    alert(`필수 약관에 모두 동의해 주세요.\n미동의: ${missing.map(t => t.title).join(', ')}`);
-    return;
-  }
+  const checks = document.querySelectorAll('#terms-list input[data-required="Y"]');
+  const allChecked = [...checks].every(c => c.checked);
+  if (!allChecked) { alert('필수 약관에 모두 동의해 주세요.'); return; }
+
+  S.agreedTermsIds = [...document.querySelectorAll('#terms-list input:checked')]
+    .map(c => Number(c.dataset.id));
   goTo('signup-2');
 }
 
 async function sendVerifyCode() {
   const email = $('su-email').value.trim();
   if (!email) { alert('이메일을 입력해 주세요.'); return; }
-  const r = await api('POST', '/api/auth/send-verify-code', { email }, 'log-signup');
-  if (r.ok) alert('인증코드가 이메일로 발송되었습니다. (유효시간 10분)');
+  await api('POST', '/api/auth/send-verify-code', { email }, 'log-signup');
 }
 
 async function verifyEmail() {
   const email = $('su-email').value.trim();
-  const token = $('su-code').value.trim();
-  if (!email || !token) { alert('이메일과 인증코드를 입력해 주세요.'); return; }
-  const r = await api('POST', '/api/auth/verify-email', { email, token }, 'log-signup');
+  const code  = $('su-code').value.trim();
+  if (!email || !code) { alert('이메일과 인증코드를 입력해 주세요.'); return; }
+
+  const r = await api('POST', '/api/auth/verify-email', { email, code }, 'log-signup');
   if (r.ok) {
-    S.emailVerified = true;
+    $('su-email').classList.add('verified');
     $('su-code').classList.add('verified');
-    alert('이메일 인증이 완료되었습니다 ✓');
   }
 }
 
 async function doSignup() {
-  const email = $('su-email').value.trim();
   const name  = $('su-name').value.trim();
+  const email = $('su-email').value.trim();
   const pw    = $('su-pw').value;
   const pw2   = $('su-pw2').value;
   const phone = $('su-phone').value.trim().replace(/-/g, '');
-  const birth = $('su-birth').value.replace(/-/g, '') || null;
+  const birth = $('su-birth').value.replace(/-/g, '');
   const mkt   = $('su-mkt').checked ? 'Y' : 'N';
 
   if (!name || !email || !pw || !phone) { alert('필수 항목을 모두 입력해 주세요.'); return; }
   if (pw !== pw2) { alert('비밀번호가 일치하지 않습니다.'); return; }
 
   const r = await api('POST', '/api/auth/signup',
-    { email, password: pw, name, phone, birthDate: birth,
-      marketingAgree: mkt, agreedTermsIds: S.agreedTermsIds },
+    { email, password: pw, name, phone,
+      birthDate: birth || null,
+      marketingAgree: mkt,
+      agreedTermsIds: S.agreedTermsIds },
     'log-signup');
 
   if (r.ok) {
@@ -773,9 +772,9 @@ async function doSignup() {
   }
 }
 
-/* ══════════════════════════
-   FIND ID  [F-20/F-21]
-══════════════════════════ */
+/* ════════════════════════════════════
+   FIND ID  [F-20]
+════════════════════════════════════ */
 async function doFindId() {
   const name  = $('fi-name').value.trim();
   const phone = $('fi-phone').value.trim().replace(/-/g, '');
@@ -790,9 +789,9 @@ async function doFindId() {
   }
 }
 
-/* ══════════════════════════
+/* ════════════════════════════════════
    RESET PW  [F-22]
-══════════════════════════ */
+════════════════════════════════════ */
 async function sendResetLink() {
   const email = $('rp-email').value.trim();
   const name  = $('rp-name').value.trim();
@@ -805,9 +804,9 @@ async function sendResetLink() {
   }
 }
 
-/* ══════════════════════════
+/* ════════════════════════════════════
    🔓 잠금 해제 (관리자 전용)
-══════════════════════════ */
+════════════════════════════════════ */
 function toggleUnlockPanel() {
   const p = $('unlock-panel');
   p.style.display = p.style.display === 'none' ? '' : 'none';
@@ -824,9 +823,9 @@ async function doUnlockUser() {
   if (r.ok) flog(`✅ userId=${userId} 잠금 해제 완료`, 'ok');
 }
 
-/* ══════════════════════════
+/* ════════════════════════════════════
    INIT
-══════════════════════════ */
+════════════════════════════════════ */
 window.addEventListener('DOMContentLoaded', () => {
   loadTerms();
 });
