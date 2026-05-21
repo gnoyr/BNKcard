@@ -25,4 +25,10 @@ public class CardApplication {
     private LocalDateTime updatedAt;
     // JOIN
     private String cardName;
+    
+    // 페이지 필드
+    private int page = 0;
+    private int size = 20;
+
+    public int getOffset() { return page * size; }
 }

@@ -7,7 +7,7 @@ import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-
+import org.apache.pdfbox.io.RandomAccessReadBuffer;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -42,29 +42,30 @@ public class PdfConvertService {
      * @param pdfFile 업로드된 PDF MultipartFile
      * @return 페이지 순서대로 정렬된 JPG byte[] 목록 (1페이지 = index 0)
      */
-    public List<byte[]> convertPdfToImageBytes(MultipartFile pdfFile) throws IOException {
-        List<byte[]> result = new ArrayList<>();
+	public List<byte[]> convertPdfToImageBytes(MultipartFile pdfFile) throws IOException {
+	    List<byte[]> result = new ArrayList<>();
 
-        try (PDDocument document = Loader.loadPDF(pdfFile.getBytes())) {
-            PDFRenderer renderer = new PDFRenderer(document);
-            int totalPages = document.getNumberOfPages();
+	    // PDFBox 3.x: InputStream → RandomAccessReadBuffer로 래핑
+	    try (RandomAccessReadBuffer buffer = new RandomAccessReadBuffer(pdfFile.getInputStream());
+	         PDDocument document = Loader.loadPDF(buffer)) {
 
-            log.info("[PDF변환] 변환 시작: 파일명={}, 총 페이지={}", 
-                    pdfFile.getOriginalFilename(), totalPages);
+	        PDFRenderer renderer = new PDFRenderer(document);
+	        int totalPages = document.getNumberOfPages();
 
-            for (int page = 0; page < totalPages; page++) {
-                // 150 DPI — 기존 설정 그대로 유지
-                BufferedImage image = renderer.renderImageWithDPI(page, 150, ImageType.RGB);
+	        log.info("[PDF변환] 변환 시작: 파일명={}, 총 페이지={}",
+	                pdfFile.getOriginalFilename(), totalPages);
 
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                ImageIO.write(image, "JPEG", baos);
-                result.add(baos.toByteArray());
+	        for (int page = 0; page < totalPages; page++) {
+	            BufferedImage image = renderer.renderImageWithDPI(page, 150, ImageType.RGB);
+	            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+	            ImageIO.write(image, "JPEG", baos);
+	            result.add(baos.toByteArray());
+	            image.flush();
+	            log.debug("[PDF변환] 페이지 변환 완료: {}/{}", page + 1, totalPages);
+	        }
+	    }
 
-                log.debug("[PDF변환] 페이지 변환 완료: {}/{}", page + 1, totalPages);
-            }
-        }
-
-        log.info("[PDF변환] 변환 완료: 총 {}페이지", result.size());
-        return result;
-    }
+	    log.info("[PDF변환] 변환 완료: 총 {}페이지", result.size());
+	    return result;
+	}
 }

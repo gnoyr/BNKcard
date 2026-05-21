@@ -50,7 +50,7 @@ public class AdminCardController {
      */
     @PutMapping("/{cardId}")
     public ResponseEntity<ApiResponse<Map<String, Long>>> updateCard(
-            @PathVariable Long cardId,
+            @PathVariable("cardId") Long cardId,
             @RequestBody @Valid CardUpdateRequest request,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         return ApiResponse.toOk(adminCardService.updateCard(cardId, request, ad.getAdminId()));

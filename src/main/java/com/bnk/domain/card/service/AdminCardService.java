@@ -19,8 +19,10 @@ import com.bnk.domain.card.dto.request.CardUpdateRequest;
 import com.bnk.domain.card.dto.response.CardListResponse;
 import com.bnk.domain.card.mapper.CardBenefitMapper;
 import com.bnk.domain.card.mapper.CardMapper;
+import com.bnk.domain.card.mapper.CardVersionMapper2;
 import com.bnk.domain.card.model.Card;
 import com.bnk.domain.card.model.CardBenefit;
+import com.bnk.domain.card.model2.CardVersion;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.response.PageResponse;
@@ -39,6 +41,7 @@ public class AdminCardService {
     private final CardBenefitMapper cardBenefitMapper;
     private final ApprovalMapper approvalMapper;
     private final ObjectMapper objectMapper;
+    private final CardVersionMapper2 cardVersionMapper2;
 
     /**
      * B-03 카드 신규 등록 (RQ-B04)
@@ -75,16 +78,29 @@ public class AdminCardService {
 
         // APPROVAL_REQUESTS INSERT (CARD_PUBLISH, PENDING)
         String snapshotJson = toSnapshotJson(card);
+        CardVersion version = CardVersion.builder()
+                .cardId(card.getCardId())
+                .versionNo("v1.0")
+                .versionStatus("REVIEW")          // 상신과 동시에 REVIEW
+                .snapshotJson(snapshotJson)
+                .changeSummary(request.getChangeSummary())
+                .createdBy(adminId)
+                .build();
+        cardVersionMapper2.insertCardVersion(version);  // selectKey로 versionId 주입
+
+        // 4. APPROVAL_REQUESTS INSERT — target_id = version_id
         ApprovalRequest approval = ApprovalRequest.builder()
                 .requestTypeCode("CARD_PUBLISH")
                 .requesterAdminId(adminId)
-                .targetId(card.getCardId())
+                .targetId(version.getVersionId())  // ← version_id로 변경
                 .requestComment(request.getChangeSummary())
                 .build();
         approvalMapper.insertApprovalRequest(approval);
-
+        
+        
         Map<String, Long> result = new HashMap<>();
         result.put("cardId", card.getCardId());
+        result.put("versionId", version.getVersionId());
         result.put("approvalId", approval.getApprovalId());
         return result;
     }
@@ -102,17 +118,64 @@ public class AdminCardService {
             throw new BusinessException(ErrorCode.CARD_NOT_FOUND);
         }
 
-        // APPROVAL_REQUESTS INSERT (CARD_UPDATE, PENDING)
+        // 기존 PUBLISHED 카드는 건드리지 않음 — 수정 버전만 새로 생성
+
+        // 수정 요청 데이터로 snapshot 생성 (요청 데이터 기준)
+        Card updatedSnapshot = Card.builder()
+                .cardId(cardId)
+                .cardCode(existing.getCardCode())           // 카드코드는 수정 불가 — existing 고정
+                .cardType(request.getCardType() != null
+                        ? request.getCardType() : existing.getCardType())
+                .cardName(request.getCardName() != null
+                        ? request.getCardName() : existing.getCardName())
+                .companyName(request.getCompanyName() != null
+                        ? request.getCompanyName() : existing.getCompanyName())
+                .brandName(request.getBrandName() != null
+                        ? request.getBrandName() : existing.getBrandName())
+                .annualFeeDomestic(request.getAnnualFeeDomestic() != null
+                        ? request.getAnnualFeeDomestic() : existing.getAnnualFeeDomestic())
+                .annualFeeOverseas(request.getAnnualFeeOverseas() != null
+                        ? request.getAnnualFeeOverseas() : existing.getAnnualFeeOverseas())
+                .summaryDescription(request.getSummaryDescription() != null
+                        ? request.getSummaryDescription() : existing.getSummaryDescription())
+                .publishStartAt(request.getPublishStartAt() != null
+                        ? request.getPublishStartAt() : existing.getPublishStartAt())
+                .publishEndAt(request.getPublishEndAt() != null
+                        ? request.getPublishEndAt() : existing.getPublishEndAt())
+                // ↓ request에 없는 필드 — existing에서 그대로 복사
+                .previousMonthSpend(existing.getPreviousMonthSpend())
+                .minimumAge(existing.getMinimumAge())
+                .maximumAge(existing.getMaximumAge())
+                .targetUser(existing.getTargetUser())
+                .searchableYn(existing.getSearchableYn())
+                .visibleYn(existing.getVisibleYn())
+                .approvalRequiredYn(existing.getApprovalRequiredYn())
+                .createdBy(existing.getCreatedBy())
+                .build();
+
+        String snapshotJson = toSnapshotJson(updatedSnapshot);
+
+        CardVersion version = CardVersion.builder()
+                .cardId(cardId)
+                .versionNo("v" + System.currentTimeMillis()) // 임시 — 추후 MAX+1로 개선
+                .versionStatus("REVIEW")
+                .snapshotJson(snapshotJson)
+                .changeSummary(request.getChangeSummary())
+                .createdBy(adminId)
+                .build();
+        cardVersionMapper2.insertCardVersion(version);
+
         ApprovalRequest approval = ApprovalRequest.builder()
                 .requestTypeCode("CARD_UPDATE")
                 .requesterAdminId(adminId)
-                .targetId(cardId)
+                .targetId(version.getVersionId())  // ← version_id
                 .requestComment(request.getChangeSummary())
                 .build();
         approvalMapper.insertApprovalRequest(approval);
 
         Map<String, Long> result = new HashMap<>();
         result.put("cardId", cardId);
+        result.put("versionId", version.getVersionId());
         result.put("approvalId", approval.getApprovalId());
         return result;
     }

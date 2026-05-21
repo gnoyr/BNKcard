@@ -3,6 +3,8 @@ package com.bnk.domain.admin.mapper;
 import com.bnk.domain.admin.dto.request.ApprovalSearchRequest;
 import com.bnk.domain.admin.model.ApprovalLine;
 import com.bnk.domain.admin.model.ApprovalRequest;
+import com.bnk.domain.card.model2.CardVersion;
+
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -38,4 +40,7 @@ public interface ApprovalMapper {
     String findVersionSnapshot(@Param("approvalId") Long approvalId);
 
     int countPendingApprovals();
+    
+    /** 결재 건의 version_id 기준으로 CardVersion 조회 */
+    CardVersion findVersionByApprovalId(@Param("approvalId") Long approvalId);
 }

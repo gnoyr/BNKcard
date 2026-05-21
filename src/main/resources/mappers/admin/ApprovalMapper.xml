@@ -101,13 +101,16 @@
 	    )
 	</insert>
 
-    <insert id="insertApprovalLine" useGeneratedKeys="true" keyProperty="approvalLineId">
-        INSERT INTO APPROVAL_LINES (
-            approval_id, approver_admin_id, approval_order, status_code
-        ) VALUES (
-            #{approvalId}, #{approverAdminId}, #{approvalOrder}, 'PENDING'
-        )
-    </insert>
+	<insert id="insertApprovalLine">
+	    <selectKey keyProperty="approvalLineId" resultType="long" order="AFTER">
+	        SELECT SEQ_APPROVAL_LINES.CURRVAL FROM DUAL
+	    </selectKey>
+	    INSERT INTO APPROVAL_LINES (
+	        approval_id, approver_admin_id, approval_order, status_code
+	    ) VALUES (
+	        #{approvalId}, #{approverAdminId}, #{approvalOrder}, 'PENDING'
+	    )
+	</insert>
 
     <update id="updateLineStatus">
         UPDATE APPROVAL_LINES
@@ -134,20 +137,26 @@
         WHERE approval_id = #{approvalId}
     </select>
 
-    <!-- 결재 승인 후 카드 복원용 snapshot_json 조회 -->
-    <select id="findVersionSnapshot" resultType="string">
-        SELECT cv.snapshot_json
-        FROM   CARD_VERSIONS cv
-        INNER JOIN APPROVAL_REQUESTS ar ON cv.card_id = ar.target_id
-        WHERE  ar.approval_id    = #{approvalId}
-          AND  cv.version_status = 'REVIEW'
-        ORDER  BY cv.created_at DESC
-        FETCH FIRST 1 ROWS ONLY
-    </select>
-
-    <select id="countPendingApprovals" resultType="int">
-        SELECT COUNT(1) FROM APPROVAL_REQUESTS
-        WHERE  status_code = 'PENDING'
-    </select>
+    <!-- version_id 기준으로 CardVersion 조회 (target_id = version_id 구조) -->
+	<select id="findVersionByApprovalId" resultType="com.bnk.domain.card.model2.CardVersion">
+	    SELECT cv.version_id, cv.card_id, cv.version_no,
+	           cv.version_status, cv.snapshot_json
+	    FROM   CARD_VERSIONS cv
+	    INNER JOIN APPROVAL_REQUESTS ar ON cv.version_id = ar.target_id
+	    WHERE  ar.approval_id = #{approvalId}
+	</select>
+	
+	<!-- 기존 findVersionSnapshot도 수정 -->
+	<select id="findVersionSnapshot" resultType="string">
+	    SELECT cv.snapshot_json
+	    FROM   CARD_VERSIONS cv
+	    INNER JOIN APPROVAL_REQUESTS ar ON cv.version_id = ar.target_id
+	    WHERE  ar.approval_id = #{approvalId}
+	</select>
+	
+	<select id="countPendingApprovals" resultType="int">
+	    SELECT COUNT(1) FROM APPROVAL_REQUESTS
+	    WHERE  status_code = 'PENDING'
+	</select>
 
 </mapper>
