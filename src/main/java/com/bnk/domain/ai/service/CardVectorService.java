@@ -105,9 +105,14 @@ public class CardVectorService {
 
     // 포맷 유틸
     private String formatCardType(String type) {
-        return switch (type) {
+        if (type == null) {
+            return "알 수 없음"; // 정책에 따라 null 또는 기본값 반환
+        }
+        
+        return switch (type.toUpperCase().trim()) {
             case "CREDIT" -> "신용카드";
             case "CHECK" -> "체크카드";
+            case "PREPAID" -> "선불카드";
             case "HYBRID" -> "하이브리드카드";
             default -> type;
         };
