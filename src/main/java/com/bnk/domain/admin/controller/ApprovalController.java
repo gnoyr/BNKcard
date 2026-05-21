@@ -34,7 +34,7 @@ public class ApprovalController {
      */
     @PostMapping("/{approvalId}/approve")
     public ResponseEntity<ApiResponse<Void>> approveRequest(
-            @PathVariable("approvalId") Long approvalId,
+            @PathVariable Long approvalId,
             @RequestBody @Valid ApprovalActionRequest request,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         approvalService.approve(approvalId, request, ad.getAdminId());
@@ -48,7 +48,7 @@ public class ApprovalController {
      */
     @PostMapping("/{approvalId}/reject")
     public ResponseEntity<ApiResponse<Void>> rejectRequest(
-            @PathVariable("approvalId") Long approvalId,
+            @PathVariable Long approvalId,
             @RequestBody @Valid ApprovalActionRequest request,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         approvalService.reject(approvalId, request, ad.getAdminId());

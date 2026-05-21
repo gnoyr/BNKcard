@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class AiConfig {
 	@Bean
-    public ChatMemory chatMemory() {
+    ChatMemory chatMemory() {
         // 최근 20개의 메시지만 유지하여 토큰 낭비를 막는 윈도우 방식 메모리 사용
         return MessageWindowChatMemory.builder()
                 .chatMemoryRepository(new InMemoryChatMemoryRepository())
