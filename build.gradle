@@ -37,15 +37,10 @@ ext {
 dependencies {
 
 	implementation platform('org.springframework.ai:spring-ai-bom:2.0.0-M6')
-	
-	//genai
-    implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
-    implementation 'org.springframework.ai:spring-ai-starter-model-google-genai-embedding'
-    
- 	// JWT
-    implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
-    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
-    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+
+	// ── GenAI ─────────────────────────────────────────────
+	implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
+	implementation 'org.springframework.ai:spring-ai-starter-model-google-genai-embedding'
 
 	// ── Spring Boot Starters ───────────────────────────────
 	implementation 'org.springframework.boot:spring-boot-starter-security'
@@ -61,6 +56,8 @@ dependencies {
 	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:4.0.1'
 
 	// ── JWT ───────────────────────────────────────────────
+	// [FIX] 이전에 dependencies 블록 내 두 곳에 동일 선언이 중복되어 있었음.
+	// Gradle은 중복을 자동 처리하지만 버전이 달라질 경우 예상치 못한 충돌 위험이 있으므로 단일 선언으로 정리.
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
 	runtimeOnly    'io.jsonwebtoken:jjwt-impl:0.12.6'
 	runtimeOnly    'io.jsonwebtoken:jjwt-jackson:0.12.6'
@@ -73,19 +70,21 @@ dependencies {
 		// MyBatis XML 파싱 충돌을 일으키는 Oracle XML 파서 제외
 		exclude group: 'com.oracle.database.xml', module: 'xmlparserv2'
 	}
-	
+
 	// ── Oracle OCI SDK (Object Storage) ───────────────────
 	implementation 'com.oracle.oci.sdk:oci-java-sdk-objectstorage:3.42.0'
-    implementation 'com.oracle.oci.sdk:oci-java-sdk-common:3.42.0'
-    implementation 'com.oracle.oci.sdk:oci-java-sdk-common-httpclient-jersey3:3.42.0'
-
+	implementation 'com.oracle.oci.sdk:oci-java-sdk-common:3.42.0'
+	implementation 'com.oracle.oci.sdk:oci-java-sdk-common-httpclient-jersey3:3.42.0'
 
 	// ── Lombok ────────────────────────────────────────────
 	compileOnly           'org.projectlombok:lombok'
 	annotationProcessor   'org.projectlombok:lombok'
 
-	// ── Test ──────────────────────────────────────────────
+	// ── Apache PDFBox (PDF → 이미지 변환) ─────────────────
+	implementation 'org.apache.pdfbox:pdfbox:3.0.3'
+	implementation 'org.apache.pdfbox:pdfbox-io:3.0.3'
 
+	// ── Test ──────────────────────────────────────────────
 	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
@@ -94,11 +93,6 @@ dependencies {
 	testImplementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter-test:4.0.1'
 	testCompileOnly         'org.projectlombok:lombok'
 	testAnnotationProcessor 'org.projectlombok:lombok'
-
-	// Apache PDFBox (PDF를 이미지로 변환하기 위한 라이브러리)
-    implementation 'org.apache.pdfbox:pdfbox:3.0.3'
-    implementation 'org.apache.pdfbox:pdfbox-io:3.0.3' // PDFBox 3.x 버전 필수 라이브러리
-
 	testRuntimeOnly         'org.junit.platform:junit-platform-launcher'
 }
 
