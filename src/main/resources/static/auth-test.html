@@ -545,7 +545,7 @@ async function api(method, path, body, logId) {
 /* ════════════════════════════════════
    SESSION TIMER
 ════════════════════════════════════ */
-const TTL = { access: 600 };
+const TTL = { access: 7200 };
 let T = { accessExpiry: null, ticker: null };
 
 function startSession(role = '일반') {
