@@ -123,11 +123,34 @@ public class AdminCardService {
         // 수정 요청 데이터로 snapshot 생성 (요청 데이터 기준)
         Card updatedSnapshot = Card.builder()
                 .cardId(cardId)
-                .cardCode(existing.getCardCode())
-                .cardType(request.getCardType() != null ? request.getCardType() : existing.getCardType())
-                .cardName(request.getCardName() != null ? request.getCardName() : existing.getCardName())
-                .companyName(request.getCompanyName() != null ? request.getCompanyName() : existing.getCompanyName())
-                // ... 나머지 필드 동일 패턴
+                .cardCode(existing.getCardCode())           // 카드코드는 수정 불가 — existing 고정
+                .cardType(request.getCardType() != null
+                        ? request.getCardType() : existing.getCardType())
+                .cardName(request.getCardName() != null
+                        ? request.getCardName() : existing.getCardName())
+                .companyName(request.getCompanyName() != null
+                        ? request.getCompanyName() : existing.getCompanyName())
+                .brandName(request.getBrandName() != null
+                        ? request.getBrandName() : existing.getBrandName())
+                .annualFeeDomestic(request.getAnnualFeeDomestic() != null
+                        ? request.getAnnualFeeDomestic() : existing.getAnnualFeeDomestic())
+                .annualFeeOverseas(request.getAnnualFeeOverseas() != null
+                        ? request.getAnnualFeeOverseas() : existing.getAnnualFeeOverseas())
+                .summaryDescription(request.getSummaryDescription() != null
+                        ? request.getSummaryDescription() : existing.getSummaryDescription())
+                .publishStartAt(request.getPublishStartAt() != null
+                        ? request.getPublishStartAt() : existing.getPublishStartAt())
+                .publishEndAt(request.getPublishEndAt() != null
+                        ? request.getPublishEndAt() : existing.getPublishEndAt())
+                // ↓ request에 없는 필드 — existing에서 그대로 복사
+                .previousMonthSpend(existing.getPreviousMonthSpend())
+                .minimumAge(existing.getMinimumAge())
+                .maximumAge(existing.getMaximumAge())
+                .targetUser(existing.getTargetUser())
+                .searchableYn(existing.getSearchableYn())
+                .visibleYn(existing.getVisibleYn())
+                .approvalRequiredYn(existing.getApprovalRequiredYn())
+                .createdBy(existing.getCreatedBy())
                 .build();
 
         String snapshotJson = toSnapshotJson(updatedSnapshot);
