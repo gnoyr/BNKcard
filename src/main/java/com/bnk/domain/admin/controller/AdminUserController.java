@@ -47,7 +47,7 @@ public class AdminUserController {
      */
     @GetMapping("/users/{userId}")
     public ResponseEntity<ApiResponse<AdminUserResponse>> getUserDetail(
-            @PathVariable("userId") Long userId,
+            @PathVariable Long userId,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         return ApiResponse.toOk(adminUserService.getUserDetail(userId, ad.getAdminId()));
     }
