@@ -376,11 +376,14 @@ const findId = {
 
     const res = await api('POST', '/api/auth/find-id', { name, phone });
 
-    if (res.ok) {
-      const maskedEmail = res.data?.data?.maskedEmail ?? res.data?.maskedEmail ?? '–';
-      document.getElementById('result-email').textContent = maskedEmail;
-      showView('view-result');
-    } else {
+	if (res.ok) {
+	  // 추가 1: header.js 세션 타이머 동기화
+	  sessionStorage.setItem('bnk_login_at', String(Date.now()));
+	  // 추가 2: 유저명 캐시 초기화 (header.js가 /api/users/me 로 최신값 채움)
+	  sessionStorage.removeItem('bnk_user_name');
+	 
+	  window.location.href = '/';
+	} else {
       showError(err, extractMessage(res.data));
     }
   },
