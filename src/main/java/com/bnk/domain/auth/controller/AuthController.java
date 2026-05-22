@@ -23,6 +23,7 @@ import com.bnk.global.auth.CustomUserDetails;
 import com.bnk.global.response.ApiResponse;
 import com.bnk.global.util.CookieUtil;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,112 +33,99 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AuthController {
 
-    private final AuthService authService;
-    private final CookieUtil cookieUtil;
+	private final AuthService authService;
+	private final CookieUtil cookieUtil;
 
-    /**
-     * 이메일 인증코드 발송 (회원가입 전 단계)
-     * 비로그인 허용 — 이메일 중복 체크 후 6자리 코드 발송
-     */
-    @PostMapping("/send-verify-code")
-    public ResponseEntity<ApiResponse<Void>> sendVerifyCode(
-            @RequestBody @Valid SendVerifyCodeRequest request) {
-        authService.sendVerifyCode(request);
-        return ApiResponse.toOk(null);
-    }
+	/**
+	 * 이메일 인증코드 발송 (회원가입 전 단계) 비로그인 허용 — 이메일 중복 체크 후 6자리 코드 발송
+	 */
+	@PostMapping("/send-verify-code")
+	public ResponseEntity<ApiResponse<Void>> sendVerifyCode(@RequestBody @Valid SendVerifyCodeRequest request) {
+		authService.sendVerifyCode(request);
+		return ApiResponse.toOk(null);
+	}
 
-    /**
-     * 이메일 인증코드 확인
-     */
-    @PostMapping("/verify-email")
-    public ResponseEntity<ApiResponse<Void>> verifyEmail(
-            @RequestBody @Valid EmailVerifyRequest request) {
-        authService.verifyEmail(request);
-        return ApiResponse.toOk(null);
-    }
+	/**
+	 * 이메일 인증코드 확인
+	 */
+	@PostMapping("/verify-email")
+	public ResponseEntity<ApiResponse<Void>> verifyEmail(@RequestBody @Valid EmailVerifyRequest request) {
+		authService.verifyEmail(request);
+		return ApiResponse.toOk(null);
+	}
 
-    /**
-     * 회원가입 — 이메일 인증 완료 후 호출
-     */
-    @PostMapping("/signup")
-    public ResponseEntity<ApiResponse<Long>> signup(
-            @RequestBody @Valid SignupRequest request) {
-        return ApiResponse.toCreated(authService.signup(request));
-    }
+	/**
+	 * 회원가입 — 이메일 인증 완료 후 호출
+	 */
+	@PostMapping("/signup")
+	public ResponseEntity<ApiResponse<Long>> signup(@RequestBody @Valid SignupRequest request) {
+		return ApiResponse.toCreated(authService.signup(request));
+	}
 
-    /**
-     * 로그인 — Access + Refresh 쿠키 발급
-     */
-    @PostMapping("/login")
-    public ResponseEntity<ApiResponse<Void>> login(
-            @RequestBody @Valid LoginRequest request,
-            HttpServletResponse response) {
-        AuthTokenResult result = authService.login(request);
-        response.addHeader(HttpHeaders.SET_COOKIE, result.getAccessCookie().toString());
-        response.addHeader(HttpHeaders.SET_COOKIE, result.getRefreshCookie().toString());
-        return ResponseEntity.ok(ApiResponse.message("로그인에 성공했습니다."));
-    }
+	/**
+	 * 로그인 — Access + Refresh 쿠키 발급. HttpServletRequest 를 Service 로 전달하여 ip_address
+	 * / user_agent 를 LOGIN_HISTORIES 에 기록.
+	 */
+	@PostMapping("/login")
+	public ResponseEntity<ApiResponse<Void>> login(@RequestBody @Valid LoginRequest request,
+			HttpServletRequest httpRequest, HttpServletResponse response) {
+		AuthTokenResult result = authService.login(request, httpRequest);
+		response.addHeader(HttpHeaders.SET_COOKIE, result.getAccessCookie().toString());
+		response.addHeader(HttpHeaders.SET_COOKIE, result.getRefreshCookie().toString());
+		return ResponseEntity.ok(ApiResponse.message("로그인에 성공했습니다."));
+	}
 
-    /**
-     * Access Token 재발급 — Refresh 쿠키로 새 Access 쿠키 발급
-     */
-    @PostMapping("/refresh")
-    public ResponseEntity<ApiResponse<Void>> refresh(
-            @CookieValue(name = "refresh_token") String refreshToken,
-            HttpServletResponse response) {
-        response.addHeader(HttpHeaders.SET_COOKIE, authService.refresh(refreshToken).toString());
-        return ApiResponse.toOk(null);
-    }
+	/**
+	 * Access Token 재발급 — Refresh 쿠키로 새 Access 쿠키 발급
+	 */
+	@PostMapping("/refresh")
+	public ResponseEntity<ApiResponse<Void>> refresh(@CookieValue(name = "refresh_token") String refreshToken,
+			HttpServletResponse response) {
+		response.addHeader(HttpHeaders.SET_COOKIE, authService.refresh(refreshToken).toString());
+		return ApiResponse.toOk(null);
+	}
 
-    /**
-     * 로그아웃 — DB 세션 revoke + 쿠키 삭제
-     *
-     * 비로그인 상태의 로그아웃 요청은 쿠키만 삭제하고 정상 응답 반환한다.
-     */
-    @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout(
-            @AuthenticationPrincipal(errorOnInvalidType = false) CustomUserDetails ud,
-            HttpServletResponse response) {
+	/**
+	 * 로그아웃 — DB 세션 revoke + 쿠키 삭제. 비로그인 상태의 로그아웃 요청은 쿠키만 삭제하고 정상 응답 반환한다.
+	 */
+	@PostMapping("/logout")
+	public ResponseEntity<ApiResponse<Void>> logout(
+			@AuthenticationPrincipal(errorOnInvalidType = false) CustomUserDetails ud, HttpServletResponse response) {
 
-        // [FIX] ud == null: 비로그인(토큰 없음 또는 만료) 상태 → DB revoke 생략, 쿠키만 삭제
-        if (ud != null) {
-            authService.logout(ud.getUserId());
-        }
+		// ud == null: 비로그인(토큰 없음 또는 만료) 상태 → DB revoke 생략, 쿠키만 삭제
+		if (ud != null) {
+			authService.logout(ud.getUserId());
+		}
 
-        // 쿠키는 인증 상태와 무관하게 항상 삭제 (브라우저 잔류 쿠키 제거)
-        response.addHeader(HttpHeaders.SET_COOKIE, cookieUtil.deleteAccessCookie().toString());
-        response.addHeader(HttpHeaders.SET_COOKIE, cookieUtil.deleteRefreshCookie().toString());
-        return ApiResponse.toNoContent();
-    }
+		// 쿠키는 인증 상태와 무관하게 항상 삭제 (브라우저 잔류 쿠키 제거)
+		response.addHeader(HttpHeaders.SET_COOKIE, cookieUtil.deleteAccessCookie().toString());
+		response.addHeader(HttpHeaders.SET_COOKIE, cookieUtil.deleteRefreshCookie().toString());
+		return ApiResponse.toNoContent();
+	}
 
-    /**
-     * 아이디 찾기 (F-20)
-     * 명세 경로: /api/auth/find-id (AuthController 처리 — 명세서 업데이트 완료)
-     */
-    @PostMapping("/find-id")
-    public ResponseEntity<ApiResponse<FindIdResponse>> findId(
-            @RequestBody @Valid FindIdRequest request) {
-        return ApiResponse.toOk(authService.findId(request));
-    }
+	/**
+	 * 아이디 찾기 (F-20) 명세 경로: /api/auth/find-id
+	 */
+	@PostMapping("/find-id")
+	public ResponseEntity<ApiResponse<FindIdResponse>> findId(@RequestBody @Valid FindIdRequest request) {
+		return ApiResponse.toOk(authService.findId(request));
+	}
 
-    /**
-     * 비밀번호 재설정 링크 요청 (F-22)
-     * 명세 경로: /api/auth/find-password (AuthController 처리 — 명세서 업데이트 완료)
-     */
-    @PostMapping("/find-password")
-    public ResponseEntity<ApiResponse<Void>> findPassword(
-            @RequestBody @Valid FindPasswordRequest request) {
-        authService.findPassword(request);
-        return ApiResponse.toOk(null);
-    }
+	/**
+	 * 비밀번호 재설정 링크 요청 (F-22) 명세 경로: /api/auth/find-password
+	 */
+	@PostMapping("/find-password")
+	public ResponseEntity<ApiResponse<Void>> findPassword(@RequestBody @Valid FindPasswordRequest request) {
+		authService.findPassword(request);
+		return ApiResponse.toOk(null);
+	}
 
-    /**
-     * 비밀번호 재설정
-     */
-    @PostMapping("/reset-password")
-    public ResponseEntity<ApiResponse<Void>> resetPassword(
-            @RequestBody @Valid ResetPasswordRequest request) {
-        authService.resetPassword(request);
-        return ApiResponse.toOk(null);
-    }
+	/**
+	 * 비밀번호 재설정
+	 */
+	@PostMapping("/reset-password")
+	public ResponseEntity<ApiResponse<Void>> resetPassword(@RequestBody @Valid ResetPasswordRequest request) {
+		authService.resetPassword(request);
+		return ApiResponse.toOk(null);
+	}
 }
