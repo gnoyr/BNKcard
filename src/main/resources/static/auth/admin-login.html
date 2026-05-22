@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>관리자 로그인 – BNK</title>
+<link rel="stylesheet" href="/css/auth-style.css"/>
+<style>
+  body { background: #1a1a2e; }
+  .site-header { background: #16213e; border-bottom: 1px solid #0f3460; }
+  .logo-badge  { background: #e94560; }
+  .auth-card   { border-top: 3px solid #e94560; }
+
+  .admin-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #fff0f0; color: #c8102e; font-size: 11px; font-weight: 700;
+    padding: 4px 10px; border-radius: 20px; border: 1px solid #fca5a5;
+    margin-bottom: 16px; letter-spacing: .05em;
+  }
+  .admin-warn {
+    background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px;
+    padding: 10px 13px; font-size: 12px; color: #92400e;
+    margin-bottom: 18px; line-height: 1.6;
+  }
+  .lock-info { font-size: 12px; color: #6b7280; text-align: center; margin-top: 14px; }
+  .back-link { display: block; text-align: center; margin-top: 16px;
+               font-size: 12px; color: #9ca3af; text-decoration: none; }
+  .back-link:hover { color: #c8102e; }
+  .site-footer { background: #111827; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="login.html" class="logo">
+    <span class="logo-badge">BNK</span>
+    <span class="logo-text">부산은행</span>
+  </a>
+</header>
+
+<main class="page-wrap">
+  <div class="auth-card">
+    <div class="admin-badge">🔐 ADMIN</div>
+    <h1 class="page-title" style="font-size:20px;">관리자 로그인</h1>
+    <div class="admin-warn">관리자 전용 페이지입니다. 권한이 없는 접근은 기록됩니다.</div>
+
+    <div class="form-group">
+      <label class="form-label">관리자 아이디<span class="required">*</span></label>
+      <input class="form-input" type="text" id="username" placeholder="관리자 아이디"
+             autocomplete="username"
+             onkeydown="if(event.key==='Enter') document.getElementById('password').focus()"/>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">비밀번호<span class="required">*</span></label>
+      <div class="pw-wrap">
+        <input class="form-input" type="password" id="password" placeholder="비밀번호"
+               autocomplete="current-password"
+               onkeydown="if(event.key==='Enter') adminLogin()"/>
+        <button class="pw-toggle" type="button" onclick="togglePw()" title="표시/숨김"></button>
+      </div>
+    </div>
+
+    <div id="login-error" class="alert alert-error"></div>
+
+    <button class="btn btn-primary btn-block" id="loginBtn" onclick="adminLogin()">
+      관리자 로그인
+    </button>
+
+    <p class="lock-info">로그인 실패 5회 시 계정이 30분간 잠깁니다.</p>
+    <a href="login.html" class="back-link">← 일반 로그인으로 돌아가기</a>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <strong>BNK부산은행</strong> 관리자 시스템<br/>
+  © 2025 BNK Busan Bank. All rights reserved.
+</footer>
+
+<script>
+  function togglePw() {
+    const inp = document.getElementById('password');
+    const btn = inp.parentElement.querySelector('.pw-toggle');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+    btn.classList.toggle('is-visible');
+  }
+
+  function showErr(msg) {
+    const el = document.getElementById('login-error');
+    el.textContent = msg; el.style.display = 'block';
+  }
+  function clearErr() {
+    const el = document.getElementById('login-error');
+    el.textContent = ''; el.style.display = 'none';
+  }
+
+  async function adminLogin() {
+    clearErr();
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const btn      = document.getElementById('loginBtn');
+
+    if (!username || !password) { showErr('아이디와 비밀번호를 모두 입력해주세요.'); return; }
+
+    btn.disabled = true; btn.textContent = '로그인 중...';
+
+    try {
+      const res = await fetch('/api/admin/auth/login', {
+        method:      'POST',
+        credentials: 'include',
+        headers:     { 'Content-Type': 'application/json' },
+        body:        JSON.stringify({ username, password }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (res.ok) {
+        // header.js 세션 타이머를 위해 로그인 시각 기록
+        sessionStorage.setItem('bnk_login_at', String(Date.now()));
+        sessionStorage.setItem('bnk_user_name', username);
+        window.location.href = '/admin/index.html';
+      } else {
+        const msg = json.message || '로그인에 실패했습니다.';
+        showErr(msg.includes('잠') || res.status === 423
+          ? '⚠ ' + msg + ' 잠금은 30분 후 자동 해제됩니다.'
+          : msg);
+      }
+    } catch {
+      showErr('서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      btn.disabled = false; btn.textContent = '관리자 로그인';
+    }
+  }
+</script>
+</body>
+</html>

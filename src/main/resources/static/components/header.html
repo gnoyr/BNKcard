@@ -1,0 +1,27 @@
+<header class="site-header">
+  <a href="/" class="logo">
+    <span class="logo-badge">BNK</span>
+    <span class="logo-text">부산은행</span>
+  </a>
+  <nav class="header-nav" id="headerNav">
+    <!-- header.js 가 로그인 상태에 따라 렌더 -->
+  </nav>
+</header>
+
+<div class="session-bar" id="sessionBar" hidden='hidden'>
+  <span class="session-bar__dot" id="sessionDot"></span>
+  <span class="session-bar__label">로그인 중</span>
+  <span class="session-bar__sep">|</span>
+  <span class="session-bar__name" id="sessionName"></span>
+
+  <div class="session-bar__right">
+    <span class="session-bar__timer-label">세션 만료까지</span>
+    <span class="session-bar__timer" id="sessionTimer">--:--:--</span>
+    <button class="session-bar__btn session-bar__btn--refresh"
+            id="sessionRefresh">↻ 재발급</button>
+    <button class="session-bar__btn session-bar__btn--logout"
+            id="sessionLogout">로그아웃</button>
+  </div>
+</div>
+
+<div class="session-toast" id="sessionToast" hidden='hidden'></div>

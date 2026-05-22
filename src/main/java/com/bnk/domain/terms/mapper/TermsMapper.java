@@ -3,6 +3,7 @@ package com.bnk.domain.terms.mapper;
 import com.bnk.domain.card.dto.response.CardDetailResponse;
 import com.bnk.domain.terms.model.Terms;
 import com.bnk.domain.terms.model.TermsFile;
+import com.bnk.domain.terms.model.TermsMaster;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -44,4 +45,15 @@ public interface TermsMapper {
     // TermsMapper.java
     /** termsId로 파일 목록 조회 (PDF + IMAGE 전체) */
     List<TermsFile> findFilesByTermsId(@Param("termsId") Long termsId);
+    
+    /** 관리자 약관 전체 목록 (status 필터 가능) */
+    List<Terms> findAllForAdmin(@Param("status") String status);
+
+    /** 약관 상세 + 마스터 JOIN */
+    Optional<Terms> findByIdWithMaster(@Param("termsId") Long termsId);
+
+    /** TERMS_MASTERS 전체 목록 */
+    List<TermsMaster> findAllMasters();
+    
+   
 }

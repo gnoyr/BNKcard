@@ -81,7 +81,7 @@ public class SecurityConfig {
     	CorsConfiguration configuration = new CorsConfiguration();
         // 쿠키를 주고받으려면 AllowedOriginPatterns에 "*"를 단독으로 쓰면 브라우저 보안 정책상 차단될 수 있습니다.
         // 프론트엔드가 구동되는 실제 도메인(예: http://localhost:8080 등)을 명확히 지정해주는 것이 안전합니다.
-        configuration.setAllowedOrigins(List.of("http://localhost:8080")); 
+        configuration.setAllowedOrigins(List.of("http://localhost:8088")); 
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         
         // 쿠키 전송을 허용하기 위해 true 설정 필수 유지

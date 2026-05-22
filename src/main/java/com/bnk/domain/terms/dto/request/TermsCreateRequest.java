@@ -19,7 +19,7 @@ public class TermsCreateRequest {
     @Size(max = 20)
     private String version;
 
-    @NotBlank(message = "약관 내용은 필수입니다.")
+    
     private String contentHtml;
 
     @NotNull
@@ -31,4 +31,7 @@ public class TermsCreateRequest {
     private LocalDate effectiveFrom;
 
     private LocalDate effectiveTo;
+    
+    //프론트에서 changeSummary 전송하므로 필드 추가
+    private String changeSummary;
 }
