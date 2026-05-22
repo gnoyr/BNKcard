@@ -3,11 +3,13 @@ package com.bnk.domain.ai.config;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 
 @Configuration
+@ConditionalOnProperty(name = "ai.enabled", havingValue = "true")
 public class AiConfig {
 	@Bean
     ChatMemory chatMemory() {
