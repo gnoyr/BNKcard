@@ -234,3 +234,114 @@
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ── 관리자 헤더 변형 ── */
+.site-header--admin {
+  background: #1a1a2e;
+  border-bottom: 1px solid #0f3460;
+}
+.logo-badge--admin {
+  background: #e94560;
+  font-size: 11px;
+  letter-spacing: -0.3px;
+}
+.logo-text--admin {
+  color: #e2e8f0;
+}
+.site-header--admin .header-nav a {
+  color: #94a3b8;
+}
+.site-header--admin .header-nav a:hover,
+.site-header--admin .header-nav a.active {
+  color: #e94560;
+  border-bottom-color: #e94560;
+}
+.site-header--admin .header-nav__username {
+  color: #e94560;
+}
+.site-header--admin .header-nav__btn {
+  color: #94a3b8;
+}
+.site-header--admin .header-nav__btn:hover {
+  color: #e94560;
+  border-bottom-color: #e94560;
+}
+ 
+/* ── 페이지 내비 바 (마이페이지 서브 페이지용 뒤로가기 바) ── */
+.page-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 24px;
+  height: 44px;
+  background: #f4f4f5;
+  border-bottom: 1px solid #e4e4e7;
+  position: sticky;
+  top: 60px;   /* site-header 높이 */
+  z-index: 90;
+}
+.page-nav__back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #52525b;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background .15s, color .15s;
+}
+.page-nav__back::before {
+  content: '←';
+  font-size: 15px;
+}
+.page-nav__back:hover {
+  background: #e4e4e7;
+  color: #C8102E;
+}
+.page-nav__sep {
+  color: #d1d1d6;
+  font-size: 14px;
+  user-select: none;
+}
+.page-nav__title {
+  font-size: 13px;
+  color: #71717a;
+}
+ 
+/* ── 토스트 알림 (header.js 전용) ── */
+#toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+.toast {
+  min-width: 220px;
+  max-width: 320px;
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 4px 16px rgba(0,0,0,.18);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity .25s, transform .25s;
+  pointer-events: auto;
+}
+.toast--show {
+  opacity: 1;
+  transform: translateY(0);
+}
+.toast--success { background: #16a34a; color: #fff; }
+.toast--error   { background: #dc2626; color: #fff; }
+.toast--info    { background: #2563eb; color: #fff; }
+.toast--warning { background: #d97706; color: #fff; }
