@@ -4,7 +4,8 @@
  * ▸ JWT 토큰은 HttpOnly 쿠키로만 관리 — JS에서 토큰 직접 접근 불가
  * ▸ GET /api/users/me (credentials:'include') 로 인증 상태 확인
  * ▸ 401 수신 시 POST /api/auth/refresh 자동 시도 후 재확인
- * ▸ 관리자 페이지(/admin/) : GET /api/admin/dashboard 로 인증 확인
+ * ▸ 관리자 페이지(/admin/) : GET /api/admin/auth/me 로 인증 확인
+ *   [개선] /api/admin/dashboard 의존 제거 → 전용 me 엔드포인트 사용
  *
  * ── 페이지별 동작 ──────────────────────────────────────────────────
  * [공통 헤더 주입 대상]
@@ -17,6 +18,19 @@
  *   • /auth/signup.html   : 로그인 상태면 / 로 리다이렉트
  *   • /auth/find-id.html  : 리다이렉트 없음 (항상 접근 허용)
  *   • /auth/reset-*.html  : 리다이렉트 없음
+ *
+ * ── 개선 사항 ──────────────────────────────────────────────────────
+ * [1] 토큰 재발급 버튼 유지 (사용자 요청)
+ * [2] bnk_user_name sessionStorage 캐싱 추가
+ *     → 페이지 이동 시 /api/users/me 불필요 재호출 방지
+ * [3] markActiveLink — pathname 기반 startsWith 비교
+ *     → 쿼리스트링·trailing slash 있어도 active 정상 처리
+ * [4] checkAdminAuth — /api/admin/auth/me 전용 엔드포인트 사용
+ * [5] Access Token 남은 유효 시간 헤더 표시
+ *     → loginAt 기준 2h TTL 카운트다운
+ *     → 5분 미만 시 경고색(주황) 표시
+ *     → 만료 시 자동 로그인 페이지 이동
+ *     → 재발급 버튼 클릭 시 타이머 리셋
  * =====================================================================
  */
 (() => {
@@ -27,14 +41,25 @@
   const IS_ADMIN    = path.startsWith('/admin');
   const IS_AUTH     = path.startsWith('/auth/');
   const IS_MYPAGE   = path.startsWith('/mypage/');
-  const NEED_AUTH   = IS_ADMIN || IS_MYPAGE;  // 미인증 시 리다이렉트 대상
+  const NEED_AUTH   = IS_ADMIN || IS_MYPAGE;
 
-  // auth 페이지 중 로그인 상태이면 메인으로 보낼 페이지
   const REDIRECT_IF_LOGGED_IN = ['/auth/login.html', '/auth/signup.html'];
 
   const LOGIN_URL       = '/auth/login.html';
   const ADMIN_LOGIN_URL = '/auth/admin-login.html';
   const HOME_URL        = '/';
+
+  // sessionStorage 캐시 키
+  const CACHE_KEY_NAME     = 'bnk_user_name';
+  const CACHE_KEY_LOGIN_AT = 'bnk_login_at';
+
+  // Access Token 만료 시간 — application.properties jwt.access-expiration=7200000 (2h)
+  const ACCESS_TOKEN_TTL_MS = 2 * 60 * 60 * 1000;
+  // 만료 5분 전부터 경고색 표시
+  const WARN_THRESHOLD_MS   = 5 * 60 * 1000;
+
+  // 타이머 인터벌 참조 (stopTokenTimer 용)
+  let _tokenTimerInterval = null;
 
   /* ─────────────────────────────────────────────────────────────
      1. 헤더 HTML 주입  (#app-header 가 있는 페이지만)
@@ -66,8 +91,6 @@
 
   /* ─────────────────────────────────────────────────────────────
      2. 인증 상태 확인
-        - 일반 페이지 : GET /api/users/me
-        - 관리자 페이지: GET /api/admin/dashboard
   ──────────────────────────────────────────────────────────────── */
   async function checkAuth() {
     if (IS_ADMIN) {
@@ -81,34 +104,45 @@
   async function checkUserAuth() {
     let name = null;
 
-    try {
-      let res = await fetch('/api/users/me', { credentials: 'include' });
+    // sessionStorage 캐시 우선 사용 → 유효한 캐시면 API 호출 생략
+    const cachedName    = sessionStorage.getItem(CACHE_KEY_NAME);
+    const cachedLoginAt = sessionStorage.getItem(CACHE_KEY_LOGIN_AT);
+    const cacheValid    = cachedName && cachedLoginAt &&
+                          (Date.now() - Number(cachedLoginAt)) < 10 * 60 * 1000; // 10분
 
-      // 401 → Refresh Token으로 자동 재발급 시도
-      if (res.status === 401) {
-        const refreshed = await tryRefresh();
-        if (refreshed) {
-          res = await fetch('/api/users/me', { credentials: 'include' });
+    if (cacheValid) {
+      name = cachedName;
+    } else {
+      try {
+        let res = await fetch('/api/users/me', { credentials: 'include' });
+
+        if (res.status === 401) {
+          const refreshed = await tryRefresh();
+          if (refreshed) {
+            res = await fetch('/api/users/me', { credentials: 'include' });
+          }
         }
-      }
 
-      if (res.ok) {
-        const json = await res.json().catch(() => ({}));
-        name = json.data?.name ?? '회원';
+        if (res.ok) {
+          const json = await res.json().catch(() => ({}));
+          name = json.data?.name ?? '회원';
+
+          // 인증 성공 시 캐시 저장
+          sessionStorage.setItem(CACHE_KEY_NAME,     name);
+          sessionStorage.setItem(CACHE_KEY_LOGIN_AT, String(Date.now()));
+        }
+      } catch {
+        /* 네트워크 오류는 비로그인으로 처리 */
       }
-    } catch {
-      /* 네트워크 오류는 비로그인으로 처리 */
     }
 
     const loggedIn = name !== null;
 
-    // auth 페이지: 이미 로그인 → 메인으로
     if (IS_AUTH && loggedIn && REDIRECT_IF_LOGGED_IN.includes(path)) {
       location.replace(HOME_URL);
       return;
     }
 
-    // 보호 페이지: 비로그인 → 로그인으로
     if (NEED_AUTH && !loggedIn) {
       const next = encodeURIComponent(location.pathname + location.search);
       location.replace(`${LOGIN_URL}?next=${next}`);
@@ -118,12 +152,15 @@
     renderNav(loggedIn, name);
   }
 
-  /* 관리자 인증 확인 */
+  /* 관리자 인증 확인
+   * /api/admin/auth/me 전용 엔드포인트 사용
+   * → 대시보드 API 변경·지연의 영향 차단
+   */
   async function checkAdminAuth() {
     let authenticated = false;
 
     try {
-      const res = await fetch('/api/admin/dashboard', { credentials: 'include' });
+      const res = await fetch('/api/admin/auth/me', { credentials: 'include' });
       authenticated = res.ok;
     } catch {
       /* 네트워크 오류는 미인증으로 처리 */
@@ -134,14 +171,12 @@
       return;
     }
 
-    // 관리자 이름은 sessionStorage (admin-login.html 에서 저장)
-    const adminName = sessionStorage.getItem('bnk_user_name') ?? '관리자';
+    const adminName = sessionStorage.getItem(CACHE_KEY_NAME) ?? '관리자';
     renderAdminNav(adminName);
   }
 
   /* ─────────────────────────────────────────────────────────────
-     3. Refresh Token 재발급 시도
-        refresh_token 쿠키 경로 = /api/auth/refresh → 자동 전송
+     3. Refresh Token 재발급 시도 (자동)
   ──────────────────────────────────────────────────────────────── */
   async function tryRefresh() {
     try {
@@ -149,6 +184,9 @@
         method:      'POST',
         credentials: 'include',
       });
+      if (res.ok) {
+        sessionStorage.setItem(CACHE_KEY_LOGIN_AT, String(Date.now()));
+      }
       return res.ok;
     } catch {
       return false;
@@ -168,11 +206,15 @@
       nav.innerHTML = `
         <span class="header-nav__username">${esc(name)}님</span>
         <a href="/mypage/index.html">마이페이지</a>
+        <span class="header-nav__timer" id="hdrTokenTimer" title="Access Token 남은 시간">--:--:--</span>
         <button class="header-nav__btn" id="hdrRefresh">토큰 재발급</button>
         <button class="header-nav__btn" id="hdrLogout">로그아웃</button>`;
 
       document.getElementById('hdrRefresh').addEventListener('click', manualRefresh);
       document.getElementById('hdrLogout').addEventListener('click', logout);
+
+      // 타이머 시작
+      startTokenTimer();
     } else {
       nav.innerHTML = `
         <a href="/auth/login.html">로그인</a>
@@ -193,21 +235,96 @@
       <a href="/admin/cardManage.html">카드 관리</a>
       <a href="/admin/userManage.html">회원 관리</a>
       <a href="/admin/requestApproval.html">결재 처리</a>
+      <span class="header-nav__timer" id="hdrTokenTimer" title="Access Token 남은 시간">--:--:--</span>
       <button class="header-nav__btn" id="hdrLogout">로그아웃</button>`;
 
     document.getElementById('hdrLogout').addEventListener('click', adminLogout);
     markActiveLink(nav);
+
+    // 관리자도 타이머 시작
+    startTokenTimer();
   }
 
-  /** 현재 경로 active 표시 */
+  /** 현재 경로 active 표시
+   * 정확한 경로 일치(===) → pathname 기반 비교로 보완
+   *   - 쿼리스트링이 있어도 (/mypage/index.html?tab=info) active 정상 처리
+   *   - trailing slash 있어도 (/mypage/) active 정상 처리
+   *   - 하위 경로 포함 (/admin/cardManage.html → /admin/ active 처리)
+   */
   function markActiveLink(nav) {
+    const currentPath = location.pathname;
+
     nav.querySelectorAll('a[href]').forEach(a => {
-      a.classList.toggle('active', a.getAttribute('href') === path);
+      const href = a.getAttribute('href');
+      if (!href || href === '#') return;
+
+      const isExact  = currentPath === href;
+      const isParent = href !== '/' && currentPath.startsWith(href.replace(/\/[^/]+\.html$/, '/'));
+
+      a.classList.toggle('active', isExact || isParent);
     });
   }
 
   /* ─────────────────────────────────────────────────────────────
-     5. 토큰 재발급 (수동)
+     5. Access Token 유효 시간 타이머
+     ─────────────────────────────────────────────────────────────
+     HttpOnly 쿠키라 JS에서 JWT 직접 파싱 불가.
+     sessionStorage의 bnk_login_at(마지막 인증 시각) 기준으로
+     ACCESS_TOKEN_TTL_MS(2h) 를 역산하여 남은 시간 표시.
+  ──────────────────────────────────────────────────────────────── */
+  function startTokenTimer() {
+    stopTokenTimer(); // 기존 타이머 정리
+
+    function tick() {
+      const timerEl  = document.getElementById('hdrTokenTimer');
+      if (!timerEl) { stopTokenTimer(); return; }
+
+      const loginAt  = Number(sessionStorage.getItem(CACHE_KEY_LOGIN_AT) ?? 0);
+      const elapsed  = Date.now() - loginAt;
+      const remaining = ACCESS_TOKEN_TTL_MS - elapsed;
+
+      if (remaining <= 0) {
+        // 만료 → 로그인 페이지로 이동
+        stopTokenTimer();
+        showToast('세션이 만료되었습니다. 다시 로그인해 주세요.', 'error');
+        setTimeout(() => {
+          sessionStorage.removeItem(CACHE_KEY_NAME);
+          sessionStorage.removeItem(CACHE_KEY_LOGIN_AT);
+          location.replace(LOGIN_URL);
+        }, 1500);
+        return;
+      }
+
+      // 남은 시간 포맷: HH:MM:SS
+      const totalSec = Math.floor(remaining / 1000);
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      const formatted = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+      timerEl.textContent = formatted;
+
+      // 5분 미만 → 경고색
+      if (remaining < WARN_THRESHOLD_MS) {
+        timerEl.classList.add('header-nav__timer--warn');
+      } else {
+        timerEl.classList.remove('header-nav__timer--warn');
+      }
+    }
+
+    tick(); // 즉시 1회 실행
+    _tokenTimerInterval = setInterval(tick, 1000);
+  }
+
+  function stopTokenTimer() {
+    if (_tokenTimerInterval) {
+      clearInterval(_tokenTimerInterval);
+      _tokenTimerInterval = null;
+    }
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     6. 토큰 재발급 (수동)
   ──────────────────────────────────────────────────────────────── */
   async function manualRefresh() {
     try {
@@ -216,6 +333,9 @@
         credentials: 'include',
       });
       if (res.ok) {
+        // refresh 성공 시 캐시 타임스탬프 갱신 → 타이머 리셋
+        sessionStorage.setItem(CACHE_KEY_LOGIN_AT, String(Date.now()));
+        startTokenTimer(); // 2h 타이머 재시작
         showToast('토큰이 재발급되었습니다.', 'success');
       } else {
         showToast('재발급 실패. 다시 로그인해 주세요.', 'error');
@@ -227,37 +347,38 @@
   }
 
   /* ─────────────────────────────────────────────────────────────
-     6. 로그아웃
+     7. 로그아웃
   ──────────────────────────────────────────────────────────────── */
   async function logout() {
+    stopTokenTimer(); // 타이머 정리
     try {
       await fetch('/api/auth/logout', {
         method:      'POST',
         credentials: 'include',
       });
     } finally {
-      sessionStorage.removeItem('bnk_user_name');
-      sessionStorage.removeItem('bnk_login_at');
+      sessionStorage.removeItem(CACHE_KEY_NAME);
+      sessionStorage.removeItem(CACHE_KEY_LOGIN_AT);
       location.replace(LOGIN_URL);
     }
   }
 
   async function adminLogout() {
+    stopTokenTimer(); // 타이머 정리
     try {
-      // 관리자 세션도 동일 쿠키 삭제 엔드포인트 사용
       await fetch('/api/auth/logout', {
         method:      'POST',
         credentials: 'include',
       });
     } finally {
-      sessionStorage.removeItem('bnk_user_name');
-      sessionStorage.removeItem('bnk_login_at');
+      sessionStorage.removeItem(CACHE_KEY_NAME);
+      sessionStorage.removeItem(CACHE_KEY_LOGIN_AT);
       location.replace(ADMIN_LOGIN_URL);
     }
   }
 
   /* ─────────────────────────────────────────────────────────────
-     7. 토스트 알림
+     8. 토스트 알림
   ──────────────────────────────────────────────────────────────── */
   function showToast(msg, type = 'info') {
     let container = document.getElementById('toast-container');
@@ -272,7 +393,6 @@
     toast.textContent = msg;
     container.appendChild(toast);
 
-    // 진입 애니메이션 후 3초 제거
     requestAnimationFrame(() => toast.classList.add('toast--show'));
     setTimeout(() => {
       toast.classList.remove('toast--show');
@@ -281,7 +401,7 @@
   }
 
   /* ─────────────────────────────────────────────────────────────
-     8. XSS 방어용 이스케이프
+     9. XSS 방어용 이스케이프
   ──────────────────────────────────────────────────────────────── */
   function esc(str) {
     return String(str ?? '')
