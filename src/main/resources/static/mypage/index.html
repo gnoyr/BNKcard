@@ -5,23 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>마이페이지 | 부산은행</title>
   <link rel="stylesheet" href="/css/mypage.css"/>
+  <link rel="stylesheet" href="/css/components.css"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js" defer></script>
-  <script src="/js/mypage.js" defer></script>
 </head>
 <body>
 
-<header class="mp-header">
-  <a href="/" class="mp-header__logo">🏦 부산은행</a>
-  <span class="mp-header__title">마이페이지</span>
-</header>
+<!-- 헤더 컴포넌트 마운트 포인트 -->
+<div id="app-header"></div>
 
 <div class="page-wrap">
 
-  <!-- ①  프로필 배너 -->
-  <div class="profile-banner" id="profileBanner">
-    <div class="profile-avatar">👤</div>
+  <!-- 프로필 배너 -->
+  <div class="profile-banner">
+    <span class="profile-avatar">사용자</span>
     <div>
-      <div class="profile-name" id="profileName">불러오는 중…</div>
+      <div class="profile-name" id="profileName">불러오는 중...</div>
       <div class="profile-meta" id="profileMeta"></div>
       <div class="profile-score">
         <span>신용점수</span>
@@ -31,54 +29,34 @@
     </div>
   </div>
 
-  <!-- ②  빠른 이동 -->
+  <!-- 빠른 이동 -->
   <div class="quick-nav">
     <a href="/mypage/edit.html" class="quick-btn">
-      <div class="quick-icon">
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#C8102E" stroke-width="2" stroke-linecap="round">
-          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-        </svg>
-      </div>
+      <span class="quick-icon">수정</span>
       내 정보 수정
     </a>
     <a href="/mypage/password.html" class="quick-btn">
-      <div class="quick-icon">
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#C8102E" stroke-width="2" stroke-linecap="round">
-          <rect x="3" y="11" width="18" height="11" rx="2"/>
-          <path d="M7 11V7a5 5 0 0110 0v4"/>
-        </svg>
-      </div>
+      <span class="quick-icon">잠금</span>
       비밀번호 변경
     </a>
     <a href="/mypage/spending.html" class="quick-btn">
-      <div class="quick-icon">
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#C8102E" stroke-width="2" stroke-linecap="round">
-          <line x1="18" y1="20" x2="18" y2="10"/>
-          <line x1="12" y1="20" x2="12" y2="4"/>
-          <line x1="6"  y1="20" x2="6"  y2="14"/>
-        </svg>
-      </div>
+      <span class="quick-icon">통계</span>
       소비 패턴
     </a>
   </div>
 
-  <!-- ③  보유 카드 및 신청 현황 -->
+  <!-- 보유 카드 및 신청 현황 -->
   <div class="card">
     <div class="card__head">보유 카드 및 신청 현황</div>
     <div id="cardSection">
-      <!-- 스켈레톤 -->
-      <div class="card-item">
-        <div class="card-thumb skeleton" style="width:58px;height:36px;"></div>
-        <div class="card-info">
-          <div class="skeleton" style="width:120px;height:13px;border-radius:4px;margin-bottom:5px;"></div>
-          <div class="skeleton" style="width:80px;height:11px;border-radius:4px;"></div>
-        </div>
+      <div class="skeleton-row">
+        <span class="skeleton" style="width:58px;height:36px;border-radius:5px;"></span>
+        <span class="skeleton" style="flex:1;height:13px;border-radius:4px;"></span>
       </div>
     </div>
   </div>
 
-  <!-- ④  소비 패턴 도넛 차트 -->
+  <!-- 소비 패턴 도넛 차트 -->
   <div class="card">
     <div class="card__head">이달의 소비 패턴</div>
     <div id="spendingSection">
@@ -91,123 +69,28 @@
           </div>
         </div>
         <div class="legend" id="chart-legend">
-          <div class="skeleton" style="width:100%;height:12px;border-radius:4px;margin-bottom:8px;"></div>
-          <div class="skeleton" style="width:85%;height:12px;border-radius:4px;margin-bottom:8px;"></div>
-          <div class="skeleton" style="width:90%;height:12px;border-radius:4px;"></div>
+          <span class="skeleton" style="width:100%;height:12px;border-radius:4px;display:block;margin-bottom:8px;"></span>
+          <span class="skeleton" style="width:80%;height:12px;border-radius:4px;display:block;"></span>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ⑤  내 정보 상세 조회 -->
+  <!-- 내 정보 상세 -->
   <div class="card">
     <div class="card__head">내 정보</div>
-    <ul class="info-list" id="infoList">
-      <!-- JS로 렌더 -->
-    </ul>
+    <ul class="info-list" id="infoList"></ul>
     <div style="margin-top:16px;">
       <a href="/mypage/edit.html" class="btn btn-outline btn-block">내 정보 수정하기</a>
     </div>
   </div>
 
-</div><!-- /.page-wrap -->
+</div>
 
 <div id="toast-container"></div>
 
-<script>
-document.addEventListener('DOMContentLoaded', async () => {
-  const { API, Toast, Fmt, renderDonut, statusBadge } = MP;
-
-  // ── 내 정보 로드 ──
-  try {
-    const user = await API.get('/api/users/me');
-
-    document.getElementById('profileName').textContent = user.name + ' 님';
-    document.getElementById('profileMeta').textContent =
-      '마지막 로그인 ' + (user.lastLoginAt
-        ? new Date(user.lastLoginAt).toLocaleString('ko-KR', { dateStyle:'short', timeStyle:'short' })
-        : '—');
-    document.getElementById('profileScore').textContent = user.creditScore ?? '—';
-
-    const list = document.getElementById('infoList');
-    const rows = [
-      ['이메일',     user.maskedEmail],
-      ['휴대폰',     user.maskedPhone],
-      ['생년월일',   user.birthDate ?? '미입력'],
-      ['직업',       user.job ?? '미입력'],
-      ['소득 등급',  user.incomeLevelCode ?? '미입력'],
-      ['푸시 알림',  user.pushEnabled],
-      ['마케팅 동의',user.marketingAgree],
-    ];
-    list.innerHTML = rows.map(([label, val]) => {
-      const isBool = typeof val === 'boolean';
-      const value  = isBool
-        ? `<span class="dot ${val ? 'dot-on' : 'dot-off'}"></span> ${val ? '수신' : '미수신'}`
-        : val;
-      return `<li><span class="info-label">${label}</span>
-                  <span class="info-value">${value}</span></li>`;
-    }).join('');
-  } catch (err) {
-    Toast.error(err.message);
-  }
-
-  // ── 카드 현황 로드 ──
-  try {
-    const data = await API.get('/api/users/me/cards');
-    const section = document.getElementById('cardSection');
-
-    const allItems = [
-      ...data.ownedCards.map(c => ({
-        name: c.cardName,
-        sub:  '발급일: ' + c.issuedAt,
-        badge: `<span class="badge badge-owned">보유 중</span>`,
-      })),
-      ...data.applications.map(a => ({
-        name: a.cardName,
-        sub:  '신청일: ' + a.appliedAt,
-        badge: statusBadge(a.applicationStatus),
-      })),
-    ];
-
-    if (allItems.length === 0) {
-      section.innerHTML = `<div class="empty-state">보유 카드 및 신청 내역이 없습니다.</div>`;
-    } else {
-      section.innerHTML = allItems.map(item => `
-        <div class="card-item">
-          <div class="card-thumb">💳</div>
-          <div class="card-info">
-            <div class="card-info__name">${item.name}</div>
-            <div class="card-info__sub">${item.sub}</div>
-          </div>
-          ${item.badge}
-        </div>`).join('');
-    }
-  } catch (err) {
-    document.getElementById('cardSection').innerHTML =
-      `<div class="empty-state">카드 정보를 불러오지 못했습니다.</div>`;
-  }
-
-  // ── 소비 패턴 로드 ──
-  try {
-    const data = await API.get('/api/users/me/spending');
-    const hasData = data.items?.some(i => Number(i.monthlyAmount) > 0);
-
-    if (!hasData) {
-      document.getElementById('spendingSection').innerHTML = `
-        <div class="empty-state">
-          등록된 소비 패턴이 없습니다.<br>
-          <a href="/mypage/spending.html" style="margin-top:8px;display:inline-block;">
-            소비 패턴 등록하기 →
-          </a>
-        </div>`;
-    } else {
-      renderDonut('donutChart', data.items, data.totalAmount);
-    }
-  } catch (err) {
-    document.getElementById('spendingSection').innerHTML =
-      `<div class="empty-state">소비 패턴을 불러오지 못했습니다.</div>`;
-  }
-});
-</script>
+<script src="/js/header.js"></script>
+<script src="/js/mypage.js"></script>
+<script src="/js/mypage-main.js"></script>
 </body>
 </html>

@@ -25,13 +25,15 @@
 
     <div class="form-group">
       <label class="form-label">아이디 (이메일)<span class="required">*</span></label>
-      <input class="form-input" type="email" id="email" placeholder="이메일 주소를 입력하세요" autocomplete="email" />
+      <input class="form-input" type="email" id="email"
+             placeholder="이메일 주소를 입력하세요" autocomplete="email" />
     </div>
 
     <div class="form-group">
       <label class="form-label">비밀번호<span class="required">*</span></label>
       <div class="pw-wrap">
-        <input class="form-input" type="password" id="password" placeholder="비밀번호를 입력하세요" autocomplete="current-password" />
+        <input class="form-input" type="password" id="password"
+               placeholder="비밀번호를 입력하세요" autocomplete="current-password" />
         <button class="pw-toggle" type="button" onclick="login.togglePw()" title="비밀번호 표시/숨김"></button>
       </div>
       <p class="helper">로그인 실패 5회 시 계정이 잠깁니다.</p>
@@ -57,8 +59,19 @@
   <strong>BNK부산은행</strong><br />
   부산광역시 부산진구 부전동 830-38 &nbsp;|&nbsp; 대표전화 1588-6200<br />
   © 2025 BNK Busan Bank. All rights reserved.
+  <!--
+    관리자 로그인 진입점 — 일반 사용자 눈에 띄지 않도록
+    글자색을 배경과 거의 동일하게(opacity 0.15), font-size 10px 처리
+    직접 URL(/auth/admin-login.html) 접근도 가능
+  -->
+  <br/>
+  <a href="/auth/admin-login.html"
+     style="color:inherit;opacity:0.15;font-size:10px;text-decoration:none;
+            letter-spacing:0.05em;user-select:none;"
+     tabindex="-1"
+     aria-hidden="true">관리자</a>
 </footer>
-
+<script src="/js/header.js"></script>
 <script src="/js/auth-js.js"></script>
 </body>
 </html>
