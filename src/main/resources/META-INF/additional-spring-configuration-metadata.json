@@ -1,164 +1,167 @@
-{
-  "properties": [
-    {
-      "name": "spring.datasource.url",
-      "type": "java.lang.String",
-      "description": "데이터베이스 접속 URL. Oracle Cloud Wallet 사용 시 jdbc:oracle:thin:@{서비스명}?TNS_ADMIN={Wallet 경로} 형식으로 입력합니다."
-    },
-    {
-      "name": "spring.datasource.driver-class-name",
-      "type": "java.lang.String",
-      "description": "JDBC 드라이버 클래스명. Oracle DB 사용 시 oracle.jdbc.OracleDriver 로 설정합니다."
-    },
-    {
-      "name": "spring.datasource.username",
-      "type": "java.lang.String",
-      "description": "데이터베이스 접속 계정명."
-    },
-    {
-      "name": "spring.datasource.password",
-      "type": "java.lang.String",
-      "description": "데이터베이스 접속 비밀번호. 외부에 노출되지 않도록 주의합니다."
-    },
-    {
-      "name": "mybatis.mapper-locations",
-      "type": "java.lang.String",
-      "description": "MyBatis XML 매퍼 파일 위치. 예: classpath:mappers/**/*.xml"
-    },
-    {
-      "name": "mybatis.type-aliases-package",
-      "type": "java.lang.String",
-      "description": "MyBatis 타입 별칭으로 등록할 모델 클래스의 기본 패키지 경로. 예: com.bnk.domain.**.model"
-    },
-    {
-      "name": "mybatis.configuration.map-underscore-to-camel-case",
-      "type": "java.lang.Boolean",
-      "description": "DB 컬럼의 snake_case를 Java 필드의 camelCase로 자동 매핑할지 여부. 기본값: true"
-    },
-    {
-      "name": "mybatis.configuration.default-statement-timeout",
-      "type": "java.lang.Integer",
-      "description": "MyBatis SQL 실행 타임아웃(초). 설정 시간 초과 시 예외가 발생합니다. 기본값: 30"
-    },
-    {
-      "name": "mybatis.configuration.cache-enabled",
-      "type": "java.lang.Boolean",
-      "description": "MyBatis 2차 캐시 사용 여부. 기본값: false"
-    },
-    {
-      "name": "jwt.secret",
-      "type": "java.lang.String",
-      "description": "JWT 토큰 서명에 사용되는 비밀 키. 충분한 길이의 무작위 문자열을 사용하며, 외부에 노출되지 않도록 주의합니다."
-    },
-    {
-      "name": "jwt.access-expiration",
-      "type": "java.lang.Long",
-      "description": "JWT Access 토큰 만료 시간(밀리초). 예: 7200000 = 2시간"
-    },
-    {
-      "name": "jwt.refresh-expiration",
-      "type": "java.lang.Long",
-      "description": "JWT Refresh 토큰 만료 시간(밀리초). 예: 604800000 = 7일"
-    },
-    {
-      "name": "aes.secret-key",
-      "type": "java.lang.String",
-      "description": "AES 대칭키 암복호화에 사용되는 비밀 키. 외부에 노출되지 않도록 주의합니다."
-    },
-    {
-      "name": "cors.allowed-origins",
-      "type": "java.lang.String",
-      "description": "CORS 허용 Origin 목록. 쉼표(,)로 구분하여 여러 도메인을 입력합니다. 예: http://localhost:3000,https://example.com"
-    },
-    {
-      "name": "cookie.secure",
-      "type": "java.lang.Boolean",
-      "description": "쿠키의 Secure 속성 설정. true 설정 시 HTTPS 연결에서만 쿠키가 전송됩니다. 로컬 개발: false, 운영: true"
-    },
-    {
-      "name": "spring.mail.host",
-      "type": "java.lang.String",
-      "description": "SMTP 서버 주소. Gmail: smtp.gmail.com, 네이버: smtp.naver.com"
-    },
-    {
-      "name": "spring.mail.port",
-      "type": "java.lang.Integer",
-      "description": "SMTP 서버 포트. Gmail STARTTLS: 587, 네이버 SSL: 465"
-    },
-    {
-      "name": "spring.mail.username",
-      "type": "java.lang.String",
-      "description": "메일 발신 계정 주소. 예: bnkcard.noreply@gmail.com"
-    },
-    {
-      "name": "spring.mail.password",
-      "type": "java.lang.String",
-      "description": "메일 발신 계정 비밀번호. Gmail 사용 시 앱 비밀번호(16자리)를 입력합니다. 외부에 노출되지 않도록 주의합니다."
-    },
-    {
-      "name": "spring.mail.properties.mail.smtp.auth",
-      "type": "java.lang.Boolean",
-      "description": "SMTP 인증 사용 여부. 기본값: true"
-    },
-    {
-      "name": "spring.mail.properties.mail.smtp.starttls.enable",
-      "type": "java.lang.Boolean",
-      "description": "STARTTLS 암호화 사용 여부. Gmail 사용 시 true, 네이버 SSL 465 사용 시 false. 기본값: true"
-    },
-    {
-      "name": "spring.mail.properties.mail.smtp.starttls.required",
-      "type": "java.lang.Boolean",
-      "description": "STARTTLS 필수 여부. true 설정 시 STARTTLS를 지원하지 않는 서버와의 연결을 차단합니다. 기본값: true"
-    },
-    {
-      "name": "mail.from.name",
-      "type": "java.lang.String",
-      "description": "이메일 발신자 표시명. 수신자 받은편지함에 이 이름으로 표시됩니다. 예: BNK카드"
-    },
-    {
-      "name": "file.upload-dir",
-      "type": "java.lang.String",
-      "description": "파일 업로드 저장 경로. 절대 경로 또는 서버 루트 기준 상대 경로를 입력합니다. 예: /data/uploads"
-    },
-    {
-      "name": "oci.auth.type",
-      "type": "java.lang.String",
-      "description": "OCI 인증 방식. API 키 인증 사용 시 'API_KEY'로 설정합니다."
-    },
-    {
-      "name": "oci.region",
-      "type": "java.lang.String",
-      "description": "OCI 리소스가 위치한 리전 코드. 예: ap-seoul-1"
-    },
-    {
-      "name": "oci.tenancy-id",
-      "type": "java.lang.String",
-      "description": "OCI 테넌시 OCID. OCI 콘솔 → 프로파일 → 테넌시 정보에서 확인합니다."
-    },
-    {
-      "name": "oci.user-id",
-      "type": "java.lang.String",
-      "description": "OCI API 호출에 사용할 사용자 OCID. OCI 콘솔 → 프로파일 → 사용자 정보에서 확인합니다."
-    },
-    {
-      "name": "oci.fingerprint",
-      "type": "java.lang.String",
-      "description": "OCI API 서명 키의 지문(Fingerprint). API 키 등록 후 OCI 콘솔에서 확인합니다. 예: xx:xx:xx:...:xx"
-    },
-    {
-      "name": "oci.private-key-path",
-      "type": "java.lang.String",
-      "description": "OCI API 요청 서명에 사용할 RSA 개인키 파일 경로. 외부에 노출되지 않도록 주의합니다. 예: /home/user/.oci/oci_api_key.pem"
-    },
-    {
-      "name": "oci.namespace",
-      "type": "java.lang.String",
-      "description": "OCI Object Storage 네임스페이스. OCI 콘솔 → Object Storage → 버킷 목록 상단에서 확인합니다."
-    },
-    {
-      "name": "oci.bucket-name",
-      "type": "java.lang.String",
-      "description": "파일을 저장할 OCI Object Storage 버킷 이름. 예: bnkcard-files"
-    }
-  ]
-}
+{"properties": [
+  {
+    "name": "spring.datasource.url",
+    "type": "java.lang.String",
+    "description": "데이터베이스 접속 URL. Oracle Cloud Wallet 사용 시 jdbc:oracle:thin:@{서비스명}?TNS_ADMIN={Wallet 경로} 형식으로 입력합니다."
+  },
+  {
+    "name": "spring.datasource.driver-class-name",
+    "type": "java.lang.String",
+    "description": "JDBC 드라이버 클래스명. Oracle DB 사용 시 oracle.jdbc.OracleDriver 로 설정합니다."
+  },
+  {
+    "name": "spring.datasource.username",
+    "type": "java.lang.String",
+    "description": "데이터베이스 접속 계정명."
+  },
+  {
+    "name": "spring.datasource.password",
+    "type": "java.lang.String",
+    "description": "데이터베이스 접속 비밀번호. 외부에 노출되지 않도록 주의합니다."
+  },
+  {
+    "name": "mybatis.mapper-locations",
+    "type": "java.lang.String",
+    "description": "MyBatis XML 매퍼 파일 위치. 예: classpath:mappers/**/*.xml"
+  },
+  {
+    "name": "mybatis.type-aliases-package",
+    "type": "java.lang.String",
+    "description": "MyBatis 타입 별칭으로 등록할 모델 클래스의 기본 패키지 경로. 예: com.bnk.domain.**.model"
+  },
+  {
+    "name": "mybatis.configuration.map-underscore-to-camel-case",
+    "type": "java.lang.Boolean",
+    "description": "DB 컬럼의 snake_case를 Java 필드의 camelCase로 자동 매핑할지 여부. 기본값: true"
+  },
+  {
+    "name": "mybatis.configuration.default-statement-timeout",
+    "type": "java.lang.Integer",
+    "description": "MyBatis SQL 실행 타임아웃(초). 설정 시간 초과 시 예외가 발생합니다. 기본값: 30"
+  },
+  {
+    "name": "mybatis.configuration.cache-enabled",
+    "type": "java.lang.Boolean",
+    "description": "MyBatis 2차 캐시 사용 여부. 기본값: false"
+  },
+  {
+    "name": "jwt.secret",
+    "type": "java.lang.String",
+    "description": "JWT 토큰 서명에 사용되는 비밀 키. 충분한 길이의 무작위 문자열을 사용하며, 외부에 노출되지 않도록 주의합니다."
+  },
+  {
+    "name": "jwt.access-expiration",
+    "type": "java.lang.Long",
+    "description": "JWT Access 토큰 만료 시간(밀리초). 예: 7200000 = 2시간"
+  },
+  {
+    "name": "jwt.refresh-expiration",
+    "type": "java.lang.Long",
+    "description": "JWT Refresh 토큰 만료 시간(밀리초). 예: 604800000 = 7일"
+  },
+  {
+    "name": "aes.secret-key",
+    "type": "java.lang.String",
+    "description": "AES 대칭키 암복호화에 사용되는 비밀 키. 외부에 노출되지 않도록 주의합니다."
+  },
+  {
+    "name": "cors.allowed-origins",
+    "type": "java.lang.String",
+    "description": "CORS 허용 Origin 목록. 쉼표(,)로 구분하여 여러 도메인을 입력합니다. 예: http://localhost:3000,https://example.com"
+  },
+  {
+    "name": "cookie.secure",
+    "type": "java.lang.Boolean",
+    "description": "쿠키의 Secure 속성 설정. true 설정 시 HTTPS 연결에서만 쿠키가 전송됩니다. 로컬 개발: false, 운영: true"
+  },
+  {
+    "name": "spring.mail.host",
+    "type": "java.lang.String",
+    "description": "SMTP 서버 주소. Gmail: smtp.gmail.com, 네이버: smtp.naver.com"
+  },
+  {
+    "name": "spring.mail.port",
+    "type": "java.lang.Integer",
+    "description": "SMTP 서버 포트. Gmail STARTTLS: 587, 네이버 SSL: 465"
+  },
+  {
+    "name": "spring.mail.username",
+    "type": "java.lang.String",
+    "description": "메일 발신 계정 주소. 예: bnkcard.noreply@gmail.com"
+  },
+  {
+    "name": "spring.mail.password",
+    "type": "java.lang.String",
+    "description": "메일 발신 계정 비밀번호. Gmail 사용 시 앱 비밀번호(16자리)를 입력합니다. 외부에 노출되지 않도록 주의합니다."
+  },
+  {
+    "name": "spring.mail.properties.mail.smtp.auth",
+    "type": "java.lang.Boolean",
+    "description": "SMTP 인증 사용 여부. 기본값: true"
+  },
+  {
+    "name": "spring.mail.properties.mail.smtp.starttls.enable",
+    "type": "java.lang.Boolean",
+    "description": "STARTTLS 암호화 사용 여부. Gmail 사용 시 true, 네이버 SSL 465 사용 시 false. 기본값: true"
+  },
+  {
+    "name": "spring.mail.properties.mail.smtp.starttls.required",
+    "type": "java.lang.Boolean",
+    "description": "STARTTLS 필수 여부. true 설정 시 STARTTLS를 지원하지 않는 서버와의 연결을 차단합니다. 기본값: true"
+  },
+  {
+    "name": "mail.from.name",
+    "type": "java.lang.String",
+    "description": "이메일 발신자 표시명. 수신자 받은편지함에 이 이름으로 표시됩니다. 예: BNK카드"
+  },
+  {
+    "name": "file.upload-dir",
+    "type": "java.lang.String",
+    "description": "파일 업로드 저장 경로. 절대 경로 또는 서버 루트 기준 상대 경로를 입력합니다. 예: /data/uploads"
+  },
+  {
+    "name": "oci.auth.type",
+    "type": "java.lang.String",
+    "description": "OCI 인증 방식. API 키 인증 사용 시 'API_KEY'로 설정합니다."
+  },
+  {
+    "name": "oci.region",
+    "type": "java.lang.String",
+    "description": "OCI 리소스가 위치한 리전 코드. 예: ap-seoul-1"
+  },
+  {
+    "name": "oci.tenancy-id",
+    "type": "java.lang.String",
+    "description": "OCI 테넌시 OCID. OCI 콘솔 → 프로파일 → 테넌시 정보에서 확인합니다."
+  },
+  {
+    "name": "oci.user-id",
+    "type": "java.lang.String",
+    "description": "OCI API 호출에 사용할 사용자 OCID. OCI 콘솔 → 프로파일 → 사용자 정보에서 확인합니다."
+  },
+  {
+    "name": "oci.fingerprint",
+    "type": "java.lang.String",
+    "description": "OCI API 서명 키의 지문(Fingerprint). API 키 등록 후 OCI 콘솔에서 확인합니다. 예: xx:xx:xx:...:xx"
+  },
+  {
+    "name": "oci.private-key-path",
+    "type": "java.lang.String",
+    "description": "OCI API 요청 서명에 사용할 RSA 개인키 파일 경로. 외부에 노출되지 않도록 주의합니다. 예: /home/user/.oci/oci_api_key.pem"
+  },
+  {
+    "name": "oci.namespace",
+    "type": "java.lang.String",
+    "description": "OCI Object Storage 네임스페이스. OCI 콘솔 → Object Storage → 버킷 목록 상단에서 확인합니다."
+  },
+  {
+    "name": "oci.bucket-name",
+    "type": "java.lang.String",
+    "description": "파일을 저장할 OCI Object Storage 버킷 이름. 예: bnkcard-files"
+  },
+  {
+    "name": "app.base-url",
+    "type": "java.lang.String",
+    "description": "프로젝트 base-url 설정"
+  }
+]}

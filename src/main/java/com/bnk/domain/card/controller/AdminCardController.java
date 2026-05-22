@@ -4,6 +4,7 @@ import com.bnk.domain.card.dto.request.AdminCardSearchRequest;
 import com.bnk.domain.card.dto.request.CardCreateRequest;
 import com.bnk.domain.card.dto.request.CardStatusRequest;
 import com.bnk.domain.card.dto.request.CardUpdateRequest;
+import com.bnk.domain.card.dto.response.CardDetailResponse;
 import com.bnk.domain.card.service.AdminCardService;
 import com.bnk.global.auth.CustomAdminDetails;
 import com.bnk.global.response.ApiResponse;
@@ -32,6 +33,16 @@ public class AdminCardController {
             @ModelAttribute AdminCardSearchRequest request,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         return ApiResponse.toOk(adminCardService.getAdminCardList(request, ad.getAdminId()));
+    }
+    
+    /**
+     * 관리자 카드 상세 조회.
+     */
+    @GetMapping("/{cardId}")
+    public ResponseEntity<ApiResponse<CardDetailResponse>> getCardDetail(
+            @PathVariable("cardId") Long cardId,
+            @AuthenticationPrincipal CustomAdminDetails ad) {
+        return ApiResponse.toOk(adminCardService.getAdminCardDetail(cardId));
     }
 
     /**
