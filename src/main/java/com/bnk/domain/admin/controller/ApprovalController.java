@@ -2,6 +2,7 @@ package com.bnk.domain.admin.controller;
 
 import com.bnk.domain.admin.dto.request.ApprovalActionRequest;
 import com.bnk.domain.admin.dto.request.ApprovalSearchRequest;
+import com.bnk.domain.admin.dto.response.ApprovalDetailResponse;
 import com.bnk.domain.admin.dto.response.ApprovalListResponse;
 import com.bnk.domain.admin.service.ApprovalService;
 import com.bnk.global.auth.CustomAdminDetails;
@@ -20,18 +21,23 @@ public class ApprovalController {
 
     private final ApprovalService approvalService;
 
-    /** 결재 목록 조회 */
+    /** 결재 목록 조회 — 현재 로그인 관리자 할당 건만 */
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<ApprovalListResponse>>> getApprovals(
-            @ModelAttribute ApprovalSearchRequest request) {
-        return ApiResponse.toOk(approvalService.getApprovals(request));
+            @ModelAttribute ApprovalSearchRequest request,
+            @AuthenticationPrincipal CustomAdminDetails ad) {  // ← 추가
+        return ApiResponse.toOk(approvalService.getApprovals(request, ad.getAdminId())); // ← adminId 추가
     }
 
-    /**
-     * 결재 승인 (RQ-B07).
-     * @Transactional: APPROVAL_LINES → APPROVAL_REQUESTS → CARD_VERSIONS.snapshot_json 역직렬화
-     * → CARDS UPDATE → CARDS.card_status='APPROVED'
-     */
+    /** 결재 상세 조회 */
+    @GetMapping("/{approvalId}")
+    public ResponseEntity<ApiResponse<ApprovalDetailResponse>> getApprovalDetail(
+            @PathVariable Long approvalId,
+            @AuthenticationPrincipal CustomAdminDetails ad) {
+        return ApiResponse.toOk(approvalService.getApprovalDetail(approvalId, ad.getAdminId()));
+    }
+
+    /** 결재 승인 */
     @PostMapping("/{approvalId}/approve")
     public ResponseEntity<ApiResponse<Void>> approveRequest(
             @PathVariable Long approvalId,
@@ -41,11 +47,7 @@ public class ApprovalController {
         return ApiResponse.toOk(null);
     }
 
-    /**
-     * 결재 반려 (RQ-B08).
-     * comment 필수 검증은 서비스 단에서 처리 (REJECT_COMMENT_REQUIRED).
-     * CARDS.card_status 변경 없음 — DRAFT 유지.
-     */
+    /** 결재 반려 */
     @PostMapping("/{approvalId}/reject")
     public ResponseEntity<ApiResponse<Void>> rejectRequest(
             @PathVariable Long approvalId,
