@@ -64,6 +64,56 @@
       });
     }
 
+    function renderTable(items) {
+      const tbody = document.getElementById('table-body');
+      if (!items || items.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5">결재 신청 내역이 없습니다.</td></tr>`;
+        return;
+      }
+      
+      tbody.innerHTML = items.map((item, index) => `
+      <tr data-id="${item.approvalId}" style="cursor:pointer;">
+        <td>${index + 1}</td>
+        <td>${TYPE_LABEL[item.requestTypeCode] ?? item.requestTypeCode}</td>
+        <td>${item.requesterName ?? '-'}</td>
+        <td>${formatDate(item.requestedAt)}</td>
+        <td>${STATUS_LABEL[item.statusCode] ?? item.statusCode}</td>
+      </tr>
+    `).join('');
+
+      tbody.querySelectorAll('tr[data-id]').forEach(row => {
+        row.addEventListener('click', () => {
+          location.href = `/admin/approvals/detail.html?id=${row.dataset.id}`;
+        });
+      });
+    }
+
+    function renderPagination(totalCount) {
+   	  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+   	  const el = document.getElementById('pagination');
+
+   	  if (totalPages <= 1) { el.innerHTML = ''; return; }
+
+   	  const startPage = Math.max(0, currentPage - 2);
+   	  const endPage   = Math.min(totalPages - 1, startPage + 4);
+
+   	  let html = `<button data-page="${currentPage - 1}"
+   	                ${currentPage === 0 ? 'disabled' : ''}>&lsaquo;</button> `;
+
+   	  for (let i = startPage; i <= endPage; i++) {
+   	    html += `<button data-page="${i}"
+   	               ${i === currentPage ? 'disabled' : ''}>${i + 1}</button> `;
+   	  }
+
+   	  html += `<button data-page="${currentPage + 1}"
+   	             ${currentPage === totalPages - 1 ? 'disabled' : ''}>&rsaquo;</button>`;
+
+   	  el.innerHTML = html;
+   	  el.querySelectorAll('button[data-page]:not([disabled])').forEach(btn => {
+   	    btn.addEventListener('click', () => load(Number(btn.dataset.page)));
+   	  });
+   	}
+
     async function fetchApprovals(page) {
       const status = document.getElementById('filter-status').value;
       const type   = document.getElementById('filter-type').value;
@@ -76,52 +126,7 @@
       const json = await res.json();
       return json.data; // PageResponse
     }
-
-    function renderTable(items) {
-      const tbody = document.getElementById('table-body');
-      if (!items || items.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5">결재 신청 내역이 없습니다.</td></tr>`;
-        return;
-      }
-      
-      const sorted = [...items].sort((a, b) => a.approvalId - b.approvalId);
-      console.log(items.map(i => i.approvalId));
-      console.log(sorted.map(i => i.approvalId));
-      
-      tbody.innerHTML = sorted.map((item, index) => `
-      <tr data-id="${item.approvalId}" style="cursor:pointer;">
-        <td>${index + 1}</td>
-        <td>${TYPE_LABEL[item.requestTypeCode] ?? item.requestTypeCode}</td>
-        <td>${item.requesterName ?? '-'}</td>
-        <td>${STATUS_LABEL[item.statusCode] ?? item.statusCode}</td>
-        <td>${formatDate(item.requestedAt)}</td>
-      </tr>
-    `).join('');
-
-      tbody.querySelectorAll('tr[data-id]').forEach(row => {
-        row.addEventListener('click', () => {
-          location.href = `/admin/approvals/detail.html?id=${row.dataset.id}`;
-        });
-      });
-    }
-
-    function renderPagination(data) {
-    	  const el = document.getElementById('pagination');
-    	  const { totalPages, currentPage: cp, hasPrevious, hasNext } = data;
-    	  if (totalPages <= 1) { el.innerHTML = ''; return; }
-
-    	  let html = `<button data-page="${cp - 1}" ${!hasPrevious ? 'disabled' : ''}>&lt;</button> `;
-    	  for (let i = 0; i < totalPages; i++) {
-    	    html += `<button data-page="${i}" ${i === cp ? 'disabled' : ''}>${i + 1}</button> `;
-    	  }
-    	  html += `<button data-page="${cp + 1}" ${!hasNext ? 'disabled' : ''}>&gt;</button>`;
-
-    	  el.innerHTML = html;
-    	  el.querySelectorAll('button[data-page]:not([disabled])').forEach(btn => {
-    	    btn.addEventListener('click', () => load(Number(btn.dataset.page)));
-    	  });
-    	}
-
+    
     async function load(page) {
       currentPage = page;
       document.getElementById('table-body').innerHTML =
@@ -130,7 +135,7 @@
         const data = await fetchApprovals(page);
         document.getElementById('total-count').textContent = `총 ${data.totalCount ?? 0}건`;
         renderTable(data.content);
-        renderPagination(data);
+        renderPagination(data.totalCount);
       } catch (e) {
         document.getElementById('table-body').innerHTML =
           `<tr><td colspan="5">데이터를 불러오지 못했습니다. (${e.message})</td></tr>`;

@@ -55,7 +55,7 @@
         ORDER  BY ca.applied_at DESC
     </select>
 
-    <select id="findAdminList" resultMap="applicationMap">
+    <select id="findAdminList" resultMap="appMap">
 	    SELECT *
 	    FROM   CARD_APPLICATIONS
 	    WHERE  1 = 1
