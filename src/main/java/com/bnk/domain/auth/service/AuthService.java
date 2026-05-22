@@ -124,18 +124,17 @@ public class AuthService {
     // ──────────────────────────────────────────────────────────────────
     @Transactional
     public Long signup(SignupRequest request) {
+        if (userMapper.existsByEmail(request.getEmail()) > 0)
+            throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
 
-        // 중복 체크
-    	if (userMapper.existsByEmail(request.getEmail()) > 0) {
-    	    throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
-    	}
-    	if (userMapper.existsByPhone(request.getPhone()) > 0) {
-    	    throw new BusinessException(ErrorCode.DUPLICATE_PHONE);
-    	}
-        // 이메일 인증 완료 여부 확인
-        if (tokenStore.get(KEY_VERIFIED + request.getEmail()) == null) {
+        // [변경] 포맷된 전화번호로 중복 체크 및 저장
+        String formattedPhone = MaskingUtil.formatPhone(request.getPhone());
+
+        if (userMapper.existsByPhone(formattedPhone) > 0)
+            throw new BusinessException(ErrorCode.DUPLICATE_PHONE);
+
+        if (tokenStore.get(KEY_VERIFIED + request.getEmail()) == null)
             throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
-        }
 
         // 필수 약관 체크
         List<Terms> signupTerms = termsMapper.findByPackageType("SIGNUP");
@@ -158,10 +157,9 @@ public class AuthService {
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .name(request.getName())
-                .phone(request.getPhone())
+                .phone(formattedPhone)
                 .birthDate(birthDate)
                 .marketingAgree(request.getMarketingAgree() != null ? request.getMarketingAgree() : "N")
-                .privacyAgree("Y")
                 .build();
 
         userMapper.insertUser(user);
