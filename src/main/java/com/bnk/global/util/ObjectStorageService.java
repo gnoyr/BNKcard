@@ -42,8 +42,11 @@ public class ObjectStorageService {
                     .build();
 
             objectStorageClient.putObject(putRequest);
-
-            String url = buildUrl(objectName);
+            
+          
+            @SuppressWarnings("unused")
+			String url = buildUrl(objectName);
+            
             log.info("[ObjectStorage] 업로드 완료: objectName={}", objectName);
             return objectName;
 

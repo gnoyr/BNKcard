@@ -59,7 +59,7 @@ public class AdminUserController {
      */
     @PatchMapping("/users/{userId}/unlock")
     public ResponseEntity<ApiResponse<Void>> unlockUser(
-            @PathVariable("userId") Long userId,
+            @PathVariable Long userId,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         adminUserService.unlockUser(userId, ad.getAdminId());
         return ApiResponse.toOk(null);

@@ -27,7 +27,9 @@ public class CardApplication {
     private String cardName;
     
     // 페이지 필드
+    @Builder.Default
     private int page = 0;
+    @Builder.Default
     private int size = 20;
 
     public int getOffset() { return page * size; }
