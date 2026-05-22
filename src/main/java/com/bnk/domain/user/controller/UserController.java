@@ -27,14 +27,17 @@ public class UserController {
 
     private final UserService userService;
 
-    /** F-24 | 내 정보 조회 — phone·email 마스킹, password_hash·ci_value 제외 */
+    /** F-24 | 내 정보 조회 */
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> getMyInfo(
             @AuthenticationPrincipal CustomUserDetails ud) {
         return ApiResponse.toOk(userService.getMyInfo(ud.getUserId()));
     }
 
-    /** F-25 | 내 정보 수정 — phone 변경 시 is_phone_verified='N' + AUDIT_LOGS INSERT */
+    /**
+     * F-25 | 내 정보 수정
+     * phone 변경 시 request.currentPassword BCrypt 검증 후 저장
+     */
     @PutMapping("/me")
     public ResponseEntity<ApiResponse<Void>> updateMyInfo(
             @RequestBody @Valid UserUpdateRequest request,
@@ -43,7 +46,7 @@ public class UserController {
         return ApiResponse.toOk(null);
     }
 
-    /** F-26 | 비밀번호 변경 — BCrypt 검증 → 신규 저장 → 전체 세션 revoke */
+    /** F-26 | 비밀번호 변경 */
     @PatchMapping("/me/password")
     public ResponseEntity<ApiResponse<Void>> changePassword(
             @RequestBody @Valid PasswordChangeRequest request,
@@ -52,11 +55,7 @@ public class UserController {
         return ApiResponse.toOk(null);
     }
 
-    /**
-     * RQ-F17 | 보유 카드 및 신청 현황 조회
-     * USER_CARDS(deleted_yn='N') + CARD_APPLICATIONS
-     * ※ 소비 패턴(GET·PUT /api/users/me/spending)은 SpendingController에서 담당
-     */
+    /** RQ-F17 | 보유 카드 및 신청 현황 */
     @GetMapping("/me/cards")
     public ResponseEntity<ApiResponse<CardStatusResponse>> getMyCards(
             @AuthenticationPrincipal CustomUserDetails ud) {

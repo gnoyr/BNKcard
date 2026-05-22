@@ -5,22 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>내 정보 수정 | 부산은행</title>
   <link rel="stylesheet" href="/css/mypage.css"/>
-  <script src="/js/mypage.js" defer></script>
+  <link rel="stylesheet" href="/css/components.css"/>
 </head>
 <body>
 
+<div id="app-header"></div>
+
+<!-- mp-header (마이페이지 전용 헤더 직접 사용 시) -->
 <header class="mp-header">
-  <a href="/" class="mp-header__logo">🏦 부산은행</a>
-  <button class="mp-header__back" onclick="history.back()">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-      <polyline points="15 18 9 12 15 6"/>
-    </svg>
-    뒤로
-  </button>
+  <a href="/" class="mp-header__logo">BNK 부산은행</a>
+  <span class="mp-header__title">내 정보 수정</span>
+  <button class="mp-header__back" onclick="history.back()">뒤로</button>
 </header>
 
 <div class="page-wrap">
-
   <div class="page-title">
     <h1>내 정보 수정</h1>
     <p>개인 정보를 수정하고 저장하세요.</p>
@@ -28,12 +26,11 @@
 
   <form id="editForm" novalidate>
 
-    <!-- 기본 정보 -->
     <div class="card">
       <div class="card__head">기본 정보</div>
 
       <div class="form-group">
-        <label class="form-label" for="name">이름 <span class="req">*</span></label>
+        <label class="form-label" for="name">이름</label>
         <input class="form-control" type="text" id="name"
                placeholder="이름 입력" maxlength="20" autocomplete="off"/>
         <span class="form-error" id="name-err"></span>
@@ -42,11 +39,13 @@
       <div class="form-group">
         <label class="form-label" for="phone">휴대폰 번호</label>
         <input class="form-control" type="tel" id="phone"
-               placeholder="01012345678" maxlength="11" autocomplete="off"/>
-        <span class="form-hint">번호 변경 시 본인 재인증이 필요합니다.</span>
+               placeholder="새 번호 입력 (예: 01012345678)"
+               maxlength="11" autocomplete="off"/>
+        <span class="form-hint">
+          현재 등록 번호: <strong id="currentPhone">불러오는 중...</strong>
+          &nbsp;·&nbsp; 변경하려면 새 번호를 입력하세요.
+        </span>
         <span class="form-error" id="phone-err"></span>
-        <!-- 재인증 안내 배너 -->
-        <div id="phoneBanner"></div>
       </div>
 
       <div class="form-group">
@@ -67,20 +66,15 @@
       </div>
     </div>
 
-    <!-- 알림 설정 -->
     <div class="card">
       <div class="card__head">알림 설정</div>
-
       <div class="toggle-row">
-        <div>
-          <div class="toggle-row__label">푸시 알림 수신</div>
-        </div>
+        <div class="toggle-row__label">푸시 알림 수신</div>
         <label class="toggle">
           <input type="checkbox" id="pushEnabled"/>
           <span class="toggle-track"></span>
         </label>
       </div>
-
       <div class="toggle-row">
         <div>
           <div class="toggle-row__label">마케팅 정보 활용 동의</div>
@@ -93,111 +87,39 @@
       </div>
     </div>
 
-    <!-- 액션 버튼 -->
     <div class="form-actions">
       <a href="/mypage/index.html" class="btn btn-outline">취소</a>
       <button type="submit" class="btn btn-primary" id="submitBtn">수정 완료</button>
     </div>
   </form>
-
 </div>
 
-<!-- 재인증 모달 -->
-<div class="modal-overlay" id="phoneModal">
+<!-- 비밀번호 재확인 모달 -->
+<div class="modal-overlay" id="pwConfirmModal">
   <div class="modal">
-    <div class="modal__title">📱 휴대폰 재인증 안내</div>
+    <div class="modal__title">비밀번호 확인</div>
     <div class="modal__body">
-      휴대폰 번호가 변경되었습니다.<br>
-      변경된 번호로 본인 인증을 완료해야<br>
-      일부 서비스 이용이 가능합니다.
+      휴대폰 번호를 변경하려면<br>현재 비밀번호를 입력해주세요.
     </div>
-    <div class="modal__actions">
-      <button class="btn btn-outline" id="laterBtn">나중에</button>
-      <button class="btn btn-primary" id="verifyBtn">지금 인증</button>
+    <div style="margin-top:16px;">
+      <div class="pw-field">
+        <input class="form-control" type="password" id="confirmPwInput"
+               placeholder="현재 비밀번호" autocomplete="current-password"/>
+        <button type="button" class="pw-toggle" data-target="confirmPwInput">표시</button>
+      </div>
+      <span class="form-error" id="confirmPwErr"></span>
+    </div>
+    <div class="modal__actions" style="margin-top:16px;">
+      <button class="btn btn-outline" id="modalCancelBtn">취소</button>
+      <button class="btn btn-primary" id="modalConfirmBtn">확인</button>
     </div>
   </div>
 </div>
 
 <div id="toast-container"></div>
 
-<script>
-document.addEventListener('DOMContentLoaded', async () => {
-  const { API, Toast, V, btnLoading, showPhoneBanner, Modal } = MP;
-
-  // ── 기존 정보 불러오기 ──
-  try {
-    const user = await API.get('/api/users/me');
-    document.getElementById('name').value            = user.name ?? '';
-    document.getElementById('phone').value           = (user.maskedPhone ?? '').replace(/[^0-9]/g, '');
-    document.getElementById('job').value             = user.job ?? '';
-    document.getElementById('incomeLevelCode').value = user.incomeLevelCode ?? '';
-    document.getElementById('pushEnabled').checked   = user.pushEnabled === 'Y' || user.pushEnabled === true;
-    document.getElementById('marketingAgree').checked= user.marketingAgree === 'Y' || user.marketingAgree === true;
-  } catch (err) {
-    Toast.error('정보를 불러오지 못했습니다.');
-  }
-
-  const form      = document.getElementById('editForm');
-  const submitBtn = document.getElementById('submitBtn');
-
-  // ── 폼 제출 ──
-  form.addEventListener('submit', async e => {
-    e.preventDefault();
-    let ok = true;
-
-    const nameVal  = document.getElementById('name').value.trim();
-    const phoneVal = document.getElementById('phone').value.trim();
-
-    if (!V.setErr('name',  V.required(nameVal, '이름을 입력해주세요.'))) ok = false;
-    if (phoneVal && !V.setErr('phone', V.phone(phoneVal))) ok = false;
-
-    if (!ok) return;
-
-    btnLoading(submitBtn, true);
-    try {
-      await API.put('/api/users/me', {
-        name:            nameVal   || undefined,
-        phone:           phoneVal  || undefined,
-        job:             document.getElementById('job').value.trim()             || undefined,
-        incomeLevelCode: document.getElementById('incomeLevelCode').value         || undefined,
-        pushEnabled:     document.getElementById('pushEnabled').checked,
-        marketingAgree:  document.getElementById('marketingAgree').checked,
-      });
-
-      Toast.success('정보가 수정되었습니다.');
-
-      // phone 변경 여부는 서버 응답에서 판단 불가(Void 반환)이므로
-      // 클라이언트에서 원본 vs 현재 비교 — 마스킹된 원본과 raw 비교 어려워
-      // phone 필드에 값이 있으면 변경 가능성으로 간주
-      if (phoneVal) {
-        showPhoneBanner('phoneBanner');
-        setTimeout(() => {
-          document.getElementById('phoneModal').classList.add('open');
-        }, 700);
-      } else {
-        setTimeout(() => { window.location.href = '/mypage/index.html'; }, 1100);
-      }
-    } catch (err) {
-      Toast.error(err.message || '수정 중 오류가 발생했습니다.');
-    } finally {
-      btnLoading(submitBtn, false);
-    }
-  });
-
-  // 실시간 에러 클리어
-  ['name', 'phone'].forEach(id =>
-    document.getElementById(id)?.addEventListener('input', () => V.setErr(id, '')));
-
-  // 모달 버튼
-  document.getElementById('laterBtn').onclick = () => {
-    document.getElementById('phoneModal').classList.remove('open');
-    window.location.href = '/mypage/index.html';
-  };
-  document.getElementById('verifyBtn').onclick = () => {
-    document.getElementById('phoneModal').classList.remove('open');
-    window.location.href = '/mypage/verify-phone.html';
-  };
-});
-</script>
+<script src="/js/header.js"></script>
+<script src="/js/mypage.js"></script>
+<script src="/js/mypage-edit.js"></script>
 </body>
 </html>
