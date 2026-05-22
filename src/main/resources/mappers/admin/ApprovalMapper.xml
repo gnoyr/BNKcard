@@ -10,6 +10,7 @@
         <result property="requesterAdminId" column="requester_admin_id"/>
         <result property="requesterName"    column="requester_name"/>
         <result property="targetId"         column="target_id"/>
+        <result property="targetName"       column="target_name"/>
         <result property="statusCode"       column="status_code"/>
         <result property="requestComment"   column="request_comment"/>
         <result property="requestedAt"      column="requested_at"/>
@@ -26,11 +27,20 @@
         </collection>
     </resultMap>
 
+    <!-- ── 결재 상세 조회 ────────────────────────────────────── -->
     <select id="findById" resultMap="approvalMap">
         SELECT ar.approval_id, ar.request_type_code, ar.requester_admin_id,
                req.name          AS requester_name,
-               ar.target_id, ar.status_code, ar.request_comment,
+               ar.target_id,
+               ar.status_code, ar.request_comment,
                ar.requested_at,  ar.completed_at,
+               -- 카드명/약관명 JOIN (request_type_code 기준)
+               CASE ar.request_type_code
+                   WHEN 'CARD_PUBLISH' THEN c.card_name
+                   WHEN 'CARD_UPDATE'  THEN c.card_name
+                   WHEN 'TERMS_PUBLISH'THEN tm.title
+                   ELSE NULL
+               END AS target_name,
                al.approval_line_id,
                al.approval_id    AS line_approval_id,
                al.approver_admin_id,
@@ -40,18 +50,34 @@
                al.comment_text,
                al.approved_at
         FROM   APPROVAL_REQUESTS ar
-        LEFT JOIN ADMIN_USERS req ON ar.requester_admin_id = req.admin_id
+        LEFT JOIN ADMIN_USERS  req ON ar.requester_admin_id = req.admin_id
         LEFT JOIN APPROVAL_LINES al ON ar.approval_id = al.approval_id
-        LEFT JOIN ADMIN_USERS apv ON al.approver_admin_id = apv.admin_id
+        LEFT JOIN ADMIN_USERS  apv ON al.approver_admin_id  = apv.admin_id
+        -- target_id = version_id → card_id → card_name
+        LEFT JOIN CARD_VERSIONS cv  ON ar.target_id = cv.version_id
+                                   AND ar.request_type_code IN ('CARD_PUBLISH','CARD_UPDATE')
+        LEFT JOIN CARDS c           ON cv.card_id = c.card_id
+        -- target_id = terms_id → terms_master_id → title
+        LEFT JOIN TERMS t           ON ar.target_id = t.terms_id
+                                   AND ar.request_type_code = 'TERMS_PUBLISH'
+        LEFT JOIN TERMS_MASTERS tm  ON t.terms_master_id = tm.terms_master_id
         WHERE  ar.approval_id = #{approvalId}
         ORDER  BY al.approval_order ASC
     </select>
 
+    <!-- ── 결재 목록 조회 (현재 관리자 할당 건 필터 + 카드명/약관명 포함) ── -->
     <select id="findApprovals" resultMap="approvalMap">
         SELECT ar.approval_id, ar.request_type_code, ar.requester_admin_id,
                req.name       AS requester_name,
-               ar.target_id, ar.status_code,
+               ar.target_id,
+               ar.status_code,
                ar.requested_at, ar.completed_at,
+               CASE ar.request_type_code
+                   WHEN 'CARD_PUBLISH' THEN c.card_name
+                   WHEN 'CARD_UPDATE'  THEN c.card_name
+                   WHEN 'TERMS_PUBLISH'THEN tm.title
+                   ELSE NULL
+               END AS target_name,
                al.approval_line_id,
                al.approval_id AS line_approval_id,
                al.approver_admin_id,
@@ -62,56 +88,80 @@
         FROM   APPROVAL_REQUESTS ar
         LEFT JOIN ADMIN_USERS req ON ar.requester_admin_id = req.admin_id
         LEFT JOIN APPROVAL_LINES al ON ar.approval_id = al.approval_id
-        LEFT JOIN ADMIN_USERS apv ON al.approver_admin_id = apv.admin_id
+        LEFT JOIN ADMIN_USERS apv   ON al.approver_admin_id = apv.admin_id
+        LEFT JOIN CARD_VERSIONS cv  ON ar.target_id = cv.version_id
+                                   AND ar.request_type_code IN ('CARD_PUBLISH','CARD_UPDATE')
+        LEFT JOIN CARDS c           ON cv.card_id = c.card_id
+        LEFT JOIN TERMS t           ON ar.target_id = t.terms_id
+                                   AND ar.request_type_code = 'TERMS_PUBLISH'
+        LEFT JOIN TERMS_MASTERS tm  ON t.terms_master_id = tm.terms_master_id
         WHERE  1 = 1
+        <!-- 현재 로그인 관리자에게 할당된 라인이 있는 결재건만 조회 -->
+        <if test="approverAdminId != null">
+            AND ar.approval_id IN (
+                SELECT approval_id FROM APPROVAL_LINES
+                WHERE  approver_admin_id = #{approverAdminId}
+            )
+        </if>
         <if test="statusCode != null and statusCode != ''">
-          AND ar.status_code       = #{statusCode}
+            AND ar.status_code = #{statusCode}
         </if>
         <if test="requestTypeCode != null and requestTypeCode != ''">
-          AND ar.request_type_code = #{requestTypeCode}
+            AND ar.request_type_code = #{requestTypeCode}
         </if>
         ORDER  BY ar.requested_at DESC
         OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
     </select>
 
+    <!-- ── 결재 목록 COUNT ──────────────────────────────────── -->
     <select id="countApprovals" resultType="long">
-        SELECT COUNT(1) FROM APPROVAL_REQUESTS ar
+        SELECT COUNT(DISTINCT ar.approval_id)
+        FROM APPROVAL_REQUESTS ar
+        LEFT JOIN APPROVAL_LINES al ON ar.approval_id = al.approval_id
         WHERE 1 = 1
+        <if test="approverAdminId != null">
+            AND ar.approval_id IN (
+                SELECT approval_id FROM APPROVAL_LINES
+                WHERE  approver_admin_id = #{approverAdminId}
+            )
+        </if>
         <if test="statusCode != null and statusCode != ''">
-          AND ar.status_code       = #{statusCode}
+            AND ar.status_code = #{statusCode}
         </if>
         <if test="requestTypeCode != null and requestTypeCode != ''">
-          AND ar.request_type_code = #{requestTypeCode}
+            AND ar.request_type_code = #{requestTypeCode}
         </if>
     </select>
 
+    <!-- ── INSERT ───────────────────────────────────────────── -->
     <insert id="insertApprovalRequest">
-	    <selectKey keyProperty="approvalId" resultType="long" order="AFTER">
-	        SELECT SEQ_APPROVAL_REQUESTS.CURRVAL FROM DUAL
-	    </selectKey>
-	    INSERT INTO APPROVAL_REQUESTS (
-	        request_type_code, requester_admin_id,
-	        target_id, status_code, request_comment, requested_at
-	    ) VALUES (
-	        #{requestTypeCode}, #{requesterAdminId},
-	        #{targetId,       jdbcType=NUMERIC},
-	        'PENDING',
-	        #{requestComment, jdbcType=VARCHAR},
-	        SYSTIMESTAMP
-	    )
-	</insert>
+        <selectKey keyProperty="approvalId" resultType="long" order="AFTER">
+            SELECT SEQ_APPROVAL_REQUESTS.CURRVAL FROM DUAL
+        </selectKey>
+        INSERT INTO APPROVAL_REQUESTS (
+            request_type_code, requester_admin_id,
+            target_id, status_code, request_comment, requested_at
+        ) VALUES (
+            #{requestTypeCode}, #{requesterAdminId},
+            #{targetId,       jdbcType=NUMERIC},
+            'PENDING',
+            #{requestComment, jdbcType=VARCHAR},
+            SYSTIMESTAMP
+        )
+    </insert>
 
-	<insert id="insertApprovalLine">
-	    <selectKey keyProperty="approvalLineId" resultType="long" order="AFTER">
-	        SELECT SEQ_APPROVAL_LINES.CURRVAL FROM DUAL
-	    </selectKey>
-	    INSERT INTO APPROVAL_LINES (
-	        approval_id, approver_admin_id, approval_order, status_code
-	    ) VALUES (
-	        #{approvalId}, #{approverAdminId}, #{approvalOrder}, 'PENDING'
-	    )
-	</insert>
+    <insert id="insertApprovalLine">
+        <selectKey keyProperty="approvalLineId" resultType="long" order="AFTER">
+            SELECT SEQ_APPROVAL_LINES.CURRVAL FROM DUAL
+        </selectKey>
+        INSERT INTO APPROVAL_LINES (
+            approval_id, approver_admin_id, approval_order, status_code
+        ) VALUES (
+            #{approvalId}, #{approverAdminId}, #{approvalOrder}, 'PENDING'
+        )
+    </insert>
 
+    <!-- ── UPDATE ───────────────────────────────────────────── -->
     <update id="updateLineStatus">
         UPDATE APPROVAL_LINES
         SET    status_code  = #{statusCode},
@@ -127,7 +177,7 @@
         WHERE  approval_id = #{approvalId}
     </update>
 
-    <!-- 전체 라인 완료 여부 확인 -->
+    <!-- ── 전체 라인 완료 여부 ───────────────────────────────── -->
     <select id="isAllLinesCompleted" resultType="boolean">
         SELECT CASE
             WHEN COUNT(CASE WHEN status_code = 'PENDING' THEN 1 END) = 0
@@ -137,26 +187,26 @@
         WHERE approval_id = #{approvalId}
     </select>
 
-    <!-- version_id 기준으로 CardVersion 조회 (target_id = version_id 구조) -->
-	<select id="findVersionByApprovalId" resultType="com.bnk.domain.card.model2.CardVersion">
-	    SELECT cv.version_id, cv.card_id, cv.version_no,
-	           cv.version_status, cv.snapshot_json
-	    FROM   CARD_VERSIONS cv
-	    INNER JOIN APPROVAL_REQUESTS ar ON cv.version_id = ar.target_id
-	    WHERE  ar.approval_id = #{approvalId}
-	</select>
-	
-	<!-- 기존 findVersionSnapshot도 수정 -->
-	<select id="findVersionSnapshot" resultType="string">
-	    SELECT cv.snapshot_json
-	    FROM   CARD_VERSIONS cv
-	    INNER JOIN APPROVAL_REQUESTS ar ON cv.version_id = ar.target_id
-	    WHERE  ar.approval_id = #{approvalId}
-	</select>
-	
-	<select id="countPendingApprovals" resultType="int">
-	    SELECT COUNT(1) FROM APPROVAL_REQUESTS
-	    WHERE  status_code = 'PENDING'
-	</select>
+    <!-- ── version_id 기준 snapshot 조회 ───────────────────── -->
+    <select id="findVersionSnapshot" resultType="string">
+        SELECT cv.snapshot_json
+        FROM   CARD_VERSIONS cv
+        INNER JOIN APPROVAL_REQUESTS ar ON cv.version_id = ar.target_id
+        WHERE  ar.approval_id = #{approvalId}
+    </select>
+
+    <!-- ── version_id 기준 CardVersion 조회 ────────────────── -->
+    <select id="findVersionByApprovalId" resultType="com.bnk.domain.card.model2.CardVersion">
+        SELECT cv.version_id, cv.card_id, cv.version_no,
+               cv.version_status, cv.snapshot_json
+        FROM   CARD_VERSIONS cv
+        INNER JOIN APPROVAL_REQUESTS ar ON cv.version_id = ar.target_id
+        WHERE  ar.approval_id = #{approvalId}
+    </select>
+
+    <select id="countPendingApprovals" resultType="int">
+        SELECT COUNT(1) FROM APPROVAL_REQUESTS
+        WHERE  status_code = 'PENDING'
+    </select>
 
 </mapper>

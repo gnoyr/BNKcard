@@ -1,5 +1,6 @@
 package com.bnk.domain.card.service;
 
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -15,6 +16,7 @@ import com.bnk.domain.admin.model.ApprovalRequest;
 import com.bnk.domain.card.dto.request.AdminCardSearchRequest;
 import com.bnk.domain.card.dto.request.BenefitCreateRequest;
 import com.bnk.domain.card.dto.request.CardCreateRequest;
+import com.bnk.domain.card.dto.request.CardStatusRequest;
 import com.bnk.domain.card.dto.request.CardUpdateRequest;
 import com.bnk.domain.card.dto.response.CardDetailResponse;
 import com.bnk.domain.card.dto.response.CardListResponse;
@@ -22,11 +24,17 @@ import com.bnk.domain.card.mapper.CardBenefitMapper;
 import com.bnk.domain.card.mapper.CardContentMapper;
 import com.bnk.domain.card.mapper.CardImageMapper;
 import com.bnk.domain.card.mapper.CardMapper;
+import com.bnk.domain.card.mapper.CardMapper2;
+import com.bnk.domain.card.mapper.CardStatusHistoryMapper2;
 import com.bnk.domain.card.mapper.CardVersionMapper2;
 import com.bnk.domain.card.model.Card;
 import com.bnk.domain.card.model.CardBenefit;
+
+import com.bnk.domain.card.model2.CardStatusHistory;
+
 import com.bnk.domain.card.model.CardImage;
 import com.bnk.domain.card.model2.CardContent;
+
 import com.bnk.domain.card.model2.CardVersion;
 import com.bnk.domain.search.mapper.SearchLogMapper;
 import com.bnk.domain.spending.mapper.SpendingPatternMapper;
@@ -40,10 +48,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-
+import lombok.extern.slf4j.Slf4j;
 @Service
 @Validated
 @RequiredArgsConstructor
+@Slf4j
 public class AdminCardService {
 
     private final CardMapper cardMapper;
@@ -56,7 +65,8 @@ public class AdminCardService {
     private final ApprovalMapper approvalMapper;
     private final ObjectMapper objectMapper;
     private final CardVersionMapper2 cardVersionMapper2;
-    
+    private final CardMapper2 cardMapper2;
+    private final CardStatusHistoryMapper2 cardStatusHistoryMapper2;
 
     /**
      * B-03 카드 신규 등록 (RQ-B04)
@@ -222,6 +232,46 @@ public class AdminCardService {
         return PageResponse.of(content, totalCount, request.getPage(), request.getSize());
     }
     
+
+ // 기존 AdminCardService.java 하단에 추가
+
+    /**
+     * 카드 상태 강제 변경 (B-관리자 수동 처리 / 긴급 중지).
+     * 스케줄러와 별도로 관리자가 직접 상태를 변경할 때 사용.
+     */
+    @Transactional
+    public void changeCardStatus(Long cardId, CardStatusRequest request, Long adminId) {
+
+        com.bnk.domain.card.model2.Card card = cardMapper2.getCardDetail(cardId);
+        if (card == null) {
+            throw new BusinessException(ErrorCode.CARD_NOT_FOUND);
+        }
+
+        String previousStatus = card.getCardStatus();
+        String newStatus      = request.getCardStatus();
+
+        if (previousStatus.equals(newStatus)) {
+            return;
+        }
+
+        cardMapper2.updateCardStatus(cardId, newStatus);
+
+        cardStatusHistoryMapper2.insertCardStatusHistory(
+                CardStatusHistory.builder()
+                        .cardId(cardId)
+                        .previousStatus(previousStatus)
+                        .changedStatus(newStatus)
+                        .changedBy(adminId)
+                        .changedReason(request.getChangedReason() != null
+                                ? request.getChangedReason()
+                                : "관리자 수동 상태 변경")
+                        .build()
+        );
+
+        log.info("[카드상태변경] cardId={}, {} → {}, adminId={}",
+                cardId, previousStatus, newStatus, adminId);
+        }
+
     // 관리자 카드 상세 보기
     @Transactional(readOnly = true)
     public CardDetailResponse getAdminCardDetail(Long cardId) {
@@ -285,6 +335,7 @@ public class AdminCardService {
                 .contents(contentDtos)
                 .termsFiles(termsFileDtos)
                 .build();
+
     }
 
     // ── private helpers ──────────────────────────────────────────────
@@ -315,4 +366,6 @@ public class AdminCardService {
             return "{}";
         }
     }
+    
+    
 }

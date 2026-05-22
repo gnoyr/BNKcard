@@ -9,8 +9,10 @@ import lombok.Setter;
 @NoArgsConstructor
 public class ApprovalSearchRequest {
 
-    private String statusCode;          // PENDING / APPROVED / REJECTED
-    private String requestTypeCode;     // CARD_PUBLISH / CARD_UPDATE / TERMS_PUBLISH
+    private String statusCode;
+    private String requestTypeCode;
+    private Long   approverAdminId;  // 추가 — 현재 로그인 관리자 ID 필터용
+
     private int page = 0;
     private int size = 20;
 
