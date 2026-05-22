@@ -1,0 +1,148 @@
+<!-- terms-detail.html?termsId=5
+     연결 API:
+       GET   /api/admin/terms/{termsId}          → 약관 상세 (files 포함)
+       PATCH /api/admin/terms/{termsId}/status   → 상태 변경
+       GET   /api/terms/{termsId}/files          → 파일 목록 (PDF URL, JPG URL)
+-->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>약관 상세 | BNK 관리자</title>
+</head>
+<body>
+
+<h2>약관 상세</h2>
+<p><a href="termsList.html">← 목록으로</a></p>
+
+<table border="1" cellpadding="6" cellspacing="0" id="detailTable">
+  <tr><td colspan="2">로딩 중...</td></tr>
+</table>
+
+<hr>
+<h3>첨부 파일</h3>
+<div id="fileArea">로딩 중...</div>
+
+<hr>
+<h3>상태 변경</h3>
+<select id="newStatus">
+  <option value="">선택</option>
+  <option value="REVIEW">→ REVIEW (검토 요청)</option>
+  <option value="APPROVED">→ APPROVED (승인)</option>
+  <option value="PUBLISHED">→ PUBLISHED (게시)</option>
+  <option value="EXPIRED">→ EXPIRED (만료)</option>
+</select>
+<input type="text" id="changedReason" placeholder="변경 사유" style="width:250px">
+<button onclick="changeStatus()">상태 변경</button>
+
+<br><br>
+<div id="msg"></div>
+
+<script>
+  const params  = new URLSearchParams(location.search);
+  const termsId = params.get('termsId');
+
+  if (!termsId) {
+    document.body.innerHTML = '<p>termsId 파라미터가 없습니다.</p>';
+    throw new Error('no termsId');
+  }
+
+  async function api(method, url, body) {
+    const opts = { method, credentials: 'include',
+                   headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(url, opts);
+    return { ok: res.ok, data: await res.json().catch(() => null) };
+  }
+
+  async function loadDetail() {
+    const r = await api('GET', `/api/admin/terms/${termsId}`);
+    const table = document.getElementById('detailTable');
+
+    if (!r.ok || !r.data?.data) {
+      table.innerHTML = '<tr><td>조회 실패</td></tr>';
+      return;
+    }
+
+    const t = r.data.data;
+    table.innerHTML = `
+      <tr><th>약관 ID</th><td>${t.termsId}</td></tr>
+      <tr><th>제목</th><td>${t.title ?? '-'}</td></tr>
+      <tr><th>유형</th><td>${t.termsType ?? '-'}</td></tr>
+      <tr><th>버전</th><td>${t.version}</td></tr>
+      <tr><th>상태</th><td><b>${t.status}</b></td></tr>
+      <tr><th>필수 여부</th><td>${t.requiredYn === 'Y' ? '필수' : '선택'}</td></tr>
+      <tr><th>재동의 필요</th><td>${t.reconsentRequiredYn === 'Y' ? 'Y (알림 발송)' : 'N'}</td></tr>
+      <tr><th>시행일</th><td>${t.effectiveFrom ?? '-'}</td></tr>
+      <tr><th>등록일</th><td>${t.createdAt ? t.createdAt.substring(0,10) : '-'}</td></tr>
+    `;
+  }
+
+  async function loadFiles() {
+    const r = await api('GET', `/api/terms/${termsId}/files`);
+    const area = document.getElementById('fileArea');
+
+    if (!r.ok || !r.data?.data || r.data.data.length === 0) {
+      area.innerHTML = '<p>등록된 파일이 없습니다.</p>';
+      return;
+    }
+
+    const files = r.data.data;
+    const pdf   = files.filter(f => f.fileType === 'PDF');
+    const imgs  = files.filter(f => f.fileType === 'IMAGE');
+
+    let html = '';
+
+    if (pdf.length > 0) {
+      html += '<h4>PDF 원본</h4>';
+      pdf.forEach(f => {
+        html += `<p>
+          <a href="${f.filePath}" target="_blank" download="${f.originalName}">
+            📄 ${f.originalName} 다운로드
+          </a>
+        </p>`;
+      });
+    }
+
+    if (imgs.length > 0) {
+      html += `<h4>페이지 미리보기 (총 ${imgs.length}페이지)</h4>`;
+      imgs.forEach((f, i) => {
+        html += `<div>
+          <p>페이지 ${i + 1}</p>
+          <img src="${f.filePath}" alt="page${i+1}"
+               style="max-width:600px; border:1px solid #ccc;"
+               onerror="this.alt='이미지 로드 실패'">
+        </div>`;
+      });
+    }
+
+    area.innerHTML = html;
+  }
+
+  async function changeStatus() {
+    const newStatus = document.getElementById('newStatus').value;
+    const reason    = document.getElementById('changedReason').value.trim();
+    const msg       = document.getElementById('msg');
+
+    if (!newStatus)  { alert('변경할 상태를 선택하세요.'); return; }
+    if (!reason)     { alert('변경 사유를 입력하세요.'); return; }
+
+    const r = await api('PATCH', `/api/admin/terms/${termsId}/status`, {
+      newStatus,
+      changedReason: reason
+    });
+
+    if (r.ok) {
+      msg.textContent = '상태 변경 완료: ' + newStatus;
+      loadDetail();
+    } else {
+      msg.textContent = '실패: ' + JSON.stringify(r.data);
+    }
+  }
+
+  loadDetail();
+  loadFiles();
+</script>
+
+</body>
+</html>
