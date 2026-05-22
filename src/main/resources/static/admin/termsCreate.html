@@ -141,8 +141,8 @@
     const data = await res.json().catch(() => null);
 
     if (res.ok) {
-      msg.textContent = '등록 완료! 약관이 DRAFT 상태로 등록되었습니다.';
-      setTimeout(() => location.href = 'terms-list.html', 1500);
+        msg.textContent = '등록 완료! 약관이 DRAFT 상태로 등록되었습니다.';
+        setTimeout(() => location.href = 'termsList.html', 1500);
     } else {
       msg.textContent = '등록 실패: ' + JSON.stringify(data);
     }

@@ -75,4 +75,16 @@ public class AdminTermsController {
             @AuthenticationPrincipal CustomAdminDetails ad) {
         return ApiResponse.toOk(adminTermsService.getTermsMasters());
     }
+    
+    /**
+     * 기존 약관에 PDF 파일 추가 (TERMS 새 생성 없이 기존 terms_id에 파일만 붙임)
+     */
+    @PostMapping(value = "/{termsId}/files", consumes = "multipart/form-data")
+    public ResponseEntity<ApiResponse<Void>> addTermsFile(
+            @PathVariable Long termsId,
+            @RequestPart("pdfFile") MultipartFile pdfFile,
+            @AuthenticationPrincipal CustomAdminDetails ad) throws IOException {
+        adminTermsService.addFileToExistingTerms(termsId, pdfFile);
+        return ApiResponse.toOk(null);
+    }
 }
