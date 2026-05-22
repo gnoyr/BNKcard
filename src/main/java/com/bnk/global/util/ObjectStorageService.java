@@ -1,36 +1,46 @@
 package com.bnk.global.util;
 
 import java.io.ByteArrayInputStream;
+import java.util.Date;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.oracle.bmc.objectstorage.ObjectStorageClient;
-import com.oracle.bmc.objectstorage.requests.PutObjectRequest;
-import com.oracle.bmc.objectstorage.requests.CreatePreauthenticatedRequestRequest;
 import com.oracle.bmc.objectstorage.model.CreatePreauthenticatedRequestDetails;
+import com.oracle.bmc.objectstorage.requests.CreatePreauthenticatedRequestRequest;
+import com.oracle.bmc.objectstorage.requests.PutObjectRequest;
 import com.oracle.bmc.objectstorage.responses.CreatePreauthenticatedRequestResponse;
-import java.util.Date;
-import lombok.RequiredArgsConstructor;
+
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class ObjectStorageService {
 
-    private final ObjectStorageClient objectStorageClient;
+    // required = false — OCI 미설정 환경에서도 서버 기동 가능
+    @Autowired(required = false)
+    private ObjectStorageClient objectStorageClient;
 
-    @Value("${oci.namespace}")
+    @Value("${oci.namespace:}")
     private String namespace;
 
-    @Value("${oci.bucket-name}")
+    @Value("${oci.bucket-name:}")
     private String bucketName;
 
-    @Value("${oci.region}")
+    @Value("${oci.region:ap-chuncheon-1}")
     private String region;
 
+    /**
+     * Object Storage 업로드.
+     * OCI 미연결 시 로컬 폴백 — objectName을 그대로 반환 (개발 환경용).
+     */
     public String upload(String objectName, byte[] content, String contentType) {
+        if (objectStorageClient == null) {
+            log.warn("[ObjectStorage] 클라이언트 미연결 — 업로드 건너뜀: objectName={}", objectName);
+            return objectName;   // 개발 환경에서는 objectName만 반환
+        }
         try {
             PutObjectRequest putRequest = PutObjectRequest.builder()
                     .namespaceName(namespace)
@@ -42,11 +52,6 @@ public class ObjectStorageService {
                     .build();
 
             objectStorageClient.putObject(putRequest);
-            
-          
-            @SuppressWarnings("unused")
-			String url = buildUrl(objectName);
-            
             log.info("[ObjectStorage] 업로드 완료: objectName={}", objectName);
             return objectName;
 
@@ -55,15 +60,32 @@ public class ObjectStorageService {
             throw new RuntimeException("Object Storage 업로드 실패: " + objectName, e);
         }
     }
-    
+
     /**
-     * 다운로드용 Pre-Authenticated Request URL 생성 (유효기간 24시간).
-     * Public 버킷이 아닌 경우 외부 접근에 사용.
+     * Public URL 생성 (만료 없음).
+     * OCI 미연결 시 더미 URL 반환.
+     */
+    public String getPublicUrl(String objectName) {
+        if (namespace == null || namespace.isBlank()) {
+            return "https://localhost/dev-only/" + objectName;  // 개발 환경 더미
+        }
+        return String.format(
+            "https://objectstorage.%s.oraclecloud.com/n/%s/b/%s/o/%s",
+            region, namespace, bucketName, objectName
+        );
+    }
+
+    /**
+     * Pre-Authenticated Request URL 생성 (24시간 만료).
+     * Public 버킷이 아닌 경우 사용.
      */
     public String createDownloadUrl(String objectName) {
+        if (objectStorageClient == null) {
+            log.warn("[ObjectStorage] 클라이언트 미연결 — PAR URL 생성 건너뜀");
+            return getPublicUrl(objectName);
+        }
         try {
             Date expiry = new Date(System.currentTimeMillis() + 24L * 60 * 60 * 1000);
-
             CreatePreauthenticatedRequestDetails details =
                     CreatePreauthenticatedRequestDetails.builder()
                             .name("par-" + objectName.replace("/", "-"))
@@ -88,7 +110,6 @@ public class ObjectStorageService {
 
         } catch (Exception e) {
             log.error("[ObjectStorage] PAR URL 생성 실패: objectName={}", objectName, e);
-            // PAR 실패 시 기본 URL 폴백 (내부 서비스 접근용)
             return buildUrl(objectName);
         }
     }
@@ -96,15 +117,7 @@ public class ObjectStorageService {
     private String buildUrl(String objectName) {
         return String.format(
             "https://objectstorage.%s.oraclecloud.com/n/%s/b/%s/o/%s",
-            region, namespace, bucketName, objectName   // ← %2F 인코딩 제거
-        );
-    }
-    
-    public String getPublicUrl(String objectName) {
-        return String.format(
-            "https://objectstorage.%s.oraclecloud.com/n/%s/b/%s/o/%s",
-            region, namespace, bucketName,
-            objectName  // 슬래시 그대로 유지 (%2F 제거)
+            region, namespace, bucketName, objectName
         );
     }
 }
