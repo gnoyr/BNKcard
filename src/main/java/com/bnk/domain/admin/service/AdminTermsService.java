@@ -230,6 +230,58 @@ public class AdminTermsService {
                 .files(fileResponses)
                 .build();
     }
+    
+    @Transactional
+    public void addFileToExistingTerms(Long termsId, MultipartFile pdfFile) throws IOException {
+
+        // terms 존재 확인
+        termsMapper.findById(termsId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TERMS_NOT_FOUND));
+
+        UploadResult pdfMeta = fileStorageService.extractMeta(pdfFile, "terms");
+        byte[] pdfBytes = pdfFile.getBytes();
+
+        objectStorageService.upload(pdfMeta.getObjectName(), pdfBytes, pdfMeta.getMimeType());
+        String pdfUrl = objectStorageService.getPublicUrl(pdfMeta.getObjectName());
+
+        // PDF 파일 INSERT
+        termsMapper.insertTermsFile(TermsFile.builder()
+                .termsId(termsId)
+                .fileType("PDF")
+                .filePath(pdfUrl)
+                .originalName(pdfMeta.getOriginalName())
+                .storedName(pdfMeta.getStoredName())
+                .fileExtension(pdfMeta.getFileExtension())
+                .fileSize(pdfMeta.getFileSize())
+                .mimeType(pdfMeta.getMimeType())
+                .isPrimary("Y")
+                .build());
+
+        // JPG 변환 + 업로드
+        List<byte[]> imageBytesList = pdfConvertService.convertPdfToImageBytes(pdfFile);
+        String baseName = pdfMeta.getStoredName()
+                .substring(0, pdfMeta.getStoredName().lastIndexOf("."));
+
+        for (int i = 0; i < imageBytesList.size(); i++) {
+            String imageStoredName = baseName + "_page" + (i + 1) + ".jpg";
+            String imageObjectName = "terms/" + imageStoredName;
+            objectStorageService.upload(imageObjectName, imageBytesList.get(i), "image/jpeg");
+            String imageUrl = objectStorageService.getPublicUrl(imageObjectName);
+
+            termsMapper.insertTermsFile(TermsFile.builder()
+                    .termsId(termsId)
+                    .fileType("IMAGE")
+                    .filePath(imageUrl)
+                    .originalName(pdfMeta.getOriginalName().replace(".pdf", ".jpg"))
+                    .storedName(imageStoredName)
+                    .fileExtension("jpg")
+                    .mimeType("image/jpeg")
+                    .isPrimary("N")
+                    .build());
+        }
+
+        log.info("[파일추가] 완료: termsId={}, pages={}", termsId, imageBytesList.size());
+    }
 
     
 }

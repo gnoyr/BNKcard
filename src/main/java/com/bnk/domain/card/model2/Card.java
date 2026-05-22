@@ -45,12 +45,12 @@ public class Card {
     @NotNull(message = "국내 연회비는 필수입니다.")
     @Min(value = 0, message = "국내 연회비는 0 이상이어야 합니다.")
     @Builder.Default
-    private Integer annualFeeDomestic = 0;
+    private Long annualFeeDomestic = 0L;
 
     @NotNull(message = "해외 연회비는 필수입니다.")
     @Min(value = 0, message = "해외 연회비는 0 이상이어야 합니다.")
     @Builder.Default
-    private Integer annualFeeOverseas = 0;
+    private Long annualFeeOverseas = 0L;
 
     @NotNull(message = "전월실적은 필수입니다.")
     @Min(value = 0, message = "전월실적은 0 이상이어야 합니다.")
@@ -102,7 +102,7 @@ public class Card {
     private LocalDateTime publishEndAt;
 
     @Builder.Default
-    private Integer applicationCount = 0;
+    private Long  applicationCount = 0L;
 
     private Long createdBy;
     private LocalDateTime createdAt;

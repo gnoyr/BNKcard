@@ -271,10 +271,8 @@ public class ApprovalService {
                 .cardName(snap.getCardName())
                 .companyName(snap.getCompanyName())
                 .brandName(snap.getBrandName())
-                .annualFeeDomestic(snap.getAnnualFeeDomestic() != null
-                        ? snap.getAnnualFeeDomestic().intValue() : null)
-                .annualFeeOverseas(snap.getAnnualFeeOverseas() != null
-                        ? snap.getAnnualFeeOverseas().intValue() : null)
+                .annualFeeDomestic(snap.getAnnualFeeDomestic())
+                .annualFeeOverseas(snap.getAnnualFeeOverseas())
                 .previousMonthSpend(snap.getPreviousMonthSpend())
                 .minimumAge(snap.getMinimumAge())
                 .maximumAge(snap.getMaximumAge())

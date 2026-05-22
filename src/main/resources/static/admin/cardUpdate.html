@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>카드 수정</title>
+</head>
+<body>
+
+<div id="edit-header">
+  <button id="btn-cancel">← 취소</button>
+  <span id="edit-card-title">카드 수정</span>
+</div>
+
+<!-- 스텝 탭 -->
+<div class="step-tabs">
+  <button class="step-tab active" data-step="1">① 기본 정보</button>
+  <button class="step-tab" data-step="2">② 카드 콘텐츠</button>
+  <button class="step-tab" data-step="3">③ 혜택</button>
+</div>
+
+<div id="edit-loading" style="display:none;">불러오는 중...</div>
+<div id="edit-error" style="display:none; color:red;"></div>
+
+<!-- ───── STEP 1: 기본정보 ───── -->
+<div id="step-1" class="step-panel">
+  <h3>기본 정보</h3>
+  <table border="1">
+    <tbody>
+      <tr>
+        <th>카드코드 <span style="color:#999;font-weight:normal;">(수정불가)</span></th>
+        <td><input type="text" id="f-cardCode" readonly style="background:#f0f0f0;"></td>
+      </tr>
+      <tr>
+        <th>카드명 <span style="color:red">*</span></th>
+        <td><input type="text" id="f-cardName" maxlength="200"></td>
+      </tr>
+      <tr>
+        <th>카드사명 <span style="color:red">*</span></th>
+        <td><input type="text" id="f-companyName" maxlength="100"></td>
+      </tr>
+      <tr>
+        <th>브랜드</th>
+        <td>
+          <select id="f-brandName">
+            <option value="">선택 안함</option>
+            <option value="VISA">VISA</option>
+            <option value="MASTER">MASTER</option>
+            <option value="AMEX">AMEX</option>
+            <option value="UNIONPAY">UNIONPAY</option>
+            <option value="LOCAL">LOCAL</option>
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <th>카드유형 <span style="color:red">*</span></th>
+        <td>
+          <select id="f-cardType">
+            <option value="CREDIT">신용</option>
+            <option value="CHECK">체크</option>
+            <option value="HYBRID">하이브리드</option>
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <th>국내연회비 <span style="color:red">*</span></th>
+        <td><input type="number" id="f-annualFeeDomestic" min="0"> 원</td>
+      </tr>
+      <tr>
+        <th>해외연회비</th>
+        <td><input type="number" id="f-annualFeeOverseas" min="0"> 원</td>
+      </tr>
+      <tr>
+        <th>전월실적</th>
+        <td><input type="number" id="f-previousMonthSpend" min="0"> 원</td>
+      </tr>
+      <tr>
+        <th>최소나이</th>
+        <td><input type="number" id="f-minimumAge" min="0" max="150"></td>
+      </tr>
+      <tr>
+        <th>최대나이</th>
+        <td><input type="number" id="f-maximumAge" min="0" max="150"></td>
+      </tr>
+      <tr>
+        <th>최소한도</th>
+        <td><input type="number" id="f-creditLimitMin" min="0"> 원</td>
+      </tr>
+      <tr>
+        <th>최대한도</th>
+        <td><input type="number" id="f-creditLimitMax" min="0"> 원</td>
+      </tr>
+      <tr>
+        <th>타겟사용자</th>
+        <td><input type="text" id="f-targetUser" maxlength="300"></td>
+      </tr>
+      <tr>
+        <th>요약설명</th>
+        <td><textarea id="f-summaryDescription" maxlength="1000" rows="3" style="width:100%;box-sizing:border-box;"></textarea></td>
+      </tr>
+      <tr>
+        <th>검색노출</th>
+        <td>
+          <select id="f-searchableYn">
+            <option value="Y">예</option>
+            <option value="N">아니오</option>
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <th>화면노출</th>
+        <td>
+          <select id="f-visibleYn">
+            <option value="Y">예</option>
+            <option value="N">아니오</option>
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <th>결재필요</th>
+        <td>
+          <select id="f-approvalRequiredYn">
+            <option value="Y">예</option>
+            <option value="N">아니오</option>
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <th>배포시작</th>
+        <td><input type="datetime-local" id="f-publishStartAt"></td>
+      </tr>
+      <tr>
+        <th>배포종료</th>
+        <td><input type="datetime-local" id="f-publishEndAt"></td>
+      </tr>
+    </tbody>
+  </table>
+  <div style="margin-top:12px; text-align:right;">
+    <button onclick="goStep(2)">다음 →</button>
+  </div>
+</div>
+
+<!-- ───── STEP 2: 콘텐츠 ───── -->
+<div id="step-2" class="step-panel" style="display:none;">
+  <h3>카드 콘텐츠</h3>
+  <button onclick="addContent()">+ 콘텐츠 추가</button>
+  <div id="contents-list" style="margin-top:10px;"></div>
+  <div style="margin-top:12px; text-align:right;">
+    <button onclick="goStep(1)">← 이전</button>
+    <button onclick="goStep(3)">다음 →</button>
+  </div>
+</div>
+
+<!-- ───── STEP 3: 혜택 ───── -->
+<div id="step-3" class="step-panel" style="display:none;">
+  <h3>혜택</h3>
+  <button onclick="addBenefit()">+ 혜택 추가</button>
+  <div id="benefits-list" style="margin-top:10px;"></div>
+
+  <hr>
+  <h3>수정 사유 <span style="color:red">*</span></h3>
+  <textarea id="f-changeSummary" rows="3"
+    placeholder="수정 이유를 입력하세요 (CARD_VERSIONS에 기록됩니다)"
+    style="width:100%;box-sizing:border-box;"></textarea>
+
+  <div style="margin-top:12px; text-align:right;">
+    <button onclick="goStep(2)">← 이전</button>
+    <button id="btn-submit" onclick="submitEdit()">수정 신청</button>
+  </div>
+</div>
+
+
+<script>
+// ════════════════════════════════════════════════
+//  전역 상태
+// ════════════════════════════════════════════════
+let editCardId  = null;
+let currentStep = 1;
+
+const CONTENT_TYPES = ['INTRO','GUIDE','NOTICE','FAQ','EVENT'];
+const BENEFIT_TYPES = ['RATE_DISCOUNT','FIXED_DISCOUNT','POINT','CASHBACK','FREE'];
+
+let contents = [];
+let benefits  = [];
+
+// ════════════════════════════════════════════════
+//  페이지 진입 — URL에서 cardId 추출
+// ════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  const cardId = new URLSearchParams(location.search).get('cardId');
+
+  if (!cardId) {
+    alert('잘못된 접근입니다.');
+    location.href = '/admin/cardManage.html';
+    return;
+  }
+
+  openEditPage(cardId);
+});
+
+// ════════════════════════════════════════════════
+//  데이터 fetch 및 폼 채우기
+// ════════════════════════════════════════════════
+async function openEditPage(cardId) {
+  editCardId = cardId;
+
+  document.getElementById('edit-loading').style.display = '';
+  document.getElementById('edit-error').style.display   = 'none';
+
+  try {
+    const res = await fetch(`/api/admin/cards/${cardId}`, { credentials: 'include' });
+    if (res.status === 401) { location.href = '/admin/login'; return; }
+    if (!res.ok) throw new Error(`서버 오류 (${res.status})`);
+
+    const json = await res.json();
+    const card = json.data;
+
+    document.getElementById('edit-card-title').textContent =
+      `카드 수정 — ${card.cardName}`;
+
+    populateStep1(card);
+    populateStep2(card.contents ?? []);
+    populateStep3(card.benefits ?? []);
+
+  } catch (err) {
+    const errEl = document.getElementById('edit-error');
+    errEl.textContent = '카드 정보 로드 실패: ' + err.message;
+    errEl.style.display = '';
+  } finally {
+    document.getElementById('edit-loading').style.display = 'none';
+  }
+}
+
+// ════════════════════════════════════════════════
+//  스텝 전환
+// ════════════════════════════════════════════════
+function showStep(n) {
+  currentStep = n;
+  [1, 2, 3].forEach(i => {
+    document.getElementById(`step-${i}`).style.display = (i === n) ? '' : 'none';
+  });
+  document.querySelectorAll('.step-tab').forEach(btn => {
+    btn.classList.toggle('active', Number(btn.dataset.step) === n);
+  });
+}
+
+function goStep(n) { showStep(n); }
+
+document.querySelectorAll('.step-tab').forEach(btn => {
+  btn.addEventListener('click', () => showStep(Number(btn.dataset.step)));
+});
+
+document.getElementById('btn-cancel').addEventListener('click', () => {
+	location.href = `/admin/cardManage.html?detailCardId=${editCardId}`;
+});
+
+// ════════════════════════════════════════════════
+//  STEP 1 — 기본정보 채우기
+// ════════════════════════════════════════════════
+function toDatetimeLocal(ts) {
+  if (!ts) return '';
+  return ts.slice(0, 16);
+}
+
+function populateStep1(card) {
+  setVal('f-cardCode',           card.cardCode            ?? '');
+  setVal('f-cardName',           card.cardName             ?? '');
+  setVal('f-companyName',        card.companyName          ?? '');
+  setVal('f-brandName',          card.brandName            ?? '');
+  setVal('f-cardType',           card.cardType             ?? 'CREDIT');
+  setVal('f-annualFeeDomestic',  card.annualFeeDomestic    ?? 0);
+  setVal('f-annualFeeOverseas',  card.annualFeeOverseas    ?? '');
+  setVal('f-previousMonthSpend', card.previousMonthSpend   ?? '');
+  setVal('f-minimumAge',         card.minimumAge           ?? '');
+  setVal('f-maximumAge',         card.maximumAge           ?? '');
+  setVal('f-creditLimitMin',     card.creditLimitMin       ?? '');
+  setVal('f-creditLimitMax',     card.creditLimitMax       ?? '');
+  setVal('f-targetUser',         card.targetUser           ?? '');
+  setVal('f-summaryDescription', card.summaryDescription   ?? '');
+  setVal('f-searchableYn',       card.searchableYn         ?? 'Y');
+  setVal('f-visibleYn',          card.visibleYn            ?? 'Y');
+  setVal('f-approvalRequiredYn', card.approvalRequiredYn   ?? 'Y');
+  setVal('f-publishStartAt',     toDatetimeLocal(card.publishStartAt));
+  setVal('f-publishEndAt',       toDatetimeLocal(card.publishEndAt));
+}
+
+function setVal(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.value = val ?? '';
+}
+
+// ════════════════════════════════════════════════
+//  STEP 2 — 콘텐츠
+// ════════════════════════════════════════════════
+function populateStep2(list) {
+  contents = list.map(c => ({
+    contentType:  c.contentType  ?? 'INTRO',
+    title:        c.title        ?? '',
+    contentHtml:  c.contentHtml  ?? '',
+    displayOrder: c.displayOrder ?? 0,
+  }));
+  renderContents();
+}
+
+function addContent() {
+  contents.push({
+    contentType: 'INTRO', title: '',
+    contentHtml: '', displayOrder: contents.length + 1,
+  });
+  renderContents();
+}
+
+function removeContent(idx) {
+  contents.splice(idx, 1);
+  renderContents();
+}
+
+function renderContents() {
+  const wrap = document.getElementById('contents-list');
+  if (contents.length === 0) {
+    wrap.innerHTML = '<p>콘텐츠가 없습니다.</p>';
+    return;
+  }
+  wrap.innerHTML = contents.map((c, i) => `
+    <fieldset style="margin-bottom:10px;">
+      <legend>콘텐츠 #${i + 1}</legend>
+      <table cellpadding="4">
+        <tr>
+          <td><label>유형</label></td>
+          <td>
+            <select data-ci="${i}" data-field="contentType">
+              ${CONTENT_TYPES.map(t =>
+                `<option value="${t}" ${c.contentType === t ? 'selected' : ''}>${t}</option>`
+              ).join('')}
+            </select>
+          </td>
+          <td><label>순서</label></td>
+          <td>
+            <input type="number" value="${c.displayOrder}" style="width:60px;"
+                   data-ci="${i}" data-field="displayOrder">
+          </td>
+        </tr>
+        <tr>
+          <td><label>제목 *</label></td>
+          <td colspan="3">
+            <input type="text" value="${esc(c.title)}" maxlength="300" style="width:100%;"
+                   data-ci="${i}" data-field="title">
+          </td>
+        </tr>
+        <tr>
+          <td><label>내용(HTML)</label></td>
+          <td colspan="3">
+            <textarea rows="4" style="width:100%;box-sizing:border-box;"
+                      data-ci="${i}" data-field="contentHtml">${esc(c.contentHtml)}</textarea>
+          </td>
+        </tr>
+      </table>
+      <div style="text-align:right;">
+        <button data-remove-content="${i}">× 삭제</button>
+      </div>
+    </fieldset>
+  `).join('');
+
+  wrap.querySelectorAll('[data-ci]').forEach(el => {
+    el.addEventListener('change', syncContent);
+    el.addEventListener('input',  syncContent);
+  });
+  wrap.querySelectorAll('[data-remove-content]').forEach(btn => {
+    btn.addEventListener('click', () => removeContent(Number(btn.dataset.removeContent)));
+  });
+}
+
+function syncContent(e) {
+  const i     = Number(e.target.dataset.ci);
+  const field = e.target.dataset.field;
+  contents[i][field] = field === 'displayOrder'
+    ? Number(e.target.value)
+    : e.target.value;
+}
+
+// ════════════════════════════════════════════════
+//  STEP 3 — 혜택
+// ════════════════════════════════════════════════
+function populateStep3(list) {
+  benefits = list.map(b => ({
+    categoryId:           b.categoryId            ?? null,
+    benefitTitle:         b.benefitTitle           ?? '',
+    benefitType:          b.benefitType            ?? 'POINT',
+    discountRate:         rateToDisplay(b.discountRate),
+    discountAmount:       b.discountAmount         ?? '',
+    pointRate:            rateToDisplay(b.pointRate),
+    cashbackRate:         rateToDisplay(b.cashbackRate),
+    monthlyLimitAmount:   b.monthlyLimitAmount     ?? '',
+    dailyLimitAmount:     b.dailyLimitAmount       ?? '',
+    minimumPaymentAmount: b.minimumPaymentAmount   ?? '',
+    displayText:          b.displayText            ?? '',
+    displayOrder:         b.displayOrder           ?? 0,
+  }));
+  renderBenefits();
+}
+
+function rateToDisplay(v) {
+  if (v == null || v === '') return '';
+  return (v * 100).toFixed(1);
+}
+
+function displayToRate(v) {
+  if (v === '' || v == null) return null;
+  return parseFloat(v) / 100;
+}
+
+function addBenefit() {
+  benefits.push({
+    categoryId: null, benefitTitle: '', benefitType: 'POINT',
+    discountRate: '', discountAmount: '', pointRate: '',
+    cashbackRate: '', monthlyLimitAmount: '', dailyLimitAmount: '',
+    minimumPaymentAmount: '', displayText: '',
+    displayOrder: benefits.length + 1,
+  });
+  renderBenefits();
+}
+
+function removeBenefit(idx) {
+  benefits.splice(idx, 1);
+  renderBenefits();
+}
+
+function renderBenefits() {
+  const wrap = document.getElementById('benefits-list');
+  if (benefits.length === 0) {
+    wrap.innerHTML = '<p>혜택이 없습니다.</p>';
+    return;
+  }
+  wrap.innerHTML = benefits.map((b, i) => `
+    <fieldset style="margin-bottom:10px;">
+      <legend>혜택 #${i + 1}</legend>
+      <table cellpadding="4">
+        <tr>
+          <td><label>혜택명 *</label></td>
+          <td>
+            <input type="text" value="${esc(b.benefitTitle)}" maxlength="200" style="width:260px;"
+                   data-bi="${i}" data-field="benefitTitle">
+          </td>
+          <td><label>유형 *</label></td>
+          <td>
+            <select data-bi="${i}" data-field="benefitType">
+              ${BENEFIT_TYPES.map(t =>
+                `<option value="${t}" ${b.benefitType === t ? 'selected' : ''}>${t}</option>`
+              ).join('')}
+            </select>
+          </td>
+          <td><label>순서</label></td>
+          <td>
+            <input type="number" value="${b.displayOrder}" style="width:55px;"
+                   data-bi="${i}" data-field="displayOrder">
+          </td>
+        </tr>
+        <tr>
+          <td><label>할인율(%)</label></td>
+          <td>
+            <input type="number" step="0.1" value="${b.discountRate}" style="width:90px;"
+                   data-bi="${i}" data-field="discountRate">
+          </td>
+          <td><label>고정할인(원)</label></td>
+          <td>
+            <input type="number" value="${b.discountAmount}" style="width:110px;"
+                   data-bi="${i}" data-field="discountAmount">
+          </td>
+          <td><label>적립율(%)</label></td>
+          <td>
+            <input type="number" step="0.1" value="${b.pointRate}" style="width:90px;"
+                   data-bi="${i}" data-field="pointRate">
+          </td>
+        </tr>
+        <tr>
+          <td><label>캐시백율(%)</label></td>
+          <td>
+            <input type="number" step="0.1" value="${b.cashbackRate}" style="width:90px;"
+                   data-bi="${i}" data-field="cashbackRate">
+          </td>
+          <td><label>월한도(원)</label></td>
+          <td>
+            <input type="number" value="${b.monthlyLimitAmount}" style="width:110px;"
+                   data-bi="${i}" data-field="monthlyLimitAmount">
+          </td>
+          <td><label>일한도(원)</label></td>
+          <td>
+            <input type="number" value="${b.dailyLimitAmount}" style="width:110px;"
+                   data-bi="${i}" data-field="dailyLimitAmount">
+          </td>
+        </tr>
+        <tr>
+          <td><label>최소결제(원)</label></td>
+          <td>
+            <input type="number" value="${b.minimumPaymentAmount}" style="width:110px;"
+                   data-bi="${i}" data-field="minimumPaymentAmount">
+          </td>
+          <td><label>표시문구</label></td>
+          <td colspan="3">
+            <input type="text" value="${esc(b.displayText)}" maxlength="300" style="width:100%;"
+                   data-bi="${i}" data-field="displayText">
+          </td>
+        </tr>
+        <tr>
+          <td><label>카테고리ID</label></td>
+          <td>
+            <input type="number" value="${b.categoryId ?? ''}" style="width:90px;"
+                   data-bi="${i}" data-field="categoryId">
+          </td>
+        </tr>
+      </table>
+      <div style="text-align:right;">
+        <button data-remove-benefit="${i}">× 삭제</button>
+      </div>
+    </fieldset>
+  `).join('');
+
+  wrap.querySelectorAll('[data-bi]').forEach(el => {
+    el.addEventListener('change', syncBenefit);
+    el.addEventListener('input',  syncBenefit);
+  });
+  wrap.querySelectorAll('[data-remove-benefit]').forEach(btn => {
+    btn.addEventListener('click', () => removeBenefit(Number(btn.dataset.removeBenefit)));
+  });
+}
+
+function syncBenefit(e) {
+  const i     = Number(e.target.dataset.bi);
+  const field = e.target.dataset.field;
+  const numFields  = ['discountAmount','monthlyLimitAmount','dailyLimitAmount',
+                      'minimumPaymentAmount','displayOrder','categoryId'];
+  const rateFields = ['discountRate','pointRate','cashbackRate'];
+
+  if (rateFields.includes(field)) {
+    benefits[i][field] = e.target.value;
+  } else if (numFields.includes(field)) {
+    benefits[i][field] = e.target.value === '' ? null : Number(e.target.value);
+  } else {
+    benefits[i][field] = e.target.value;
+  }
+}
+
+// ════════════════════════════════════════════════
+//  최종 제출 — PUT /api/admin/cards/{cardId}
+// ════════════════════════════════════════════════
+async function submitEdit() {
+  const cardName          = document.getElementById('f-cardName').value.trim();
+  const companyName       = document.getElementById('f-companyName').value.trim();
+  const annualFeeDomestic = document.getElementById('f-annualFeeDomestic').value;
+  const changeSummary     = document.getElementById('f-changeSummary').value.trim();
+
+  if (!cardName)              { alert('카드명은 필수입니다.');      goStep(1); return; }
+  if (!companyName)           { alert('카드사명은 필수입니다.');    goStep(1); return; }
+  if (annualFeeDomestic === ''){ alert('국내연회비는 필수입니다.'); goStep(1); return; }
+  if (!changeSummary)         { alert('수정 사유는 필수입니다.');   goStep(3); return; }
+
+  for (let i = 0; i < contents.length; i++) {
+    if (!contents[i].title.trim()) {
+      alert(`콘텐츠 #${i + 1}의 제목은 필수입니다.`);
+      goStep(2); return;
+    }
+  }
+  for (let i = 0; i < benefits.length; i++) {
+    if (!benefits[i].benefitTitle.trim()) {
+      alert(`혜택 #${i + 1}의 혜택명은 필수입니다.`);
+      goStep(3); return;
+    }
+  }
+
+  const toISO    = (v) => v ? v + ':00' : null;
+  const numOrNull = (id) => {
+    const v = document.getElementById(id).value;
+    return v === '' ? null : Number(v);
+  };
+
+  const body = {
+    cardCode:            document.getElementById('f-cardCode').value,
+    cardName,
+    companyName,
+    brandName:           document.getElementById('f-brandName').value || null,
+    cardType:            document.getElementById('f-cardType').value,
+    annualFeeDomestic:   Number(annualFeeDomestic),
+    annualFeeOverseas:   numOrNull('f-annualFeeOverseas'),
+    previousMonthSpend:  numOrNull('f-previousMonthSpend'),
+    minimumAge:          numOrNull('f-minimumAge'),
+    maximumAge:          numOrNull('f-maximumAge'),
+    creditLimitMin:      numOrNull('f-creditLimitMin'),
+    creditLimitMax:      numOrNull('f-creditLimitMax'),
+    targetUser:          document.getElementById('f-targetUser').value || null,
+    summaryDescription:  document.getElementById('f-summaryDescription').value || null,
+    searchableYn:        document.getElementById('f-searchableYn').value,
+    visibleYn:           document.getElementById('f-visibleYn').value,
+    approvalRequiredYn:  document.getElementById('f-approvalRequiredYn').value,
+    publishStartAt:      toISO(document.getElementById('f-publishStartAt').value),
+    publishEndAt:        toISO(document.getElementById('f-publishEndAt').value),
+    contents: contents.map(c => ({
+      contentType:  c.contentType,
+      title:        c.title,
+      contentHtml:  c.contentHtml || null,
+      displayOrder: c.displayOrder,
+    })),
+    benefits: benefits.map(b => ({
+      categoryId:           b.categoryId,
+      benefitTitle:         b.benefitTitle,
+      benefitType:          b.benefitType,
+      discountRate:         displayToRate(b.discountRate),
+      discountAmount:       b.discountAmount       !== '' ? Number(b.discountAmount)       : null,
+      pointRate:            displayToRate(b.pointRate),
+      cashbackRate:         displayToRate(b.cashbackRate),
+      monthlyLimitAmount:   b.monthlyLimitAmount   !== '' ? Number(b.monthlyLimitAmount)   : null,
+      dailyLimitAmount:     b.dailyLimitAmount     !== '' ? Number(b.dailyLimitAmount)     : null,
+      minimumPaymentAmount: b.minimumPaymentAmount !== '' ? Number(b.minimumPaymentAmount) : null,
+      displayText:          b.displayText || null,
+      displayOrder:         b.displayOrder,
+    })),
+    changeSummary,
+  };
+
+  const btn = document.getElementById('btn-submit');
+  btn.disabled    = true;
+  btn.textContent = '처리 중...';
+
+  try {
+    const res = await fetch(`/api/admin/cards/${editCardId}`, {
+      method:      'PUT',
+      headers:     { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body:        JSON.stringify(body),
+    });
+
+    if (res.status === 401) { location.href = '/admin/login'; return; }
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      alert('수정 실패: ' + (json?.message ?? `서버 오류 (${res.status})`));
+      return;
+    }
+
+    const { versionId, approvalId } = json.data ?? {};
+    alert(`수정 신청이 완료되었습니다.\n버전 ID: ${versionId} / 결재 ID: ${approvalId}`);
+    location.href = '/admin/cardManage.html';
+
+  } catch (err) {
+    alert('오류: ' + err.message);
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = '수정 신청';
+  }
+}
+
+// ════════════════════════════════════════════════
+//  유틸
+// ════════════════════════════════════════════════
+function esc(str) {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+</script>
+
+</body>
+</html>
