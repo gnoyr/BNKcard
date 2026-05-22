@@ -1,0 +1,155 @@
+<!-- terms-create.html
+     연결 API:
+       GET  /api/admin/terms/masters           → 마스터 목록 (select 옵션)
+       POST /api/admin/terms (multipart/form-data)
+         - request 파트: { termsMasterId, version, contentHtml, requiredYn,
+                           reconsentRequiredYn, effectiveFrom, changeSummary }
+         - pdfFile 파트: PDF 바이너리
+     응답: 200 OK
+-->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>약관 등록 신청 | BNK 관리자</title>
+</head>
+<body>
+
+<h2>약관 등록 신청</h2>
+<p><a href="terms-list.html">← 목록으로</a></p>
+
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr>
+    <th>약관 마스터 선택 *</th>
+    <td>
+      <select id="termsMasterId">
+        <option value="">-- 로딩 중 --</option>
+      </select>
+    </td>
+  </tr>
+  <tr>
+    <th>버전 *</th>
+    <td><input type="text" id="version" placeholder="예: v1.0" value="v1.0"></td>
+  </tr>
+  <tr>
+    <th>시행일 *</th>
+    <td><input type="date" id="effectiveFrom"></td>
+  </tr>
+  <tr>
+    <th>필수 여부 *</th>
+    <td>
+      <select id="requiredYn">
+        <option value="Y">필수 (Y)</option>
+        <option value="N">선택 (N)</option>
+      </select>
+    </td>
+  </tr>
+  <tr>
+    <th>재동의 필요 여부</th>
+    <td>
+      <select id="reconsentRequiredYn">
+        <option value="N">N (기본)</option>
+        <option value="Y">Y (재동의 알림 발송)</option>
+      </select>
+    </td>
+  </tr>
+  <tr>
+    <th>약관 본문 (HTML)</th>
+    <td><textarea id="contentHtml" rows="6" cols="60" placeholder="약관 본문 HTML..."></textarea></td>
+  </tr>
+  <tr>
+    <th>변경 사유</th>
+    <td><input type="text" id="changeSummary" placeholder="신규 등록 사유" style="width:300px"></td>
+  </tr>
+  <tr>
+    <th>PDF 업로드 *</th>
+    <td>
+      <input type="file" id="pdfFile" accept=".pdf">
+      <br><small>최대 20MB, PDF 파일만 허용</small>
+    </td>
+  </tr>
+</table>
+
+<br>
+<button onclick="submitTerms()">결재 요청 (등록 신청)</button>
+<button onclick="location.href='terms-list.html'">취소</button>
+
+<br><br>
+<div id="msg"></div>
+
+<script>
+  async function loadMasters() {
+    const res = await fetch('/api/admin/terms/masters', { credentials: 'include' });
+    const data = await res.json().catch(() => null);
+    const sel = document.getElementById('termsMasterId');
+
+    if (!res.ok || !data?.data) {
+      sel.innerHTML = '<option value="">마스터 로드 실패</option>';
+      return;
+    }
+
+    sel.innerHTML = '<option value="">-- 선택하세요 --</option>' +
+      data.data.map(m =>
+        `<option value="${m.termsMasterId}">[${m.termsType}] ${m.title}</option>`
+      ).join('');
+  }
+
+  async function submitTerms() {
+    const masterId  = document.getElementById('termsMasterId').value;
+    const version   = document.getElementById('version').value.trim();
+    const effFrom   = document.getElementById('effectiveFrom').value;
+    const required  = document.getElementById('requiredYn').value;
+    const reconsent = document.getElementById('reconsentRequiredYn').value;
+    const content   = document.getElementById('contentHtml').value;
+    const summary   = document.getElementById('changeSummary').value;
+    const pdfInput  = document.getElementById('pdfFile');
+    const msg       = document.getElementById('msg');
+
+    if (!masterId)       { alert('약관 마스터를 선택하세요.'); return; }
+    if (!version)        { alert('버전을 입력하세요.'); return; }
+    if (!effFrom)        { alert('시행일을 입력하세요.'); return; }
+    if (!pdfInput.files.length) { alert('PDF 파일을 선택하세요.'); return; }
+
+    const pdfFile = pdfInput.files[0];
+    if (!pdfFile.name.endsWith('.pdf')) { alert('PDF 파일만 업로드 가능합니다.'); return; }
+    if (pdfFile.size > 20 * 1024 * 1024) { alert('파일 크기는 20MB 이하여야 합니다.'); return; }
+
+    // multipart/form-data 구성
+    // request 파트: JSON 문자열을 Blob으로 변환
+    const requestJson = JSON.stringify({
+      termsMasterId:       parseInt(masterId),
+      version,
+      contentHtml:         content,
+      requiredYn:          required,
+      reconsentRequiredYn: reconsent,
+      effectiveFrom:       effFrom,
+      changeSummary:       summary
+    });
+
+    const formData = new FormData();
+    formData.append('request', new Blob([requestJson], { type: 'application/json' }));
+    formData.append('pdfFile', pdfFile);
+
+    msg.textContent = '업로드 중... (PDF 변환 포함, 잠시 기다려주세요)';
+
+    const res = await fetch('/api/admin/terms', {
+      method: 'POST',
+      body: formData,
+      credentials: 'include'
+      // Content-Type은 FormData가 자동 설정 — 헤더 직접 설정 금지
+    });
+    const data = await res.json().catch(() => null);
+
+    if (res.ok) {
+      msg.textContent = '등록 완료! 약관이 DRAFT 상태로 등록되었습니다.';
+      setTimeout(() => location.href = 'terms-list.html', 1500);
+    } else {
+      msg.textContent = '등록 실패: ' + JSON.stringify(data);
+    }
+  }
+
+  loadMasters();
+</script>
+
+</body>
+</html>
