@@ -36,10 +36,7 @@ import com.bnk.domain.card.model.CardImage;
 import com.bnk.domain.card.model2.CardContent;
 
 import com.bnk.domain.card.model2.CardVersion;
-import com.bnk.domain.search.mapper.SearchLogMapper;
-import com.bnk.domain.spending.mapper.SpendingPatternMapper;
 import com.bnk.domain.terms.mapper.TermsMapper;
-import com.bnk.domain.terms.model.Terms;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.response.PageResponse;
@@ -56,16 +53,14 @@ import lombok.extern.slf4j.Slf4j;
 public class AdminCardService {
 
     private final CardMapper cardMapper;
+    private final CardMapper2 cardMapper2;
     private final CardBenefitMapper cardBenefitMapper;
     private final CardImageMapper cardImageMapper;
     private final CardContentMapper cardContentMapper;
-    private final SpendingPatternMapper spendingPatternMapper;
-    private final SearchLogMapper searchLogMapper;
     private final TermsMapper termsMapper;
     private final ApprovalMapper approvalMapper;
     private final ObjectMapper objectMapper;
     private final CardVersionMapper2 cardVersionMapper2;
-    private final CardMapper2 cardMapper2;
     private final CardStatusHistoryMapper2 cardStatusHistoryMapper2;
 
     /**
@@ -275,7 +270,7 @@ public class AdminCardService {
     // 관리자 카드 상세 보기
     @Transactional(readOnly = true)
     public CardDetailResponse getAdminCardDetail(Long cardId) {
-    	Card card = cardMapper.findById(cardId);
+    	com.bnk.domain.card.model2.Card card = cardMapper2.getCardDetail(cardId);
         if (card == null) {
             throw new IllegalArgumentException("존재하지 않는 카드입니다. cardId=" + cardId);
         }
@@ -307,7 +302,7 @@ public class AdminCardService {
 
         // 카드 신청 약관 (packageType = "CARD_APPLICATION" 고정)
         List<CardDetailResponse.TermsFileDto> termsFileDtos =
-                termsMapper.findTermsFilesByCardId(cardId);        
+                termsMapper.findTermsFilesByCardId(cardId);
         
         /*
         List<Terms> termsList = termsMapper.findByPackageType("CARD_APPLICATION");
@@ -324,15 +319,34 @@ public class AdminCardService {
          */
         return CardDetailResponse.builder()
                 .cardId(card.getCardId())
+                .cardCode(card.getCardCode())
+                .cardType(card.getCardType())
                 .cardName(card.getCardName())
                 .companyName(card.getCompanyName())
-                .cardType(card.getCardType())
-                .cardStatus(card.getCardStatus())         // 추가
+                .companyCode(card.getCompanyCode())
+                .brandName(card.getBrandName())
                 .annualFeeDomestic(card.getAnnualFeeDomestic())
                 .annualFeeOverseas(card.getAnnualFeeOverseas())
+                .previousMonthSpend(card.getPreviousMonthSpend())
+                .minimumAge(card.getMinimumAge())
+                .maximumAge(card.getMaximumAge())
+                .creditLimitMin(card.getCreditLimitMin())
+                .creditLimitMax(card.getCreditLimitMax())
+                .targetUser(card.getTargetUser())
                 .summaryDescription(card.getSummaryDescription())
-                .publishStartAt(card.getPublishStartAt()) // 추가
-                .publishEndAt(card.getPublishEndAt())     // 추가
+                .searchableYn(card.getSearchableYn())
+                .visibleYn(card.getVisibleYn())
+                .approvalRequiredYn(card.getApprovalRequiredYn())
+                .cardStatus(card.getCardStatus())
+                .publishStartAt(card.getPublishStartAt())
+                .publishEndAt(card.getPublishEndAt())
+                .applicationCount(card.getApplicationCount())
+                .createdBy(card.getCreatedBy())
+                .createdAt(card.getCreatedAt())
+                .updateBy(card.getUpdateBy())
+                .updateAt(card.getUpdateAt())
+                .deletedYn(card.getDeletedYn())
+                .deleteAt(card.getDeleteAt())
                 .benefits(benefits)
                 .images(imageDtos)
                 .contents(contentDtos)
