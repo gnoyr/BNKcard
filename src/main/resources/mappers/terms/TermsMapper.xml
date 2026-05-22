@@ -169,5 +169,33 @@
 	    ORDER  BY terms_master_id ASC
 	</select>
 	
+		<!-- TERMS INSERT (status = DRAFT, Oracle TRG_TERMS_BI + SEQ_TERMS 채번) -->
+	<insert id="insertTerms">
+	    <selectKey keyProperty="termsId" resultType="long" order="AFTER">
+	        SELECT SEQ_TERMS.CURRVAL FROM DUAL
+	    </selectKey>
+	    INSERT INTO TERMS (
+	        terms_master_id,
+	        version,
+	        content_html,
+	        required_yn,
+	        reconsent_required_yn,
+	        status,
+	        effective_from,
+	        effective_to,
+	        created_at
+	    ) VALUES (
+	        #{termsMasterId},
+	        #{version},
+	        #{contentHtml,         jdbcType=CLOB},
+	        #{requiredYn},
+	        #{reconsentRequiredYn, jdbcType=VARCHAR},
+	        'DRAFT',
+	        #{effectiveFrom},
+	        #{effectiveTo,         jdbcType=DATE},
+	        SYSTIMESTAMP
+	    )
+	</insert>
+	
 	
 </mapper>
