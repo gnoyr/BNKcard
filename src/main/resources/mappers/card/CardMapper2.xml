@@ -146,6 +146,40 @@
           AND  card_status     = 'PUBLISHED'
           AND  deleted_yn      = 'N'
     </select>
+    
+    <!-- 기존 getExpiredCards 아래에 추가 -->
+
+	<!-- APPROVED 상태이고 게시 시작 시간이 지난 카드 조회 -->
+	<select id="getApprovedReadyCards" resultMap="card2Map">
+	    SELECT * FROM CARDS
+	    WHERE  card_status     = 'APPROVED'
+	      AND  publish_start_at &lt;= SYSTIMESTAMP
+	      AND  deleted_yn       = 'N'
+	</select>
+	
+	<!-- APPROVED → PUBLISHED 일괄 전환 -->
+	<update id="publishCards">
+	    UPDATE CARDS
+	    SET    card_status = 'PUBLISHED',
+	           updated_at  = SYSTIMESTAMP
+	    WHERE  card_id IN
+	    <foreach collection="cardIds" item="id" open="(" separator="," close=")">
+	        #{id}
+	    </foreach>
+	</update>
+	
+	<!-- 카드 PUBLISHED 전환 시 버전도 PUBLISHED로 -->
+	<update id="publishCardVersions">
+	    UPDATE CARD_VERSIONS
+	    SET    version_status = 'PUBLISHED',
+	           published_at   = SYSTIMESTAMP
+	    WHERE  card_id IN
+	    <foreach collection="cardIds" item="id" open="(" separator="," close=")">
+	        #{id}
+	    </foreach>
+	      AND  version_status = 'APPROVED'
+	</update>
+    
 
     <update id="expireCards">
         UPDATE CARDS
