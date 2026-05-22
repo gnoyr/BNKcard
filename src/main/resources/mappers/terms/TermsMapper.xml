@@ -198,5 +198,12 @@
 	    )
 	</insert>
 	
+	<!-- findByIdWithMaster — TermsMapper.java에 선언된 메서드와 연결 -->
+	<select id="findByIdWithMaster" resultMap="termsMap">
+	    SELECT t.*, tm.title AS terms_title, tm.terms_type
+	    FROM   TERMS t
+	    INNER JOIN TERMS_MASTERS tm ON t.terms_master_id = tm.terms_master_id
+	    WHERE  t.terms_id = #{termsId}
+	</select>
 	
 </mapper>

@@ -1,0 +1,82 @@
+<!-- termsFileUpload.html — 기존 약관에 PDF 파일 추가 -->
+<!DOCTYPE html>
+<html lang="ko">
+<head><meta charset="UTF-8"><title>약관 파일 추가</title></head>
+<body>
+<h2>기존 약관에 PDF 추가</h2>
+
+<table border="1" cellpadding="6">
+  <tr>
+    <th>약관 선택</th>
+    <td>
+      <select id="termsId">
+        <option value="">-- 로딩 중 --</option>
+      </select>
+    </td>
+  </tr>
+  <tr>
+    <th>PDF 업로드</th>
+    <td>
+      <input type="file" id="pdfFile" accept=".pdf">
+      <small>최대 20MB</small>
+    </td>
+  </tr>
+</table>
+
+<br>
+<button onclick="upload()">파일 추가</button>
+<div id="msg"></div>
+
+<script>
+  // 약관 목록 로드 — 기존 terms_id 전체 표시
+  async function loadTerms() {
+    const res = await fetch('/api/admin/terms', { credentials: 'include' });
+    const data = await res.json().catch(() => null);
+    const sel = document.getElementById('termsId');
+
+    if (!res.ok || !data?.data) {
+      sel.innerHTML = '<option value="">로드 실패</option>';
+      return;
+    }
+
+    sel.innerHTML = '<option value="">-- 선택하세요 --</option>' +
+      data.data.map(t =>
+        `<option value="${t.termsId}">[${t.termsId}] ${t.title ?? '제목없음'} (${t.version}) - ${t.status}</option>`
+      ).join('');
+  }
+
+  async function upload() {
+    const termsId = document.getElementById('termsId').value;
+    const pdfInput = document.getElementById('pdfFile');
+    const msg = document.getElementById('msg');
+
+    if (!termsId) { alert('약관을 선택하세요.'); return; }
+    if (!pdfInput.files.length) { alert('PDF 파일을 선택하세요.'); return; }
+
+    const pdfFile = pdfInput.files[0];
+    if (pdfFile.size > 20 * 1024 * 1024) { alert('20MB 이하 파일만 가능합니다.'); return; }
+
+    const formData = new FormData();
+    formData.append('pdfFile', pdfFile);
+
+    msg.textContent = '업로드 중... (JPG 변환 포함, 잠시 기다려주세요)';
+
+    const res = await fetch(`/api/admin/terms/${termsId}/files`, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include'
+    });
+    const result = await res.json().catch(() => null);
+
+    if (res.ok) {
+      msg.textContent = `✅ 완료! termsId=${termsId}에 파일이 추가되었습니다.`;
+      pdfInput.value = '';
+    } else {
+      msg.textContent = '❌ 실패: ' + JSON.stringify(result);
+    }
+  }
+
+  loadTerms();
+</script>
+</body>
+</html>
