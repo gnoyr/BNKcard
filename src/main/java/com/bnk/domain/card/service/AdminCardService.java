@@ -16,13 +16,22 @@ import com.bnk.domain.card.dto.request.AdminCardSearchRequest;
 import com.bnk.domain.card.dto.request.BenefitCreateRequest;
 import com.bnk.domain.card.dto.request.CardCreateRequest;
 import com.bnk.domain.card.dto.request.CardUpdateRequest;
+import com.bnk.domain.card.dto.response.CardDetailResponse;
 import com.bnk.domain.card.dto.response.CardListResponse;
 import com.bnk.domain.card.mapper.CardBenefitMapper;
+import com.bnk.domain.card.mapper.CardContentMapper;
+import com.bnk.domain.card.mapper.CardImageMapper;
 import com.bnk.domain.card.mapper.CardMapper;
 import com.bnk.domain.card.mapper.CardVersionMapper2;
 import com.bnk.domain.card.model.Card;
 import com.bnk.domain.card.model.CardBenefit;
+import com.bnk.domain.card.model.CardImage;
+import com.bnk.domain.card.model2.CardContent;
 import com.bnk.domain.card.model2.CardVersion;
+import com.bnk.domain.search.mapper.SearchLogMapper;
+import com.bnk.domain.spending.mapper.SpendingPatternMapper;
+import com.bnk.domain.terms.mapper.TermsMapper;
+import com.bnk.domain.terms.model.Terms;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.response.PageResponse;
@@ -39,9 +48,15 @@ public class AdminCardService {
 
     private final CardMapper cardMapper;
     private final CardBenefitMapper cardBenefitMapper;
+    private final CardImageMapper cardImageMapper;
+    private final CardContentMapper cardContentMapper;
+    private final SpendingPatternMapper spendingPatternMapper;
+    private final SearchLogMapper searchLogMapper;
+    private final TermsMapper termsMapper;
     private final ApprovalMapper approvalMapper;
     private final ObjectMapper objectMapper;
     private final CardVersionMapper2 cardVersionMapper2;
+    
 
     /**
      * B-03 카드 신규 등록 (RQ-B04)
@@ -198,11 +213,78 @@ public class AdminCardService {
                         .cardName(card.getCardName())
                         .companyName(card.getCompanyName())
                         .cardType(card.getCardType())
-                        .annualFeeDomestic(card.getAnnualFeeDomestic())
+                        .cardStatus(card.getCardStatus())
+                        .publishStartAt(card.getPublishStartAt())  // 추가
+                        .publishEndAt(card.getPublishEndAt()) 
                         .build())
                 .collect(Collectors.toList());
 
         return PageResponse.of(content, totalCount, request.getPage(), request.getSize());
+    }
+    
+    // 관리자 카드 상세 보기
+    @Transactional(readOnly = true)
+    public CardDetailResponse getAdminCardDetail(Long cardId) {
+    	Card card = cardMapper.findById(cardId);
+        if (card == null) {
+            throw new IllegalArgumentException("존재하지 않는 카드입니다. cardId=" + cardId);
+        }
+
+        // 혜택 목록
+        List<CardBenefit> benefits = cardBenefitMapper.findByCardId(cardId);
+
+        // 이미지 목록 (FRONT, BACK, THUMBNAIL, DETAIL 전부)
+        List<CardImage> images = cardImageMapper.findByCardId(cardId);
+        List<CardDetailResponse.ImageDto> imageDtos = images.stream()
+                .map(img -> CardDetailResponse.ImageDto.builder()
+                        .imageType(img.getImageType())
+                        .imageUrl(img.getImageUrl())
+                        .sortOrder(img.getSortOrder())
+                        .build())
+                .collect(Collectors.toList());
+
+        // 카드 콘텐츠 (INTRO/GUIDE/NOTICE 등) - display_order ASC
+        List<CardContent> contents = cardContentMapper.findByCardId(cardId);
+        List<CardDetailResponse.ContentDto> contentDtos = contents.stream()
+                .map(c -> CardDetailResponse.ContentDto.builder()
+                        .contentType(c.getContentType())
+                        .title(c.getTitle())
+                        .contentHtml(c.getContentHtml())
+                        .mobileContentHtml(c.getMobileContentHtml())
+                        .displayOrder(c.getDisplayOrder())
+                        .build())
+                .collect(Collectors.toList());
+
+        // 카드 신청 약관 (packageType = "CARD_APPLICATION" 고정)
+        List<CardDetailResponse.TermsFileDto> termsFileDtos =
+                termsMapper.findTermsFilesByCardId(cardId);        
+        
+        /*
+        List<Terms> termsList = termsMapper.findByPackageType("CARD_APPLICATION");
+        List<CardDetailResponse.TermsFileDto> termsFileDtos = termsList.stream()
+                .map(t -> CardDetailResponse.TermsFileDto.builder()
+                        .termsId(t.getTermsId())
+                        .title(t.getTitle())
+                        // Terms 모델에 filePath/fileType이 없으므로 null 처리
+                        // 실제 파일 경로가 필요하면 TERMS_MASTERS에 컬럼 추가 필요
+                        .filePath(null)
+                        .fileType(null)
+                        .build())
+                .collect(Collectors.toList());
+         */
+        return CardDetailResponse.builder()
+                .cardId(card.getCardId())
+                .cardName(card.getCardName())
+                .companyName(card.getCompanyName())
+                .cardType(card.getCardType())
+                .annualFeeDomestic(card.getAnnualFeeDomestic())
+                .annualFeeOverseas(card.getAnnualFeeOverseas())
+                .summaryDescription(card.getSummaryDescription())
+                .benefits(benefits)
+                .images(imageDtos)
+                .contents(contentDtos)
+                .termsFiles(termsFileDtos)
+                .build();
     }
 
     // ── private helpers ──────────────────────────────────────────────

@@ -162,7 +162,11 @@
           AND c.publish_start_at &lt;= #{publishStartTo}
         </if>
         <if test="keyword != null and keyword != ''">
-          AND sk.keyword LIKE '%' || #{keyword} || '%'
+          AND (
+		    c.card_name    LIKE '%' || #{keyword} || '%'
+		    OR c.company_name LIKE '%' || #{keyword} || '%'
+		    OR sk.keyword     LIKE '%' || #{keyword} || '%'
+		  )
         </if>
         <choose>
             <when test="sort == 'cardName'">       ORDER BY c.card_name          ASC</when>
@@ -204,7 +208,11 @@
           AND c.publish_start_at &lt;= #{publishStartTo}
         </if>
         <if test="keyword != null and keyword != ''">
-          AND sk.keyword LIKE '%' || #{keyword} || '%'
+          AND (
+		    c.card_name    LIKE '%' || #{keyword} || '%'
+		    OR c.company_name LIKE '%' || #{keyword} || '%'
+		    OR sk.keyword     LIKE '%' || #{keyword} || '%'
+		  )
         </if>
     </select>
 

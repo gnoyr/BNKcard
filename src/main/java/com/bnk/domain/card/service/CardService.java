@@ -143,7 +143,6 @@ public class CardService {
                         .cardName(card.getCardName())
                         .companyName(card.getCompanyName())
                         .cardType(card.getCardType())
-                        .annualFeeDomestic(card.getAnnualFeeDomestic())
                         .thumbnailUrl(thumbnailMap.get(card.getCardId()))
                         .topBenefit(topBenefitMap.get(card.getCardId()))
                         .build())
@@ -203,7 +202,6 @@ public class CardService {
                         .cardName(card.getCardName())
                         .companyName(card.getCompanyName())
                         .cardType(card.getCardType())
-                        .annualFeeDomestic(card.getAnnualFeeDomestic())
                         .thumbnailUrl(thumbnailMap.get(card.getCardId()))
                         .topBenefit(topBenefitMap.get(card.getCardId()))
                         .recommendReason(reason)
@@ -252,8 +250,7 @@ public class CardService {
 
         // 카드 신청 약관 (packageType = "CARD_APPLICATION" 고정)
         List<CardDetailResponse.TermsFileDto> termsFileDtos =
-                termsMapper.findTermsFilesByCardId(cardId);
-        
+                termsMapper.findTermsFilesByCardId(cardId);        
         
         /*
         List<Terms> termsList = termsMapper.findByPackageType("CARD_APPLICATION");
