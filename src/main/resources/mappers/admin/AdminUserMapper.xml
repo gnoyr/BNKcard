@@ -32,21 +32,21 @@
         <result property="lastLoginAt" column="last_login_at"/>
         <result property="createdAt"   column="created_at"/>
     </resultMap>
-	
-	<resultMap id="loginHistoryRowMap"
+
+    <resultMap id="loginHistoryRowMap"
                type="com.bnk.domain.admin.mapper.AdminUserMapper$LoginHistoryRow">
         <result column="login_at"          property="loginAt"/>
         <result column="login_result_code" property="loginResultCode"/>
         <result column="ip_address"        property="ipAddress"/>
     </resultMap>
- 
+
     <resultMap id="agreementRowMap"
                type="com.bnk.domain.admin.mapper.AdminUserMapper$AgreementRow">
         <result column="terms_id"  property="termsId"/>
         <result column="agreed_yn" property="agreedYn"/>
         <result column="agreed_at" property="agreedAt"/>
     </resultMap>
- 
+
     <resultMap id="applicationRowMap"
                type="com.bnk.domain.admin.mapper.AdminUserMapper$ApplicationRow">
         <result column="card_id"            property="cardId"/>
@@ -54,14 +54,14 @@
         <result column="application_status" property="applicationStatus"/>
         <result column="applied_at"         property="appliedAt"/>
     </resultMap>
- 
+
     <resultMap id="adminLoginRowMap"
                type="com.bnk.domain.admin.mapper.AdminUserMapper$AdminLoginRow">
         <result column="admin_name" property="adminName"/>
         <result column="login_at"   property="loginAt"/>
         <result column="ip_address" property="ipAddress"/>
     </resultMap>
-    
+
     <select id="findByUsername" resultMap="adminMap">
         SELECT * FROM ADMIN_USERS
         WHERE  username   = #{username}
@@ -196,7 +196,37 @@
             SYSTIMESTAMP
         )
     </insert>
-    
+
+    <!-- ============================================================
+         로그인 이력 INSERT
+         유저/관리자 로그인 성공·실패 시 공통 호출.
+         history_id 는 LOGIN_HISTORIES_SEQ 시퀀스로 채번.
+         (시퀀스 없으면: CREATE SEQUENCE LOGIN_HISTORIES_SEQ START WITH 1 INCREMENT BY 1;)
+    ============================================================ -->
+    <insert id="insertLoginHistory">
+        INSERT INTO LOGIN_HISTORIES (
+            history_id,
+            user_type_code,
+            user_id,
+            login_result_code,
+            fail_reason,
+            ip_address,
+            device_info,
+            user_agent,
+            login_at
+        ) VALUES (
+            SEQ_LOGIN_HISTORIES.NEXTVAL,
+            #{userTypeCode},
+            #{userId},
+            #{loginResultCode},
+            #{failReason,  jdbcType=VARCHAR},
+            #{ipAddress,   jdbcType=VARCHAR},
+            #{deviceInfo,  jdbcType=VARCHAR},
+            #{userAgent,   jdbcType=VARCHAR},
+            SYSTIMESTAMP
+        )
+    </insert>
+
     <!-- ============================================================
          B-15 | 로그인 이력 최근 N건 (유저 기준)
          LOGIN_HISTORIES
@@ -218,7 +248,7 @@
             login_at DESC
         FETCH FIRST #{limit} ROWS ONLY
     </select>
- 
+
     <!-- ============================================================
          B-15 | 약관 동의 이력 전체 (유저 기준)
          USER_TERMS_AGREEMENTS
@@ -236,7 +266,7 @@
         ORDER BY
             agreed_at DESC
     </select>
- 
+
     <!-- ============================================================
          B-15 | 카드 신청 이력 전체 (유저 기준)
          CARD_APPLICATIONS JOIN CARDS
@@ -256,7 +286,7 @@
         ORDER BY
             ca.applied_at DESC
     </select>
- 
+
     <!-- ============================================================
          B-02 | 대시보드 — 관리자 최근 로그인 이력 N건
          LOGIN_HISTORIES JOIN ADMIN_USERS

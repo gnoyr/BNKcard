@@ -50,6 +50,20 @@ public interface AdminUserMapper {
                        @Param("ipAddress")  String ipAddress);
 
     /**
+     * 로그인 이력 INSERT (LOGIN_HISTORIES)
+     * 유저/관리자 로그인 성공·실패 시 공통 호출.
+     * userTypeCode = 'USER' | 'ADMIN'
+     * loginResultCode = 'SUCCESS' | 'FAIL'
+     */
+    int insertLoginHistory(@Param("userTypeCode")   String userTypeCode,
+                           @Param("userId")          Long   userId,
+                           @Param("loginResultCode") String loginResultCode,
+                           @Param("failReason")      String failReason,
+                           @Param("ipAddress")       String ipAddress,
+                           @Param("deviceInfo")      String deviceInfo,
+                           @Param("userAgent")       String userAgent);
+
+    /**
      * 로그인 이력 최근 N건 (LOGIN_HISTORIES)
      * user_type_code='USER' AND user_id 기준, login_at DESC
      *
