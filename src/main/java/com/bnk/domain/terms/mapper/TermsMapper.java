@@ -54,4 +54,6 @@ public interface TermsMapper {
 
     /** TERMS_MASTERS 전체 목록 */
     List<TermsMaster> findAllMasters();
+    
+   
 }
