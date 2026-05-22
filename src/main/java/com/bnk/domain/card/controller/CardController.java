@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,12 +17,15 @@ import org.springframework.web.bind.annotation.RestController;
 import com.bnk.domain.card.dto.request.CardCompareRequest;
 import com.bnk.domain.card.dto.request.CardSearchRequest;
 import com.bnk.domain.card.dto.request.CardSimulationRequest;
+import com.bnk.domain.card.dto.request.CardStatusRequest;
 import com.bnk.domain.card.dto.response.BannerDto;
 import com.bnk.domain.card.dto.response.CardCompareResponse;
 import com.bnk.domain.card.dto.response.CardDetailResponse;
 import com.bnk.domain.card.dto.response.CardListResponse;
 import com.bnk.domain.card.dto.response.SimulationResponse;
+import com.bnk.domain.card.service.AdminCardService;
 import com.bnk.domain.card.service.CardService;
+import com.bnk.global.auth.CustomAdminDetails;
 import com.bnk.global.auth.CustomUserDetails;
 import com.bnk.global.response.ApiResponse;
 import com.bnk.global.response.PageResponse;
@@ -35,6 +39,7 @@ import lombok.RequiredArgsConstructor;
 public class CardController {
 
     private final CardService cardService;
+    private final AdminCardService adminCardService;
 
     /**
      * 홈 배너 조회.
@@ -103,5 +108,19 @@ public class CardController {
     public ResponseEntity<ApiResponse<List<SimulationResponse>>> simulateBenefits(
             @RequestBody @Valid CardSimulationRequest request) {
         return ApiResponse.toOk(cardService.simulateBenefits(request));
+    }
+    
+    /**
+     * 카드 상태 강제 변경 (APPROVED→PUBLISHED, PUBLISHED→STOPPED 등).
+     * 스케줄러 외 수동 처리 및 긴급 중지에 사용.
+     * 허용 상태: APPROVED, PUBLISHED, STOPPED, EXPIRED
+     */
+    @PatchMapping("/{cardId}/status")
+    public ResponseEntity<ApiResponse<Void>> changeCardStatus(
+            @PathVariable Long cardId,
+            @RequestBody @Valid CardStatusRequest request,
+            @AuthenticationPrincipal CustomAdminDetails ad) {
+        adminCardService.changeCardStatus(cardId, request, ad.getAdminId());
+        return ApiResponse.toOk(null);
     }
 }

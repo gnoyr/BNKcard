@@ -11,6 +11,7 @@ import org.springframework.validation.annotation.Validated;
 
 import com.bnk.domain.admin.dto.request.ApprovalActionRequest;
 import com.bnk.domain.admin.dto.request.ApprovalSearchRequest;
+import com.bnk.domain.admin.dto.response.ApprovalDetailResponse;
 import com.bnk.domain.admin.dto.response.ApprovalListResponse;
 import com.bnk.domain.admin.mapper.ApprovalMapper;
 import com.bnk.domain.admin.model.ApprovalRequest;
@@ -45,12 +46,16 @@ public class ApprovalService {
     private final ObjectMapper             objectMapper;
 
     // ─────────────────────────────────────────────────────────────
-    // B-05 결재 목록 조회
+    // 결재 목록 조회 — 현재 로그인 관리자 할당 건만
     // ─────────────────────────────────────────────────────────────
     @Transactional(readOnly = true)
-    public PageResponse<ApprovalListResponse> getApprovals(ApprovalSearchRequest request) {
-        long totalCount = approvalMapper.countApprovals(request);
+    public PageResponse<ApprovalListResponse> getApprovals(
+            ApprovalSearchRequest request, Long adminId) {
 
+        // 현재 로그인 관리자 ID를 필터로 주입
+        request.setApproverAdminId(adminId);
+
+        long totalCount = approvalMapper.countApprovals(request);
         if (totalCount == 0) {
             return PageResponse.of(Collections.emptyList(), 0L, request.getPage(), request.getSize());
         }
@@ -63,11 +68,13 @@ public class ApprovalService {
                         .requestTypeCode(a.getRequestTypeCode())
                         .requesterName(a.getRequesterName())
                         .targetId(a.getTargetId())
+                        .targetName(a.getTargetName())       // 추가
                         .statusCode(a.getStatusCode())
                         .requestedAt(a.getRequestedAt())
                         .lines(a.getLines() != null
                                 ? a.getLines().stream()
                                         .map(l -> ApprovalListResponse.ApprovalLineItem.builder()
+                                                .approvalLineId(l.getApprovalLineId())
                                                 .approverName(l.getApproverName())
                                                 .approvalOrder(l.getApprovalOrder())
                                                 .statusCode(l.getStatusCode())
@@ -83,12 +90,52 @@ public class ApprovalService {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // B-06 결재 승인 (RQ-B07)
+    // 결재 상세 조회 — 라인 + 현재 관리자 처리 가능 여부 포함
+    // ─────────────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
+    public ApprovalDetailResponse getApprovalDetail(Long approvalId, Long adminId) {
+
+        ApprovalRequest approval = approvalMapper.findById(approvalId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.APPROVAL_NOT_FOUND));
+
+        List<ApprovalDetailResponse.LineItem> lineItems = approval.getLines() != null
+                ? approval.getLines().stream()
+                        .map(l -> ApprovalDetailResponse.LineItem.builder()
+                                .approvalLineId(l.getApprovalLineId())
+                                .approvalOrder(l.getApprovalOrder())
+                                .approverName(l.getApproverName())
+                                .statusCode(l.getStatusCode())
+                                .commentText(l.getCommentText())
+                                .approvedAt(l.getApprovedAt())
+                                // 현재 로그인 관리자이고 아직 PENDING 상태인 라인만 처리 가능
+                                .isCurrentUser(adminId.equals(l.getApproverAdminId())
+                                        && "PENDING".equals(l.getStatusCode()))
+                                .build())
+                        .collect(Collectors.toList())
+                : Collections.emptyList();
+
+        return ApprovalDetailResponse.builder()
+                .approvalId(approval.getApprovalId())
+                .requestTypeCode(approval.getRequestTypeCode())
+                .requesterName(approval.getRequesterName())
+                .targetId(approval.getTargetId())
+                .targetName(approval.getTargetName())
+                .statusCode(approval.getStatusCode())
+                .requestComment(approval.getRequestComment())
+                .requestedAt(approval.getRequestedAt())
+                .completedAt(approval.getCompletedAt())
+                .lines(lineItems)
+                .build();
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 결재 승인
+    // 변경: 전체 라인 완료 시 PUBLISHED 대신 APPROVED로 변경
+    //       실제 PUBLISHED 전환은 스케줄러(CardScheduler)가 처리
     // ─────────────────────────────────────────────────────────────
     @Transactional
     public void approve(Long approvalId, @Valid ApprovalActionRequest request, Long adminId) {
 
-        // 1. 결재 건 조회
         ApprovalRequest approval = approvalMapper.findById(approvalId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.APPROVAL_NOT_FOUND));
 
@@ -96,7 +143,7 @@ public class ApprovalService {
             throw new BusinessException(ErrorCode.APPROVAL_ALREADY_DONE);
         }
 
-        // 2. 현재 관리자 라인 APPROVED 처리
+        // 현재 관리자 라인 APPROVED 처리
         Long lineId = approval.getLines().stream()
                 .filter(l -> adminId.equals(l.getApproverAdminId())
                         && "PENDING".equals(l.getStatusCode()))
@@ -109,18 +156,18 @@ public class ApprovalService {
                     request.getComment(), LocalDateTime.now());
         }
 
-        // 3. 전체 라인 완료 여부 확인
+        // 전체 라인 완료 여부 확인
         if (!approvalMapper.isAllLinesCompleted(approvalId)) {
             log.info("[결재승인] 부분 승인 완료 (대기 라인 잔존): approvalId={}, adminId={}",
                     approvalId, adminId);
             return;
         }
 
-        // 4. version_id 기준으로 CardVersion 조회
+        // version_id 기준 CardVersion 조회
         CardVersion cardVersion = approvalMapper.findVersionByApprovalId(approvalId);
 
         if (cardVersion == null) {
-            // TERMS_PUBLISH 등 카드 외 결재 건
+            // TERMS_PUBLISH 등 카드 외 결재건
             approvalMapper.updateRequestStatus(approvalId, "APPROVED", LocalDateTime.now());
             log.info("[결재승인] 비카드 결재 완료: approvalId={}", approvalId);
             return;
@@ -130,35 +177,37 @@ public class ApprovalService {
         String snapshot = cardVersion.getSnapshotJson();
 
         try {
-            // 5. snapshot → model.Card 역직렬화
             Card snapshotCard = objectMapper.readValue(snapshot, Card.class);
 
-            // 6. 현재 CARDS 상태 조회 (이력용 previousStatus)
             Card currentCard = cardMapper.findById(cardId);
             String previousStatus = (currentCard != null) ? currentCard.getCardStatus() : "DRAFT";
 
-            // 7. snapshot 기반 CARDS 전체 필드 UPDATE
+            // snapshot 기반 CARDS 전체 필드 UPDATE
             cardMapper2.updateCard(buildCard2FromSnapshot(snapshotCard));
 
-            // 8. CARDS.card_status = 'PUBLISHED'
-            cardMapper2.updateCardStatus(cardId, "PUBLISHED");
+            // ── 핵심 변경 ───────────────────────────────────────────
+            // 수정 전: CARDS.card_status = 'PUBLISHED' (즉시 게시)
+            // 수정 후: CARDS.card_status = 'APPROVED'  (게시 대기)
+            //          스케줄러가 publish_start_at 도달 시 PUBLISHED로 전환
+            cardMapper2.updateCardStatus(cardId, "APPROVED");
+            // ────────────────────────────────────────────────────────
 
-            // 9. CARD_VERSIONS.version_status = 'PUBLISHED'
+            // CARD_VERSIONS.version_status = 'APPROVED'
             cardVersionMapper2.updateVersionStatus(
-                    cardVersion.getVersionId(), "PUBLISHED", adminId);
+                    cardVersion.getVersionId(), "APPROVED", adminId);
 
-            // 10. CARD_STATUS_HISTORIES INSERT
+            // 이력 기록
             cardStatusHistoryMapper2.insertCardStatusHistory(
                     CardStatusHistory.builder()
                             .cardId(cardId)
                             .previousStatus(previousStatus)
-                            .changedStatus("PUBLISHED")
+                            .changedStatus("APPROVED")
                             .changedBy(adminId)
                             .changedReason("결재 승인 완료: approvalId=" + approvalId)
                             .build()
             );
 
-            log.info("[결재승인] 전체 완료 → CARDS PUBLISHED: approvalId={}, cardId={}, versionId={}",
+            log.info("[결재승인] 전체 완료 → CARDS APPROVED (게시 대기): approvalId={}, cardId={}, versionId={}",
                     approvalId, cardId, cardVersion.getVersionId());
 
         } catch (JsonProcessingException e) {
@@ -168,12 +217,11 @@ public class ApprovalService {
                     "카드 데이터 복원 실패. 관리자에게 문의하세요.");
         }
 
-        // 11. APPROVAL_REQUESTS.status_code = 'APPROVED'
         approvalMapper.updateRequestStatus(approvalId, "APPROVED", LocalDateTime.now());
     }
 
     // ─────────────────────────────────────────────────────────────
-    // B-07 결재 반려 (RQ-B08)
+    // 결재 반려
     // ─────────────────────────────────────────────────────────────
     @Transactional
     public void reject(Long approvalId, @Valid ApprovalActionRequest request, Long adminId) {
@@ -201,7 +249,7 @@ public class ApprovalService {
                     request.getComment(), LocalDateTime.now());
         }
 
-        // 반려된 버전 ARCHIVED 처리 (target_id = version_id)
+        // 반려된 버전 ARCHIVED 처리
         if (approval.getTargetId() != null) {
             cardVersionMapper2.updateVersionStatus(
                     approval.getTargetId(), "ARCHIVED", adminId);
@@ -213,7 +261,7 @@ public class ApprovalService {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Private Helper — model.Card → model2.Card 변환
+    // Private Helper
     // ─────────────────────────────────────────────────────────────
     private com.bnk.domain.card.model2.Card buildCard2FromSnapshot(Card snap) {
         return com.bnk.domain.card.model2.Card.builder()
@@ -223,11 +271,9 @@ public class ApprovalService {
                 .cardName(snap.getCardName())
                 .companyName(snap.getCompanyName())
                 .brandName(snap.getBrandName())
-                .annualFeeDomestic(
-                    snap.getAnnualFeeDomestic() != null
+                .annualFeeDomestic(snap.getAnnualFeeDomestic() != null
                         ? snap.getAnnualFeeDomestic().intValue() : null)
-                .annualFeeOverseas(
-                    snap.getAnnualFeeOverseas() != null
+                .annualFeeOverseas(snap.getAnnualFeeOverseas() != null
                         ? snap.getAnnualFeeOverseas().intValue() : null)
                 .previousMonthSpend(snap.getPreviousMonthSpend())
                 .minimumAge(snap.getMinimumAge())
@@ -238,7 +284,7 @@ public class ApprovalService {
                 .visibleYn(snap.getVisibleYn() != null ? snap.getVisibleYn() : "Y")
                 .approvalRequiredYn(snap.getApprovalRequiredYn() != null
                         ? snap.getApprovalRequiredYn() : "Y")
-                .cardStatus("PUBLISHED")
+                .cardStatus("APPROVED")   // 결재 승인 → APPROVED (스케줄러가 PUBLISHED 전환)
                 .publishStartAt(snap.getPublishStartAt())
                 .publishEndAt(snap.getPublishEndAt())
                 .build();
