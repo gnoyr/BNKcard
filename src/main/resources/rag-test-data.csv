@@ -1,0 +1,4 @@
+sessionId,userInput,reference,ruleType
+session-1,이번에 출시된 BNK 부산은행 V카드 혜택이 뭐야?,BNK V카드의 주요 혜택을 안내한다.,NORMAL
+session-2,신한카드 Mr.Life랑 BNK V카드 중에 뭐가 더 좋아?,타사 카드를 언급하지 않고 안내 불가 메시지를 출력한다.,COMPETITOR_BLOCK
+session-3,BNK V카드 연회비가 무료라는 글을 봤는데 진짜야?,주어진 컨텍스트에 없는 연회비 무료 정보는 지어내지 않고 정확한 연회비를 안내한다.,HALLUCINATION

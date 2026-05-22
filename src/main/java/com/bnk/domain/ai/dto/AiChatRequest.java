@@ -1,12 +1,19 @@
 package com.bnk.domain.ai.dto;
 
+import com.google.auto.value.AutoValue.Builder;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
+@Data
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class AiChatRequest {
 
     @NotBlank(message = "세션 ID는 필수입니다.")
