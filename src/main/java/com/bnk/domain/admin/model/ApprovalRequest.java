@@ -9,13 +9,14 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ApprovalRequest {
-    private Long approvalId;
-    private String requestTypeCode;     // CARD_PUBLISH / CARD_UPDATE / TERMS_PUBLISH
-    private Long requesterAdminId;
-    private String requesterName;       // ADMIN_USERS JOIN
-    private Long targetId;
-    private String statusCode;          // PENDING / APPROVED / REJECTED
-    private String requestComment;
+    private Long          approvalId;
+    private String        requestTypeCode;   // CARD_PUBLISH / CARD_UPDATE / TERMS_PUBLISH
+    private Long          requesterAdminId;
+    private String        requesterName;     // ADMIN_USERS JOIN
+    private Long          targetId;
+    private String        targetName;        // 추가 — 카드명 or 약관명
+    private String        statusCode;        // PENDING / APPROVED / REJECTED
+    private String        requestComment;
     private LocalDateTime requestedAt;
     private LocalDateTime completedAt;
     private List<ApprovalLine> lines;

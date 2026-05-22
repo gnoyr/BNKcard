@@ -2,6 +2,7 @@ package com.bnk.domain.card.controller;
 
 import com.bnk.domain.card.dto.request.AdminCardSearchRequest;
 import com.bnk.domain.card.dto.request.CardCreateRequest;
+import com.bnk.domain.card.dto.request.CardStatusRequest;
 import com.bnk.domain.card.dto.request.CardUpdateRequest;
 import com.bnk.domain.card.dto.response.CardDetailResponse;
 import com.bnk.domain.card.service.AdminCardService;
@@ -65,5 +66,19 @@ public class AdminCardController {
             @RequestBody @Valid CardUpdateRequest request,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         return ApiResponse.toOk(adminCardService.updateCard(cardId, request, ad.getAdminId()));
+    }
+    
+    /**
+     * 카드 상태 강제 변경 (APPROVED→PUBLISHED, PUBLISHED→STOPPED 등).
+     * 스케줄러 외 수동 처리 및 긴급 중지에 사용.
+     * 허용 상태: APPROVED, PUBLISHED, STOPPED, EXPIRED
+     */
+    @PatchMapping("/{cardId}/status")
+    public ResponseEntity<ApiResponse<Void>> changeCardStatus(
+            @PathVariable Long cardId,
+            @RequestBody @Valid CardStatusRequest request,
+            @AuthenticationPrincipal CustomAdminDetails ad) {
+        adminCardService.changeCardStatus(cardId, request, ad.getAdminId());
+        return ApiResponse.toOk(null);
     }
 }
