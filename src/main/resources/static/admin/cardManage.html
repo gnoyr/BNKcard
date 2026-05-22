@@ -8,7 +8,7 @@
 
 
 <!-- ===================== 카드 목록 화면 ===================== -->
-<div class="page">
+<div id="page-list">
 
   <div class="header">
     <div>
@@ -19,44 +19,44 @@
   </div>
 
   <div class="filters">
-	<input
-	  type="text"
-	  id="searchKeyword"
-	  placeholder="카드명, 카드사명, 키워드 검색..."
-	  onkeydown="if(event.key==='Enter') loadCards(0)"
-	/>
-	<select id="filterType">
-	  <option value="">전체 유형</option>
-	  <option value="CREDIT">신용</option>
-	  <option value="CHECK">체크</option>
-	  <option value="PREPAID">선불</option>
-	</select>
-	<select id="filterStatus">
-	  <option value="">전체 상태</option>
-	  <option value="DRAFT">초안</option>
-	  <option value="REVIEW">심사중</option>
-	  <option value="APPROVED">승인</option>
-	  <option value="PUBLISHED">게시중</option>
-	  <option value="STOPPED">중단</option>
-	  <option value="EXPIRED">만료</option>
-	</select>
-	<input type="date" id="publishStartFrom" />
-	~
-	<input type="date" id="publishStartTo" />
-	<button onclick="loadCards(0)">검색</button>
-	<button onclick="resetSearch()">초기화</button>
+    <input
+      type="text"
+      id="searchKeyword"
+      placeholder="카드명, 카드사명, 키워드 검색..."
+      onkeydown="if(event.key==='Enter') loadCards(0)"
+    />
+    <select id="filterType">
+      <option value="">전체 유형</option>
+      <option value="CREDIT">신용</option>
+      <option value="CHECK">체크</option>
+      <option value="PREPAID">선불</option>
+    </select>
+    <select id="filterStatus">
+      <option value="">전체 상태</option>
+      <option value="DRAFT">초안</option>
+      <option value="REVIEW">심사중</option>
+      <option value="APPROVED">승인</option>
+      <option value="PUBLISHED">게시중</option>
+      <option value="STOPPED">중단</option>
+      <option value="EXPIRED">만료</option>
+    </select>
+    <input type="date" id="publishStartFrom" />
+    ~
+    <input type="date" id="publishStartTo" />
+    <button onclick="loadCards(0)">검색</button>
+    <button onclick="resetSearch()">초기화</button>
   </div>
 
   <table border="1">
-	<thead>
-	  <tr>
-	    <th>카드 ID</th>
-	    <th>카드명</th>
-	    <th>카드사</th>
-	    <th>유형</th>
-	    <th>상태</th>
-	    <th>배포기간</th>
-	  </tr>
+    <thead>
+      <tr>
+        <th>카드 ID</th>
+        <th>카드명</th>
+        <th>카드사</th>
+        <th>유형</th>
+        <th>상태</th>
+        <th>배포기간</th>
+      </tr>
     </thead>
     <tbody id="tableBody">
       <tr><td colspan="6">불러오는 중...</td></tr>
@@ -67,13 +67,24 @@
 
 </div>
 
-
 <!-- ===================== 카드 상세 화면 ===================== -->
+<div id="page-detail" style="display:none;">
 
+  <button id="btn-back">← 목록으로</button>
+  <button id="btn-edit">수정</button>
+
+  <h2>카드 상세</h2>
+
+  <table border="1">
+    <tbody id="detail-info"></tbody>
+  </table>
+
+</div>
 
 
 <script>
 	let currentPage = 0;
+	let currentCardId = null;
 	const PAGE_SIZE = 20;
 	
 	const TYPE_LABEL = { CREDIT: '신용', CHECK: '체크', PREPAID: '선불' };
@@ -85,7 +96,25 @@
 	  STOPPED:   '중단',
 	  EXPIRED:   '만료',
 	};	
+
+	// ───────────── 화면 전환 ─────────────
+	function showList() {
+	  document.getElementById('page-list').style.display = '';
+	  document.getElementById('page-detail').style.display = 'none';
+	}
+
+	function showDetail() {
+	  document.getElementById('page-list').style.display = 'none';
+	  document.getElementById('page-detail').style.display = '';
+	}
 	
+	// ───────────── 목록 ─────────────
+	function formatPeriod(from, to) {
+	  const f = from ? from.slice(0, 10) : '';
+	  const t = to   ? to.slice(0, 10)   : '';
+	  return `${f} ~ ${t}`;
+	}
+
 	function renderTable(items) {
 	  const tbody = document.getElementById('tableBody');
 
@@ -95,7 +124,7 @@
 	  }
 
 	  tbody.innerHTML = items.map(card => `
-	    <tr>
+	    <tr style="cursor:pointer;" onclick="fetchCardDetail(${card.cardId})">
 	      <td>${card.cardId}</td>
 	      <td>${card.cardName}</td>
 	      <td>${card.companyName}</td>
@@ -104,12 +133,6 @@
 	      <td>${formatPeriod(card.publishStartAt, card.publishEndAt)}</td>
 	    </tr>
 	  `).join('');
-	}
-	
-	function formatPeriod(from, to) {
-	  const f = from ? from.slice(0, 10) : '';
-	  const t = to   ? to.slice(0, 10)   : '';
-	  return `${f} ~ ${t}`;
 	}
 	
 	function renderPagination(totalCount) {
@@ -140,9 +163,9 @@
 	}
 
 	async function fetchCards(page) {
-	  const keyword         = document.getElementById('searchKeyword').value.trim();
-	  const cardType        = document.getElementById('filterType').value;
-	  const cardStatus      = document.getElementById('filterStatus').value;
+	  const keyword          = document.getElementById('searchKeyword').value.trim();
+	  const cardType         = document.getElementById('filterType').value;
+	  const cardStatus       = document.getElementById('filterStatus').value;
 	  const publishStartFrom = document.getElementById('publishStartFrom').value;
 	  const publishStartTo   = document.getElementById('publishStartTo').value;
 
@@ -160,39 +183,89 @@
 	  const json = await res.json();
 	  return json.data;
 	}
-	
+
 	async function loadCards(page = 0) {
 	  currentPage = page;
-	
+
 	  document.getElementById('tableBody').innerHTML =
 	    `<tr><td colspan="6">불러오는 중...</td></tr>`;
 	  document.getElementById('pagination').innerHTML = '';
-	
+
 	  try {
 	    const pageData = await fetchCards(page);
-	
+
 	    document.getElementById('totalCount').textContent =
 	      pageData.totalCount.toLocaleString();
-	
+
 	    renderTable(pageData.content);
 	    renderPagination(pageData.totalCount);
-	
+
 	  } catch (err) {
 	    document.getElementById('tableBody').innerHTML =
 	      `<tr><td colspan="6">오류: ${err.message}</td></tr>`;
 	  }
 	}
-	
+
 	function resetSearch() {
-	  document.getElementById('searchKeyword').value   = '';
-	  document.getElementById('filterType').value      = '';
-	  document.getElementById('filterStatus').value    = '';
+	  document.getElementById('searchKeyword').value    = '';
+	  document.getElementById('filterType').value       = '';
+	  document.getElementById('filterStatus').value     = '';
 	  document.getElementById('publishStartFrom').value = '';
 	  document.getElementById('publishStartTo').value   = '';
 	  loadCards(0);
 	}
 	
+	// ───────────── 상세 ─────────────
+	async function fetchCardDetail(cardId) {
+	  currentCardId = cardId;
+	  showDetail();
+
+	  document.getElementById('detail-info').innerHTML =
+	    `<tr><td>불러오는 중...</td></tr>`;
+
+	  try {
+	    const res = await fetch(`/api/admin/cards/${cardId}`, { credentials: 'include' });
+	    if (res.status === 401) { location.href = '/admin/login'; return; }
+	    if (!res.ok) throw new Error(`서버 오류 (${res.status})`);
+
+	    const json = await res.json();
+	    renderDetailInfo(json.data);
+
+	  } catch (err) {
+	    document.getElementById('detail-info').innerHTML =
+	      `<tr><td>오류: ${err.message}</td></tr>`;
+	  }
+	}
+
+	function renderDetailInfo(card) {
+	  document.getElementById('detail-info').innerHTML = `
+	    <tr><th>카드 ID</th><td>${card.cardId}</td></tr>
+	    <tr><th>카드코드</th><td>${card.cardCode ?? '-'}</td></tr>
+	    <tr><th>카드명</th><td>${card.cardName}</td></tr>
+	    <tr><th>카드사</th><td>${card.companyName}</td></tr>
+	    <tr><th>유형</th><td>${TYPE_LABEL[card.cardType] ?? card.cardType}</td></tr>
+	    <tr><th>브랜드</th><td>${card.brandName ?? '-'}</td></tr>
+	    <tr><th>국내연회비</th><td>${card.annualFeeDomestic != null ? card.annualFeeDomestic.toLocaleString() + '원' : '-'}</td></tr>
+	    <tr><th>해외연회비</th><td>${card.annualFeeOverseas != null ? card.annualFeeOverseas.toLocaleString() + '원' : '-'}</td></tr>
+	    <tr><th>상태</th><td>${STAT_LABEL[card.cardStatus] ?? card.cardStatus}</td></tr>
+	    <tr><th>배포기간</th><td>${formatPeriod(card.publishStartAt, card.publishEndAt)}</td></tr>
+	    <tr><th>요약설명</th><td>${card.summaryDescription ?? '-'}</td></tr>
+	  `;
+	}
+
+	// ───────────── 이벤트 바인딩 ─────────────
+	document.getElementById('btn-back').addEventListener('click', () => {
+	  showList();
+	  loadCards(currentPage);
+	});
+
+	document.getElementById('btn-edit').addEventListener('click', () => {
+	  location.href = `/admin/cards/${currentCardId}/edit`;
+	});
+
 	loadCards(0);
+	
+	
 </script>
 
 </body>

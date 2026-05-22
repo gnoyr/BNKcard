@@ -277,9 +277,12 @@ public class AdminCardService {
                 .cardName(card.getCardName())
                 .companyName(card.getCompanyName())
                 .cardType(card.getCardType())
+                .cardStatus(card.getCardStatus())         // 추가
                 .annualFeeDomestic(card.getAnnualFeeDomestic())
                 .annualFeeOverseas(card.getAnnualFeeOverseas())
                 .summaryDescription(card.getSummaryDescription())
+                .publishStartAt(card.getPublishStartAt()) // 추가
+                .publishEndAt(card.getPublishEndAt())     // 추가
                 .benefits(benefits)
                 .images(imageDtos)
                 .contents(contentDtos)

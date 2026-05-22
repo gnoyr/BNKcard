@@ -16,6 +16,8 @@
         <result property="previousMonthSpend" column="previous_month_spend"/>
         <result property="minimumAge"         column="minimum_age"/>
         <result property="maximumAge"         column="maximum_age"/>
+	    <result property="creditLimitMin" column="credit_limit_min"/>
+	    <result property="creditLimitMax" column="credit_limit_max"/>
         <result property="targetUser"         column="target_user"/>
         <result property="summaryDescription" column="summary_description"/>
         <result property="searchableYn"       column="searchable_yn"/>

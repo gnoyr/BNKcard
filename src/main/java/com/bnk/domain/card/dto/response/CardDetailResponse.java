@@ -1,5 +1,6 @@
 package com.bnk.domain.card.dto.response;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import com.bnk.domain.card.model.CardBenefit;
@@ -13,9 +14,12 @@ public class CardDetailResponse {
     private String cardName;
     private String companyName;
     private String cardType;
+    private String cardStatus;            // 추가
     private Long annualFeeDomestic;
     private Long annualFeeOverseas;
     private String summaryDescription;
+    private LocalDateTime publishStartAt; // 추가
+    private LocalDateTime publishEndAt;   // 추가
     private List<CardBenefit> benefits;
     private List<ImageDto> images;
     private List<ContentDto> contents;  // display_order ASC
