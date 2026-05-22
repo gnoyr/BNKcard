@@ -1,0 +1,236 @@
+/* =============================================================
+   components.css  |  BNK 부산은행 공통 컴포넌트 스타일
+   대상: 헤더, 세션 바, 토스트
+   ============================================================= */
+
+/* ── 사이트 헤더 ── */
+.site-header {
+  background: #ffffff;
+  border-bottom: 1px solid #e4e4e7;
+  padding: 0 24px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+.logo-badge {
+  width: 32px;
+  height: 32px;
+  background: #C8102E;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: -0.5px;
+  user-select: none;
+}
+.logo-text {
+  font-size: 15px;
+  font-weight: 700;
+  color: #18181b;
+  letter-spacing: -0.3px;
+}
+
+/* ── 헤더 내비 ── */
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.header-nav a {
+  font-size: 13px;
+  color: #52525b;
+  text-decoration: none;
+  padding: 4px 0;
+  border-bottom: 2px solid transparent;
+  transition: color .2s, border-color .2s;
+}
+.header-nav a:hover,
+.header-nav a.active {
+  color: #C8102E;
+  border-bottom-color: #C8102E;
+}
+.header-nav__username {
+  font-size: 13px;
+  font-weight: 700;
+  color: #C8102E;
+}
+.header-nav__btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: #52525b;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color .2s, border-color .2s;
+}
+.header-nav__btn:hover {
+  color: #C8102E;
+  border-bottom-color: #C8102E;
+}
+
+/* ── 마이페이지 헤더 (mp-header) ── */
+.mp-header {
+  background: #C8102E;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 10px rgba(200,16,46,.4);
+}
+.mp-header__logo {
+  font-size: 17px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -.4px;
+  text-decoration: none;
+}
+.mp-header__title {
+  font-size: 14px;
+  color: rgba(255,255,255,.8);
+  font-weight: 500;
+}
+.mp-header__back {
+  color: #fff;
+  background: none;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-family: inherit;
+  transition: background .2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.mp-header__back::before { content: '←'; font-size: 15px; }
+.mp-header__back:hover { background: rgba(255,255,255,.18); }
+
+/* ── 세션 바 ── */
+.session-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #1a1a2e;
+  color: #cbd5e1;
+  font-size: 12px;
+  padding: 0 20px;
+  height: 34px;
+  position: sticky;
+  top: 60px;   /* site-header 높이 */
+  z-index: 98;
+  border-bottom: 1px solid #0f3460;
+}
+.session-bar.mp-offset { top: 58px; }  /* mp-header 사용 시 */
+
+.session-bar[hidden] { display: none; }
+
+.session-bar__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  flex-shrink: 0;
+  transition: background .3s;
+}
+.session-bar__dot--warn    { background: #f59e0b; animation: dotBlink 1.2s infinite; }
+.session-bar__dot--expired { background: #ef4444; animation: dotBlink  .7s infinite; }
+@keyframes dotBlink { 50% { opacity: .3; } }
+
+.session-bar__label  { color: #94a3b8; }
+.session-bar__sep    { color: #334155; }
+.session-bar__name   { font-weight: 600; color: #e2e8f0; }
+.session-bar__right  { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.session-bar__timer-label { color: #64748b; }
+
+.session-bar__timer {
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+  font-size: 13px;
+  color: #22c55e;
+  min-width: 64px;
+  text-align: right;
+  transition: color .3s;
+}
+.session-bar__timer--warn    { color: #f59e0b; }
+.session-bar__timer--expired { color: #ef4444; }
+
+.session-bar__btn {
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .2s, border-color .2s, color .2s;
+  white-space: nowrap;
+}
+.session-bar__btn--refresh {
+  background: #1e3a8a;
+  color: #fff;
+}
+.session-bar__btn--refresh:hover    { background: #1d4ed8; }
+.session-bar__btn--refresh:disabled { background: #334155; cursor: not-allowed; }
+.session-bar__btn--logout {
+  background: none;
+  border: 1px solid #334155;
+  color: #94a3b8;
+}
+.session-bar__btn--logout:hover { border-color: #ef4444; color: #ef4444; }
+
+/* ── 세션 토스트 ── */
+.session-toast {
+  position: fixed;
+  top: 100px;
+  right: 20px;
+  background: #1e293b;
+  color: #f1f5f9;
+  font-size: 12px;
+  border-radius: 8px;
+  padding: 11px 14px;
+  z-index: 9999;
+  max-width: 260px;
+  line-height: 1.5;
+  box-shadow: 0 8px 24px rgba(0,0,0,.3);
+  border-left: 3px solid #f59e0b;
+  animation: toastSlide .3s ease;
+}
+.session-toast[hidden] { display: none; }
+.session-toast__refresh-btn {
+  display: block;
+  margin-top: 7px;
+  background: #1e40af;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 3px 9px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+}
+@keyframes toastSlide {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
