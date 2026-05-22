@@ -8,164 +8,173 @@
 </head>
 <body data-page="signup">
 
-	<header class="site-header">
-		<a href="/" class="logo"> <span class="logo-badge">BNK</span> <span
-			class="logo-text">부산은행</span>
-		</a>
-		<nav class="header-nav" id="headerNav">
-			<a href="/auth/signup.html" class="active">회원가입</a> <a
-				href="/auth/login.html">로그인</a>
-		</nav>
-	</header>
+  <header class="site-header">
+    <a href="/" class="logo">
+      <span class="logo-badge">BNK</span>
+      <span class="logo-text">부산은행</span>
+    </a>
+    <nav class="header-nav" id="headerNav">
+      <a href="/auth/signup.html" class="active">회원가입</a>
+      <a href="/auth/login.html">로그인</a>
+    </nav>
+  </header>
 
-	<main class="page-wrap">
-		<div class="auth-card wide">
+  <main class="page-wrap">
+    <div class="auth-card wide">
 
-			<div class="step-bar">
-				<div class="step-item active" id="step-dot-1">
-					<div class="step-num" id="step-num-1">1</div>
-					약관동의
-				</div>
-				<div class="step-sep"></div>
-				<div class="step-item" id="step-dot-2">
-					<div class="step-num" id="step-num-2">2</div>
-					회원정보 입력
-				</div>
-				<div class="step-sep"></div>
-				<div class="step-item" id="step-dot-3">
-					<div class="step-num" id="step-num-3">3</div>
-					가입완료
-				</div>
-			</div>
+      <div class="step-bar">
+        <div class="step-item active" id="step-dot-1">
+          <div class="step-num" id="step-num-1">1</div>
+          약관동의
+        </div>
+        <div class="step-sep"></div>
+        <div class="step-item" id="step-dot-2">
+          <div class="step-num" id="step-num-2">2</div>
+          회원정보 입력
+        </div>
+        <div class="step-sep"></div>
+        <div class="step-item" id="step-dot-3">
+          <div class="step-num" id="step-num-3">3</div>
+          가입완료
+        </div>
+      </div>
 
-			<h1 class="page-title">회원가입</h1>
+      <h1 class="page-title">회원가입</h1>
 
-			<!-- ── STEP 1 : 약관동의 ── -->
-			<div id="view-step1" class="view active">
-				<div id="terms-loading" class="notice-box">약관을 불러오는 중...</div>
-				<div id="terms-error" class="alert alert-error"></div>
-				<div id="terms-list"></div>
+      <!-- ── STEP 1 : 약관동의 ── -->
+      <!-- [개선] form 태그 추가 / onclick 제거 → auth-js.js addEventListener로 이동 -->
+      <div id="view-step1" class="view active">
+        <form id="termsForm" novalidate>
+          <div id="terms-loading" class="notice-box">약관을 불러오는 중...</div>
+          <div id="terms-error" class="alert alert-error"></div>
+          <div id="terms-list"></div>
 
-				<div class="btn-row btn-row--top">
-					<a href="login.html" class="btn btn-secondary">취소</a>
-					<button class="btn btn-primary" onclick="signup.step1Next()">다음</button>
-				</div>
-			</div>
+          <div class="btn-row btn-row--top">
+            <a href="login.html" class="btn btn-secondary">취소</a>
+            <button class="btn btn-primary" type="submit" id="btnStep1Next">다음</button>
+          </div>
+        </form>
+      </div>
 
-			<!-- ── STEP 2 : 회원정보 입력 ── -->
-			<div id="view-step2" class="view">
-				<div class="form-group">
-					<label class="form-label">이메일 <span class="required">*</span></label>
-					<div class="input-row">
-						<input class="form-input" type="email" id="email"
-							placeholder="이메일 주소를 입력하세요" autocomplete="email"
-							oninput="signup.onEmailInput()" />
-						<button class="btn btn-outline btn-sm" id="send-code-btn" onclick="signup.sendVerifyCode()">인증코드
-							발송</button>
-					</div>
-					<p class="helper" id="email-msg"></p>
-				</div>
+      <!-- ── STEP 2 : 회원정보 입력 ── -->
+      <div id="view-step2" class="view">
+        <!-- [개선] form 태그 추가 / onclick 제거 → auth-js.js addEventListener로 이동 -->
+        <form id="signupForm" novalidate>
 
-				<div class="form-group is-hidden" id="code-section">
-					<label class="form-label">인증코드 <span class="required">*</span></label>
-					<div class="input-row">
-						<input class="form-input" type="text" id="su-code"
-							placeholder="인증코드 6자리 입력" maxlength="6" />
-						<span id="su-timer"></span>
-						<button class="btn btn-outline btn-sm"
-							onclick="signup.verifyEmail()">확인</button>
-					</div>
-					<p class="helper" id="verify-msg"></p>
-				</div>
+          <div class="form-group">
+            <label class="form-label" for="email">이메일 <span class="required">*</span></label>
+            <div class="input-row">
+              <input class="form-input" type="email" id="email"
+                placeholder="이메일 주소를 입력하세요" autocomplete="email" />
+              <!-- [개선] onclick 제거 → addEventListener로 이동 -->
+              <button class="btn btn-outline" type="button" id="btnSendCode">인증코드 발송</button>
+            </div>
+            <div id="code-sent-msg" class="helper is-hidden">
+              인증코드가 발송되었습니다.
+              <span class="timer-text" id="code-timer"></span>
+            </div>
+          </div>
 
-				<div class="form-group">
-					<label class="form-label">비밀번호 <span class="required">*</span></label>
-					<div class="pw-wrap">
-						<input class="form-input" type="password" id="pw"
-							placeholder="영문, 숫자, 특수문자 포함 8자 이상" autocomplete="new-password"
-							oninput="signup.checkPwStrength()" />
-						<button class="pw-toggle" type="button"
-							onclick="togglePw('pw','pw-eye1')" id="pw-eye1"></button>
-					</div>
-					<div class="strength-wrap is-hidden" id="pw-strength">
-						<div class="strength-track">
-							<div class="strength-fill" id="strength-bar"></div>
-						</div>
-						<p class="helper" id="strength-label"></p>
-					</div>
-				</div>
+          <div class="form-group" id="group-verify-code">
+            <label class="form-label" for="verifyCode">이메일 인증코드 <span class="required">*</span></label>
+            <div class="input-row">
+              <input class="form-input" type="text" id="verifyCode"
+                placeholder="6자리 코드 입력" maxlength="6"
+                inputmode="numeric" autocomplete="one-time-code" />
+              <!-- [개선] onclick 제거 → addEventListener로 이동 -->
+              <button class="btn btn-outline" type="button" id="btnVerifyCode">확인</button>
+            </div>
+            <div id="verify-success" class="helper ok is-hidden">✓ 이메일 인증이 완료되었습니다.</div>
+            <div id="verify-error" class="alert alert-error"></div>
+          </div>
 
-				<div class="form-group">
-					<label class="form-label">비밀번호 확인 <span class="required">*</span></label>
-					<div class="pw-wrap">
-						<input class="form-input" type="password" id="pw-confirm"
-							placeholder="비밀번호를 다시 입력하세요" autocomplete="new-password"
-							oninput="signup.checkPwMatch()" />
-						<button class="pw-toggle" type="button"
-							onclick="togglePw('pw-confirm','pw-eye2')" id="pw-eye2"></button>
-					</div>
-					<p class="helper" id="pw-match-msg"></p>
-				</div>
+          <div class="form-group">
+            <label class="form-label" for="password">비밀번호 <span class="required">*</span></label>
+            <div class="pw-wrap">
+              <input class="form-input" type="password" id="password"
+                placeholder="영문, 숫자, 특수문자 포함 8자 이상"
+                autocomplete="new-password" />
+              <!-- [개선] onclick 제거 → addEventListener로 이동 -->
+              <button class="pw-toggle" type="button" id="btnPwToggle1"
+                title="비밀번호 표시/숨김"></button>
+            </div>
+            <div class="strength-wrap is-hidden" id="signup-pw-strength">
+              <div class="strength-track">
+                <div class="strength-fill" id="signup-strength-bar"></div>
+              </div>
+              <p class="helper" id="signup-strength-label"></p>
+            </div>
+          </div>
 
-				<div class="form-group">
-					<label class="form-label">이름 <span class="required">*</span></label>
-					<input class="form-input" type="text" id="name" placeholder="실명 입력"
-						autocomplete="name" />
-				</div>
+          <div class="form-group">
+            <label class="form-label" for="passwordConfirm">비밀번호 확인 <span class="required">*</span></label>
+            <div class="pw-wrap">
+              <input class="form-input" type="password" id="passwordConfirm"
+                placeholder="비밀번호를 다시 입력하세요"
+                autocomplete="new-password" />
+              <!-- [개선] onclick 제거 → addEventListener로 이동 -->
+              <button class="pw-toggle" type="button" id="btnPwToggle2"
+                title="비밀번호 표시/숨김"></button>
+            </div>
+            <p class="helper" id="pw-match-msg"></p>
+          </div>
 
-				<div class="form-group">
-					<label class="form-label">휴대전화 <span class="required">*</span></label>
-					<input class="form-input" type="tel" id="phone"
-						placeholder="'-' 없이 숫자만 입력" maxlength="11" />
-				</div>
+          <div class="form-group">
+            <label class="form-label" for="name">이름 <span class="required">*</span></label>
+            <input class="form-input" type="text" id="name"
+              placeholder="실명을 입력하세요" autocomplete="name" />
+          </div>
 
-				<div class="form-group">
-					<label class="form-label">생년월일</label> <input class="form-input"
-						type="text" id="birth" placeholder="YYYYMMDD" maxlength="8" />
-				</div>
+          <div class="form-group">
+            <label class="form-label" for="phone">휴대전화 번호 <span class="required">*</span></label>
+            <input class="form-input" type="tel" id="phone"
+              placeholder="'-' 없이 숫자만 입력" maxlength="11"
+              autocomplete="tel" />
+          </div>
 
-				<div class="form-group form-group--toggle">
-					<label class="form-label">마케팅 수신 동의</label>
-					<label class="toggle">
-						<input type="checkbox" id="su-mkt" />
-						<span class="toggle__track"></span>
-					</label>
-				</div>
+          <div class="form-group">
+            <label class="form-label" for="birthDate">생년월일</label>
+            <input class="form-input" type="date" id="birthDate"
+              autocomplete="bday" />
+          </div>
 
-				<div id="signup-error" class="alert alert-error"></div>
+          <div id="signup-error" class="alert alert-error"></div>
 
-				<div class="btn-row btn-row--top">
-					<button class="btn btn-secondary" onclick="signup.step2Back()">이전</button>
-					<button class="btn btn-primary" onclick="signup.step2Next()">가입
-						완료</button>
-				</div>
-			</div>
+          <div class="btn-row btn-row--top">
+            <!-- [개선] onclick 제거 → addEventListener로 이동 -->
+            <button class="btn btn-secondary" type="button" id="btnStep2Back">이전</button>
+            <button class="btn btn-primary" type="submit" id="btnSignupSubmit">다음</button>
+          </div>
 
-			<!-- ── STEP 3 : 가입완료 ── -->
-			<div id="view-step3" class="view">
-				<div class="success-box">
-					<div class="success-icon">✓</div>
-					<div>
-						<p class="success-text">회원가입이 완료되었습니다!</p>
-						<p class="success-sub"><span id="done-name"></span><span id="done-name-display"></span>님, 환영합니다!</p>
-						<p class="success-sub" id="welcome-msg"><span id="done-email-display"></span></p>
-					</div>
-				</div>
-				<div class="btn-row">
-					<a href="login.html" class="btn btn-primary">로그인 하기</a>
-				</div>
-			</div>
+        </form>
+      </div>
 
-		</div>
-	</main>
+      <!-- ── STEP 3 : 가입완료 ── -->
+      <div id="view-step3" class="view">
+        <div class="success-box">
+          <div class="success-icon"></div>
+          <div>
+            <p class="success-text"><span id="done-name"></span>님, 가입을 환영합니다!</p>
+            <p class="success-sub" id="done-email-display"></p>
+          </div>
+        </div>
 
-	<footer class="site-footer">
-		<strong>BNK부산은행</strong><br /> 부산광역시 부산진구 부전동 830-38 &nbsp;|&nbsp;
-		대표전화 1588-6200<br /> © 2025 BNK Busan Bank. All rights reserved.
-	</footer>
+        <div class="btn-row">
+          <a href="login.html" class="btn btn-primary btn-block">로그인 하러 가기</a>
+        </div>
+      </div>
 
-	<div id="toast-container"></div>
-	<script src="/js/header.js"></script>
-	<script src="/js/auth-js.js"></script>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <strong>BNK부산은행</strong><br />
+    부산광역시 부산진구 부전동 830-38 &nbsp;|&nbsp; 대표전화 1588-6200<br />
+    © 2025 BNK Busan Bank. All rights reserved.
+  </footer>
+
+  <div id="toast-container"></div>
+  <script src="/js/header.js"></script>
+  <script src="/js/auth-js.js"></script>
 </body>
 </html>
