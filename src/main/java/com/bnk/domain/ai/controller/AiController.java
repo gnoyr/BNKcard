@@ -1,5 +1,6 @@
 package com.bnk.domain.ai.controller;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequestMapping("/api")
 @RequiredArgsConstructor
 @Slf4j
+@ConditionalOnProperty(name = "spring.ai.google.genai.enabled", havingValue = "true")
 public class AiController {
 	
 	private final AiChatService aiChatService;
