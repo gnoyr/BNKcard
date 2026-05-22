@@ -10,9 +10,13 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.bnk.domain.terms.dto.request.TermsCreateRequest;
 import com.bnk.domain.terms.dto.request.TermsStatusRequest;
+import com.bnk.domain.terms.dto.response.TermsAdminResponse;
+import com.bnk.domain.terms.dto.response.TermsFileResponse;
+import com.bnk.domain.terms.dto.response.TermsMasterResponse;
 import com.bnk.domain.terms.mapper.TermsMapper;
 import com.bnk.domain.terms.model.Terms;
 import com.bnk.domain.terms.model.TermsFile;
+import com.bnk.domain.terms.model.TermsMaster;
 import com.bnk.domain.terms.service.PdfConvertService;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
@@ -22,10 +26,6 @@ import com.bnk.global.util.ObjectStorageService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import com.bnk.domain.terms.dto.response.TermsAdminResponse;
-import com.bnk.domain.terms.dto.response.TermsFileResponse;
-import com.bnk.domain.terms.dto.response.TermsMasterResponse;
-import com.bnk.domain.terms.model.TermsMaster;
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -163,6 +163,21 @@ public class AdminTermsService {
                 termsId, previousStatus, newStatus, adminId);
     }
     
+    /** TERMS_MASTERS 목록 조회 */
+    @Transactional(readOnly = true)
+    public List<TermsMasterResponse> getTermsMasters() {
+        List<TermsMaster> masters = termsMapper.findAllMasters();
+        return masters.stream()
+                .map(m -> TermsMasterResponse.builder()
+                        .termsMasterId(m.getTermsMasterId())
+                        .termsType(m.getTermsType())
+                        .title(m.getTitle())
+                        .description(m.getDescription())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    /** 관리자 약관 목록 조회 (status 필터 가능) */
     @Transactional(readOnly = true)
     public List<TermsAdminResponse> getTermsList(String status) {
         List<Terms> termsList = termsMapper.findAllForAdmin(status);
@@ -182,24 +197,31 @@ public class AdminTermsService {
                 .collect(Collectors.toList());
     }
 
+    /** 관리자 약관 상세 조회 */
     @Transactional(readOnly = true)
     public TermsAdminResponse getTermsDetail(Long termsId) {
         Terms terms = termsMapper.findById(termsId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TERMS_NOT_FOUND));
-        List<TermsFile> files = termsMapper.findFilesByTermsId(termsId);
-        List<TermsFileResponse> fileResponses = files.stream()
-                .map(f -> TermsFileResponse.builder()
+
+        List<com.bnk.domain.terms.model.TermsFile> files =
+                termsMapper.findFilesByTermsId(termsId);
+
+        List<com.bnk.domain.terms.dto.response.TermsFileResponse> fileResponses = files.stream()
+                .map(f -> com.bnk.domain.terms.dto.response.TermsFileResponse.builder()
                         .fileId(f.getFileId())
+                        .termsId(f.getTermsId())
                         .fileType(f.getFileType())
                         .filePath(f.getFilePath())
                         .originalName(f.getOriginalName())
                         .isPrimary(f.getIsPrimary())
                         .build())
                 .collect(Collectors.toList());
+
         return TermsAdminResponse.builder()
                 .termsId(terms.getTermsId())
                 .termsMasterId(terms.getTermsMasterId())
                 .title(terms.getTitle())
+                .termsType(terms.getTermsType())
                 .version(terms.getVersion())
                 .status(terms.getStatus())
                 .requiredYn(terms.getRequiredYn())
@@ -209,16 +231,5 @@ public class AdminTermsService {
                 .build();
     }
 
-    @Transactional(readOnly = true)
-    public List<TermsMasterResponse> getTermsMasters() {
-        List<TermsMaster> masters = termsMapper.findAllMasters();
-        return masters.stream()
-                .map(m -> TermsMasterResponse.builder()
-                        .termsMasterId(m.getTermsMasterId())
-                        .termsType(m.getTermsType())
-                        .title(m.getTitle())
-                        .description(m.getDescription())
-                        .build())
-                .collect(Collectors.toList());
-    }
+    
 }
