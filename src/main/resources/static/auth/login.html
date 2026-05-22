@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>로그인 – BNK 부산은행</title>
+<link rel="stylesheet" href="/css/auth-style.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <a href="#" class="logo">
+    <span class="logo-badge">BNK</span>
+    <span class="logo-text">부산은행</span>
+  </a>
+  <div class="header-links">
+    <a href="signup.html">회원가입</a>
+    <a href="login.html" class="active">로그인</a>
+  </div>
+</header>
+
+<main class="page-wrap">
+  <div class="auth-card">
+    <h1 class="page-title">로그인</h1>
+
+    <div class="form-group">
+      <label class="form-label">아이디 (이메일)<span class="required">*</span></label>
+      <input class="form-input" type="email" id="email" placeholder="이메일 주소를 입력하세요" autocomplete="email" />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">비밀번호<span class="required">*</span></label>
+      <div class="pw-wrap">
+        <input class="form-input" type="password" id="password" placeholder="비밀번호를 입력하세요" autocomplete="current-password" />
+        <button class="pw-toggle" type="button" onclick="login.togglePw()" title="비밀번호 표시/숨김"></button>
+      </div>
+      <p class="helper">로그인 실패 5회 시 계정이 잠깁니다.</p>
+    </div>
+
+    <button class="btn btn-primary btn-block" onclick="login.submit()">로그인</button>
+
+    <div id="login-error" class="alert alert-error"></div>
+
+    <div class="divider"></div>
+
+    <div class="link-row">
+      <a href="signup.html">회원가입</a>
+      <span class="link-sep">|</span>
+      <a href="find-id.html">아이디 찾기</a>
+      <span class="link-sep">|</span>
+      <a href="reset-password.html">비밀번호 찾기</a>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <strong>BNK부산은행</strong><br />
+  부산광역시 부산진구 부전동 830-38 &nbsp;|&nbsp; 대표전화 1588-6200<br />
+  © 2025 BNK Busan Bank. All rights reserved.
+</footer>
+
+<script src="/js/auth-js.js"></script>
+</body>
+</html>
