@@ -1,68 +1,61 @@
 /**
- * header.js  |  BNK 부산은행 공통 헤더 컴포넌트 로더 + 세션 관리
+ * header.js  |  BNK 부산은행 공통 헤더
+ * =====================================================================
+ * ▸ JWT 토큰은 HttpOnly 쿠키로만 관리 — JS에서 토큰 직접 접근 불가
+ * ▸ GET /api/users/me (credentials:'include') 로 인증 상태 확인
+ * ▸ 401 수신 시 POST /api/auth/refresh 자동 시도 후 재확인
+ * ▸ 관리자 페이지(/admin/) : GET /api/admin/dashboard 로 인증 확인
  *
- * 사용법: 각 HTML에서 </body> 직전에 포함
- *   <div id="app-header"></div>
- *   <script src="/js/header.js"></script>
+ * ── 페이지별 동작 ──────────────────────────────────────────────────
+ * [공통 헤더 주입 대상]
+ *   • /mypage/**   : #app-header 에 site-header 주입 (비로그인 시 로그인 페이지 이동)
+ *   • /admin/**    : #app-header 에 site-header--admin 주입 (미인증 시 admin-login 이동)
+ *   • /index.html  : #app-header 에 site-header 주입
  *
- * 인증: HttpOnly 쿠키 (access_token / refresh_token)
- *   credentials:'include' 만 사용 — JS 쿠키 직접 읽기 없음
+ * [auth 페이지 — 이미 site-header 존재, headerNav 만 채움]
+ *   • /auth/login.html    : 로그인 상태면 / 로 리다이렉트
+ *   • /auth/signup.html   : 로그인 상태면 / 로 리다이렉트
+ *   • /auth/find-id.html  : 리다이렉트 없음 (항상 접근 허용)
+ *   • /auth/reset-*.html  : 리다이렉트 없음
+ * =====================================================================
  */
+(() => {
+  /* ─────────────────────────────────────────────────────────────
+     페이지 타입 판별
+  ──────────────────────────────────────────────────────────────── */
+  const path        = location.pathname;
+  const IS_ADMIN    = path.startsWith('/admin');
+  const IS_AUTH     = path.startsWith('/auth/');
+  const IS_MYPAGE   = path.startsWith('/mypage/');
+  const NEED_AUTH   = IS_ADMIN || IS_MYPAGE;  // 미인증 시 리다이렉트 대상
 
-'use strict';
+  // auth 페이지 중 로그인 상태이면 메인으로 보낼 페이지
+  const REDIRECT_IF_LOGGED_IN = ['/auth/login.html', '/auth/signup.html'];
 
-(async () => {
+  const LOGIN_URL       = '/auth/login.html';
+  const ADMIN_LOGIN_URL = '/auth/admin-login.html';
+  const HOME_URL        = '/';
 
-  /* ── 상수 ─────────────────────────────────────────── */
-  const ACCESS_TTL_MS = 2 * 60 * 60 * 1000;  // 2시간
-  const WARN_MS       = 5 * 60 * 1000;         // 5분 전 경고
-  const KEY_LOGIN_AT  = 'bnk_login_at';
-  const KEY_USERNAME  = 'bnk_user_name';
-  const LOGIN_URL     = '/auth/login.html';
-
-  /* ── 상태 ─────────────────────────────────────────── */
-  let loggedIn  = false;
-  let userName  = '';
-  let ticker    = null;
-  let warnShown = false;
-
-  /* ─────────────────────────────────────────────────────
-     1. 헤더 컴포넌트 HTML 로드 후 #app-header에 삽입
-  ───────────────────────────────────────────────────── */
-  await loadComponent();
-
-  /* ─────────────────────────────────────────────────────
-     2. 인증 상태 확인
-  ───────────────────────────────────────────────────── */
-  await checkAuth();
-
-  /* ─────────────────────────────────────────────────────
-     3. 헤더 렌더 + 세션 바 처리
-  ───────────────────────────────────────────────────── */
-  renderNav();
-
-  if (loggedIn) {
-    showSessionBar();
-    startTicker();
-    redirectIfAlreadyLoggedIn();
-  }
-
-  /* ═══════════════════════════════════════════════════
-     컴포넌트 로드
-  ═══════════════════════════════════════════════════ */
-  async function loadComponent() {
+  /* ─────────────────────────────────────────────────────────────
+     1. 헤더 HTML 주입  (#app-header 가 있는 페이지만)
+  ──────────────────────────────────────────────────────────────── */
+  function injectHeader() {
     const mount = document.getElementById('app-header');
-    if (!mount) return;
+    if (!mount) return;   // auth 페이지는 static header 사용
 
-    try {
-      const res  = await fetch('/components/header.html');
-      const html = await res.text();
-      mount.outerHTML = html;
-    } catch {
-      // fallback: 최소 헤더 직접 생성
-      mount.outerHTML = `
+    if (IS_ADMIN) {
+      mount.innerHTML = `
+        <header class="site-header site-header--admin">
+          <a href="/admin/index.html" class="logo">
+            <span class="logo-badge logo-badge--admin">ADMIN</span>
+            <span class="logo-text logo-text--admin">부산은행 관리자</span>
+          </a>
+          <nav class="header-nav" id="headerNav"></nav>
+        </header>`;
+    } else {
+      mount.innerHTML = `
         <header class="site-header">
-          <a href="/" class="logo">
+          <a href="${HOME_URL}" class="logo">
             <span class="logo-badge">BNK</span>
             <span class="logo-text">부산은행</span>
           </a>
@@ -71,227 +64,237 @@
     }
   }
 
-  /* ═══════════════════════════════════════════════════
-     인증 상태 확인
-     GET /api/users/me — credentials:'include' 로 쿠키 자동 전송
-  ═══════════════════════════════════════════════════ */
+  /* ─────────────────────────────────────────────────────────────
+     2. 인증 상태 확인
+        - 일반 페이지 : GET /api/users/me
+        - 관리자 페이지: GET /api/admin/dashboard
+  ──────────────────────────────────────────────────────────────── */
   async function checkAuth() {
+    if (IS_ADMIN) {
+      await checkAdminAuth();
+    } else {
+      await checkUserAuth();
+    }
+  }
+
+  /* 일반 사용자 인증 확인 */
+  async function checkUserAuth() {
+    let name = null;
+
     try {
-      const res = await fetch('/api/users/me', { credentials: 'include' });
+      let res = await fetch('/api/users/me', { credentials: 'include' });
+
+      // 401 → Refresh Token으로 자동 재발급 시도
+      if (res.status === 401) {
+        const refreshed = await tryRefresh();
+        if (refreshed) {
+          res = await fetch('/api/users/me', { credentials: 'include' });
+        }
+      }
 
       if (res.ok) {
         const json = await res.json().catch(() => ({}));
-        setLoggedIn(json.data?.name ?? sessionStorage.getItem(KEY_USERNAME) ?? '회원');
-
-      } else if (res.status === 401) {
-        // access_token 만료 → refresh 시도
-        if (await tryRefresh()) {
-          const res2 = await fetch('/api/users/me', { credentials: 'include' });
-          if (res2.ok) {
-            const json2 = await res2.json().catch(() => ({}));
-            setLoggedIn(json2.data?.name ?? '회원');
-          }
-        }
+        name = json.data?.name ?? '회원';
       }
     } catch {
-      // 네트워크 오류: sessionStorage 캐시 유지
-      const cached = sessionStorage.getItem(KEY_USERNAME);
-      if (cached) setLoggedIn(cached);
-    }
-  }
-
-  function setLoggedIn(name) {
-    loggedIn  = true;
-    userName  = name;
-    sessionStorage.setItem(KEY_USERNAME, name);
-    if (!sessionStorage.getItem(KEY_LOGIN_AT)) {
-      sessionStorage.setItem(KEY_LOGIN_AT, String(Date.now()));
-    }
-  }
-
-  /* ═══════════════════════════════════════════════════
-     헤더 내비 렌더
-  ═══════════════════════════════════════════════════ */
-  function renderNav() {
-    const nav = document.getElementById('headerNav');
-    if (!nav) return;
-
-    if (loggedIn) {
-      nav.innerHTML = `
-        <span class="header-nav__username">${esc(userName)}님</span>
-        <a href="/mypage/index.html">마이페이지</a>
-        <button class="header-nav__btn" id="hdrLogout">로그아웃</button>
-      `;
-      document.getElementById('hdrLogout').addEventListener('click', logout);
-    } else {
-      nav.innerHTML = `
-        <a href="/auth/signup.html">회원가입</a>
-        <a href="/auth/login.html">로그인</a>
-      `;
+      /* 네트워크 오류는 비로그인으로 처리 */
     }
 
-    // 현재 페이지 active
-    nav.querySelectorAll('a[href]').forEach(a => {
-      a.classList.toggle('active', a.getAttribute('href') === location.pathname);
-    });
+    const loggedIn = name !== null;
 
-    // mp-header 유저명 반영
-    const mpTitle = document.querySelector('.mp-header__title');
-    if (mpTitle && loggedIn) mpTitle.textContent = esc(userName) + '님의 마이페이지';
-  }
-
-  /* ═══════════════════════════════════════════════════
-     세션 바 표시
-  ═══════════════════════════════════════════════════ */
-  function showSessionBar() {
-    const bar  = document.getElementById('sessionBar');
-    const name = document.getElementById('sessionName');
-    if (!bar) return;
-
-    if (name) name.textContent = userName + '님';
-
-    // mp-header 사용 페이지면 top 조정
-    if (document.querySelector('.mp-header')) bar.classList.add('mp-offset');
-
-    bar.hidden = false;
-
-    document.getElementById('sessionRefresh')
-            ?.addEventListener('click', refresh);
-    document.getElementById('sessionLogout')
-            ?.addEventListener('click', logout);
-  }
-
-  /* ═══════════════════════════════════════════════════
-     카운트다운 타이머
-  ═══════════════════════════════════════════════════ */
-  function startTicker() {
-    if (ticker) clearInterval(ticker);
-    ticker = setInterval(tick, 1000);
-    tick();
-  }
-
-  function tick() {
-    const loginAt   = Number(sessionStorage.getItem(KEY_LOGIN_AT)) || Date.now();
-    const remaining = Math.max(0, ACCESS_TTL_MS - (Date.now() - loginAt));
-
-    const timerEl = document.getElementById('sessionTimer');
-    const dotEl   = document.getElementById('sessionDot');
-    if (!timerEl) return;
-
-    const h = Math.floor(remaining / 3600000);
-    const m = Math.floor((remaining % 3600000) / 60000);
-    const s = Math.floor((remaining % 60000)   / 1000);
-    timerEl.textContent = `${pad(h)}:${pad(m)}:${pad(s)}`;
-
-    // 상태 클래스 토글
-    timerEl.classList.toggle('session-bar__timer--warn',    remaining <= WARN_MS && remaining > 0);
-    timerEl.classList.toggle('session-bar__timer--expired', remaining === 0);
-    dotEl.classList.toggle('session-bar__dot--warn',    remaining <= WARN_MS && remaining > 0);
-    dotEl.classList.toggle('session-bar__dot--expired', remaining === 0);
-
-    if (remaining === 0) {
-      showToast('세션이 만료되었습니다. 재발급 버튼을 눌러주세요.');
-    } else if (remaining <= WARN_MS && !warnShown) {
-      warnShown = true;
-      showToast(`${Math.ceil(remaining / 60000)}분 후 세션이 만료됩니다.`, true);
-    }
-  }
-
-  /* ═══════════════════════════════════════════════════
-     토큰 재발급
-     refresh_token 쿠키: path=/api/auth/refresh → 이 URL에만 자동 전송
-  ═══════════════════════════════════════════════════ */
-  async function refresh() {
-    const btn = document.getElementById('sessionRefresh');
-    if (btn) { btn.disabled = true; btn.textContent = '재발급 중...'; }
-
-    if (await tryRefresh()) {
-      warnShown = false;
-      hideToast();
-      showToast('토큰이 재발급되었습니다.', false, 2500);
-
-      const timerEl = document.getElementById('sessionTimer');
-      const dotEl   = document.getElementById('sessionDot');
-      timerEl?.classList.remove('session-bar__timer--warn', 'session-bar__timer--expired');
-      dotEl?.classList.remove('session-bar__dot--warn', 'session-bar__dot--expired');
-    } else {
-      showToast('재발급에 실패했습니다. 다시 로그인해주세요.');
-      setTimeout(logout, 2000);
+    // auth 페이지: 이미 로그인 → 메인으로
+    if (IS_AUTH && loggedIn && REDIRECT_IF_LOGGED_IN.includes(path)) {
+      location.replace(HOME_URL);
+      return;
     }
 
-    if (btn) { btn.disabled = false; btn.textContent = '↻ 재발급'; }
+    // 보호 페이지: 비로그인 → 로그인으로
+    if (NEED_AUTH && !loggedIn) {
+      const next = encodeURIComponent(location.pathname + location.search);
+      location.replace(`${LOGIN_URL}?next=${next}`);
+      return;
+    }
+
+    renderNav(loggedIn, name);
   }
 
+  /* 관리자 인증 확인 */
+  async function checkAdminAuth() {
+    let authenticated = false;
+
+    try {
+      const res = await fetch('/api/admin/dashboard', { credentials: 'include' });
+      authenticated = res.ok;
+    } catch {
+      /* 네트워크 오류는 미인증으로 처리 */
+    }
+
+    if (!authenticated) {
+      location.replace(ADMIN_LOGIN_URL);
+      return;
+    }
+
+    // 관리자 이름은 sessionStorage (admin-login.html 에서 저장)
+    const adminName = sessionStorage.getItem('bnk_user_name') ?? '관리자';
+    renderAdminNav(adminName);
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     3. Refresh Token 재발급 시도
+        refresh_token 쿠키 경로 = /api/auth/refresh → 자동 전송
+  ──────────────────────────────────────────────────────────────── */
   async function tryRefresh() {
     try {
       const res = await fetch('/api/auth/refresh', {
         method:      'POST',
         credentials: 'include',
       });
-      if (res.ok) {
-        sessionStorage.setItem(KEY_LOGIN_AT, String(Date.now()));
-        return true;
-      }
+      return res.ok;
+    } catch {
       return false;
-    } catch { return false; }
-  }
-
-  /* ═══════════════════════════════════════════════════
-     로그아웃
-  ═══════════════════════════════════════════════════ */
-  async function logout() {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-    } catch { /* 무시 */ }
-    sessionStorage.removeItem(KEY_LOGIN_AT);
-    sessionStorage.removeItem(KEY_USERNAME);
-    if (ticker) clearInterval(ticker);
-    window.location.href = LOGIN_URL;
-  }
-
-  /* ═══════════════════════════════════════════════════
-     로그인 페이지 리다이렉트 (이미 로그인 상태)
-  ═══════════════════════════════════════════════════ */
-  function redirectIfAlreadyLoggedIn() {
-    const p = location.pathname;
-    if (p.endsWith('login.html') && !p.includes('admin')) {
-      window.location.href = '/';
     }
   }
 
-  /* ═══════════════════════════════════════════════════
-     세션 토스트
-  ═══════════════════════════════════════════════════ */
-  function showToast(msg, withBtn = false, autoMs = 0) {
-    const el = document.getElementById('sessionToast');
-    if (!el) return;
-    el.innerHTML = esc(msg)
-      + (withBtn
-          ? `<button class="session-toast__refresh-btn"
-               onclick="document.getElementById('sessionRefresh').click()">
-               ↻ 지금 재발급
-             </button>`
-          : '');
-    el.hidden = false;
-    if (autoMs > 0) setTimeout(hideToast, autoMs);
+  /* ─────────────────────────────────────────────────────────────
+     4. 헤더 내비 렌더링
+  ──────────────────────────────────────────────────────────────── */
+
+  /** 일반 사용자 내비 */
+  function renderNav(loggedIn, name) {
+    const nav = document.getElementById('headerNav');
+    if (!nav) return;
+
+    if (loggedIn) {
+      nav.innerHTML = `
+        <span class="header-nav__username">${esc(name)}님</span>
+        <a href="/mypage/index.html">마이페이지</a>
+        <button class="header-nav__btn" id="hdrRefresh">토큰 재발급</button>
+        <button class="header-nav__btn" id="hdrLogout">로그아웃</button>`;
+
+      document.getElementById('hdrRefresh').addEventListener('click', manualRefresh);
+      document.getElementById('hdrLogout').addEventListener('click', logout);
+    } else {
+      nav.innerHTML = `
+        <a href="/auth/login.html">로그인</a>
+        <a href="/auth/signup.html">회원가입</a>`;
+    }
+
+    markActiveLink(nav);
   }
 
-  function hideToast() {
-    const el = document.getElementById('sessionToast');
-    if (el) el.hidden = true;
+  /** 관리자 내비 */
+  function renderAdminNav(name) {
+    const nav = document.getElementById('headerNav');
+    if (!nav) return;
+
+    nav.innerHTML = `
+      <span class="header-nav__username">${esc(name)}님</span>
+      <a href="/admin/index.html">대시보드</a>
+      <a href="/admin/cardManage.html">카드 관리</a>
+      <a href="/admin/userManage.html">회원 관리</a>
+      <a href="/admin/requestApproval.html">결재 처리</a>
+      <button class="header-nav__btn" id="hdrLogout">로그아웃</button>`;
+
+    document.getElementById('hdrLogout').addEventListener('click', adminLogout);
+    markActiveLink(nav);
   }
 
-  /* ═══════════════════════════════════════════════════
-     유틸
-  ═══════════════════════════════════════════════════ */
-  function pad(n) { return String(n).padStart(2, '0'); }
-  function esc(s) {
-    return String(s)
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  /** 현재 경로 active 표시 */
+  function markActiveLink(nav) {
+    nav.querySelectorAll('a[href]').forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === path);
+    });
   }
 
-  /* ── 전역 노출 (admin-login.html 등에서 logout 호출 용도) ── */
-  window._BNKHeader = { logout, refresh, isLoggedIn: () => loggedIn };
+  /* ─────────────────────────────────────────────────────────────
+     5. 토큰 재발급 (수동)
+  ──────────────────────────────────────────────────────────────── */
+  async function manualRefresh() {
+    try {
+      const res = await fetch('/api/auth/refresh', {
+        method:      'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        showToast('토큰이 재발급되었습니다.', 'success');
+      } else {
+        showToast('재발급 실패. 다시 로그인해 주세요.', 'error');
+        setTimeout(() => location.replace(LOGIN_URL), 1500);
+      }
+    } catch {
+      showToast('서버에 연결할 수 없습니다.', 'error');
+    }
+  }
 
+  /* ─────────────────────────────────────────────────────────────
+     6. 로그아웃
+  ──────────────────────────────────────────────────────────────── */
+  async function logout() {
+    try {
+      await fetch('/api/auth/logout', {
+        method:      'POST',
+        credentials: 'include',
+      });
+    } finally {
+      sessionStorage.removeItem('bnk_user_name');
+      sessionStorage.removeItem('bnk_login_at');
+      location.replace(LOGIN_URL);
+    }
+  }
+
+  async function adminLogout() {
+    try {
+      // 관리자 세션도 동일 쿠키 삭제 엔드포인트 사용
+      await fetch('/api/auth/logout', {
+        method:      'POST',
+        credentials: 'include',
+      });
+    } finally {
+      sessionStorage.removeItem('bnk_user_name');
+      sessionStorage.removeItem('bnk_login_at');
+      location.replace(ADMIN_LOGIN_URL);
+    }
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     7. 토스트 알림
+  ──────────────────────────────────────────────────────────────── */
+  function showToast(msg, type = 'info') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toast-container';
+      document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast--${type}`;
+    toast.textContent = msg;
+    container.appendChild(toast);
+
+    // 진입 애니메이션 후 3초 제거
+    requestAnimationFrame(() => toast.classList.add('toast--show'));
+    setTimeout(() => {
+      toast.classList.remove('toast--show');
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     8. XSS 방어용 이스케이프
+  ──────────────────────────────────────────────────────────────── */
+  function esc(str) {
+    return String(str ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     초기화 — DOM 준비 즉시 실행
+  ──────────────────────────────────────────────────────────────── */
+  injectHeader();   // 헤더 뼈대 즉시 삽입 (FOUC 방지)
+  checkAuth();      // 인증 확인 (비동기)
 })();

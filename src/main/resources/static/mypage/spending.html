@@ -1,59 +1,62 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>소비 패턴 관리 | 부산은행</title>
-  <link rel="stylesheet" href="/css/mypage.css"/>
-  <link rel="stylesheet" href="/css/components.css"/>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>소비 패턴 관리 | 부산은행</title>
+<link rel="stylesheet" href="/css/mypage.css" />
+<link rel="stylesheet" href="/css/components.css" />
 </head>
 <body>
 
-<div id="app-header"></div>
+	<div id="app-header"></div>
 
-<header class="mp-header">
-  <a href="/" class="mp-header__logo">BNK 부산은행</a>
-  <span class="mp-header__title">소비 패턴 관리</span>
-  <button class="mp-header__back" onclick="history.back()">뒤로</button>
-</header>
+	<nav class="page-nav">
+		<button class="page-nav__back" onclick="history.back()">마이페이지</button>
+		<span class="page-nav__sep">›</span> <span class="page-nav__title">소비
+			패턴 관리</span>
+	</nav>
 
-<div class="page-wrap">
-  <div class="page-title">
-    <h1>소비 패턴 관리</h1>
-    <p>카테고리별 월 지출 금액을 입력하면 소비 패턴 차트에 반영됩니다.</p>
-  </div>
+	<div class="page-wrap">
+		<div class="page-title">
+			<h1>소비 패턴 관리</h1>
+			<p>카테고리별 월 지출 금액을 입력하면 소비 패턴 차트에 반영됩니다.</p>
+		</div>
 
-  <div class="alert alert-info">
-    입력한 금액은 <strong>수동(MANUAL)</strong> 출처로 저장되며 메인 차트에 즉시 반영됩니다.
-  </div>
+		<div class="alert alert-info">
+			입력한 금액은 <strong>수동(MANUAL)</strong> 출처로 저장되며 메인 차트에 즉시 반영됩니다.
+		</div>
 
-  <form id="spendingForm" novalidate>
-    <div class="card">
-      <div class="card__head">카테고리별 월 지출액 입력</div>
-      <div id="rowContainer">
-        <div class="skeleton-row">
-          <span class="skeleton spending-dot" style="background:var(--gray-200);"></span>
-          <span class="skeleton" style="flex:1;height:13px;border-radius:4px;"></span>
-          <span class="skeleton" style="width:150px;height:36px;border-radius:8px;"></span>
-        </div>
-      </div>
-      <div class="spending-total">
-        <span class="spending-total__label">월 합계</span>
-        <span class="spending-total__amount" id="totalAmount">0원</span>
-      </div>
-    </div>
+		<form id="spendingForm" novalidate>
+			<div class="card">
+				<div class="card__head">카테고리별 월 지출액 입력</div>
+				<div id="rowContainer">
+					<div class="skeleton-row">
+						<span class="skeleton spending-dot"
+							style="background: var(--gray-200);"></span> <span
+							class="skeleton"
+							style="flex: 1; height: 13px; border-radius: 4px;"></span> <span
+							class="skeleton"
+							style="width: 150px; height: 36px; border-radius: 8px;"></span>
+					</div>
+				</div>
+				<div class="spending-total">
+					<span class="spending-total__label">월 합계</span> <span
+						class="spending-total__amount" id="totalAmount">0원</span>
+				</div>
+			</div>
 
-    <div class="form-actions">
-      <a href="/mypage/index.html" class="btn btn-outline">취소</a>
-      <button type="submit" class="btn btn-primary" id="submitBtn">저장하기</button>
-    </div>
-  </form>
-</div>
+			<div class="form-actions">
+				<a href="/mypage/index.html" class="btn btn-outline">취소</a>
+				<button type="submit" class="btn btn-primary" id="submitBtn">저장하기</button>
+			</div>
+		</form>
+	</div>
 
-<div id="toast-container"></div>
+	<div id="toast-container"></div>
 
-<script src="/js/header.js"></script>
-<script src="/js/mypage.js"></script>
-<script src="/js/mypage-spending.js"></script>
+	<script src="/js/header.js"></script>
+	<script src="/js/mypage.js"></script>
+	<script src="/js/mypage-spending.js"></script>
 </body>
 </html>
