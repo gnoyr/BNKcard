@@ -23,7 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequestMapping("/api")
 @RequiredArgsConstructor
 @Slf4j
-@ConditionalOnProperty(name = "spring.ai.google.genai.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "ai.enabled", havingValue = "true")
 public class AiController {
 	
 	private final AiChatService aiChatService;
