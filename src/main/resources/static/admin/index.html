@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>관리자 대시보드 | BNK 부산은행</title>
+<link rel="stylesheet" href="/css/components.css" />
+</head>
+<body>
+
+	<!-- header.js 가 site-header--admin 주입 + 미인증 시 admin-login 이동 -->
+	<div id="app-header"></div>
+
+	<main class="page-wrap">
+
+		<!-- 빠른 메뉴 -->
+		<div class="menu-grid">
+			<a href="/admin/cardManage.html" class="menu-btn"> <span
+				class="menu-btn__icon">💳</span>카드 관리
+			</a> <a href="/admin/userManage.html" class="menu-btn"> <span
+				class="menu-btn__icon">👤</span>회원 관리
+			</a> <a href="/admin/requestApproval.html" class="menu-btn"> <span
+				class="menu-btn__icon">✅</span>결재 처리
+			</a> <a href="#" class="menu-btn" id="menuTerms"> <span
+				class="menu-btn__icon">📄</span>약관 관리
+			</a> <a href="#" class="menu-btn" id="menuSearch"> <span
+				class="menu-btn__icon">🔍</span>검색 통계
+			</a>
+		</div>
+
+	</main>
+
+	<div id="toast-container"></div>
+
+	<script src="/js/header.js"></script>
+	<script>
+	</script>
+</body>
+</html>

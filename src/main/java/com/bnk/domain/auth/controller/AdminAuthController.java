@@ -15,6 +15,7 @@ import com.bnk.global.auth.CustomAdminDetails;
 import com.bnk.global.response.ApiResponse;
 import com.bnk.global.util.CookieUtil;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,33 +25,33 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AdminAuthController {
 
-    private final AuthService authService;
-    private final CookieUtil  cookieUtil;   // ← 추가
+	private final AuthService authService;
+	private final CookieUtil cookieUtil;
 
-    /** 관리자 로그인 — Access + Refresh 쿠키 발급 */
-    @PostMapping("/login")
-    public ResponseEntity<ApiResponse<Void>> adminLogin(
-            @RequestBody @Valid AdminLoginRequest request,
-            HttpServletResponse response) {
-        AuthTokenResult result = authService.adminLogin(request);
-        response.addHeader(HttpHeaders.SET_COOKIE, result.getAccessCookie().toString());
-        response.addHeader(HttpHeaders.SET_COOKIE, result.getRefreshCookie().toString());
-        return ResponseEntity.ok(ApiResponse.message("관리자 로그인에 성공했습니다."));
-    }
+	/**
+	 * 관리자 로그인 — Access + Refresh 쿠키 발급. HttpServletRequest 를 Service 로 전달하여
+	 * ip_address / user_agent 를 LOGIN_HISTORIES 에 기록.
+	 */
+	@PostMapping("/login")
+	public ResponseEntity<ApiResponse<Void>> adminLogin(@RequestBody @Valid AdminLoginRequest request,
+			HttpServletRequest httpRequest, HttpServletResponse response) {
+		AuthTokenResult result = authService.adminLogin(request, httpRequest);
+		response.addHeader(HttpHeaders.SET_COOKIE, result.getAccessCookie().toString());
+		response.addHeader(HttpHeaders.SET_COOKIE, result.getRefreshCookie().toString());
+		return ResponseEntity.ok(ApiResponse.message("관리자 로그인에 성공했습니다."));
+	}
 
-    /**
-     * 관리자 로그아웃 — DB 세션 revoke + 쿠키 삭제.
-     * /api/auth/logout 은 CustomUserDetails 를 주입받으므로
-     * 관리자 토큰(ADMIN_ACCESS)으로 호출하면 ud == null → NPE 발생.
-     * 관리자 전용 엔드포인트를 분리하여 CustomAdminDetails 로 수신.
-     */
-    @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> adminLogout(
-            @AuthenticationPrincipal CustomAdminDetails ad,
-            HttpServletResponse response) {
-        authService.logout(ad.getAdminId());   // USER_SESSIONS revoke
-        response.addHeader(HttpHeaders.SET_COOKIE, cookieUtil.deleteAccessCookie().toString());
-        response.addHeader(HttpHeaders.SET_COOKIE, cookieUtil.deleteRefreshCookie().toString());
-        return ApiResponse.toNoContent();
-    }
+	/**
+	 * 관리자 로그아웃 — DB 세션 revoke + 쿠키 삭제. /api/auth/logout 은 CustomUserDetails 를
+	 * 주입받으므로 관리자 토큰(ADMIN_ACCESS)으로 호출하면 ud == null → NPE 발생. 관리자 전용 엔드포인트를 분리하여
+	 * CustomAdminDetails 로 수신.
+	 */
+	@PostMapping("/logout")
+	public ResponseEntity<ApiResponse<Void>> adminLogout(@AuthenticationPrincipal CustomAdminDetails ad,
+			HttpServletResponse response) {
+		authService.logout(ad.getAdminId()); // USER_SESSIONS revoke
+		response.addHeader(HttpHeaders.SET_COOKIE, cookieUtil.deleteAccessCookie().toString());
+		response.addHeader(HttpHeaders.SET_COOKIE, cookieUtil.deleteRefreshCookie().toString());
+		return ApiResponse.toNoContent();
+	}
 }
