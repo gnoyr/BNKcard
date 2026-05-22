@@ -18,6 +18,9 @@ public class EmailService {
 
     @Value("${spring.mail.username}")
     private String fromAddress;
+    
+    @Value("${app.base-url}")
+    private String baseUrl;
 
     // "BNK카드" UTF-8 Base64 (RFC 2047) — 파일 인코딩 무관, 한글 깨짐 방지
     private static final String FROM_RFC2047 = "=?UTF-8?B?Qk5L7Lm065Oc?=";
@@ -46,10 +49,8 @@ public class EmailService {
     // ──────────────────────────────────────────────────────────────────
     @Async
     public void sendPasswordResetEmail(String to, String resetToken) {
-        String resetUrl = "http://localhost:8080/reset-password.html?token=" + resetToken;
-        send(to,
-             "[BNK\uce74\ub4dc] \ube44\ubc00\ubc88\ud638 \uc7ac\uc124\uc815 \uc548\ub0b4",
-             buildPasswordResetHtml(resetUrl));
+    	String resetUrl = baseUrl + "/auth/reset-password.html?token=" + resetToken;
+        send(to, "[BNK카드] 비밀번호 재설정 안내", buildPasswordResetHtml(resetUrl));
     }
 
     // ──────────────────────────────────────────────────────────────────
