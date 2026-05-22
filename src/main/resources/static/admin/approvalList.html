@@ -1,0 +1,128 @@
+<!-- approval-list.html
+     연결 API: GET /api/admin/approvals?statusCode=&requestTypeCode=&page=&size=
+     응답: { data: { content: [ { approvalId, requestTypeCode, targetName,
+                                  requesterName, statusCode, requestedAt, lines } ],
+                     totalCount, page, size } }
+     주의: 현재 로그인 관리자의 할당 건만 조회됨 (서버에서 필터)
+-->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>결재 목록 | BNK 관리자</title>
+</head>
+<body>
+
+<h2>결재 목록</h2>
+<p>
+  <a href="termsList.html">[약관 목록]</a>
+</p>
+
+<label>상태:
+  <select id="statusFilter" onchange="loadApprovals()">
+    <option value="">전체</option>
+    <option value="PENDING">PENDING</option>
+    <option value="APPROVED">APPROVED</option>
+    <option value="REJECTED">REJECTED</option>
+  </select>
+</label>
+&nbsp;
+<label>유형:
+  <select id="typeFilter" onchange="loadApprovals()">
+    <option value="">전체</option>
+    <option value="CARD_PUBLISH">카드 등록</option>
+    <option value="CARD_UPDATE">카드 수정</option>
+    <option value="TERMS_PUBLISH">약관 등록</option>
+  </select>
+</label>
+
+<br><br>
+
+<table border="1" cellpadding="6" cellspacing="0">
+  <thead>
+    <tr>
+      <th>결재ID</th>
+      <th>유형</th>
+      <th>카드명/약관명</th>
+      <th>요청자</th>
+      <th>상태</th>
+      <th>요청일시</th>
+      <th>결재라인</th>
+      <th>상세</th>
+    </tr>
+  </thead>
+  <tbody id="approvalTbody">
+    <tr><td colspan="8">로딩 중...</td></tr>
+  </tbody>
+</table>
+
+<div id="pagination"></div>
+<div id="msg"></div>
+
+<script>
+  let currentPage = 0;
+  const PAGE_SIZE = 20;
+
+  async function loadApprovals(page = 0) {
+    currentPage = page;
+    const status = document.getElementById('statusFilter').value;
+    const type   = document.getElementById('typeFilter').value;
+
+    let url = `/api/admin/approvals?page=${page}&size=${PAGE_SIZE}`;
+    if (status) url += '&statusCode=' + status;
+    if (type)   url += '&requestTypeCode=' + type;
+
+    const res = await fetch(url, { credentials: 'include' });
+    const data = await res.json().catch(() => null);
+    const tbody = document.getElementById('approvalTbody');
+
+    if (!res.ok || !data?.data) {
+      tbody.innerHTML = '<tr><td colspan="8">조회 실패</td></tr>';
+      return;
+    }
+
+    const { content, totalCount } = data.data;
+
+    if (!content || content.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8">할당된 결재 건이 없습니다.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = content.map(a => {
+      const lineStatus = a.lines
+        ? a.lines.map(l =>
+            `[${l.approvalOrder}] ${l.approverName ?? '?'} - ${l.statusCode}`
+          ).join('<br>')
+        : '-';
+
+      return `
+        <tr>
+          <td>${a.approvalId}</td>
+          <td>${a.requestTypeCode}</td>
+          <td>${a.targetName ?? '-'}</td>
+          <td>${a.requesterName ?? '-'}</td>
+          <td><b style="color:${a.statusCode === 'PENDING' ? 'orange'
+                              : a.statusCode === 'APPROVED' ? 'green' : 'red'}">
+              ${a.statusCode}</b></td>
+          <td>${a.requestedAt ? a.requestedAt.substring(0,16) : '-'}</td>
+          <td style="font-size:12px">${lineStatus}</td>
+          <td><a href="approval-detail.html?approvalId=${a.approvalId}">상세/처리</a></td>
+        </tr>
+      `;
+    }).join('');
+
+    // 페이지네이션
+    const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+    let pgHtml = '';
+    for (let i = 0; i < totalPages; i++) {
+      pgHtml += `<button onclick="loadApprovals(${i})"
+                  ${i === currentPage ? 'disabled' : ''}>${i + 1}</button> `;
+    }
+    document.getElementById('pagination').innerHTML = pgHtml;
+  }
+
+  loadApprovals();
+</script>
+
+</body>
+</html>

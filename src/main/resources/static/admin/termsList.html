@@ -1,0 +1,135 @@
+<!-- terms-list.html
+     연결 API: GET /api/admin/terms?status=
+     응답 구조: { data: [ { termsId, title, termsType, version, status, requiredYn, createdAt } ] }
+-->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>약관 관리 목록 | BNK 관리자</title>
+</head>
+<body>
+
+<h2>약관 관리</h2>
+<p>
+  <a href="termsCreate.html">[+ 약관 등록 신청]</a>
+  &nbsp;|&nbsp;
+  <a href="approvalList.html">[결재 목록]</a>
+</p>
+
+<label>상태 필터:
+  <select id="statusFilter" onchange="loadTerms()">
+    <option value="">전체</option>
+    <option value="DRAFT">DRAFT</option>
+    <option value="REVIEW">REVIEW</option>
+    <option value="APPROVED">APPROVED</option>
+    <option value="PUBLISHED">PUBLISHED</option>
+    <option value="EXPIRED">EXPIRED</option>
+  </select>
+</label>
+
+<br><br>
+
+<table border="1" cellpadding="6" cellspacing="0">
+  <thead>
+    <tr>
+      <th>약관ID</th>
+      <th>제목</th>
+      <th>유형</th>
+      <th>버전</th>
+      <th>상태</th>
+      <th>필수여부</th>
+      <th>등록일</th>
+      <th>상세</th>
+      <th>상태변경</th>
+    </tr>
+  </thead>
+  <tbody id="termsTbody">
+    <tr><td colspan="9">로딩 중...</td></tr>
+  </tbody>
+</table>
+
+<div id="msg"></div>
+
+<script>
+  const BASE = '';
+
+  async function api(method, url, body) {
+    const opts = {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include'
+    };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(BASE + url, opts);
+    const data = await res.json().catch(() => null);
+    return { ok: res.ok, data };
+  }
+
+  async function loadTerms() {
+    const status = document.getElementById('statusFilter').value;
+    const url = '/api/admin/terms' + (status ? '?status=' + status : '');
+    const r = await api('GET', url);
+    const tbody = document.getElementById('termsTbody');
+
+    if (!r.ok || !r.data?.data) {
+      tbody.innerHTML = '<tr><td colspan="9">조회 실패</td></tr>';
+      return;
+    }
+
+    const list = r.data.data;
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9">등록된 약관이 없습니다.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = list.map(t => `
+      <tr>
+        <td>${t.termsId}</td>
+        <td>${t.title ?? '-'}</td>
+        <td>${t.termsType ?? '-'}</td>
+        <td>${t.version}</td>
+        <td><b>${t.status}</b></td>
+        <td>${t.requiredYn === 'Y' ? '필수' : '선택'}</td>
+        <td>${t.createdAt ? t.createdAt.substring(0,10) : '-'}</td>
+        <td><a href="termsDetail.html?termsId=${t.termsId}">상세</a></td>
+        <td>
+          <select id="st-${t.termsId}">
+            <option value="">선택</option>
+            <option value="REVIEW">→ REVIEW</option>
+            <option value="APPROVED">→ APPROVED</option>
+            <option value="PUBLISHED">→ PUBLISHED</option>
+            <option value="EXPIRED">→ EXPIRED</option>
+          </select>
+          <button onclick="changeStatus(${t.termsId})">변경</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  async function changeStatus(termsId) {
+    const select = document.getElementById('st-' + termsId);
+    const newStatus = select.value;
+    if (!newStatus) { alert('변경할 상태를 선택하세요.'); return; }
+    const reason = prompt('변경 사유를 입력하세요.');
+    if (!reason) return;
+
+    const r = await api('PATCH', `/api/admin/terms/${termsId}/status`, {
+      newStatus,
+      changedReason: reason
+    });
+
+    const msg = document.getElementById('msg');
+    if (r.ok) {
+      msg.textContent = `[${termsId}] 상태 변경 완료: ${newStatus}`;
+      loadTerms();
+    } else {
+      msg.textContent = '상태 변경 실패: ' + JSON.stringify(r.data);
+    }
+  }
+
+  loadTerms();
+</script>
+
+</body>
+</html>
