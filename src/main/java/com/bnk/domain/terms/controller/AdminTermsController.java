@@ -3,6 +3,8 @@ package com.bnk.domain.terms.controller;
 import com.bnk.domain.admin.service.AdminTermsService;
 import com.bnk.domain.terms.dto.request.TermsCreateRequest;
 import com.bnk.domain.terms.dto.request.TermsStatusRequest;
+import com.bnk.domain.terms.dto.response.TermsAdminResponse;
+import com.bnk.domain.terms.dto.response.TermsMasterResponse;
 import com.bnk.global.auth.CustomAdminDetails;
 import com.bnk.global.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin/terms")
@@ -48,5 +51,28 @@ public class AdminTermsController {
             @AuthenticationPrincipal CustomAdminDetails ad) {
         adminTermsService.changeTermsStatus(termsId, request, ad.getAdminId());
         return ApiResponse.toOk(null);
+    }
+    
+    /** 관리자 약관 목록 조회 (TERMS + TERMS_MASTERS JOIN) */
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<TermsAdminResponse>>> getTermsList(
+            @RequestParam(required = false) String status,
+            @AuthenticationPrincipal CustomAdminDetails ad) {
+        return ApiResponse.toOk(adminTermsService.getTermsList(status));
+    }
+
+    /** 관리자 약관 상세 조회 (TERMS + FILES) */
+    @GetMapping("/{termsId}")
+    public ResponseEntity<ApiResponse<TermsAdminResponse>> getTermsDetail(
+            @PathVariable Long termsId,
+            @AuthenticationPrincipal CustomAdminDetails ad) {
+        return ApiResponse.toOk(adminTermsService.getTermsDetail(termsId));
+    }
+
+    /** TERMS_MASTERS 목록 조회 (약관 등록 시 선택용) */
+    @GetMapping("/masters")
+    public ResponseEntity<ApiResponse<List<TermsMasterResponse>>> getTermsMasters(
+            @AuthenticationPrincipal CustomAdminDetails ad) {
+        return ApiResponse.toOk(adminTermsService.getTermsMasters());
     }
 }
