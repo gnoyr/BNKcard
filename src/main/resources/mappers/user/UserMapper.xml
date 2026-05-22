@@ -31,6 +31,33 @@
         <result property="updatedAt"             column="updated_at"/>
         <result property="deletedYn"             column="deleted_yn"/>
     </resultMap>
+    
+    <resultMap id="ownedCardRowMap"
+               type="com.bnk.domain.user.mapper.UserMapper$OwnedCardRow">
+        <result column="user_card_id"   property="userCardId"/>
+        <result column="card_id"        property="cardId"/>
+        <result column="card_name"      property="cardName"/>
+        <result column="card_image_url" property="cardImageUrl"/>
+        <result column="issued_at"      property="issuedAt"/>
+    </resultMap>
+ 
+    <resultMap id="cardApplicationRowMap"
+               type="com.bnk.domain.user.mapper.UserMapper$CardApplicationRow">
+        <result column="application_id"     property="applicationId"/>
+        <result column="card_id"            property="cardId"/>
+        <result column="card_name"          property="cardName"/>
+        <result column="card_image_url"     property="cardImageUrl"/>
+        <result column="application_status" property="applicationStatus"/>
+        <result column="applied_at"         property="appliedAt"/>
+    </resultMap>
+ 
+    <resultMap id="spendingPatternRowMap"
+               type="com.bnk.domain.user.mapper.UserMapper$SpendingPatternRow">
+        <result column="category_id"    property="categoryId"/>
+        <result column="category_name"  property="categoryName"/>
+        <result column="monthly_amount" property="monthlyAmount"/>
+        <result column="color_code"     property="colorCode"/>
+    </resultMap>
 
     <select id="findByEmail" resultMap="userMap">
         SELECT * FROM USERS
@@ -178,5 +205,145 @@
         WHERE  user_id    = #{userId}
           AND  revoked_yn = 'N'
     </update>
-
+ 
+    <!-- ============================================================
+         AUDIT_LOGS INSERT
+         actor_type_code / action_type_code / target_type_code 컬럼명
+         busanbank_insert_all.sql 스키마 기준
+    ============================================================ -->
+    <insert id="insertAuditLog">
+        INSERT INTO AUDIT_LOGS (
+            actor_type_code,
+            actor_id,
+            action_type_code,
+            target_type_code,
+            target_id,
+            description,
+            ip_address,
+            created_at
+        ) VALUES (
+            #{actorType},
+            #{actorId},
+            #{actionType},
+            #{targetType},
+            #{targetId,    jdbcType=NUMERIC},
+            #{description, jdbcType=VARCHAR},
+            #{ipAddress,   jdbcType=VARCHAR},
+            SYSTIMESTAMP
+        )
+    </insert>
+ 
+    <!-- ============================================================
+         보유 카드 목록 (RQ-F17)
+         USER_CARDS JOIN CARDS JOIN CARD_IMAGES(image_type='FRONT')
+         WHERE deleted_yn = 'N'
+    ============================================================ -->
+    <select id="selectOwnedCards" resultMap="ownedCardRowMap">
+        SELECT
+            uc.user_card_id,
+            uc.card_id,
+            c.card_name,
+            ci.image_url                              AS card_image_url,
+            TO_CHAR(uc.issued_at, 'YYYY-MM-DD')       AS issued_at
+        FROM
+            USER_CARDS uc
+            JOIN  CARDS       c   ON c.card_id  = uc.card_id
+            LEFT JOIN CARD_IMAGES ci
+                ON  ci.card_id    = uc.card_id
+                AND ci.image_type = 'FRONT'
+        WHERE
+            uc.user_id    = #{userId}
+            AND uc.deleted_yn  = 'N'
+        ORDER BY
+            uc.issued_at DESC
+    </select>
+ 
+    <!-- ============================================================
+         카드 신청 현황 (RQ-F17)
+         CARD_APPLICATIONS JOIN CARDS JOIN CARD_IMAGES(image_type='THUMBNAIL')
+    ============================================================ -->
+    <select id="selectCardApplications" resultMap="cardApplicationRowMap">
+        SELECT
+            ca.application_id,
+            ca.card_id,
+            c.card_name,
+            ci.image_url                              AS card_image_url,
+            ca.application_status,
+            TO_CHAR(ca.applied_at, 'YYYY-MM-DD')      AS applied_at
+        FROM
+            CARD_APPLICATIONS ca
+            JOIN  CARDS       c   ON c.card_id  = ca.card_id
+            LEFT JOIN CARD_IMAGES ci
+                ON  ci.card_id    = ca.card_id
+                AND ci.image_type = 'THUMBNAIL'
+        WHERE
+            ca.user_id = #{userId}
+        ORDER BY
+            ca.applied_at DESC
+    </select>
+ 
+    <!-- ============================================================
+         소비 패턴 조회 (RQ-F16)
+         CARD_CATEGORIES LEFT JOIN USER_SPENDING_PATTERNS
+         패턴 미등록 카테고리도 0원으로 포함 (도넛 차트 항목 고정)
+    ============================================================ -->
+    <select id="selectSpendingPatterns" resultMap="spendingPatternRowMap">
+        SELECT
+            cc.category_id,
+            cc.category_name,
+            NVL(usp.monthly_amount, 0)  AS monthly_amount,
+            cc.color_code
+        FROM
+            CARD_CATEGORIES cc
+            LEFT JOIN USER_SPENDING_PATTERNS usp
+                ON  usp.category_id = cc.category_id
+                AND usp.user_id     = #{userId}
+        WHERE
+            cc.use_yn = 'Y'
+        ORDER BY
+            cc.display_order ASC
+    </select>
+ 
+    <!-- ============================================================
+         소비 패턴 UPSERT (RQ-F18) — Oracle MERGE INTO
+         존재 시: monthly_amount, updated_at UPDATE
+         없으면:  INSERT (SEQ_USER_SPENDING_PATTERNS.NEXTVAL or 트리거)
+    ============================================================ -->
+    <update id="upsertSpendingPattern">
+        MERGE INTO USER_SPENDING_PATTERNS usp
+        USING (
+            SELECT
+                #{userId}        AS user_id,
+                #{categoryId}    AS category_id,
+                #{monthlyAmount} AS monthly_amount,
+                #{source}        AS source
+            FROM DUAL
+        ) src
+        ON (
+                usp.user_id     = src.user_id
+            AND usp.category_id = src.category_id
+        )
+        WHEN MATCHED THEN
+            UPDATE SET
+                usp.monthly_amount = src.monthly_amount,
+                usp.source         = src.source,
+                usp.updated_at     = SYSTIMESTAMP
+        WHEN NOT MATCHED THEN
+            INSERT (
+                user_id,
+                category_id,
+                monthly_amount,
+                source,
+                created_at,
+                updated_at
+            ) VALUES (
+                src.user_id,
+                src.category_id,
+                src.monthly_amount,
+                src.source,
+                SYSTIMESTAMP,
+                SYSTIMESTAMP
+            )
+    </update>
+ 
 </mapper>

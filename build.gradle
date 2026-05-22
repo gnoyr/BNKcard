@@ -81,6 +81,8 @@ dependencies {
 	implementation 'org.apache.pdfbox:pdfbox-io:3.0.3'
 
 	// ── Test ──────────────────────────────────────────────
+	testImplementation 'io.github.ai-qa-solutions:spring-ai-ragas-spring-boot-starter:0.3.3'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'

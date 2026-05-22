@@ -12,6 +12,7 @@ import com.bnk.domain.admin.dto.response.AdminUserResponse;
 import com.bnk.domain.admin.dto.response.DashboardResponse;
 import com.bnk.domain.admin.mapper.AdminUserMapper;
 import com.bnk.domain.admin.mapper.ApprovalMapper;
+import com.bnk.domain.card.dto.request.AdminCardSearchRequest;
 import com.bnk.domain.card.mapper.CardMapper;
 import com.bnk.domain.card.model.Card;
 import com.bnk.domain.user.model.User;
@@ -29,23 +30,32 @@ import lombok.extern.slf4j.Slf4j;
 public class AdminUserService {
 
     private final AdminUserMapper adminUserMapper;
-    private final ApprovalMapper approvalMapper;
-    private final CardMapper cardMapper;
+    private final ApprovalMapper  approvalMapper;
+    private final CardMapper      cardMapper;
+
+    /** 대시보드 최근 관리자 로그인 표시 건수 */
+    private static final int DASHBOARD_LOGIN_LIMIT = 5;
+
+    /** 회원 상세 로그인 이력 표시 건수 */
+    private static final int DETAIL_LOGIN_LIMIT = 5;
+
+    // ================================================================
+    // B-02/B-03 | 관리자 대시보드
+    // ================================================================
 
     /**
-     * B-02/B-03 관리자 대시보드
-     * pendingApprovalCount / topCards(view_count DESC 10) / recentAdminLogins
+     * pendingApprovalCount  : APPROVAL_REQUESTS.status='PENDING' COUNT
+     * topCards              : view_count DESC 상위 10개
+     * recentAdminLogins     : LOGIN_HISTORIES JOIN ADMIN_USERS 최근 5건 (성공만)
      */
     @Transactional(readOnly = true)
     public DashboardResponse getDashboard() {
-        // 결재 대기 건수
+
+        // ① 결재 대기 건수
         int pendingCount = approvalMapper.countPendingApprovals();
 
-        // 인기 카드 상위 10개 (findAdminCards 재사용, sort=applicationCount는 없으므로 기본 정렬)
-        // CardMapper에 dashboard용 별도 쿼리가 없어 findTop3ByViewCount 확장 불가
-        // AdminCardSearchRequest로 size=10 전달
-        com.bnk.domain.card.dto.request.AdminCardSearchRequest dashReq =
-                new com.bnk.domain.card.dto.request.AdminCardSearchRequest();
+        // ② 인기 카드 상위 10개
+        AdminCardSearchRequest dashReq = new AdminCardSearchRequest();
         dashReq.setSize(10);
         List<Card> topCards = cardMapper.findAdminCards(dashReq);
 
@@ -58,23 +68,36 @@ public class AdminUserService {
                         .build())
                 .collect(Collectors.toList());
 
+        // ③ 최근 관리자 로그인 이력 (LOGIN_HISTORIES JOIN ADMIN_USERS)
+        List<DashboardResponse.LoginHistoryItem> recentLogins =
+                adminUserMapper.findRecentAdminLogins(DASHBOARD_LOGIN_LIMIT)
+                        .stream()
+                        .map(r -> DashboardResponse.LoginHistoryItem.builder()
+                                .adminName(r.getAdminName())
+                                .loginAt(r.getLoginAt())
+                                .ipAddress(r.getIpAddress())
+                                .build())
+                        .collect(Collectors.toList());
+
         return DashboardResponse.builder()
                 .pendingApprovalCount(pendingCount)
                 .topCards(cardRankItems)
-                .recentAdminLogins(Collections.emptyList()) // LOGIN_HISTORIES Mapper 없음
+                .recentAdminLogins(recentLogins)
                 .build();
     }
 
-    /**
-     * B-14 관리자 회원 목록 검색
-     * 다중 조건 동적 검색, phone·email 마스킹 필수, AUDIT_LOGS INSERT
-     */
+    // ================================================================
+    // B-14 | 관리자 회원 목록 검색
+    // ================================================================
+
     @Transactional
-    public PageResponse<AdminUserResponse> getUserList(AdminUserSearchRequest request, Long adminId) {
+    public PageResponse<AdminUserResponse> getUserList(AdminUserSearchRequest request,
+                                                       Long adminId) {
         long totalCount = adminUserMapper.countUsers(request);
 
         if (totalCount == 0) {
-            return PageResponse.of(Collections.emptyList(), 0L, request.getPage(), request.getSize());
+            return PageResponse.of(Collections.emptyList(), 0L,
+                    request.getPage(), request.getSize());
         }
 
         List<User> users = adminUserMapper.findUsers(request);
@@ -93,7 +116,6 @@ public class AdminUserService {
                         .build())
                 .collect(Collectors.toList());
 
-        // AUDIT_LOGS INSERT (RQ-B14: 관리자 조회 이벤트 기록)
         adminUserMapper.insertAuditLog(
                 "ADMIN", adminId, "USER_LIST_VIEW",
                 "USERS", null, "관리자 회원 목록 조회", null);
@@ -101,16 +123,55 @@ public class AdminUserService {
         return PageResponse.of(content, totalCount, request.getPage(), request.getSize());
     }
 
+    // ================================================================
+    // B-15 | 관리자 회원 상세 조회
+    // ================================================================
+
     /**
-     * B-15 관리자 회원 상세 조회
-     * 기본정보 + AUDIT_LOGS INSERT, 개인정보 마스킹 필수
+     * 기본정보 + 로그인 이력(5건) + 약관 동의 이력 + 카드 신청 이력
+     * AUDIT_LOGS INSERT (admin_id 기록) / 개인정보 마스킹 필수
      */
     @Transactional
     public AdminUserResponse getUserDetail(Long userId, Long adminId) {
+
         User user = adminUserMapper.findUserDetailById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        // AUDIT_LOGS INSERT (RQ-B15: admin_id 기록)
+        // ① 로그인 이력 최근 5건 (LOGIN_HISTORIES)
+        List<AdminUserResponse.LoginHistoryItem> loginHistories =
+                adminUserMapper.findLoginHistoriesByUserId(userId, DETAIL_LOGIN_LIMIT)
+                        .stream()
+                        .map(r -> AdminUserResponse.LoginHistoryItem.builder()
+                                .loginAt(r.getLoginAt())
+                                .loginResultCode(r.getLoginResultCode())
+                                .ipAddress(r.getIpAddress())
+                                .build())
+                        .collect(Collectors.toList());
+
+        // ② 약관 동의 이력 전체 (USER_TERMS_AGREEMENTS)
+        List<AdminUserResponse.AgreementItem> agreements =
+                adminUserMapper.findAgreementsByUserId(userId)
+                        .stream()
+                        .map(r -> AdminUserResponse.AgreementItem.builder()
+                                .termsId(r.getTermsId())
+                                .agreedYn(r.getAgreedYn())
+                                .agreedAt(r.getAgreedAt())
+                                .build())
+                        .collect(Collectors.toList());
+
+        // ③ 카드 신청 이력 전체 (CARD_APPLICATIONS JOIN CARDS)
+        List<AdminUserResponse.ApplicationItem> applications =
+                adminUserMapper.findApplicationsByUserId(userId)
+                        .stream()
+                        .map(r -> AdminUserResponse.ApplicationItem.builder()
+                                .cardId(r.getCardId())
+                                .cardName(r.getCardName())
+                                .applicationStatus(r.getApplicationStatus())
+                                .appliedAt(r.getAppliedAt())
+                                .build())
+                        .collect(Collectors.toList());
+
+        // ④ AUDIT_LOGS INSERT
         adminUserMapper.insertAuditLog(
                 "ADMIN", adminId, "USER_DETAIL_VIEW",
                 "USERS", userId, "관리자 회원 상세 조회", null);
@@ -125,40 +186,26 @@ public class AdminUserService {
                 .creditScore(user.getCreditScore())
                 .lastLoginAt(user.getLastLoginAt())
                 .createdAt(user.getCreatedAt())
-                // loginHistories, agreements, applications는 별도 Mapper 없어 생략
-                .loginHistories(Collections.emptyList())
-                .agreements(Collections.emptyList())
-                .applications(Collections.emptyList())
+                .loginHistories(loginHistories)
+                .agreements(agreements)
+                .applications(applications)
                 .build();
     }
 
-    /**
-     * [개선 #2] 관리자 → 일반 유저 계정 잠금 강제 해제.
-     * USERS.locked_until = NULL, login_fail_count = 0 처리.
-     * AUDIT_LOGS에 해제 이력을 기록한다.
-     *
-     * @param userId  잠금 해제 대상 유저 ID
-     * @param adminId 처리 관리자 ID (감사 로그용)
-     */
+    // ================================================================
+    // 계정 잠금 강제 해제 (기존 그대로)
+    // ================================================================
+
     @Transactional
     public void unlockUser(Long userId, Long adminId) {
-
         int affected = adminUserMapper.unlockUser(userId);
-
         if (affected == 0) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND,
                     "잠금 해제 대상 유저를 찾을 수 없습니다. userId=" + userId);
         }
-
-        // 감사 로그 기록
         adminUserMapper.insertAuditLog(
-                "ADMIN", adminId,
-                "UNLOCK_USER",
-                "USER", userId,
-                "계정 잠금 강제 해제",
-                null
-        );
-
+                "ADMIN", adminId, "UNLOCK_USER",
+                "USER", userId, "계정 잠금 강제 해제", null);
         log.info("[계정잠금해제] adminId={} → userId={}", adminId, userId);
     }
 }

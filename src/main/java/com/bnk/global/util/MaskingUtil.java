@@ -15,7 +15,10 @@ public class MaskingUtil {
         return local.substring(0, 2) + "*".repeat(local.length() - 2) + "@" + domain;
     }
 
-    /** 01012345678 → 010-****-5678 */
+    /**
+     * 전화번호 마스킹
+     * 010-1234-5678 또는 01012345678 → 010-****-5678
+     */
     public static String maskPhone(String phone) {
         if (phone == null) return null;
         String digits = phone.replaceAll("[^0-9]", "");
@@ -23,6 +26,31 @@ public class MaskingUtil {
             return digits.substring(0, 3) + "-****-" + digits.substring(7);
         }
         return phone;
+    }
+
+    /**
+     * 전화번호 포맷 — DB 저장 전 변환
+     * 01012345678  (11자리) → 010-1234-5678
+     * 0101234567   (10자리) → 010-123-4567
+     * 이미 포맷된 010-1234-5678 → 그대로 반환
+     * null / 기타 → 그대로 반환
+     */
+    public static String formatPhone(String phone) {
+        if (phone == null) return null;
+        String digits = phone.replaceAll("[^0-9]", "");
+        if (digits.length() == 11) {
+            // 010-XXXX-XXXX
+            return digits.substring(0, 3) + "-"
+                 + digits.substring(3, 7) + "-"
+                 + digits.substring(7);
+        }
+        if (digits.length() == 10) {
+            // 010-XXX-XXXX
+            return digits.substring(0, 3) + "-"
+                 + digits.substring(3, 6) + "-"
+                 + digits.substring(6);
+        }
+        return phone; // 알 수 없는 형식은 그대로
     }
 
     /** 홍길동 → 홍*동, 김철 → 김* */
