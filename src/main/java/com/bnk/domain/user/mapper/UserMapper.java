@@ -1,14 +1,24 @@
 package com.bnk.domain.user.mapper;
 
 import com.bnk.domain.user.model.User;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Mapper
 public interface UserMapper {
+
+    // ----------------------------------------------------------------
+    // 기존 메서드 (변경 없음)
+    // ----------------------------------------------------------------
 
     Optional<User> findByEmail(@Param("email") String email);
 
@@ -17,10 +27,8 @@ public interface UserMapper {
     Optional<User> findByNameAndPhone(@Param("name") String name,
                                       @Param("phone") String phone);
 
-    /** 이메일 중복 여부 — 0: 없음, 1 이상: 이미 존재 */
     int existsByEmail(@Param("email") String email);
 
-    /** 휴대폰 중복 여부 — 0: 없음, 1 이상: 이미 존재 */
     int existsByPhone(@Param("phone") String phone);
 
     int insertUser(User user);
@@ -39,7 +47,6 @@ public interface UserMapper {
 
     int incrementLoginFailCount(@Param("userId") Long userId);
 
-    /** Race Condition 방지: increment 후 DB에서 현재 카운트를 재조회 */
     int getLoginFailCount(@Param("userId") Long userId);
 
     int resetLoginFailCount(@Param("userId") Long userId);
@@ -50,10 +57,94 @@ public interface UserMapper {
     int updateLastLoginAt(@Param("userId") Long userId,
                           @Param("lastLoginAt") LocalDateTime lastLoginAt);
 
-    /** 현재 세션 제외 타 기기 전체 revoke */
     int revokeOtherSessions(@Param("userId") Long userId,
                             @Param("currentSessionId") Long currentSessionId);
 
-    /** 전세션 revoke — 비밀번호 재설정 후 강제 로그아웃 */
     int revokeAllSessions(@Param("userId") Long userId);
+
+    // ----------------------------------------------------------------
+    // 추가 — AUDIT_LOGS INSERT (마이페이지 전역 사용)
+    // ----------------------------------------------------------------
+
+    /**
+     * AUDIT_LOGS INSERT.
+     * actor_type_code('USER'/'ADMIN'), actor_id, action_type_code,
+     * target_type_code, target_id, description, ip_address
+     */
+    int insertAuditLog(@Param("actorType")  String actorType,
+                       @Param("actorId")    Long   actorId,
+                       @Param("actionType") String actionType,
+                       @Param("targetType") String targetType,
+                       @Param("targetId")   Long   targetId,
+                       @Param("description")String description,
+                       @Param("ipAddress")  String ipAddress);
+
+    // ----------------------------------------------------------------
+    // 추가 — 보유 카드 및 신청 현황 (RQ-F17)
+    // ----------------------------------------------------------------
+
+    /**
+     * 발급 완료 카드 목록
+     * USER_CARDS JOIN CARDS JOIN CARD_IMAGES(image_type='FRONT')
+     * WHERE USER_CARDS.deleted_yn='N'
+     */
+    List<OwnedCardRow> selectOwnedCards(@Param("userId") Long userId);
+
+    /**
+     * 카드 신청 현황 목록
+     * CARD_APPLICATIONS JOIN CARDS JOIN CARD_IMAGES(image_type='THUMBNAIL')
+     */
+    List<CardApplicationRow> selectCardApplications(@Param("userId") Long userId);
+
+    // ----------------------------------------------------------------
+    // 추가 — 소비 패턴 (RQ-F16, RQ-F18)
+    // ----------------------------------------------------------------
+
+    /**
+     * 소비 패턴 조회 (RQ-F16)
+     * CARD_CATEGORIES LEFT JOIN USER_SPENDING_PATTERNS
+     * 패턴 없는 카테고리도 0원으로 포함
+     */
+    List<SpendingPatternRow> selectSpendingPatterns(@Param("userId") Long userId);
+
+    /**
+     * 소비 패턴 UPSERT (RQ-F18) — Oracle MERGE INTO
+     * 존재: monthly_amount, updated_at UPDATE
+     * 없음: INSERT (source='MANUAL' 고정)
+     */
+    int upsertSpendingPattern(@Param("userId")        Long       userId,
+                               @Param("categoryId")    Long       categoryId,
+                               @Param("monthlyAmount") BigDecimal monthlyAmount,
+                               @Param("source")        String     source);
+
+    // ----------------------------------------------------------------
+    // Inner Row 클래스 — MyBatis resultMap 매핑용
+    // ----------------------------------------------------------------
+
+    @Getter @Builder @NoArgsConstructor @AllArgsConstructor
+    class OwnedCardRow {
+        private Long   userCardId;
+        private Long   cardId;
+        private String cardName;
+        private String cardImageUrl;
+        private String issuedAt;
+    }
+
+    @Getter @Builder @NoArgsConstructor @AllArgsConstructor
+    class CardApplicationRow {
+        private Long   applicationId;
+        private Long   cardId;
+        private String cardName;
+        private String cardImageUrl;
+        private String applicationStatus;
+        private String appliedAt;
+    }
+
+    @Getter @Builder @NoArgsConstructor @AllArgsConstructor
+    class SpendingPatternRow {
+        private Long       categoryId;
+        private String     categoryName;
+        private BigDecimal monthlyAmount;
+        private String     colorCode;
+    }
 }
