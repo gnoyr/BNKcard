@@ -146,4 +146,56 @@
 	    ORDER  BY is_primary DESC, uploaded_at ASC
 	</select>	
 	
+	<!-- 관리자 약관 목록 (TERMS_MASTERS JOIN) -->
+	<select id="findAllForAdmin" resultType="com.bnk.domain.terms.model.Terms">
+	    SELECT t.terms_id, t.terms_master_id, t.version, t.status,
+	           t.required_yn, t.reconsent_required_yn,
+	           t.effective_from, t.effective_to, t.created_at,
+	           tm.title, tm.terms_type
+	    FROM   TERMS t
+	    INNER JOIN TERMS_MASTERS tm ON t.terms_master_id = tm.terms_master_id
+	    <where>
+	        <if test="status != null and status != ''">
+	            t.status = #{status}
+	        </if>
+	    </where>
+	    ORDER  BY t.created_at DESC
+	</select>
+	
+	<!-- TERMS_MASTERS 전체 목록 -->
+	<select id="findAllMasters" resultType="com.bnk.domain.terms.model.TermsMaster">
+	    SELECT terms_master_id, terms_type, title, description, created_at
+	    FROM   TERMS_MASTERS
+	    ORDER  BY terms_master_id ASC
+	</select>
+	
+		<!-- TERMS INSERT (status = DRAFT, Oracle TRG_TERMS_BI + SEQ_TERMS 채번) -->
+	<insert id="insertTerms">
+	    <selectKey keyProperty="termsId" resultType="long" order="AFTER">
+	        SELECT SEQ_TERMS.CURRVAL FROM DUAL
+	    </selectKey>
+	    INSERT INTO TERMS (
+	        terms_master_id,
+	        version,
+	        content_html,
+	        required_yn,
+	        reconsent_required_yn,
+	        status,
+	        effective_from,
+	        effective_to,
+	        created_at
+	    ) VALUES (
+	        #{termsMasterId},
+	        #{version},
+	        #{contentHtml,         jdbcType=CLOB},
+	        #{requiredYn},
+	        #{reconsentRequiredYn, jdbcType=VARCHAR},
+	        'DRAFT',
+	        #{effectiveFrom},
+	        #{effectiveTo,         jdbcType=DATE},
+	        SYSTIMESTAMP
+	    )
+	</insert>
+	
+	
 </mapper>
