@@ -1,125 +1,108 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>내 정보 수정 | 부산은행</title>
-  <link rel="stylesheet" href="/css/mypage.css"/>
-  <link rel="stylesheet" href="/css/components.css"/>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>내 정보 수정 | 부산은행</title>
+<link rel="stylesheet" href="/css/mypage.css" />
+<link rel="stylesheet" href="/css/components.css" />
 </head>
 <body>
 
-<div id="app-header"></div>
+	<!-- header.js 가 site-header 주입 -->
+	<div id="app-header"></div>
 
-<!-- mp-header (마이페이지 전용 헤더 직접 사용 시) -->
-<header class="mp-header">
-  <a href="/" class="mp-header__logo">BNK 부산은행</a>
-  <span class="mp-header__title">내 정보 수정</span>
-  <button class="mp-header__back" onclick="history.back()">뒤로</button>
-</header>
+	<!-- 페이지 내비 바 (뒤로가기 + 페이지명) -->
+	<nav class="page-nav">
+		<button class="page-nav__back" onclick="history.back()">마이페이지</button>
+		<span class="page-nav__sep">›</span> <span class="page-nav__title">내
+			정보 수정</span>
+	</nav>
 
-<div class="page-wrap">
-  <div class="page-title">
-    <h1>내 정보 수정</h1>
-    <p>개인 정보를 수정하고 저장하세요.</p>
-  </div>
+	<div class="page-wrap">
+		<div class="page-title">
+			<h1>내 정보 수정</h1>
+			<p>개인 정보를 수정하고 저장하세요.</p>
+		</div>
 
-  <form id="editForm" novalidate>
+		<form id="editForm" novalidate>
 
-    <div class="card">
-      <div class="card__head">기본 정보</div>
+			<div class="card">
+				<div class="card__head">기본 정보</div>
 
-      <div class="form-group">
-        <label class="form-label" for="name">이름</label>
-        <input class="form-control" type="text" id="name"
-               placeholder="이름 입력" maxlength="20" autocomplete="off"/>
-        <span class="form-error" id="name-err"></span>
-      </div>
+				<div class="form-group">
+					<label class="form-label" for="name">이름</label> <input
+						class="form-control" type="text" id="name" placeholder="이름 입력"
+						maxlength="20" autocomplete="off" /> <span class="form-error"
+						id="name-err"></span>
+				</div>
 
-      <div class="form-group">
-        <label class="form-label" for="phone">휴대폰 번호</label>
-        <input class="form-control" type="tel" id="phone"
-               placeholder="새 번호 입력 (예: 01012345678)"
-               maxlength="11" autocomplete="off"/>
-        <span class="form-hint">
-          현재 등록 번호: <strong id="currentPhone">불러오는 중...</strong>
-          &nbsp;·&nbsp; 변경하려면 새 번호를 입력하세요.
-        </span>
-        <span class="form-error" id="phone-err"></span>
-      </div>
+				<div class="form-group">
+					<label class="form-label" for="phone">휴대폰 번호</label> <input
+						class="form-control" type="tel" id="phone"
+						placeholder="새 번호 입력 (예: 01012345678)" maxlength="11"
+						autocomplete="off" /> <span class="form-error" id="phone-err"></span>
+				</div>
 
-      <div class="form-group">
-        <label class="form-label" for="job">직업</label>
-        <input class="form-control" type="text" id="job"
-               placeholder="예: 회사원, 자영업자, 학생" maxlength="50"/>
-      </div>
+			</div>
 
-      <div class="form-group">
-        <label class="form-label" for="incomeLevelCode">소득 등급</label>
-        <select class="form-control form-select" id="incomeLevelCode">
-          <option value="">선택하세요</option>
-          <option value="LV1">LV1 — 연 2,000만원 미만</option>
-          <option value="LV2">LV2 — 연 2,000 ~ 4,000만원</option>
-          <option value="LV3">LV3 — 연 4,000 ~ 6,000만원</option>
-          <option value="LV4">LV4 — 연 6,000만원 이상</option>
-        </select>
-      </div>
-    </div>
+			<div class="card">
+				<div class="card__head">추가 정보</div>
 
-    <div class="card">
-      <div class="card__head">알림 설정</div>
-      <div class="toggle-row">
-        <div class="toggle-row__label">푸시 알림 수신</div>
-        <label class="toggle">
-          <input type="checkbox" id="pushEnabled"/>
-          <span class="toggle-track"></span>
-        </label>
-      </div>
-      <div class="toggle-row">
-        <div>
-          <div class="toggle-row__label">마케팅 정보 활용 동의</div>
-          <div class="toggle-row__sub">카드 혜택, 이벤트 등 맞춤 정보 수신에 동의합니다.</div>
-        </div>
-        <label class="toggle">
-          <input type="checkbox" id="marketingAgree"/>
-          <span class="toggle-track"></span>
-        </label>
-      </div>
-    </div>
+				<div class="form-group">
+					<label class="form-label" for="job">직업</label> <select
+						class="form-control" id="job">
+						<option value="">선택 안함</option>
+						<option value="EMPLOYED">직장인</option>
+						<option value="SELF_EMPLOYED">자영업</option>
+						<option value="STUDENT">학생</option>
+						<option value="UNEMPLOYED">무직</option>
+						<option value="OTHER">기타</option>
+					</select>
+				</div>
 
-    <div class="form-actions">
-      <a href="/mypage/index.html" class="btn btn-outline">취소</a>
-      <button type="submit" class="btn btn-primary" id="submitBtn">수정 완료</button>
-    </div>
-  </form>
-</div>
+				<div class="form-group">
+					<label class="form-label" for="incomeLevelCode">소득 등급</label> <select
+						class="form-control" id="incomeLevelCode">
+						<option value="">선택 안함</option>
+						<option value="LV1">LV1 (3천만 미만)</option>
+						<option value="LV2">LV2 (3천~5천만)</option>
+						<option value="LV3">LV3 (5천만~1억)</option>
+						<option value="LV4">LV4 (1억 이상)</option>
+					</select>
+				</div>
+			</div>
 
-<!-- 비밀번호 재확인 모달 -->
-<div class="modal-overlay" id="pwConfirmModal">
-  <div class="modal">
-    <div class="modal__title">비밀번호 확인</div>
-    <div class="modal__body">
-      휴대폰 번호를 변경하려면<br>현재 비밀번호를 입력해주세요.
-    </div>
-    <div style="margin-top:16px;">
-      <div class="pw-field">
-        <input class="form-control" type="password" id="confirmPwInput"
-               placeholder="현재 비밀번호" autocomplete="current-password"/>
-        <button type="button" class="pw-toggle" data-target="confirmPwInput">표시</button>
-      </div>
-      <span class="form-error" id="confirmPwErr"></span>
-    </div>
-    <div class="modal__actions" style="margin-top:16px;">
-      <button class="btn btn-outline" id="modalCancelBtn">취소</button>
-      <button class="btn btn-primary" id="modalConfirmBtn">확인</button>
-    </div>
-  </div>
-</div>
+			<div class="card">
+				<div class="card__head">알림 설정</div>
 
-<div id="toast-container"></div>
+				<div class="form-group form-group--toggle">
+					<label class="form-label">푸시 알림</label> <label class="toggle">
+						<input type="checkbox" id="pushEnabled" /> <span
+						class="toggle__track"></span>
+					</label>
+				</div>
 
-<script src="/js/header.js"></script>
-<script src="/js/mypage.js"></script>
-<script src="/js/mypage-edit.js"></script>
+				<div class="form-group form-group--toggle">
+					<label class="form-label">마케팅 수신 동의</label> <label class="toggle">
+						<input type="checkbox" id="marketingAgree" /> <span
+						class="toggle__track"></span>
+					</label>
+				</div>
+			</div>
+
+			<div class="form-actions">
+				<a href="/mypage/index.html" class="btn btn-outline">취소</a>
+				<button type="submit" class="btn btn-primary" id="submitBtn">저장하기</button>
+			</div>
+
+		</form>
+	</div>
+
+	<div id="toast-container"></div>
+
+	<script src="/js/header.js"></script>
+	<script src="/js/mypage.js"></script>
+	<script src="/js/mypage-edit.js"></script>
 </body>
 </html>

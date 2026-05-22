@@ -35,8 +35,15 @@ ext {
 }
 
 dependencies {
-
-	implementation platform('org.springframework.ai:spring-ai-bom:2.0.0-M6')
+	//AI 테스트
+	testImplementation 'io.github.ai-qa-solutions:spring-ai-ragas-spring-boot-starter:0.3.3'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	implementation("org.springframework.boot:spring-boot-starter-jdbc:4.1.0-RC1")
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	
+	
+	
+	
 
 	// ── GenAI ─────────────────────────────────────────────
 	implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
@@ -59,6 +66,7 @@ dependencies {
 	runtimeOnly    'io.jsonwebtoken:jjwt-jackson:0.12.6'
 
 	// ── AI / Vector Store ─────────────────────────────────
+	implementation platform('org.springframework.ai:spring-ai-bom:2.0.0-M6')
 	implementation 'org.springframework.ai:spring-ai-starter-vector-store-qdrant'
 
 	// ── DB Driver ─────────────────────────────────────────
@@ -81,8 +89,6 @@ dependencies {
 	implementation 'org.apache.pdfbox:pdfbox-io:3.0.3'
 
 	// ── Test ──────────────────────────────────────────────
-	testImplementation 'io.github.ai-qa-solutions:spring-ai-ragas-spring-boot-starter:0.3.3'
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
