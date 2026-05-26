@@ -6,92 +6,84 @@
 <title>마이페이지 | 부산은행</title>
 <link rel="stylesheet" href="/css/mypage.css" />
 <link rel="stylesheet" href="/css/components.css" />
-<script
-	src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"
-	defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js" defer></script>
 </head>
 <body>
 
-	<!-- header.js 가 site-header 를 주입 (비로그인 시 login 페이지 이동) -->
-	<div id="app-header"></div>
+<div id="app-header"></div>
 
-	<div class="page-wrap">
+<div class="page-wrap">
 
-		<!-- 프로필 배너 -->
-		<div class="profile-banner">
-			<span class="profile-avatar">사용자</span>
-			<div>
-				<div class="profile-name" id="profileName">불러오는 중...</div>
-				<div class="profile-meta" id="profileMeta"></div>
-				<div class="profile-score">
-					<span>신용점수</span> <span class="profile-score__num"
-						id="profileScore">—</span> <span>점</span>
-				</div>
-			</div>
-		</div>
+  <!-- 프로필 배너 -->
+  <div class="profile-banner">
+    <span class="profile-initial" id="profileInitial"></span>
+    <div class="profile-body">
+      <div class="profile-name" id="profileName">불러오는 중...</div>
+      <div class="profile-meta" id="profileMeta"></div>
+      <div class="profile-score">
+        <span class="profile-score__label">신용점수</span>
+        <span class="profile-score__num" id="profileScore">—</span>
+        <span class="profile-score__unit">점</span>
+      </div>
+    </div>
+  </div>
 
-		<!-- 빠른 이동 -->
-		<div class="quick-nav">
-			<a href="/mypage/edit.html" class="quick-btn"> <span
-				class="quick-icon">수정</span> 내 정보 수정
-			</a> <a href="/mypage/password.html" class="quick-btn"> <span
-				class="quick-icon">잠금</span> 비밀번호 변경
-			</a> <a href="/mypage/spending.html" class="quick-btn"> <span
-				class="quick-icon">통계</span> 소비 패턴
-			</a>
-		</div>
+  <!-- 빠른 이동 -->
+  <div class="quick-nav">
+    <a href="/mypage/edit.html" class="quick-btn">내 정보 수정</a>
+    <a href="/mypage/password.html" class="quick-btn">비밀번호 변경</a>
+    <a href="/mypage/spending.html" class="quick-btn">소비 패턴</a>
+  </div>
 
-		<!-- 보유 카드 및 신청 현황 -->
-		<div class="card">
-			<div class="card__head">보유 카드 및 신청 현황</div>
-			<div id="cardSection">
-				<div class="skeleton-row">
-					<span class="skeleton"
-						style="width: 58px; height: 36px; border-radius: 5px;"></span> <span
-						class="skeleton"
-						style="flex: 1; height: 13px; border-radius: 4px;"></span>
-				</div>
-			</div>
-		</div>
+  <!-- 보유 카드 및 신청 현황 -->
+  <div class="card">
+    <div class="card__head">보유 카드 및 신청 현황</div>
+    <div id="cardSection">
+      <div class="skeleton-item">
+        <span class="skeleton skeleton-chip"></span>
+        <span class="skeleton skeleton-text"></span>
+      </div>
+      <div class="skeleton-item">
+        <span class="skeleton skeleton-chip"></span>
+        <span class="skeleton skeleton-text skeleton-text--short"></span>
+      </div>
+    </div>
+  </div>
 
-		<!-- 소비 패턴 도넛 차트 -->
-		<div class="card">
-			<div class="card__head">이달의 소비 패턴</div>
-			<div id="spendingSection">
-				<div class="chart-wrap">
-					<div class="chart-canvas-box">
-						<canvas id="donutChart" width="170" height="170"></canvas>
-						<div class="chart-center">
-							<div class="chart-center__amount" id="chart-amount">—</div>
-							<div class="chart-center__label">총 지출</div>
-						</div>
-					</div>
-					<div class="legend" id="chart-legend">
-						<span class="skeleton"
-							style="width: 100%; height: 12px; border-radius: 4px; display: block; margin-bottom: 8px;"></span>
-						<span class="skeleton"
-							style="width: 80%; height: 12px; border-radius: 4px; display: block;"></span>
-					</div>
-				</div>
-			</div>
-		</div>
+  <!-- 소비 패턴 도넛 차트 -->
+  <div class="card">
+    <div class="card__head">이달의 소비 패턴</div>
+    <div id="spendingSection">
+      <div class="chart-wrap">
+        <div class="chart-canvas-box">
+          <canvas id="donutChart" width="170" height="170"></canvas>
+          <div class="chart-center">
+            <div class="chart-center__amount" id="chart-amount">—</div>
+            <div class="chart-center__label">총 지출</div>
+          </div>
+        </div>
+        <div class="legend" id="chart-legend">
+          <span class="skeleton skeleton-legend"></span>
+          <span class="skeleton skeleton-legend skeleton-legend--short"></span>
+        </div>
+      </div>
+    </div>
+  </div>
 
-		<!-- 내 정보 상세 -->
-		<div class="card">
-			<div class="card__head">내 정보</div>
-			<ul class="info-list" id="infoList"></ul>
-			<div style="margin-top: 16px;">
-				<a href="/mypage/edit.html" class="btn btn-outline btn-block">내
-					정보 수정하기</a>
-			</div>
-		</div>
+  <!-- 내 정보 상세 -->
+  <div class="card">
+    <div class="card__head">내 정보</div>
+    <ul class="info-list" id="infoList"></ul>
+    <div class="info-action">
+      <a href="/mypage/edit.html" class="btn btn-outline btn-block">내 정보 수정하기</a>
+    </div>
+  </div>
 
-	</div>
+</div>
 
-	<div id="toast-container"></div>
+<div id="toast-container"></div>
 
-	<script src="/js/header.js"></script>
-	<script src="/js/mypage.js"></script>
-	<script src="/js/mypage-main.js"></script>
+<script src="/js/header.js"></script>
+<script src="/js/mypage.js"></script>
 </body>
 </html>
