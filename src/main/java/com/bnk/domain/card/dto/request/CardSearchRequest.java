@@ -1,5 +1,7 @@
 package com.bnk.domain.card.dto.request;
 
+import java.util.List;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -11,6 +13,7 @@ public class CardSearchRequest {
     private String cardType;        // CREDIT / CHECK / HYBRID
     private String companyName;
     private Long categoryId;
+    private List<Long> categoryIds;  // 다중 선택용 (교집합)
     private Long minFee;
     private Long maxFee;
     private int page = 0;
