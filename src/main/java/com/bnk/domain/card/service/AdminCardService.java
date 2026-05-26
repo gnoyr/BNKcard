@@ -163,7 +163,7 @@ public class AdminCardService {
         // 8. APPROVAL_LINES INSERT
         ApprovalLine line = ApprovalLine.builder()
                 .approvalId(approval.getApprovalId())
-                .approverAdminId(adminId)
+                .approverAdminId(1L)
                 .approvalOrder(1)
                 .statusCode("PENDING")
                 .build();
@@ -293,7 +293,7 @@ public class AdminCardService {
         // 결재 라인 등록
         ApprovalLine line = ApprovalLine.builder()
                 .approvalId(approval.getApprovalId())
-                .approverAdminId(adminId)
+                .approverAdminId(1L)
                 .approvalOrder(1)
                 .statusCode("PENDING")
                 .build();
@@ -344,7 +344,7 @@ public class AdminCardService {
 
         ApprovalLine line = ApprovalLine.builder()
                 .approvalId(approval.getApprovalId())
-                .approverAdminId(adminId)
+                .approverAdminId(1L)
                 .approvalOrder(1)
                 .statusCode("PENDING")
                 .build();
