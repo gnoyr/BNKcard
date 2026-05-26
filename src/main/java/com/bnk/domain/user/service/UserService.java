@@ -54,18 +54,17 @@ public class UserService {
      */
     @Transactional
     public void updateMyInfo(Long userId, @Valid UserUpdateRequest request) {
-        User user = userMapper.findById(userId)
+    	User user = userMapper.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-
-        // 폰번호 변경 시 비밀번호 재확인
-        if (request.getPhone() != null) {
-            if (request.getCurrentPassword() == null || request.getCurrentPassword().isBlank()) {
-                throw new BusinessException(ErrorCode.INVALID_INPUT,
-                        "휴대폰 번호 변경 시 현재 비밀번호 확인이 필요합니다.");
-            }
-            if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
-                throw new BusinessException(ErrorCode.INVALID_PASSWORD);
-            }
+   
+        if (request.getCurrentPassword() == null
+                || request.getCurrentPassword().isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT,
+                    "정보 수정 시 현재 비밀번호 확인이 필요합니다.");
+        }
+        if (!passwordEncoder.matches(
+                request.getCurrentPassword(), user.getPasswordHash())) {
+            throw new BusinessException(ErrorCode.INVALID_PASSWORD);
         }
 
         // 전화번호 포맷 변환 (01012345678 → 010-1234-5678)
