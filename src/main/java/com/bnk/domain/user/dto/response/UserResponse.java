@@ -14,8 +14,15 @@ public class UserResponse {
 
     private Long userId;
     private String name;
-    private String maskedEmail;         // ab***@domain.com
-    private String maskedPhone;         // 010-****-5678
+
+    // ── 원본 (마이페이지 본인 확인용) ──────────────
+    private String email;           // 추가: 원본 이메일
+    private String phone;           // 추가: 원본 전화번호
+
+    // ── 마스킹 (아이디 찾기 등 외부 노출용) ────────
+    private String maskedEmail;     // ab***@domain.com
+    private String maskedPhone;     // 010-****-5678
+
     private LocalDate birthDate;
     private String job;
     private String incomeLevelCode;
@@ -33,6 +40,8 @@ public class UserResponse {
         return UserResponse.builder()
                 .userId(user.getUserId())
                 .name(user.getName())
+                .email(user.getEmail())                          // 추가
+                .phone(user.getPhone())                          // 추가
                 .maskedEmail(MaskingUtil.maskEmail(user.getEmail()))
                 .maskedPhone(MaskingUtil.maskPhone(user.getPhone()))
                 .birthDate(user.getBirthDate())
