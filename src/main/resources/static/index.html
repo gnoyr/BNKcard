@@ -1,357 +1,145 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BNK 부산은행 카드</title>
-  <link rel="stylesheet" href="/css/auth-style.css"/>
-  <link rel="stylesheet" href="/css/components.css"/>
+  <!-- 공통 컴포넌트 스타일 (헤더·세션바·토스트) -->
+  <link rel="stylesheet" href="/css/components.css">
+  <!-- 카드 메인 페이지 전용 스타일 -->
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 
-<!-- header.js 가 로그인/비로그인 상태에 따라 헤더 내비 렌더 -->
+<!-- ── 공통 헤더 마운트 포인트 (header.js가 자동 주입) ── -->
 <div id="app-header"></div>
 
-<main>
+<section class="hero">
+  <h1>나에게 맞는 카드를 찾아보세요</h1>
+  <p>BNK 부산은행의 다양한 카드 혜택을 비교하고 선택하세요</p>
+  <div class="search-bar">
+    <input type="text" id="hero-search" placeholder="카드명, 혜택 검색..." autocomplete="off">
+    <button onclick="openSearchModal()">검색</button>
+  </div>
+  <div class="popular-keywords" id="popular-keywords"><span>인기 :</span></div>
+  <div style="margin-top:20px;">
+    <button onclick="openSurvey()"
+      style="background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.4);
+             border-radius:50px;padding:10px 24px;font-size:14px;font-weight:600;cursor:pointer;">
+      🎯 내 소비 스타일로 카드 추천받기
+    </button>
+  </div>
+</section>
 
-</main>
-<!-- BNK AI Chatbot Widget: 이 div 하나만 여러 페이지에 복사해서 사용 -->
-<div
-  id="bnk-ai-chatbot"
-  data-api-url="/api/chat"
-  data-bot-image="https://objectstorage.ap-chuncheon-1.oraclecloud.com/n/axa1llzzkj5q/b/terms/o/images%2Fimageshachi-fotor-2026052617514.png"
->
-  <style>
-    #bnk-ai-chatbot {
-      position: fixed;
-      right: 24px;
-      bottom: 24px;
-      z-index: 9999;
-      font-family: Arial, sans-serif;
-    }
+<section class="section" id="top3">
+  <div class="section-title">🏆 TOP3 추천 카드</div>
+  <div class="section-sub">많은 분들이 선택한 인기 카드입니다</div>
+  <div class="top3-podium" id="top3-podium">
+    <div class="loading-wrap"><div class="loading-spinner"></div></div>
+  </div>
+</section>
 
-    #bnk-ai-chatbot * {
-      box-sizing: border-box;
-    }
+<section class="section" id="card-list">
+  <div class="section-title">💳 전체 카드</div>
+  <div class="section-sub">카드 유형과 혜택 카테고리로 필터링하세요</div>
 
-    #bnk-ai-chatbot .chat-toggle {
-      width: 72px;
-      height: 72px;
-      border: none;
-      border-radius: 50%;
-      background: #ffffff;
-      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
-      cursor: pointer;
-      padding: 0;
-      overflow: hidden;
-    }
-
-    #bnk-ai-chatbot .chat-toggle img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    #bnk-ai-chatbot .chat-window {
-      display: none;
-      position: absolute;
-      right: 0;
-      bottom: 88px;
-      width: 360px;
-      height: 520px;
-      background: #ffffff;
-      border-radius: 18px;
-      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
-      overflow: hidden;
-      border: 1px solid #e5e5e5;
-    }
-
-    #bnk-ai-chatbot.open .chat-window {
-      display: flex;
-      flex-direction: column;
-    }
-
-    #bnk-ai-chatbot .chat-header {
-      height: 56px;
-      background: #005bac;
-      color: #ffffff;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 16px;
-      font-weight: bold;
-    }
-
-    #bnk-ai-chatbot .chat-close {
-      border: none;
-      background: transparent;
-      color: #ffffff;
-      font-size: 22px;
-      cursor: pointer;
-    }
-
-    #bnk-ai-chatbot .chat-messages {
-      flex: 1;
-      padding: 16px;
-      overflow-y: auto;
-      background: #f7f9fc;
-    }
-
-	#bnk-ai-chatbot .message {
-	  max-width: 82%;
-	  margin-bottom: 10px;
-	  padding: 10px 12px;
-	  border-radius: 14px;
-	  font-size: 14px;
-	  line-height: 1.5;
-	  white-space: normal;
-	  word-break: keep-all;
-	  text-align: left;
-	}
-
-    #bnk-ai-chatbot .message.bot {
-      background: #ffffff;
-      color: #222222;
-      border: 1px solid #e5e5e5;
-      border-bottom-left-radius: 4px;
-    }
-
-    #bnk-ai-chatbot .message.user {
-      margin-left: auto;
-      background: #005bac;
-      color: #ffffff;
-      border-bottom-right-radius: 4px;
-    }
-
-    #bnk-ai-chatbot .chat-input-area {
-      display: flex;
-      gap: 8px;
-      padding: 12px;
-      background: #ffffff;
-      border-top: 1px solid #e5e5e5;
-    }
-
-    #bnk-ai-chatbot .chat-input {
-      flex: 1;
-      height: 42px;
-      border: 1px solid #d0d7de;
-      border-radius: 12px;
-      padding: 0 12px;
-      font-size: 14px;
-      outline: none;
-    }
-
-    #bnk-ai-chatbot .chat-input:focus {
-      border-color: #005bac;
-    }
-
-    #bnk-ai-chatbot .chat-send {
-      width: 64px;
-      border: none;
-      border-radius: 12px;
-      background: #005bac;
-      color: #ffffff;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    #bnk-ai-chatbot .chat-send:disabled {
-      background: #a7b7c7;
-      cursor: not-allowed;
-    }
-
-    @media (max-width: 480px) {
-      #bnk-ai-chatbot {
-        right: 16px;
-        bottom: 16px;
-      }
-
-      #bnk-ai-chatbot .chat-window {
-        width: calc(100vw - 32px);
-        height: 70vh;
-        right: 0;
-        bottom: 84px;
-      }
-    }
-  </style>
-
-  <div class="chat-window" aria-label="AI 채팅창">
-    <div class="chat-header">
-      <span>BNK AI 상담원</span>
-      <button type="button" class="chat-close" aria-label="채팅창 닫기">×</button>
-    </div>
-
-    <div class="chat-messages">
-      <div class="message bot">
-        안녕하세요. BNK 카드 AI 상담원입니다.
-        궁금한 카드 혜택을 물어보세요.
-      </div>
-    </div>
-
-    <form class="chat-input-area">
-      <input
-        type="text"
-        class="chat-input"
-        placeholder="메시지를 입력하세요"
-        autocomplete="off"
-      />
-      <button type="submit" class="chat-send">전송</button>
-    </form>
+  <div class="type-tab-bar">
+    <button class="type-tab active" data-type="" onclick="selectCardType(this,'')">전체 카드</button>
+    <button class="type-tab" data-type="CREDIT" onclick="selectCardType(this,'CREDIT')">신용카드</button>
+    <button class="type-tab" data-type="CHECK"  onclick="selectCardType(this,'CHECK')">체크카드</button>
+    <button class="type-tab" data-type="PREPAID" onclick="selectCardType(this,'PREPAID')">선불카드</button>
   </div>
 
-	<button type="button" class="chat-toggle" aria-label="AI 채팅 열기">
-	  <img alt="AI 챗봇" />
-	</button>
+  <div class="category-bar" id="category-bar">
+    <div class="loading-spinner" style="width:20px;height:20px;border-width:2px;margin:8px 0;"></div>
+  </div>
+  <div class="cat-hint">💡 여러 카테고리를 선택하면 모든 혜택을 가진 카드만 표시됩니다</div>
+  <div class="cat-selected-info" id="cat-selected-info"></div>
 
-  <script>
-    (function () {
-      const widget = document.getElementById("bnk-ai-chatbot");
-      if (!widget) return;
+  <div class="filter-row">
+    <input type="text" id="filter-q" placeholder="카드명 검색..."
+           onkeydown="if(event.key==='Enter') loadCards(0)" style="width:220px">
+    <button onclick="loadCards(0)" style="padding:8px 18px;background:#003087;color:#fff;border-radius:8px;font-size:13px;">검색</button>
+    <button onclick="resetFilter()" style="padding:8px 14px;background:#f0f2f6;color:#666;border-radius:8px;font-size:13px;">초기화</button>
+    <span class="filter-count" id="filter-count"></span>
+  </div>
 
-      const apiUrl = widget.dataset.apiUrl || "/api/chat";
-      const botImage = widget.dataset.botImage || "/images/ai-chatbot.png";
+  <div class="card-grid" id="card-grid">
+    <div class="loading-wrap" style="grid-column:1/-1"><div class="loading-spinner"></div><p>카드를 불러오는 중...</p></div>
+  </div>
+  <div class="pagination" id="pagination"></div>
+</section>
 
-      const toggleButton = widget.querySelector(".chat-toggle");
-      const closeButton = widget.querySelector(".chat-close");
-      const botImageElement = widget.querySelector(".chat-toggle img");
-      const form = widget.querySelector(".chat-input-area");
-      const input = widget.querySelector(".chat-input");
-      const sendButton = widget.querySelector(".chat-send");
-      const messages = widget.querySelector(".chat-messages");
-
-      botImageElement.src = botImage;
-
-      const sessionKey = "bnk_ai_chat_session_id";
-
-      function getSessionId() {
-        let sessionId = sessionStorage.getItem(sessionKey);
-
-        if (!sessionId) {
-          sessionId = "web-" + Date.now() + "-" + Math.random().toString(36).slice(2);
-          sessionStorage.setItem(sessionKey, sessionId);
-        }
-
-        return sessionId;
-      }
-
-      function appendMessage(type, text) {
-        const message = document.createElement("div");
-        message.className = "message " + type;
-        message.textContent = text;
-        messages.appendChild(message);
-        messages.scrollTop = messages.scrollHeight;
-      }
-
-      function extractResponseText(json) {
-        /*
-          백엔드 응답이 ApiResponse<AiChatResponse> 형태일 가능성을 고려해서
-          여러 구조를 안전하게 처리합니다.
-
-          예상 예:
-          {
-            "data": {
-              "chatId": 1,
-              "sessionId": "...",
-              "response": "답변 내용"
-            }
-          }
-        */
-
-        if (!json) return "응답이 비어 있습니다.";
-
-        if (json.response) return json.response;
-        if (json.data && json.data.response) return json.data.response;
-        if (json.result && json.result.response) return json.result.response;
-        if (json.body && json.body.response) return json.body.response;
-
-        return "응답 형식을 확인해 주세요.";
-      }
-
-      function getCsrfHeaders() {
-        const token = document.querySelector('meta[name="_csrf"]')?.content;
-        const header = document.querySelector('meta[name="_csrf_header"]')?.content;
-
-        if (token && header) {
-          return {
-            [header]: token
-          };
-        }
-
-        return {};
-      }
-
-      async function sendMessage(userInput) {
-        appendMessage("user", userInput);
-
-        input.value = "";
-        input.disabled = true;
-        sendButton.disabled = true;
-
-        const loadingMessage = document.createElement("div");
-        loadingMessage.className = "message bot";
-        loadingMessage.textContent = "답변을 생성하고 있습니다...";
-        messages.appendChild(loadingMessage);
-        messages.scrollTop = messages.scrollHeight;
-
-        try {
-          const response = await fetch(apiUrl, {
-            method: "POST",
-            credentials: "same-origin",
-            headers: {
-              "Content-Type": "application/json",
-              ...getCsrfHeaders()
-            },
-            body: JSON.stringify({
-              sessionId: getSessionId(),
-              userInput: userInput
-            })
-          });
-
-          if (!response.ok) {
-            throw new Error("HTTP " + response.status);
-          }
-
-          const json = await response.json();
-          loadingMessage.textContent = extractResponseText(json);
-        } catch (error) {
-          console.error(error);
-          loadingMessage.textContent =
-            "죄송합니다. 채팅 요청 중 오류가 발생했습니다.";
-        } finally {
-          input.disabled = false;
-          sendButton.disabled = false;
-          input.focus();
-        }
-      }
-
-      toggleButton.addEventListener("click", function () {
-        widget.classList.toggle("open");
-
-        if (widget.classList.contains("open")) {
-          input.focus();
-        }
-      });
-
-      closeButton.addEventListener("click", function () {
-        widget.classList.remove("open");
-      });
-
-      form.addEventListener("submit", function (event) {
-        event.preventDefault();
-
-        const userInput = input.value.trim();
-
-        if (!userInput) return;
-
-        sendMessage(userInput);
-      });
-    })();
-  </script>
+<!-- ── 검색 오버레이 ── -->
+<div class="search-overlay" id="search-overlay" onclick="handleOverlayClick(event)">
+  <div class="search-modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <strong style="font-size:16px;">카드 검색</strong>
+      <button onclick="closeSearchModal()" style="font-size:20px;color:#888;">✕</button>
+    </div>
+    <div class="modal-search-bar">
+      <input type="text" id="modal-search-input" placeholder="카드명, 혜택 검색..."
+             onkeydown="if(event.key==='Enter') runModalSearch()">
+      <button onclick="runModalSearch()">검색</button>
+    </div>
+    <div class="modal-section-title">추천 검색어</div>
+    <div class="suggest-list" id="suggest-list"></div>
+    <div class="modal-section-title">혜택 카테고리
+      <span style="font-size:11px;color:#aaa;font-weight:400;"> (중복 선택 = AND 교집합)</span>
+    </div>
+    <div class="modal-cat-grid" id="modal-cat-grid">
+      <div class="loading-spinner" style="width:20px;height:20px;border-width:2px;grid-column:1/-1;margin:8px auto;"></div>
+    </div>
+    <div class="modal-cat-selected" id="modal-cat-selected"></div>
+    <div id="modal-results-wrap" style="display:none">
+      <div class="modal-section-title" id="modal-result-title">검색 결과</div>
+      <div id="modal-results"></div>
+    </div>
+  </div>
 </div>
-<div id="toast-container"></div>
+
+<!-- ── 비교 모달 ── -->
+<div class="compare-modal-overlay" id="compare-modal-overlay" onclick="handleCompareOverlayClick(event)">
+  <div class="compare-modal">
+    <div class="compare-modal-header">
+      <span class="compare-modal-title">📊 카드 비교</span>
+      <button class="compare-modal-close" onclick="closeCompareModal()">✕</button>
+    </div>
+    <div class="compare-modal-body" id="compare-modal-body">
+      <div class="compare-empty">비교할 카드를 선택하세요 (최대 3개)</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 설문 모달 ── -->
+<div class="survey-overlay" id="survey-overlay" onclick="handleSurveyOverlay(event)">
+  <div class="survey-modal" onclick="event.stopPropagation()">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
+      <div>
+        <div style="font-size:12px;color:#888;margin-bottom:4px;" id="survey-step-label">1 / 3</div>
+        <div style="font-size:18px;font-weight:700;color:#003087;" id="survey-question"></div>
+      </div>
+      <button onclick="closeSurvey()" style="font-size:22px;color:#aaa;padding:0 4px;">✕</button>
+    </div>
+    <div style="height:4px;background:#f0f2f6;border-radius:4px;margin-bottom:24px;">
+      <div id="survey-progress" style="height:4px;background:#003087;border-radius:4px;width:33%;transition:width .3s;"></div>
+    </div>
+    <div id="survey-options" style="display:flex;flex-direction:column;gap:10px;"></div>
+  </div>
+</div>
+
+<!-- ── 비교 카트 ── -->
+<div class="cart-toggle" onclick="toggleCart()">비교<br>카트</div>
+<div class="compare-cart" id="compare-cart">
+  <div class="cart-title">비교 카트 <span id="cart-count" style="color:#0066cc">(0/3)</span></div>
+  <div id="cart-items"><div class="cart-empty">카드를 추가하세요</div></div>
+  <button class="btn-cart-compare" id="btn-do-compare" onclick="doCompare()" disabled>비교하기</button>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- ── 공통 헤더 스크립트 ── -->
 <script src="/js/header.js"></script>
+<!-- ── 카드 메인 페이지 전용 스크립트 ── -->
 <script src="/js/main.js"></script>
 </body>
 </html>
