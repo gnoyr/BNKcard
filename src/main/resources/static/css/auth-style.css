@@ -796,3 +796,90 @@ body {
   accent-color: var(--red);
   margin-right: 6px;
 }
+
+/* ── 섹션 제목 (회원가입 Step2) ─────────────────────────────── */
+.form-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--red, #C8102E);
+  margin: 24px 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #FCE9EC;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.form-section-title:first-of-type { margin-top: 4px; }
+ 
+/* ── 라벨 보조 텍스트 ────────────────────────────────────────── */
+.form-label-note {
+  font-size: 12px;
+  font-weight: 400;
+  color: #A1A1AA;
+  margin-left: 4px;
+}
+ 
+/* ── 체크박스 라벨 행 ────────────────────────────────────────── */
+.form-check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #27272A;
+}
+.form-check-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--red, #C8102E);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+ 
+/* ── number 입력 화살표 제거 ─────────────────────────────────── */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* 표준 속성 및 비표준 호환성 설정 */
+input[type="number"] {
+    appearance: textfield; /* 표준 속성 */
+    -moz-appearance: textfield; /* 파이어폭스 하위 버전 호환 */
+}
+/* ── 가입 완료 화면 ──────────────────────────────────────────── */
+.done-wrap {
+  text-align: center;
+  padding: 32px 0 24px;
+}
+.done-icon {
+  font-size: 52px;
+  margin-bottom: 12px;
+}
+.done-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #27272A;
+  margin-bottom: 8px;
+}
+.done-email {
+  font-size: 14px;
+  color: #A1A1AA;
+  margin-bottom: 12px;
+}
+.done-msg {
+  font-size: 14px;
+  color: #52525B;
+  margin-bottom: 0;
+}
+ 
+/* ── select 폼 인풋 ──────────────────────────────────────────── */
+select.form-input {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%23A1A1AA' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 38px;
+  cursor: pointer;
+}
