@@ -623,3 +623,204 @@ button { font-family: inherit; }
   .spending-input { width: 110px; }
   .form-actions { flex-direction: column; }
 }
+
+/* ── 프로필 이니셜 (avatar 대체) ── */
+.profile-initial {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--white);
+  flex-shrink: 0;
+  letter-spacing: -1px;
+}
+
+.profile-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ── 빠른 이동 버튼 (아이콘 없이 텍스트만) ── */
+.quick-nav {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.quick-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 8px;
+  background: var(--white);
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--r-md);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-600);
+  text-align: center;
+  cursor: pointer;
+  box-shadow: var(--sh-sm);
+  transition: all var(--ease);
+  text-decoration: none;
+}
+
+.quick-btn:hover {
+  border-color: var(--red);
+  color: var(--red);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px var(--red-muted);
+}
+
+/* ── 카드 아이템 (이미지 없는 버전) ── */
+.card-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.card-item:last-child {
+  border-bottom: none;
+}
+
+.card-chip {
+  width: 44px;
+  height: 30px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+  letter-spacing: 0.3px;
+}
+
+.card-chip--owned {
+  background: var(--red-pale);
+  color: var(--red);
+}
+
+.card-chip--applied {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+.card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-info__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-info__sub {
+  font-size: 11px;
+  color: var(--gray-400);
+  margin-top: 3px;
+}
+
+/* ── 배지 (badge) ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.badge--owned     { background: var(--red-pale);  color: var(--red);    }
+.badge--issued    { background: var(--red-pale);  color: var(--red);    }
+.badge--requested { background: #FEF3C7;           color: #B45309;       }
+.badge--reviewing { background: #DBEAFE;           color: #1D4ED8;       }
+.badge--approved  { background: #DCFCE7;           color: #15803D;       }
+.badge--rejected  { background: #FEE2E2;           color: #DC2626;       }
+
+/* ── 스켈레톤 (인라인스타일 대체) ── */
+.skeleton-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.skeleton-item:last-child {
+  border-bottom: none;
+}
+
+.skeleton-chip {
+  width: 44px;
+  height: 30px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.skeleton-text {
+  height: 13px;
+  border-radius: 4px;
+  flex: 1;
+}
+
+.skeleton-text--short {
+  flex: 0 0 55%;
+}
+
+.skeleton-legend {
+  display: block;
+  height: 12px;
+  border-radius: 4px;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.skeleton-legend--short {
+  width: 80%;
+}
+
+/* ── 내 정보 하단 버튼 래퍼 ── */
+.info-action {
+  margin-top: 16px;
+}
+
+/* ── profile-score 라벨·단위 ── */
+.profile-score__label,
+.profile-score__unit {
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+/* ── 빈 상태 메시지 ── */
+.empty-state {
+  padding: 28px 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--gray-400);
+  line-height: 1.8;
+}
+
+.empty-state a {
+  color: var(--red);
+  font-weight: 600;
+  text-decoration: underline;
+}
