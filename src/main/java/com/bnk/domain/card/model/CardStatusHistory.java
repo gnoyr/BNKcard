@@ -1,4 +1,4 @@
-package com.bnk.domain.card.model2;
+package com.bnk.domain.card.model;
 import lombok.*;
 import java.time.LocalDateTime;
 

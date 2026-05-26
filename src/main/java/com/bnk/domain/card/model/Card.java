@@ -10,21 +10,24 @@ import java.time.LocalDateTime;
 public class Card {
     private Long cardId;
     private String cardCode;
-    private String cardType;            // CREDIT / CHECK / HYBRID
+    private String cardType;
     private String cardName;
     private String companyName;
+    private String companyCode;         // ← 추가
     private String brandName;
     private Long annualFeeDomestic;
     private Long annualFeeOverseas;
     private Long previousMonthSpend;
     private Integer minimumAge;
     private Integer maximumAge;
+    private Long creditLimitMin;        // ← 추가
+    private Long creditLimitMax;        // ← 추가
     private String targetUser;
     private String summaryDescription;
     private String searchableYn;
     private String visibleYn;
     private String approvalRequiredYn;
-    private String cardStatus;          // DRAFT/REVIEW/APPROVED/PUBLISHED/STOPPED/EXPIRED
+    private String cardStatus;
     private LocalDateTime publishStartAt;
     private LocalDateTime publishEndAt;
     private Long applicationCount;
@@ -34,4 +37,5 @@ public class Card {
     private Long updatedBy;
     private LocalDateTime updatedAt;
     private String deletedYn;
+    private LocalDateTime deletedAt;    // ← 추가
 }

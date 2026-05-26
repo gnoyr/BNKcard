@@ -1,6 +1,7 @@
 package com.bnk.domain.card.service;
 
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -12,12 +13,18 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import com.bnk.domain.admin.mapper.ApprovalMapper;
+import com.bnk.domain.admin.model.ApprovalLine;
 import com.bnk.domain.admin.model.ApprovalRequest;
 import com.bnk.domain.card.dto.request.AdminCardSearchRequest;
 import com.bnk.domain.card.dto.request.BenefitCreateRequest;
+import com.bnk.domain.card.dto.request.BenefitUpdateRequest;
 import com.bnk.domain.card.dto.request.CardCreateRequest;
+import com.bnk.domain.card.dto.request.CardSnapshot;
 import com.bnk.domain.card.dto.request.CardStatusRequest;
 import com.bnk.domain.card.dto.request.CardUpdateRequest;
+import com.bnk.domain.card.dto.request.ContentUpdateRequest;
+import com.bnk.domain.card.dto.request.ImageCreateRequest;
+import com.bnk.domain.card.dto.request.ImageUpdateRequest;
 import com.bnk.domain.card.dto.response.CardDetailResponse;
 import com.bnk.domain.card.dto.response.CardListResponse;
 import com.bnk.domain.card.mapper.CardBenefitMapper;
@@ -25,16 +32,13 @@ import com.bnk.domain.card.mapper.CardContentMapper;
 import com.bnk.domain.card.mapper.CardImageMapper;
 import com.bnk.domain.card.mapper.CardMapper;
 import com.bnk.domain.card.mapper.CardMapper2;
-import com.bnk.domain.card.mapper.CardStatusHistoryMapper2;
+import com.bnk.domain.card.mapper.CardStatusHistoryMapper;
 import com.bnk.domain.card.mapper.CardVersionMapper2;
 import com.bnk.domain.card.model.Card;
 import com.bnk.domain.card.model.CardBenefit;
-
-import com.bnk.domain.card.model2.CardStatusHistory;
-
+import com.bnk.domain.card.model.CardContent;
 import com.bnk.domain.card.model.CardImage;
-import com.bnk.domain.card.model2.CardContent;
-
+import com.bnk.domain.card.model.CardStatusHistory;
 import com.bnk.domain.card.model2.CardVersion;
 import com.bnk.domain.terms.mapper.TermsMapper;
 import com.bnk.global.exception.BusinessException;
@@ -61,7 +65,7 @@ public class AdminCardService {
     private final ApprovalMapper approvalMapper;
     private final ObjectMapper objectMapper;
     private final CardVersionMapper2 cardVersionMapper2;
-    private final CardStatusHistoryMapper2 cardStatusHistoryMapper2;
+    private final CardStatusHistoryMapper cardStatusHistoryMapper;
 
     /**
      * B-03 카드 신규 등록 (RQ-B04)
@@ -71,51 +75,90 @@ public class AdminCardService {
     public Map<String, Long> createCard(@Valid CardCreateRequest request, Long adminId) {
 
         // 카드코드 중복 체크 (CardMapper.findAdminCards 재사용 대신 간단히)
-        // Card INSERT — DRAFT 상태
-        Card card = Card.builder()
-                .cardCode(request.getCardCode())
-                .cardType(request.getCardType())
-                .cardName(request.getCardName())
-                .companyName(request.getCompanyName())
-                .brandName(request.getBrandName())
-                .annualFeeDomestic(request.getAnnualFeeDomestic())
-                .annualFeeOverseas(request.getAnnualFeeOverseas())
-                .summaryDescription(request.getSummaryDescription())
-                .publishStartAt(request.getPublishStartAt())
-                .publishEndAt(request.getPublishEndAt())
-                .createdBy(adminId)
-                .build();
+    	// 1. CARDS INSERT (DRAFT)
+    	Card card = Card.builder()
+    	        .cardCode(request.getCardCode())
+    	        .cardType(request.getCardType())
+    	        .cardName(request.getCardName())
+    	        .companyName(request.getCompanyName())
+    	        .brandName(request.getBrandName())
+    	        .annualFeeDomestic(request.getAnnualFeeDomestic())
+    	        .annualFeeOverseas(request.getAnnualFeeOverseas())
+    	        .previousMonthSpend(request.getPreviousMonthSpend() != null    // ← 추가
+    	                ? request.getPreviousMonthSpend() : 0L)
+    	        .minimumAge(request.getMinimumAge())                           // ← 추가
+    	        .maximumAge(request.getMaximumAge())                           // ← 추가
+    	        .targetUser(request.getTargetUser())                           // ← 추가
+    	        .summaryDescription(request.getSummaryDescription())
+    	        .publishStartAt(request.getPublishStartAt())
+    	        .publishEndAt(request.getPublishEndAt())
+    	        .createdBy(adminId)
+    	        .build();
 
         cardMapper.insertCard(card); // keyProperty=cardId 자동 주입
 
-        // 혜택 등록
+        // 2. CARD_BENEFITS INSERT
+        List<CardBenefit> benefits = new ArrayList<>();
         if (request.getBenefits() != null && !request.getBenefits().isEmpty()) {
-            List<CardBenefit> benefits = request.getBenefits().stream()
+            benefits = request.getBenefits().stream()
                     .map(b -> toBenefitEntity(b, card.getCardId()))
                     .collect(Collectors.toList());
             cardBenefitMapper.insertBenefits(benefits);
         }
 
-        // APPROVAL_REQUESTS INSERT (CARD_PUBLISH, PENDING)
-        String snapshotJson = toSnapshotJson(card);
+        // 3. CARD_IMAGES INSERT
+        List<CardImage> images = new ArrayList<>();
+        if (request.getImages() != null && !request.getImages().isEmpty()) {
+            images = request.getImages().stream()
+                    .map(img -> toImageEntity(img, card.getCardId()))  // ← 이렇게
+                    .collect(Collectors.toList());
+            cardImageMapper.insertImages(images);
+        }
+        
+        // 4. CARD_STATUS_HISTORIES INSERT (DRAFT 최초 이력)
+        cardStatusHistoryMapper.insertCardStatusHistory(CardStatusHistory.builder()
+                .cardId(card.getCardId())
+                .previousStatus(null)
+                .changedStatus("DRAFT")
+                .changedBy(adminId)
+                .changedReason("카드 신규 등록")
+                .build());
+        
+        // 5. 스냅샷 구성 (기본정보 + 혜택 + 이미지 전부 포함)
+        CardSnapshot snapshot = CardSnapshot.builder()
+                .card(card)
+                .benefits(benefits)
+                .images(images)       // ← imageUrls 대신 CardImage 리스트
+                .build();
+        
+        // 6. CARD_VERSIONS INSERT
         CardVersion version = CardVersion.builder()
                 .cardId(card.getCardId())
                 .versionNo("v1.0")
-                .versionStatus("REVIEW")          // 상신과 동시에 REVIEW
-                .snapshotJson(snapshotJson)
+                .versionStatus("REVIEW")
+                .snapshotJson(toSnapshotJson(snapshot))  // ← snapshot 객체로 변경
                 .changeSummary(request.getChangeSummary())
                 .createdBy(adminId)
                 .build();
-        cardVersionMapper2.insertCardVersion(version);  // selectKey로 versionId 주입
+        cardVersionMapper2.insertCardVersion(version);
 
-        // 4. APPROVAL_REQUESTS INSERT — target_id = version_id
+        // 7. APPROVAL_REQUESTS INSERT
         ApprovalRequest approval = ApprovalRequest.builder()
                 .requestTypeCode("CARD_PUBLISH")
                 .requesterAdminId(adminId)
-                .targetId(version.getVersionId())  // ← version_id로 변경
+                .targetId(version.getVersionId())
                 .requestComment(request.getChangeSummary())
                 .build();
         approvalMapper.insertApprovalRequest(approval);
+        
+        // 8. APPROVAL_LINES INSERT
+        ApprovalLine line = ApprovalLine.builder()
+                .approvalId(approval.getApprovalId())
+                .approverAdminId(adminId)
+                .approvalOrder(1)
+                .statusCode("PENDING")
+                .build();
+        approvalMapper.insertApprovalLine(line);
         
         
         Map<String, Long> result = new HashMap<>();
@@ -123,7 +166,7 @@ public class AdminCardService {
         result.put("versionId", version.getVersionId());
         result.put("approvalId", approval.getApprovalId());
         return result;
-    }
+    }    
 
     /**
      * B-04 카드 수정 (RQ-B05)
@@ -143,41 +186,66 @@ public class AdminCardService {
         // 수정 요청 데이터로 snapshot 생성 (요청 데이터 기준)
         Card updatedSnapshot = Card.builder()
                 .cardId(cardId)
-                .cardCode(existing.getCardCode())           // 카드코드는 수정 불가 — existing 고정
-                .cardType(request.getCardType() != null
-                        ? request.getCardType() : existing.getCardType())
+                .cardCode(existing.getCardCode())
+                .cardType(existing.getCardType())               // 수정 불가 — existing 고정
+                .companyName(existing.getCompanyName())         // 수정 불가
+                .companyCode(existing.getCompanyCode())         // 수정 불가
+                .brandName(existing.getBrandName())             // 수정 불가
                 .cardName(request.getCardName() != null
                         ? request.getCardName() : existing.getCardName())
-                .companyName(request.getCompanyName() != null
-                        ? request.getCompanyName() : existing.getCompanyName())
-                .brandName(request.getBrandName() != null
-                        ? request.getBrandName() : existing.getBrandName())
                 .annualFeeDomestic(request.getAnnualFeeDomestic() != null
                         ? request.getAnnualFeeDomestic() : existing.getAnnualFeeDomestic())
                 .annualFeeOverseas(request.getAnnualFeeOverseas() != null
                         ? request.getAnnualFeeOverseas() : existing.getAnnualFeeOverseas())
+                .previousMonthSpend(request.getPreviousMonthSpend() != null
+                        ? request.getPreviousMonthSpend() : existing.getPreviousMonthSpend())
+                .minimumAge(request.getMinimumAge() != null
+                        ? request.getMinimumAge() : existing.getMinimumAge())
+                .maximumAge(request.getMaximumAge() != null
+                        ? request.getMaximumAge() : existing.getMaximumAge())
+                .creditLimitMin(request.getCreditLimitMin() != null
+                        ? request.getCreditLimitMin() : existing.getCreditLimitMin())
+                .creditLimitMax(request.getCreditLimitMax() != null
+                        ? request.getCreditLimitMax() : existing.getCreditLimitMax())
+                .targetUser(request.getTargetUser() != null
+                        ? request.getTargetUser() : existing.getTargetUser())
                 .summaryDescription(request.getSummaryDescription() != null
                         ? request.getSummaryDescription() : existing.getSummaryDescription())
                 .publishStartAt(request.getPublishStartAt() != null
                         ? request.getPublishStartAt() : existing.getPublishStartAt())
                 .publishEndAt(request.getPublishEndAt() != null
                         ? request.getPublishEndAt() : existing.getPublishEndAt())
-                // ↓ request에 없는 필드 — existing에서 그대로 복사
-                .previousMonthSpend(existing.getPreviousMonthSpend())
-                .minimumAge(existing.getMinimumAge())
-                .maximumAge(existing.getMaximumAge())
-                .targetUser(existing.getTargetUser())
-                .searchableYn(existing.getSearchableYn())
-                .visibleYn(existing.getVisibleYn())
+                .searchableYn(request.getSearchableYn() != null
+                        ? request.getSearchableYn() : existing.getSearchableYn())
+                .visibleYn(request.getVisibleYn() != null
+                        ? request.getVisibleYn() : existing.getVisibleYn())
+                // existing 고정
                 .approvalRequiredYn(existing.getApprovalRequiredYn())
+                .cardStatus(existing.getCardStatus())
+                .applicationCount(existing.getApplicationCount())
                 .createdBy(existing.getCreatedBy())
+                .createdAt(existing.getCreatedAt())
+                .deletedYn(existing.getDeletedYn())
+                .deletedAt(existing.getDeletedAt())
                 .build();
+        
+        // 혜택, 이미지 현재 DB에서 조회 및 스냅샷 생성
+        List<CardBenefit> benefits = cardBenefitMapper.findByCardId(cardId);
+        List<CardImage> images = cardImageMapper.findByCardId(cardId);
 
-        String snapshotJson = toSnapshotJson(updatedSnapshot);
+        CardSnapshot snapshot = CardSnapshot.builder()
+                .card(updatedSnapshot)
+                .benefits(benefits)
+                .images(images)
+                .build();        
+        String snapshotJson = toSnapshotJson(snapshot);
 
+        
+        // 카드 버전 등록
+        int nextNo = cardVersionMapper2.getLatestVersionSeq(cardId) + 1;
         CardVersion version = CardVersion.builder()
                 .cardId(cardId)
-                .versionNo("v" + System.currentTimeMillis()) // 임시 — 추후 MAX+1로 개선
+                .versionNo("v" + nextNo + ".0")   // v1.0, v2.0, v3.0 ...
                 .versionStatus("REVIEW")
                 .snapshotJson(snapshotJson)
                 .changeSummary(request.getChangeSummary())
@@ -185,6 +253,7 @@ public class AdminCardService {
                 .build();
         cardVersionMapper2.insertCardVersion(version);
 
+        // 결재 신청서 등록
         ApprovalRequest approval = ApprovalRequest.builder()
                 .requestTypeCode("CARD_UPDATE")
                 .requesterAdminId(adminId)
@@ -192,6 +261,15 @@ public class AdminCardService {
                 .requestComment(request.getChangeSummary())
                 .build();
         approvalMapper.insertApprovalRequest(approval);
+        
+        // 결재 라인 등록
+        ApprovalLine line = ApprovalLine.builder()
+                .approvalId(approval.getApprovalId())
+                .approverAdminId(adminId)
+                .approvalOrder(1)
+                .statusCode("PENDING")
+                .build();
+        approvalMapper.insertApprovalLine(line);
 
         Map<String, Long> result = new HashMap<>();
         result.put("cardId", cardId);
@@ -200,6 +278,116 @@ public class AdminCardService {
         return result;
     }
 
+    // ── 공통 — 스냅샷 + 결재신청 생성 (혜택/이미지 수정용) ──
+    protected Map<String, Long> createVersionAndApproval(Long cardId, Long adminId,
+                                                        String changeSummary,
+                                                        String requestTypeCode) {
+        // 현재 DB 상태 전체 조회
+        Card card = cardMapper.findById(cardId);
+        List<CardBenefit> benefits = cardBenefitMapper.findByCardId(cardId);
+        List<CardImage> images = cardImageMapper.findByCardId(cardId);
+
+        // 버전 번호
+        int nextNo = cardVersionMapper2.getLatestVersionSeq(cardId) + 1;
+
+        CardSnapshot snapshot = CardSnapshot.builder()
+                .card(card)
+                .benefits(benefits)
+                .images(images)
+                .build();
+
+        CardVersion version = CardVersion.builder()
+                .cardId(cardId)
+                .versionNo("v" + nextNo + ".0")
+                .versionStatus("REVIEW")
+                .snapshotJson(toSnapshotJson(snapshot))
+                .changeSummary(changeSummary)
+                .createdBy(adminId)
+                .build();
+        cardVersionMapper2.insertCardVersion(version);
+
+        ApprovalRequest approval = ApprovalRequest.builder()
+                .requestTypeCode(requestTypeCode)
+                .requesterAdminId(adminId)
+                .targetId(version.getVersionId())
+                .requestComment(changeSummary)
+                .build();
+        approvalMapper.insertApprovalRequest(approval);
+
+        ApprovalLine line = ApprovalLine.builder()
+                .approvalId(approval.getApprovalId())
+                .approverAdminId(adminId)
+                .approvalOrder(1)
+                .statusCode("PENDING")
+                .build();
+        approvalMapper.insertApprovalLine(line);
+
+        return Map.of(
+                "versionId", version.getVersionId(),
+                "approvalId", approval.getApprovalId()
+        );
+    }
+    
+    // ── 혜택 등록/수정 ──────────────────────────────────────
+    @Transactional
+    public Map<String, Long> saveCardBenefits(Long cardId, BenefitUpdateRequest request, Long adminId) {
+        cardBenefitMapper.deleteByCardId(cardId);
+
+        if (request.getBenefits() != null && !request.getBenefits().isEmpty()) {
+            List<CardBenefit> benefits = request.getBenefits().stream()
+                    .map(b -> toBenefitEntity(b, cardId))
+                    .collect(Collectors.toList());
+            cardBenefitMapper.insertBenefits(benefits);
+        }
+
+        Map<String, Long> result = new HashMap<>(
+                createVersionAndApproval(cardId, adminId, request.getChangeSummary(), "CARD_UPDATE"));
+        result.put("cardId", cardId);
+        return result;
+    }
+    
+    // ── 이미지 등록/수정 ─────────────────────────────────────
+    @Transactional
+    public Map<String, Long> saveCardImages(Long cardId, ImageUpdateRequest request, Long adminId) {
+        cardImageMapper.deleteByCardId(cardId);
+
+        if (request.getImages() != null && !request.getImages().isEmpty()) {
+            List<CardImage> images = request.getImages().stream()
+                    .map(img -> toImageEntity(img, cardId))
+                    .collect(Collectors.toList());
+            cardImageMapper.insertImages(images);
+        }
+
+        Map<String, Long> result = new HashMap<>(
+                createVersionAndApproval(cardId, adminId, request.getChangeSummary(), "CARD_UPDATE"));
+        result.put("cardId", cardId);
+        return result;
+    }
+    
+    // ── 콘텐츠 등록/수정 ─────────────────────────────────────
+    @Transactional
+    public void saveCardContents(Long cardId, ContentUpdateRequest request, Long adminId) {
+        cardContentMapper.deleteByCardId(cardId);
+
+        if (request.getContents() != null && !request.getContents().isEmpty()) {
+            List<CardContent> contents = request.getContents().stream()
+                    .map(c -> CardContent.builder()
+                            .cardId(cardId)
+                            .contentType(c.getContentType())
+                            .title(c.getTitle())
+                            .contentHtml(c.getContentHtml())
+                            .mobileContentHtml(c.getMobileContentHtml())
+                            .displayOrder(c.getDisplayOrder())
+                            .visibleYn(c.getVisibleYn() != null ? c.getVisibleYn() : "Y")
+                            .createdBy(adminId)
+                            .build())
+                    .collect(Collectors.toList());
+            cardContentMapper.insertContents(contents);
+        }
+    }
+    
+    
+    
     /**
      * B-13 관리자 카드 목록 다중조건 동적 검색 (RQ-B13)
      */
@@ -228,7 +416,6 @@ public class AdminCardService {
     }
     
 
- // 기존 AdminCardService.java 하단에 추가
 
     /**
      * 카드 상태 강제 변경 (B-관리자 수동 처리 / 긴급 중지).
@@ -251,7 +438,7 @@ public class AdminCardService {
 
         cardMapper2.updateCardStatus(cardId, newStatus);
 
-        cardStatusHistoryMapper2.insertCardStatusHistory(
+        cardStatusHistoryMapper.insertCardStatusHistory(
                 CardStatusHistory.builder()
                         .cardId(cardId)
                         .previousStatus(previousStatus)
@@ -375,10 +562,25 @@ public class AdminCardService {
                 .visibleYn("Y")
                 .build();
     }
+    
+    private CardImage toImageEntity(ImageCreateRequest img, Long cardId) {
+        return CardImage.builder()
+                .cardId(cardId)
+                .imageType(img.getImageType())
+                .imageUrl(img.getImageUrl())
+                .originalName(img.getOriginalName())
+                .storedName(img.getStoredName())
+                .fileSize(img.getFileSize())
+                .mimeType(img.getMimeType())
+                .imageWidth(img.getImageWidth())
+                .imageHeight(img.getImageHeight())
+                .sortOrder(img.getSortOrder())
+                .build();
+    }
 
-    private String toSnapshotJson(Card card) {
+    private String toSnapshotJson(CardSnapshot snapshot) {
         try {
-            return objectMapper.writeValueAsString(card);
+            return objectMapper.writeValueAsString(snapshot);
         } catch (JsonProcessingException e) {
             return "{}";
         }

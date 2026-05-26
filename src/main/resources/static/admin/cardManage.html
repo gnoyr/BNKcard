@@ -10,13 +10,18 @@
   <tr>
 
     <!-- ===== 좌측 사이드바 ===== -->
-    <td style="width:160px; vertical-align:top; border-right:1px solid #ccc; padding:16px;">
-      <strong>카드 관리</strong><br><br>
-      <button onclick="switchMenu('list')">카드 목록</button><br><br>
-      <button onclick="switchMenu('edit-content')">카드 내용 변경</button>
-      <button onclick="switchMenu('edit-benefit')">혜택 변경</button><br><br>
-      <button onclick="switchMenu('edit-image')">이미지 변경</button>
-    </td>
+	<td style="width:200px; vertical-align:top; border-right:1px solid #ccc; background:#f9f9f9; padding:0;">
+	  <div style="padding:14px 16px 12px; border-bottom:1px solid #eee; font-size:13px; font-weight:600;">
+	    카드 관리
+	  </div>
+	
+	  <div style="padding:8px;">
+	    <button class="nav-btn" onclick="switchMenu('list')">📋 카드 목록</button><br>
+	    <button class="nav-btn" onclick="switchMenu('benefit')">🎁 혜택 목록</button><br>
+	    <button class="nav-btn" onclick="switchMenu('image')">🖼️ 이미지 목록</button><br>
+	    <button class="nav-btn" onclick="switchMenu('content')">📝 콘텐츠 목록</button>
+	  </div>
+	</td>
 
     <!-- ===== 우측 콘텐츠 ===== -->
     <td style="vertical-align:top; padding:16px;">
@@ -71,6 +76,69 @@
         </table>
         <div id="pagination"></div>
       </div>
+      
+      <!-- 혜택 목록 -->
+		<div id="page-list-benefit" style="display:none;">
+		  <div>
+		    <span>전체 혜택 <strong id="benefitTotalCount">-</strong>개</span>
+		    &nbsp;
+		    <button onclick="switchPage('page-detail-benefit', 'new')">＋ 혜택 등록</button>
+		  </div>
+		  <br>
+		  <table border="1">
+		    <thead>
+		      <tr>
+		        <th>혜택 ID</th><th>카드명</th><th>혜택명</th><th>유형</th><th>할인율</th><th>노출</th>
+		      </tr>
+		    </thead>
+		    <tbody id="benefitTableBody">
+		      <tr><td colspan="6">불러오는 중...</td></tr>
+		    </tbody>
+		  </table>
+		  <div id="benefitPagination"></div>
+		</div>
+		
+		<!-- 이미지 목록 -->
+		<div id="page-list-image" style="display:none;">
+		  <div>
+		    <span>전체 이미지 <strong id="imageTotalCount">-</strong>개</span>
+		    &nbsp;
+		    <button onclick="switchPage('page-detail-image', 'new')">＋ 이미지 등록</button>
+		  </div>
+		  <br>
+		  <table border="1">
+		    <thead>
+		      <tr>
+		        <th>이미지 ID</th><th>카드명</th><th>유형</th><th>미리보기</th><th>순서</th>
+		      </tr>
+		    </thead>
+		    <tbody id="imageTableBody">
+		      <tr><td colspan="5">불러오는 중...</td></tr>
+		    </tbody>
+		  </table>
+		  <div id="imagePagination"></div>
+		</div>
+		
+		<!-- 콘텐츠 목록 -->
+		<div id="page-list-content" style="display:none;">
+		  <div>
+		    <span>전체 콘텐츠 <strong id="contentTotalCount">-</strong>개</span>
+		    &nbsp;
+		    <button onclick="switchPage('page-detail-content', 'new')">＋ 콘텐츠 등록</button>
+		  </div>
+		  <br>
+		  <table border="1">
+		    <thead>
+		      <tr>
+		        <th>콘텐츠 ID</th><th>카드명</th><th>유형</th><th>제목</th><th>노출순서</th><th>노출여부</th>
+		      </tr>
+		    </thead>
+		    <tbody id="contentTableBody">
+		      <tr><td colspan="6">불러오는 중...</td></tr>
+		    </tbody>
+		  </table>
+		  <div id="contentPagination"></div>
+		</div>
 
       <!-- 카드 상세 화면 -->
       <div id="page-detail" style="display:none;">
@@ -169,9 +237,17 @@
   };
 
   const ALL_PAGES = [
-	'page-list', 'page-detail',
-	'page-edit-content', 'page-edit-benefit', 'page-edit-image'
+	  'page-list',
+	  'page-list-benefit',
+	  'page-list-image',
+	  'page-list-content',
+	  'page-detail',
+	  'page-detail-benefit',
+	  'page-detail-image',
+	  'page-detail-content',
+	  
   ];
+  
   function hideAll() {
     ALL_PAGES.forEach(id => document.getElementById(id).style.display = 'none');
   }
@@ -193,15 +269,30 @@
 
   // ───────────── 사이드바 메뉴 전환 ─────────────
   function switchMenu(menuId) {
-    const pageMap = {
-	  'list':         'page-list',
-	  'edit-content': 'page-edit-content',
-	  'edit-benefit': 'page-edit-benefit',
-	  'edit-image':   'page-edit-image',
+	const pageMap = {
+	  'list':    'page-list',
+	  'benefit': 'page-list-benefit',
+	  'image':   'page-list-image',
+	  'content': 'page-list-content',
 	};
+	hideAll();
+	document.getElementById(pageMap[menuId]).style.display = '';
+	
+	document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+	event.currentTarget.classList.add('active');
+	
+	// 각 목록 로드 함수 연결 (추후 구현)
+	if (menuId === 'list')    loadCards(currentPage);
+	if (menuId === 'benefit') loadBenefits(0);
+	if (menuId === 'image')   loadImages(0);
+	if (menuId === 'content') loadContents(0);
+  }
+  
+  //목록 → 상세/수정으로 이동할 때
+  function switchPage(pageId, targetId) {
     hideAll();
-    document.getElementById(pageMap[menuId]).style.display = '';
-    if (menuId === 'list') loadCards(currentPage);
+    document.getElementById(pageId).style.display = '';
+    // targetId가 'new'면 빈 폼, 숫자면 해당 데이터 로드
   }
 
   // ───────────── 목록 ─────────────
