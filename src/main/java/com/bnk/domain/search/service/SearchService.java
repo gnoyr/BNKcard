@@ -1,6 +1,7 @@
 package com.bnk.domain.search.service;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -30,18 +31,17 @@ import lombok.RequiredArgsConstructor;
 public class SearchService {
 
     private final SearchKeywordMapper searchKeywordMapper;
-    private final SearchLogMapper searchLogMapper;
-    private final CardMapper cardMapper;
-    private final CardImageMapper cardImageMapper;
-    private final CardBenefitMapper cardBenefitMapper;
+    private final SearchLogMapper     searchLogMapper;
+    private final CardMapper          cardMapper;
+    private final CardImageMapper     cardImageMapper;
+    private final CardBenefitMapper   cardBenefitMapper;
 
     /**
      * F-13 카드 검색
-     * CardMapper.findAll() 활용 (기존 동적 SQL 재사용), SEARCH_LOGS INSERT 필수
      */
     @Transactional
     public PageResponse<SearchResponse> search(String q, Long userId, int page, int size) {
-        // 기존 CardSearchRequest + CardMapper.findAll/countAll 재사용
+
         CardSearchRequest request = new CardSearchRequest();
         request.setQ(q);
         request.setPage(page);
@@ -49,30 +49,52 @@ public class SearchService {
 
         long totalCount = cardMapper.countAll(request);
 
-        // 검색 로그 저장 (결과 0건이어도 기록 - RQ-F08)
-        SearchLog log = SearchLog.builder()
+        // 검색 로그 저장 (결과 0건이어도 기록)
+        searchLogMapper.insertSearchLog(SearchLog.builder()
                 .userId(userId)
                 .keywordRaw(q)
                 .resultCount((int) totalCount)
-                .build();
-        searchLogMapper.insertSearchLog(log);
+                .build());
 
         if (totalCount == 0) {
             return PageResponse.of(Collections.emptyList(), 0L, page, size);
         }
 
         List<Card> cards = cardMapper.findAll(request);
-        List<Long> cardIds = cards.stream().map(Card::getCardId).collect(Collectors.toList());
+        List<Long> cardIds = cards.stream()
+                .map(Card::getCardId)
+                .collect(Collectors.toList());
 
-        // THUMBNAIL 이미지 N+1 방지
-        List<CardImage> thumbnails = cardImageMapper.findByCardIdsAndType(cardIds, "THUMBNAIL");
-        Map<Long, String> thumbnailMap = thumbnails.stream()
-                .collect(Collectors.toMap(CardImage::getCardId, CardImage::getImageUrl, (e, r) -> e));
+        // ── 이미지: THUMBNAIL 우선, 없으면 FRONT 폴백 ──────────────
+        List<CardImage> thumbnails =
+                cardImageMapper.findByCardIdsAndType(cardIds, "THUMBNAIL");
+
+        // HashMap으로 선언해야 putIfAbsent 가능
+        Map<Long, String> thumbnailMap = new HashMap<>(thumbnails.stream()
+                .collect(Collectors.toMap(
+                        CardImage::getCardId,
+                        CardImage::getImageUrl,
+                        (e, r) -> e)));
+
+        List<Long> noThumbnailIds = cardIds.stream()
+                .filter(id -> !thumbnailMap.containsKey(id))
+                .collect(Collectors.toList());
+
+        if (!noThumbnailIds.isEmpty()) {
+            List<CardImage> frontImages =
+                    cardImageMapper.findByCardIdsAndType(noThumbnailIds, "FRONT");
+            frontImages.forEach(img ->
+                    thumbnailMap.putIfAbsent(img.getCardId(), img.getImageUrl()));
+        }
+        // ────────────────────────────────────────────────────────────
 
         // TOP1 혜택
         List<CardBenefit> topBenefits = cardBenefitMapper.findTop1ByCardIds(cardIds);
         Map<Long, String> topBenefitMap = topBenefits.stream()
-                .collect(Collectors.toMap(CardBenefit::getCardId, CardBenefit::getDisplayText, (e, r) -> e));
+                .collect(Collectors.toMap(
+                        CardBenefit::getCardId,
+                        CardBenefit::getDisplayText,
+                        (e, r) -> e));
 
         List<SearchResponse> content = cards.stream()
                 .map(card -> SearchResponse.builder()
@@ -89,7 +111,6 @@ public class SearchService {
 
     /**
      * F-14 추천 검색어
-     * use_yn='Y' ORDER BY display_order ASC LIMIT 10
      */
     @Transactional(readOnly = true)
     public List<SearchKeyword> getSuggestKeywords() {
@@ -98,7 +119,6 @@ public class SearchService {
 
     /**
      * F-15 인기 검색어 TOP10
-     * 최근 7일 GROUP BY keyword_raw COUNT DESC
      */
     @Transactional(readOnly = true)
     public List<PopularKeywordResponse> getPopularKeywords() {

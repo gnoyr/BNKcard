@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>카드 상세 | BNK 부산은행</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; background: #f4f6fa; color: #222; }
+    button { cursor: pointer; border: none; background: none; font-family: inherit; }
+    a { text-decoration: none; color: inherit; }
+
+    /* Header */
+    .header {
+      background: #003087; color: #fff; height: 60px;
+      padding: 0 32px; display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .header-logo { font-size: 20px; font-weight: 700; }
+    .header-logo span { color: #ffd700; }
+    .header-nav { display: flex; gap: 16px; font-size: 14px; }
+    .header-nav a { color: rgba(255,255,255,0.85); }
+    .header-nav a:hover { color: #fff; }
+
+    /* 로딩 */
+    .loading-wrap {
+      text-align: center; padding: 80px 20px; color: #999;
+    }
+    .loading-spinner {
+      width: 44px; height: 44px; border: 3px solid #e0e7f5;
+      border-top-color: #003087; border-radius: 50%;
+      animation: spin 0.8s linear infinite; margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ① 상단 카드 정보 섹션 */
+    .card-hero {
+      background: #fff; border-bottom: 1px solid #eee;
+    }
+    .card-hero-inner {
+      max-width: 1000px; margin: 0 auto;
+      padding: 48px 32px; display: flex; gap: 48px; align-items: flex-start;
+    }
+    .card-image-wrap {
+      flex-shrink: 0; width: 280px; height: 180px;
+      background: linear-gradient(145deg, #e8eef6, #ccd8ef);
+      border-radius: 16px; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 8px 32px rgba(0,48,135,0.15);
+    }
+    .card-image-wrap img {
+      max-width: 90%; max-height: 160px; object-fit: contain;
+      filter: drop-shadow(0 4px 12px rgba(0,48,135,0.2));
+    }
+    .card-image-placeholder {
+      width: 220px; height: 130px;
+      background: linear-gradient(135deg, #003087, #0066cc);
+      border-radius: 12px; display: flex; align-items: center;
+      justify-content: center; color: #fff; font-size: 14px; font-weight: 600;
+      text-align: center; padding: 16px; line-height: 1.5;
+    }
+    .card-info { flex: 1; }
+    .card-badge-row { display: flex; gap: 8px; margin-bottom: 14px; }
+    .badge {
+      display: inline-block; font-size: 12px; font-weight: 600;
+      border-radius: 20px; padding: 4px 12px;
+    }
+    .badge-type { background: #e8f0fe; color: #0066cc; }
+    .badge-status { background: #e8f8f0; color: #00875a; }
+    .badge-brand { background: #fff3e0; color: #e65100; }
+    .card-title { font-size: 28px; font-weight: 800; color: #003087; margin-bottom: 8px; }
+    .card-subtitle { font-size: 16px; color: #555; margin-bottom: 6px; }
+    .card-desc { font-size: 14px; color: #777; margin-bottom: 24px; line-height: 1.7; }
+    .card-fee-row {
+      display: flex; gap: 24px; margin-bottom: 28px;
+      padding: 16px 20px; background: #f8faff; border-radius: 12px;
+    }
+    .fee-item { text-align: center; }
+    .fee-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+    .fee-value { font-size: 16px; font-weight: 700; color: #003087; }
+    .btn-apply {
+      display: inline-block; padding: 14px 40px;
+      background: linear-gradient(135deg, #003087, #0066cc);
+      color: #fff; border-radius: 50px; font-size: 16px; font-weight: 700;
+      letter-spacing: 0.5px; cursor: pointer;
+      box-shadow: 0 4px 16px rgba(0,48,135,0.3);
+      transition: transform .2s, box-shadow .2s;
+    }
+    .btn-apply:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,48,135,0.35); }
+
+    /* ② 상세 혜택 */
+    .benefit-section {
+      max-width: 1000px; margin: 32px auto; padding: 0 32px;
+    }
+    .section-heading {
+      font-size: 18px; font-weight: 700; color: #003087;
+      margin-bottom: 20px; padding-bottom: 10px;
+      border-bottom: 2px solid #003087; display: flex; align-items: center; gap: 8px;
+    }
+    .benefit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+    .benefit-card {
+      background: #fff; border-radius: 12px; padding: 20px;
+      box-shadow: 0 2px 12px rgba(0,48,135,0.08);
+      border: 1px solid #eef2fb; transition: transform .2s, box-shadow .2s;
+    }
+    .benefit-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,48,135,0.12); }
+    .benefit-category {
+      display: inline-block; font-size: 11px; font-weight: 600;
+      background: #e8f0fe; color: #0066cc; border-radius: 4px;
+      padding: 2px 8px; margin-bottom: 10px;
+    }
+    .benefit-title { font-size: 15px; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; }
+    .benefit-type-badge {
+      font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-bottom: 8px;
+      display: inline-block;
+    }
+    .type-RATE_DISCOUNT  { background: #fff3e0; color: #e65100; }
+    .type-FIXED_DISCOUNT { background: #fce4ec; color: #c62828; }
+    .type-POINT          { background: #e8f5e9; color: #2e7d32; }
+    .type-CASHBACK       { background: #e3f2fd; color: #1565c0; }
+    .type-FREE           { background: #f3e5f5; color: #6a1b9a; }
+    .benefit-rate { font-size: 22px; font-weight: 800; color: #003087; margin-bottom: 4px; }
+    .benefit-display { font-size: 13px; color: #555; line-height: 1.5; }
+    .benefit-limit { font-size: 11px; color: #999; margin-top: 6px; }
+    .no-benefit { text-align: center; padding: 40px; color: #bbb; }
+
+    /* ③ 탭 메뉴 */
+    .tab-container {
+      max-width: 1000px; margin: 0 auto; padding: 0 32px;
+    }
+    .tab-bar {
+      display: flex; gap: 0; border-bottom: 2px solid #e0e7f5;
+      margin-bottom: 0; overflow-x: auto;
+    }
+    .tab-btn {
+      padding: 14px 24px; font-size: 14px; font-weight: 600;
+      color: #888; border-bottom: 3px solid transparent;
+      white-space: nowrap; margin-bottom: -2px; transition: all .2s;
+    }
+    .tab-btn:hover { color: #003087; }
+    .tab-btn.active { color: #003087; border-bottom-color: #003087; }
+
+    .tab-content {
+      background: #fff; border-radius: 0 0 12px 12px;
+      box-shadow: 0 2px 12px rgba(0,48,135,0.06);
+      padding: 32px; min-height: 200px; display: none;
+    }
+    .tab-content.active { display: block; }
+    .tab-content-title { font-size: 16px; font-weight: 700; color: #003087; margin-bottom: 16px; }
+    .info-table { width: 100%; border-collapse: collapse; }
+    .info-table th {
+      background: #f0f4fb; color: #555; font-size: 13px;
+      font-weight: 600; padding: 12px 16px; text-align: left;
+      width: 160px; border: 1px solid #e8eef6;
+    }
+    .info-table td {
+      padding: 12px 16px; font-size: 14px; color: #333;
+      border: 1px solid #e8eef6; line-height: 1.6;
+    }
+    .content-block { margin-bottom: 24px; }
+    .content-block h4 {
+      font-size: 15px; font-weight: 700; color: #003087;
+      margin-bottom: 12px; padding-bottom: 8px;
+      border-bottom: 1px solid #eef2fb;
+    }
+    .content-html { font-size: 14px; color: #444; line-height: 1.8; }
+
+    /* 약관 탭 */
+    .terms-item {
+      display: flex; align-items: center; gap: 16px;
+      padding: 16px; background: #f8faff;
+      border-radius: 10px; margin-bottom: 12px;
+      border: 1px solid #e8eef6;
+    }
+    .terms-thumb {
+      width: 60px; height: 80px; background: #e0e7f5;
+      border-radius: 6px; overflow: hidden; flex-shrink: 0;
+    }
+    .terms-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .terms-info { flex: 1; }
+    .terms-name { font-size: 14px; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }
+    .terms-version { font-size: 12px; color: #888; margin-bottom: 8px; }
+    .terms-actions { display: flex; gap: 8px; }
+    .btn-terms-pdf {
+      padding: 6px 14px; background: #003087; color: #fff;
+      border-radius: 6px; font-size: 12px; font-weight: 600;
+    }
+    .btn-terms-view {
+      padding: 6px 14px; background: #f0f4fb; color: #003087;
+      border-radius: 6px; font-size: 12px; font-weight: 600;
+    }
+    .terms-preview { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .terms-preview img {
+      height: 100px; border-radius: 6px; border: 1px solid #dde3ef;
+      cursor: pointer; transition: transform .2s;
+    }
+    .terms-preview img:hover { transform: scale(1.05); }
+
+    /* ④ 공지사항 */
+    .notice-section {
+      max-width: 1000px; margin: 32px auto; padding: 0 32px 48px;
+    }
+    .notice-table { width: 100%; border-collapse: collapse; }
+    .notice-table th {
+      background: #f0f4fb; color: #555; font-size: 13px;
+      font-weight: 600; padding: 10px 16px; text-align: left;
+      border: 1px solid #e8eef6;
+    }
+    .notice-table td {
+      padding: 10px 16px; font-size: 13px; color: #444;
+      border: 1px solid #e8eef6; line-height: 1.5;
+    }
+    .notice-table tr:hover td { background: #f8faff; }
+
+    /* Footer */
+    footer {
+      background: #1a1a2e; color: #aaa; text-align: center;
+      padding: 32px; font-size: 13px;
+    }
+    footer strong { color: #fff; }
+
+    /* 이미지 확대 모달 */
+    .img-modal {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.85); z-index: 9000;
+      align-items: center; justify-content: center;
+    }
+    .img-modal.open { display: flex; }
+    .img-modal img { max-width: 90vw; max-height: 90vh; border-radius: 8px; }
+    .img-modal-close {
+      position: absolute; top: 20px; right: 24px;
+      color: #fff; font-size: 32px; cursor: pointer;
+    }
+
+    @media (max-width: 768px) {
+      .card-hero-inner { flex-direction: column; gap: 24px; padding: 24px 16px; }
+      .card-image-wrap { width: 100%; height: 200px; }
+      .benefit-grid { grid-template-columns: 1fr 1fr; }
+      .tab-container, .benefit-section, .notice-section { padding: 0 16px; }
+      .tab-content { padding: 20px 16px; }
+      .card-fee-row { flex-wrap: wrap; gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-logo">BNK <span>부산은행</span> 카드</div>
+  <nav class="header-nav">
+    <a href="/card-main.html">← 카드 목록</a>
+    <a href="/auth-test.html">로그인</a>
+  </nav>
+</header>
+
+<div id="main-wrap">
+  <div class="loading-wrap"><div class="loading-spinner"></div><p>카드 정보를 불러오는 중...</p></div>
+</div>
+
+<!-- 이미지 확대 모달 -->
+<div class="img-modal" id="img-modal" onclick="closeImgModal()">
+  <span class="img-modal-close">✕</span>
+  <img id="img-modal-src" src="" alt="">
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  URL에서 cardId 추출
+// ══════════════════════════════════════════════
+const cardId = new URLSearchParams(location.search).get('cardId');
+
+if (!cardId) {
+  document.getElementById('main-wrap').innerHTML =
+    '<div class="loading-wrap"><p>잘못된 접근입니다. cardId가 없습니다.</p><br><a href="/card-main.html">카드 목록으로</a></div>';
+  throw new Error('no cardId');
+}
+
+// ══════════════════════════════════════════════
+//  API 호출
+// ══════════════════════════════════════════════
+async function api(url) {
+  try {
+    const res = await fetch(url, { credentials: 'include' });
+    if (!res.ok) return null;
+    return (await res.json())?.data ?? null;
+  } catch { return null; }
+}
+
+// ══════════════════════════════════════════════
+//  유틸
+// ══════════════════════════════════════════════
+function fmtFee(v) {
+  if (!v && v !== 0) return '-';
+  return Number(v) === 0 ? '연회비 없음' : Number(v).toLocaleString() + '원';
+}
+function fmtDate(v) {
+  if (!v) return '-';
+  return new Date(v).toLocaleDateString('ko-KR');
+}
+function cardTypeName(t) {
+  return { CREDIT:'신용카드', CHECK:'체크카드', PREPAID:'선불카드', HYBRID:'하이브리드' }[t] ?? t;
+}
+function benefitTypeLabel(t) {
+  return { RATE_DISCOUNT:'할인율', FIXED_DISCOUNT:'고정할인', POINT:'포인트', CASHBACK:'캐시백', FREE:'무료' }[t] ?? t;
+}
+
+// ══════════════════════════════════════════════
+//  카드 상세 데이터 로드 — GET /api/cards/{cardId}
+// ══════════════════════════════════════════════
+async function loadCard() {
+  const card = await api(`/api/cards/${cardId}`);
+
+  if (!card) {
+    document.getElementById('main-wrap').innerHTML =
+      '<div class="loading-wrap"><p>카드 정보를 불러올 수 없습니다.</p><br><a href="/card-main.html">카드 목록으로</a></div>';
+    return;
+  }
+
+  // 약관 파일 로드 — GET /api/terms/{termsId}/files
+  // card.termsFiles 에 termsId가 있으면 각각 파일 조회
+  const termsWithFiles = await loadTermsFiles(card.termsFiles ?? []);
+
+  renderPage(card, termsWithFiles);
+}
+
+// 약관별 파일 로드
+async function loadTermsFiles(termsList) {
+  if (!termsList?.length) return [];
+  const results = await Promise.all(
+    termsList.map(async t => {
+      if (!t.termsId) return { ...t, files: [] };
+      const files = await api(`/api/terms/${t.termsId}/files`);
+      return { ...t, files: files ?? [] };
+    })
+  );
+  return results;
+}
+
+// ══════════════════════════════════════════════
+//  전체 페이지 렌더링
+// ══════════════════════════════════════════════
+function renderPage(card, termsWithFiles) {
+  // 대표 이미지 (FRONT 또는 THUMBNAIL)
+  const frontImg = card.images?.find(i => i.imageType === 'FRONT')?.imageUrl
+                ?? card.images?.find(i => i.imageType === 'THUMBNAIL')?.imageUrl
+                ?? null;
+
+  document.getElementById('main-wrap').innerHTML = `
+    <!-- ① 상단 카드 정보 -->
+    <section class="card-hero">
+      <div class="card-hero-inner">
+        <div class="card-image-wrap" id="card-img-wrap">
+          ${frontImg
+            ? `<img src="${frontImg}" alt="${card.cardName}"
+                    onerror="this.style.display='none'; document.getElementById('card-img-wrap').innerHTML='<div class=\\'card-image-placeholder\\'>${card.cardName}</div>'">`
+            : `<div class="card-image-placeholder">${card.cardName}</div>`}
+        </div>
+        <div class="card-info">
+          <div class="card-badge-row">
+            <span class="badge badge-type">${cardTypeName(card.cardType)}</span>
+            ${card.cardStatus === 'PUBLISHED' ? '<span class="badge badge-status">게시중</span>' : ''}
+            ${card.brandName ? `<span class="badge badge-brand">${card.brandName}</span>` : ''}
+          </div>
+          <h1 class="card-title">${card.cardName}</h1>
+          <p class="card-subtitle">${card.companyName ?? 'BNK부산은행'}</p>
+          <p class="card-desc">${card.summaryDescription ?? ''}</p>
+          <div class="card-fee-row">
+            <div class="fee-item">
+              <div class="fee-label">국내 연회비</div>
+              <div class="fee-value">${fmtFee(card.annualFeeDomestic)}</div>
+            </div>
+            <div class="fee-item">
+              <div class="fee-label">해외 연회비</div>
+              <div class="fee-value">${fmtFee(card.annualFeeOverseas)}</div>
+            </div>
+            ${card.previousMonthSpend ? `
+            <div class="fee-item">
+              <div class="fee-label">전월 실적</div>
+              <div class="fee-value">${Number(card.previousMonthSpend).toLocaleString()}원</div>
+            </div>` : ''}
+            ${card.minimumAge || card.maximumAge ? `
+            <div class="fee-item">
+              <div class="fee-label">발급 연령</div>
+              <div class="fee-value">${card.minimumAge ?? 0}~${card.maximumAge ?? 99}세</div>
+            </div>` : ''}
+          </div>
+          <button class="btn-apply" onclick="applyCard(${card.cardId})">
+            발급 신청
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ② 상세 혜택 -->
+    <section class="benefit-section">
+      <div class="section-heading">💳 상세 혜택 정보</div>
+      ${renderBenefits(card.benefits ?? [])}
+    </section>
+
+    <!-- ③ 탭 메뉴 -->
+    <div class="tab-container">
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab(this,'tab-product')">상품안내</button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-service')">서비스안내</button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-fee')">연회비/수수료</button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-etc')">기타</button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-terms')">상품약관</button>
+      </div>
+
+      <!-- 상품안내 탭 -->
+      <div class="tab-content active" id="tab-product">
+        ${renderTabProduct(card)}
+      </div>
+
+      <!-- 서비스안내 탭 -->
+      <div class="tab-content" id="tab-service">
+        ${renderTabService(card)}
+      </div>
+
+      <!-- 연회비/수수료 탭 -->
+      <div class="tab-content" id="tab-fee">
+        ${renderTabFee(card)}
+      </div>
+
+      <!-- 기타 탭 -->
+      <div class="tab-content" id="tab-etc">
+        ${renderTabEtc(card)}
+      </div>
+
+      <!-- 상품약관 탭 -->
+      <div class="tab-content" id="tab-terms">
+        ${renderTabTerms(termsWithFiles)}
+      </div>
+    </div>
+
+    <!-- ④ 공지사항 -->
+    <section class="notice-section">
+      <div class="section-heading">📢 유의사항</div>
+      ${renderNotice(card)}
+    </section>
+
+    <footer>
+      <strong>BNK 부산은행</strong><br>
+      본 카드 상품 정보는 2024년 기준이며 변경될 수 있습니다.
+    </footer>
+  `;
+}
+
+// ── 혜택 렌더링 ──
+function renderBenefits(benefits) {
+  if (!benefits.length) {
+    return '<div class="no-benefit">등록된 혜택 정보가 없습니다.</div>';
+  }
+  return `<div class="benefit-grid">
+    ${benefits.map(b => {
+      const rateVal = b.discountRate ? `${b.discountRate}%` :
+                     b.cashbackRate ? `${b.cashbackRate}%` :
+                     b.pointRate    ? `${b.pointRate}%`    : null;
+      return `
+        <div class="benefit-card">
+          ${b.categoryName ? `<span class="benefit-category">${b.categoryName}</span>` : ''}
+          <div class="benefit-title">${b.benefitTitle ?? ''}</div>
+          ${b.benefitType ? `<span class="benefit-type-badge type-${b.benefitType}">${benefitTypeLabel(b.benefitType)}</span>` : ''}
+          ${rateVal ? `<div class="benefit-rate">${rateVal}</div>` : ''}
+          ${b.displayText ? `<div class="benefit-display">${b.displayText}</div>` : ''}
+          ${b.monthlyLimitAmount
+            ? `<div class="benefit-limit">월 한도 ${Number(b.monthlyLimitAmount).toLocaleString()}원</div>` : ''}
+        </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ── 상품안내 탭 ──
+function renderTabProduct(card) {
+  // INTRO, GUIDE 타입 콘텐츠 필터
+  const introContents = (card.contents ?? []).filter(c =>
+    ['INTRO','GUIDE'].includes(c.contentType));
+
+  if (!introContents.length) {
+    return `
+      <div class="tab-content-title">상품 개요</div>
+      <table class="info-table">
+        <tr><th>카드명</th><td>${card.cardName}</td></tr>
+        <tr><th>카드사</th><td>${card.companyName ?? 'BNK부산은행'}</td></tr>
+        <tr><th>카드 유형</th><td>${cardTypeName(card.cardType)}</td></tr>
+        <tr><th>브랜드</th><td>${card.brandName ?? '-'}</td></tr>
+        <tr><th>추천 대상</th><td>${card.targetUser ?? '-'}</td></tr>
+        <tr><th>게시 기간</th><td>
+          ${card.publishStartAt ? fmtDate(card.publishStartAt) : '즉시'} ~
+          ${card.publishEndAt   ? fmtDate(card.publishEndAt) : '무기한'}
+        </td></tr>
+      </table>`;
+  }
+
+  return introContents.map(c => `
+    <div class="content-block">
+      <h4>${c.title ?? '상품 안내'}</h4>
+      <div class="content-html">${c.contentHtml ?? ''}</div>
+    </div>
+  `).join('');
+}
+
+// ── 서비스안내 탭 ──
+function renderTabService(card) {
+  const serviceContents = (card.contents ?? []).filter(c => c.contentType === 'GUIDE');
+  if (!serviceContents.length) {
+    return '<p style="color:#bbb;text-align:center;padding:40px">등록된 서비스 안내가 없습니다.</p>';
+  }
+  return serviceContents.map(c => `
+    <div class="content-block">
+      <h4>${c.title ?? '서비스 안내'}</h4>
+      <div class="content-html">${c.contentHtml ?? ''}</div>
+    </div>
+  `).join('');
+}
+
+// ── 연회비/수수료 탭 ──
+function renderTabFee(card) {
+  return `
+    <div class="tab-content-title">연회비 및 수수료 안내</div>
+    <table class="info-table">
+      <tr><th>국내 연회비</th><td>${fmtFee(card.annualFeeDomestic)}</td></tr>
+      <tr><th>해외 연회비</th><td>${fmtFee(card.annualFeeOverseas)}</td></tr>
+      <tr><th>전월 실적 조건</th>
+        <td>${card.previousMonthSpend
+              ? Number(card.previousMonthSpend).toLocaleString() + '원 이상'
+              : '조건 없음'}</td></tr>
+      <tr><th>신용 한도</th>
+        <td>${card.creditLimitMin || card.creditLimitMax
+              ? `${card.creditLimitMin ? Number(card.creditLimitMin).toLocaleString()+'원' : '-'} ~
+                 ${card.creditLimitMax ? Number(card.creditLimitMax).toLocaleString()+'원' : '-'}`
+              : '-'}</td></tr>
+      <tr><th>발급 대상 연령</th>
+        <td>${card.minimumAge || card.maximumAge
+              ? `${card.minimumAge ?? 0}세 ~ ${card.maximumAge ?? 99}세`
+              : '제한 없음'}</td></tr>
+    </table>
+    <p style="color:#999;font-size:12px;margin-top:16px;">
+      ※ 연회비는 카드 발급 시 청구되며, 청구 방식에 따라 다를 수 있습니다.<br>
+      ※ 자세한 수수료는 홈페이지 또는 고객센터(1588-0079)를 통해 확인하세요.
+    </p>`;
+}
+
+// ── 기타 탭 ──
+function renderTabEtc(card) {
+  const etcContents = (card.contents ?? []).filter(c =>
+    ['NOTICE','FAQ','EVENT'].includes(c.contentType));
+
+  if (!etcContents.length) {
+    return `
+      <div class="tab-content-title">기타 안내</div>
+      <p style="color:#888;line-height:1.8;">
+        • 본 카드는 BNK부산은행에서 발급합니다.<br>
+        • 카드 발급 관련 문의: 1588-0079<br>
+        • 분실/도난 신고: 1588-0079 (24시간)<br>
+        • 자세한 내용은 가까운 부산은행 영업점을 방문해 주세요.
+      </p>`;
+  }
+
+  return etcContents.map(c => `
+    <div class="content-block">
+      <h4>${c.title ?? '기타'}</h4>
+      <div class="content-html">${c.contentHtml ?? ''}</div>
+    </div>
+  `).join('');
+}
+
+// ── 상품약관 탭 ──
+function renderTabTerms(termsWithFiles) {
+  if (!termsWithFiles.length) {
+    return '<p style="color:#bbb;text-align:center;padding:40px">연결된 약관 정보가 없습니다.</p>';
+  }
+
+  return termsWithFiles.map(t => {
+    const pdfFile   = t.files?.find(f => f.fileType === 'PDF');
+    const imgFiles  = t.files?.filter(f => f.fileType === 'IMAGE') ?? [];
+
+    return `
+      <div class="terms-item">
+        <div class="terms-thumb">
+          ${imgFiles.length
+            ? `<img src="${imgFiles[0].filePath}" alt="${t.title}"
+                    onerror="this.style.display='none'">`
+            : ''}
+        </div>
+        <div class="terms-info">
+          <div class="terms-name">${t.title ?? '약관'}</div>
+          <div class="terms-version">
+            ${t.version ? `버전 ${t.version}` : ''}
+            ${t.requiredYn === 'Y' ? ' · 필수 동의' : ''}
+          </div>
+          <div class="terms-actions">
+            ${pdfFile ? `
+              <a class="btn-terms-pdf" href="${pdfFile.filePath}"
+                 target="_blank" download="${t.title ?? '약관'}.pdf">
+                📄 PDF 다운로드
+              </a>` : ''}
+            ${imgFiles.length ? `
+              <button class="btn-terms-view"
+                onclick="toggleTermsPreview('terms-preview-${t.termsId}')">
+                🖼️ 미리보기
+              </button>` : ''}
+          </div>
+          ${imgFiles.length ? `
+            <div class="terms-preview" id="terms-preview-${t.termsId}" style="display:none">
+              ${imgFiles.slice(0, 5).map(f =>
+                `<img src="${f.filePath}" alt="약관 페이지"
+                      onclick="openImgModal('${f.filePath}')"
+                      onerror="this.style.display='none'">`
+              ).join('')}
+            </div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── 공지사항 ──
+function renderNotice(card) {
+  // NOTICE 타입 콘텐츠 또는 하드코딩 유의사항
+  const notices = (card.contents ?? []).filter(c => c.contentType === 'NOTICE');
+
+  if (notices.length) {
+    return `<table class="notice-table">
+      <thead><tr><th style="width:80px">번호</th><th>제목</th><th style="width:100px">구분</th></tr></thead>
+      <tbody>
+        ${notices.map((n, i) => `
+          <tr><td>${i+1}</td><td>${n.title ?? '-'}</td><td>안내</td></tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+  }
+
+  // 기본 유의사항
+  return `<table class="notice-table">
+    <thead><tr><th style="width:80px">번호</th><th>유의사항</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>본 카드는 만 19세 이상 대한민국 국적자에 한해 발급 가능합니다.</td></tr>
+      <tr><td>2</td><td>연회비는 카드 발급 후 첫 결제 시 청구됩니다.</td></tr>
+      <tr><td>3</td><td>혜택은 전월 실적 조건 충족 시 적용됩니다.</td></tr>
+      <tr><td>4</td><td>카드 이용 한도는 신용도에 따라 달라질 수 있습니다.</td></tr>
+      <tr><td>5</td><td>분실·도난 시 즉시 BNK부산은행 고객센터(1588-0079)에 신고해 주세요.</td></tr>
+    </tbody>
+  </table>`;
+}
+
+// ══════════════════════════════════════════════
+//  탭 전환
+// ══════════════════════════════════════════════
+function switchTab(btn, tabId) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(tabId)?.classList.add('active');
+}
+
+// ══════════════════════════════════════════════
+//  약관 미리보기 토글
+// ══════════════════════════════════════════════
+function toggleTermsPreview(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+}
+
+// ══════════════════════════════════════════════
+//  이미지 확대 모달
+// ══════════════════════════════════════════════
+function openImgModal(src) {
+  document.getElementById('img-modal-src').src = src;
+  document.getElementById('img-modal').classList.add('open');
+}
+function closeImgModal() {
+  document.getElementById('img-modal').classList.remove('open');
+}
+
+// ══════════════════════════════════════════════
+//  발급 신청
+// ══════════════════════════════════════════════
+function applyCard(cardId) {
+  // 로그인 상태 확인 후 신청 페이지로 이동
+  // 현재는 카드 신청 API로 바로 이동 (실제로는 로그인 체크 필요)
+  const ok = confirm('카드 발급을 신청하시겠습니까?\n로그인이 필요합니다.');
+  if (ok) location.href = `/auth-test.html?redirect=/apply?cardId=${cardId}`;
+}
+
+// ══════════════════════════════════════════════
+//  초기화
+// ══════════════════════════════════════════════
+loadCard();
+</script>
+</body>
+</html>
