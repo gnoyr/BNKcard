@@ -3946,6 +3946,365 @@ VALUES (NULL, 'sess_anon_003', '쇼핑 많이 하는데 좋은 카드는?', 'BNK
 
 COMMIT;
 
+-- ==============================================================
+-- CARD_KEYWORDS 초기 데이터 (카드-검색키워드 매핑)
+-- keyword_id 확인 후 실행 (SELECT keyword_id, keyword FROM SEARCH_KEYWORDS ORDER BY display_order)
+-- ==============================================================
+
+-- 주유(keyword_id=1) 관련 카드
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101005, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '주유' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101007, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '주유' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101013, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '주유' AND deleted_yn = 'N';
+
+-- 체크카드(keyword_id=2)
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10201001, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '체크카드' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10201002, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '체크카드' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10201003, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '체크카드' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10201004, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '체크카드' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10201005, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '체크카드' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10201006, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '체크카드' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10201007, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '체크카드' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10201008, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '체크카드' AND deleted_yn = 'N';
+
+-- 신용카드(keyword_id=3)
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101001, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '신용카드' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101002, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '신용카드' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101003, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '신용카드' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101008, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '신용카드' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101012, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '신용카드' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101014, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '신용카드' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101015, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '신용카드' AND deleted_yn = 'N';
+
+-- 캐시백(keyword_id=4)
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101003, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '캐시백' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101008, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '캐시백' AND deleted_yn = 'N';
+
+-- 포인트(keyword_id=5)
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101001, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '포인트' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101002, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '포인트' AND deleted_yn = 'N';
+
+-- 여행(keyword_id=6)
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101001, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '여행' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101002, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '여행' AND deleted_yn = 'N';
+
+-- 마일리지(keyword_id=7)
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101002, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '마일리지' AND deleted_yn = 'N';
+
+-- 연회비없음(keyword_id=8)
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10201006, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '연회비없음' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10201007, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '연회비없음' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10301001, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '연회비없음' AND deleted_yn = 'N';
+
+-- 쇼핑(keyword_id=9)
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101003, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '쇼핑' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101009, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '쇼핑' AND deleted_yn = 'N';
+
+-- 교통(keyword_id=10)
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101007, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '교통' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10201006, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '교통' AND deleted_yn = 'N';
+
+-- 하이패스(keyword_id 확인)
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101007, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '하이패스' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101004, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '하이패스' AND deleted_yn = 'N';
+
+-- 선불카드
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10301001, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '선불카드' AND deleted_yn = 'N';
+
+-- 동백전
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10201003, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '지역화폐' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10301001, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '지역화폐' AND deleted_yn = 'N';
+
+-- REX2
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101001, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = 'REX2' AND deleted_yn = 'N';
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101002, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = 'REX2' AND deleted_yn = 'N';
+
+-- 홈쇼핑
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101009, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '홈쇼핑' AND deleted_yn = 'N';
+
+-- 소호
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101005, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '소호' AND deleted_yn = 'N';
+
+-- 스포츠
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101010, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '스포츠' AND deleted_yn = 'N';
+
+-- 친환경
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10201005, keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS WHERE keyword = '친환경' AND deleted_yn = 'N';
+
+-- 신용카드 누락분
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101003, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='신용카드' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101003 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101008, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='신용카드' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101008 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101012, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='신용카드' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101012 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101014, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='신용카드' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101014 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101015, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='신용카드' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101015 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+-- 캐시백
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101003, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='캐시백' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101003 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+-- 포인트
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101001, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='포인트' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101001 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+-- 여행
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101001, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='여행' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101001 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101002, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='여행' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101002 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+-- 마일리지
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101002, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='마일리지' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101002 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+-- 쇼핑
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101009, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='쇼핑' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101009 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+-- 하이패스
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101007, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='하이패스' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101007 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101004, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='하이패스' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101004 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+-- 선불카드
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10301001, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='선불카드' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10301001 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+-- 지역화폐
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10201003, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='지역화폐' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10201003 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10301001, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='지역화폐' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10301001 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+-- 홈쇼핑
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101009, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='홈쇼핑' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101009 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+-- 소호
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101005, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='소호' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101005 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+-- 스포츠
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101010, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='스포츠' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101010 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+-- 친환경
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10201005, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='친환경' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10201005 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+-- ─── 신규 키워드 (SEARCH_KEYWORDS에 없으면 먼저 INSERT) ───────────
+
+-- 영화 키워드 추가
+INSERT INTO SEARCH_KEYWORDS (keyword, use_yn, display_order, created_at, created_by, deleted_yn)
+SELECT '영화', 'Y', 31, SYSTIMESTAMP, 1, 'N' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM SEARCH_KEYWORDS WHERE keyword='영화' AND deleted_yn='N');
+
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101015, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='영화' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101015 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+-- 커피 키워드 추가
+INSERT INTO SEARCH_KEYWORDS (keyword, use_yn, display_order, created_at, created_by, deleted_yn)
+SELECT '커피', 'Y', 32, SYSTIMESTAMP, 1, 'N' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM SEARCH_KEYWORDS WHERE keyword='커피' AND deleted_yn='N');
+
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101008, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='커피' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101008 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101015, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='커피' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101015 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+-- 편의점 키워드 추가
+INSERT INTO SEARCH_KEYWORDS (keyword, use_yn, display_order, created_at, created_by, deleted_yn)
+SELECT '편의점', 'Y', 33, SYSTIMESTAMP, 1, 'N' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM SEARCH_KEYWORDS WHERE keyword='편의점' AND deleted_yn='N');
+
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101011, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='편의점' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101011 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+-- 배달 키워드 추가
+INSERT INTO SEARCH_KEYWORDS (keyword, use_yn, display_order, created_at, created_by, deleted_yn)
+SELECT '배달', 'Y', 34, SYSTIMESTAMP, 1, 'N' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM SEARCH_KEYWORDS WHERE keyword='배달' AND deleted_yn='N');
+
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10201006, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='배달' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10201006 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+-- 동백전 키워드 추가
+INSERT INTO SEARCH_KEYWORDS (keyword, use_yn, display_order, created_at, created_by, deleted_yn)
+SELECT '동백전', 'Y', 35, SYSTIMESTAMP, 1, 'N' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM SEARCH_KEYWORDS WHERE keyword='동백전' AND deleted_yn='N');
+
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10201003, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='동백전' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10201003 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10301001, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='동백전' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10301001 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+-- 기업카드 키워드 추가
+INSERT INTO SEARCH_KEYWORDS (keyword, use_yn, display_order, created_at, created_by, deleted_yn)
+SELECT '기업카드', 'Y', 23, SYSTIMESTAMP, 1, 'N' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM SEARCH_KEYWORDS WHERE keyword='기업카드' AND deleted_yn='N');
+
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101004, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='기업카드' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101004 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101005, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='기업카드' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101005 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101016, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='기업카드' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101016 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101017, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='기업카드' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101017 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101018, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='기업카드' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101018 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+-- 대중교통 키워드 추가
+INSERT INTO SEARCH_KEYWORDS (keyword, use_yn, display_order, created_at, created_by, deleted_yn)
+SELECT '대중교통', 'Y', 36, SYSTIMESTAMP, 1, 'N' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM SEARCH_KEYWORDS WHERE keyword='대중교통' AND deleted_yn='N');
+
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101014, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='대중교통' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101014 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+-- 보험 키워드 추가
+INSERT INTO SEARCH_KEYWORDS (keyword, use_yn, display_order, created_at, created_by, deleted_yn)
+SELECT '보험', 'Y', 37, SYSTIMESTAMP, 1, 'N' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM SEARCH_KEYWORDS WHERE keyword='보험' AND deleted_yn='N');
+
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10101012, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='보험' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10101012 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn)
+SELECT 10201008, sk.keyword_id, SYSTIMESTAMP, 1, 'N' FROM SEARCH_KEYWORDS sk
+WHERE sk.keyword='보험' AND sk.deleted_yn='N'
+AND NOT EXISTS (SELECT 1 FROM CARD_KEYWORDS ck WHERE ck.card_id=10201008 AND ck.keyword_id=sk.keyword_id AND ck.deleted_yn='N');
+
+COMMIT;
+
 
 
 

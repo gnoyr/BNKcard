@@ -122,11 +122,17 @@ public class CardService {
         // THUMBNAIL 이미지 한 번에 조회
         List<CardImage> thumbnails = cardImageMapper.findByCardIdsAndType(cardIds, "THUMBNAIL");
         Map<Long, String> thumbnailMap = thumbnails.stream()
-                .collect(Collectors.toMap(
-                        CardImage::getCardId,
-                        CardImage::getImageUrl,
-                        (e, r) -> e
-                ));
+                .collect(Collectors.toMap(CardImage::getCardId, CardImage::getImageUrl, (e, r) -> e));
+
+        // THUMBNAIL이 없는 카드는 FRONT 이미지로 보완
+        List<Long> noThumbnailIds = cardIds.stream()
+                .filter(id -> !thumbnailMap.containsKey(id))
+                .collect(Collectors.toList());
+
+        if (!noThumbnailIds.isEmpty()) {
+            List<CardImage> frontImages = cardImageMapper.findByCardIdsAndType(noThumbnailIds, "FRONT");
+            frontImages.forEach(img -> thumbnailMap.putIfAbsent(img.getCardId(), img.getImageUrl()));
+        }
 
         // display_order = 1인 혜택 한 번에 조회 (새 Mapper 메서드 필요 - 아래 설명)
         List<CardBenefit> topBenefits = cardBenefitMapper.findTop1ByCardIds(cardIds);
@@ -186,10 +192,18 @@ public class CardService {
 
         // THUMBNAIL 이미지 한 번에 조회
         List<Long> cardIds = cards.stream().map(Card::getCardId).collect(Collectors.toList());
+        
         List<CardImage> thumbnails = cardImageMapper.findByCardIdsAndType(cardIds, "THUMBNAIL");
         Map<Long, String> thumbnailMap = thumbnails.stream()
                 .collect(Collectors.toMap(CardImage::getCardId, CardImage::getImageUrl, (e, r) -> e));
 
+        List<Long> noThumbnailIds = cardIds.stream()
+                .filter(id -> !thumbnailMap.containsKey(id))
+                .collect(Collectors.toList());
+        if (!noThumbnailIds.isEmpty()) {
+            List<CardImage> frontImages = cardImageMapper.findByCardIdsAndType(noThumbnailIds, "FRONT");
+            frontImages.forEach(img -> thumbnailMap.putIfAbsent(img.getCardId(), img.getImageUrl()));
+        }
         // display_order = 1인 혜택
         List<CardBenefit> topBenefits = cardBenefitMapper.findTop1ByCardIds(cardIds);
         Map<Long, String> topBenefitMap = topBenefits.stream()
