@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.bnk.domain.card.mapper.CardStatusHistoryMapper2">
+<mapper namespace="com.bnk.domain.card.mapper.CardStatusHistoryMapper">
 
     <!-- CARD_STATUS_HISTORIES INSERT — Oracle trigger(TRG_CARD_STATUS_HISTORIES_BI) + SEQ_CARD_STATUS_HISTORIES -->
     <insert id="insertCardStatusHistory">

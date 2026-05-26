@@ -5,8 +5,8 @@ import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import com.bnk.domain.card.model.CardImage;
 import com.bnk.domain.card.model2.Card;
-import com.bnk.domain.card.model2.CardImage;
 
 @Mapper
 public interface CardMapper2 {
@@ -50,22 +50,6 @@ public interface CardMapper2 {
 		void updateCardStatus(@Param("cardId") Long cardId,
 							  @Param("cardStatus") String cardStatus);
 		
-		
-		// 카드 이미지 조회 ---------------------------------------
-		List<CardImage> getImage(@Param("cardId") Long cardId);
-	
-		// 카드 이미지리스트 등록
-		void insertImage(@Param("imageList") List<CardImage> images);
-		
-		// 이미지 수정
-		void updateImage(CardImage image);
-		
-		// 이미지 삭제
-		void deleteImage(@Param("imageId") Long imageId);	
-		
-		// 카드 전체 이미지 삭제 (카드 삭제 시)
-	    void deleteImageByCardId(@Param("cardId") Long cardId);
-
 		
 
 }
