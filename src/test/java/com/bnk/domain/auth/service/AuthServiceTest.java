@@ -47,7 +47,7 @@ import com.bnk.global.email.EmailService;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.util.CookieUtil;
-import com.bnk.global.util.MemoryTokenStore;
+import com.bnk.global.util.TokenStore;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -61,7 +61,7 @@ class AuthServiceTest {
     @Mock private PasswordEncoder         passwordEncoder;
     @Mock private JwtTokenProvider        jwtTokenProvider;
     @Mock private CookieUtil              cookieUtil;
-    @Mock private MemoryTokenStore        tokenStore;
+    @Mock private TokenStore        tokenStore;
 
     // ── 추가 Mock (AuthService 생성자 주입에 필요) ─────────────────────
     @Mock private TermsMapper             termsMapper;
