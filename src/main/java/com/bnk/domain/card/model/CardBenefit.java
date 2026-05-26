@@ -26,6 +26,7 @@ public class CardBenefit {
     private String visibleYn;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String benefitCondition;
     // JOIN 필드
     private String categoryName;
     private String iconCode;

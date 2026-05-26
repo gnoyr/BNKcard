@@ -78,23 +78,31 @@ public class AdminCardService {
         // 카드코드 중복 체크 (CardMapper.findAdminCards 재사용 대신 간단히)
     	// 1. CARDS INSERT (DRAFT)
     	Card card = Card.builder()
-    	        .cardCode(request.getCardCode())
-    	        .cardType(request.getCardType())
-    	        .cardName(request.getCardName())
-    	        .companyName(request.getCompanyName())
-    	        .brandName(request.getBrandName())
-    	        .annualFeeDomestic(request.getAnnualFeeDomestic())
-    	        .annualFeeOverseas(request.getAnnualFeeOverseas())
-    	        .previousMonthSpend(request.getPreviousMonthSpend() != null    // ← 추가
-    	                ? request.getPreviousMonthSpend() : 0L)
-    	        .minimumAge(request.getMinimumAge())                           // ← 추가
-    	        .maximumAge(request.getMaximumAge())                           // ← 추가
-    	        .targetUser(request.getTargetUser())                           // ← 추가
-    	        .summaryDescription(request.getSummaryDescription())
-    	        .publishStartAt(request.getPublishStartAt())
-    	        .publishEndAt(request.getPublishEndAt())
-    	        .createdBy(adminId)
-    	        .build();
+	        .cardCode(request.getCardCode())
+	        .cardType(request.getCardType())
+	        .cardName(request.getCardName())
+	        .companyName(request.getCompanyName())
+	        .companyCode(request.getCompanyCode() != null      // ← 추가
+	                ? request.getCompanyCode() : "01")
+	        .brandName(request.getBrandName())
+	        .annualFeeDomestic(request.getAnnualFeeDomestic())
+	        .annualFeeOverseas(request.getAnnualFeeOverseas())
+	        .previousMonthSpend(request.getPreviousMonthSpend() != null
+	                ? request.getPreviousMonthSpend() : 0L)
+	        .minimumAge(request.getMinimumAge())
+	        .maximumAge(request.getMaximumAge())
+	        .creditLimitMin(request.getCreditLimitMin())        // ← 추가
+	        .creditLimitMax(request.getCreditLimitMax())        // ← 추가
+	        .targetUser(request.getTargetUser())
+	        .summaryDescription(request.getSummaryDescription())
+	        .searchableYn(request.getSearchableYn() != null    // ← 추가
+	                ? request.getSearchableYn() : "Y")
+	        .visibleYn(request.getVisibleYn() != null          // ← 추가
+	                ? request.getVisibleYn() : "Y")
+	        .publishStartAt(request.getPublishStartAt())
+	        .publishEndAt(request.getPublishEndAt())
+	        .createdBy(adminId)
+	        .build();
 
         cardMapper.insertCard(card); // keyProperty=cardId 자동 주입
 
@@ -219,17 +227,36 @@ public class AdminCardService {
                         ? request.getSearchableYn() : existing.getSearchableYn())
                 .visibleYn(request.getVisibleYn() != null
                         ? request.getVisibleYn() : existing.getVisibleYn())
+                .deletedYn(request.getDeletedYn() != null
+                ? request.getDeletedYn() : existing.getDeletedYn())
+                .deletedAt(("Y".equals(request.getDeletedYn()) && !"Y".equals(existing.getDeletedYn()))
+                        ? LocalDateTime.now() : existing.getDeletedAt())                        
+                .cardStatus(request.getCardStatus() != null
+		                ? request.getCardStatus() : existing.getCardStatus())
                 // existing 고정
                 .approvalRequiredYn(existing.getApprovalRequiredYn())
-                .cardStatus(existing.getCardStatus())
                 .applicationCount(existing.getApplicationCount())
                 .createdBy(existing.getCreatedBy())
                 .createdAt(existing.getCreatedAt())
                 .updatedBy(adminId)                    // ← 추가
                 .updatedAt(LocalDateTime.now())        // ← 추가
-                .deletedYn(existing.getDeletedYn())
-                .deletedAt(existing.getDeletedAt())
                 .build();
+        
+		// 상태 변경 시에만 이력 INSERT
+		String previousStatus = existing.getCardStatus();
+		String newStatus = request.getCardStatus();
+		
+		if (newStatus != null && !newStatus.equals(previousStatus)) {
+		    cardStatusHistoryMapper.insertCardStatusHistory(
+		        CardStatusHistory.builder()
+		            .cardId(cardId)
+		            .previousStatus(previousStatus)
+		            .changedStatus(newStatus)
+		            .changedBy(adminId)
+		            .changedReason(request.getChangeSummary())
+		            .build()
+		    );
+		}
         
         // 혜택, 이미지 현재 DB에서 조회 및 스냅샷 생성
         List<CardBenefit> benefits = cardBenefitMapper.findByCardId(cardId);
@@ -241,7 +268,6 @@ public class AdminCardService {
                 .images(images)
                 .build();        
         String snapshotJson = toSnapshotJson(snapshot);
-
         
         // 카드 버전 등록
         int nextNo = cardVersionMapper2.getLatestVersionSeq(cardId) + 1;
