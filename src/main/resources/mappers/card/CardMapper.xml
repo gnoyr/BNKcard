@@ -35,17 +35,15 @@
     </resultMap>
 
     <!-- ── 사용자 카드 목록 동적 검색 ─────────────────────── -->
-    <select id="findAll" resultMap="cardMap">
+	<!-- ── 사용자 카드 목록 동적 검색 ─────────────────────── -->
+	<select id="findAll" resultMap="cardMap">
 	    SELECT DISTINCT c.*
 	    FROM CARDS c
 	    <if test="q != null and q != ''">
-	        LEFT JOIN CARD_KEYWORDS  ck ON c.card_id    = ck.card_id
-	                                   AND ck.deleted_yn = 'N'
+	        LEFT JOIN CARD_KEYWORDS   ck ON c.card_id    = ck.card_id
+	                                    AND ck.deleted_yn = 'N'
 	        LEFT JOIN SEARCH_KEYWORDS sk ON ck.keyword_id = sk.keyword_id
 	                                    AND sk.deleted_yn  = 'N'
-	    </if>
-	    <if test="categoryId != null">
-	        LEFT JOIN CARD_BENEFITS cb ON c.card_id = cb.card_id
 	    </if>
 	    WHERE c.card_status   = 'PUBLISHED'
 	      AND c.visible_yn    = 'Y'
@@ -68,7 +66,24 @@
 	      AND c.company_name LIKE '%' || #{companyName} || '%'
 	    </if>
 	    <if test="categoryId != null">
-	      AND cb.category_id = #{categoryId}
+	      AND EXISTS (
+	          SELECT 1 FROM CARD_BENEFITS cb
+	          WHERE  cb.card_id    = c.card_id
+	            AND  cb.category_id = #{categoryId}
+	            AND  cb.visible_yn  = 'Y'
+	      )
+	    </if>
+	    <if test="categoryIds != null and categoryIds.size &gt; 1">
+	      AND (
+	          SELECT COUNT(DISTINCT cb2.category_id)
+	          FROM   CARD_BENEFITS cb2
+	          WHERE  cb2.card_id    = c.card_id
+	            AND  cb2.visible_yn = 'Y'
+	            AND  cb2.category_id IN
+	          <foreach collection="categoryIds" item="cid" open="(" separator="," close=")">
+	              #{cid}
+	          </foreach>
+	      ) &gt;= #{categoryIds.size}
 	    </if>
 	    <if test="minFee != null">
 	      AND c.annual_fee_domestic &gt;= #{minFee}
@@ -79,18 +94,15 @@
 	    ORDER BY c.created_at DESC
 	    OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
 	</select>
-
+	
 	<select id="countAll" resultType="long">
 	    SELECT COUNT(DISTINCT c.card_id)
 	    FROM CARDS c
 	    <if test="q != null and q != ''">
-	        LEFT JOIN CARD_KEYWORDS  ck ON c.card_id    = ck.card_id
-	                                   AND ck.deleted_yn = 'N'
+	        LEFT JOIN CARD_KEYWORDS   ck ON c.card_id    = ck.card_id
+	                                    AND ck.deleted_yn = 'N'
 	        LEFT JOIN SEARCH_KEYWORDS sk ON ck.keyword_id = sk.keyword_id
 	                                    AND sk.deleted_yn  = 'N'
-	    </if>
-	    <if test="categoryId != null">
-	        LEFT JOIN CARD_BENEFITS cb ON c.card_id = cb.card_id
 	    </if>
 	    WHERE c.card_status   = 'PUBLISHED'
 	      AND c.visible_yn    = 'Y'
@@ -110,7 +122,24 @@
 	      AND c.card_type = #{cardType}
 	    </if>
 	    <if test="categoryId != null">
-	      AND cb.category_id = #{categoryId}
+	      AND EXISTS (
+	          SELECT 1 FROM CARD_BENEFITS cb
+	          WHERE  cb.card_id    = c.card_id
+	            AND  cb.category_id = #{categoryId}
+	            AND  cb.visible_yn  = 'Y'
+	      )
+	    </if>
+	    <if test="categoryIds != null and categoryIds.size &gt; 1">
+	      AND (
+	          SELECT COUNT(DISTINCT cb2.category_id)
+	          FROM   CARD_BENEFITS cb2
+	          WHERE  cb2.card_id    = c.card_id
+	            AND  cb2.visible_yn = 'Y'
+	            AND  cb2.category_id IN
+	          <foreach collection="categoryIds" item="cid" open="(" separator="," close=")">
+	              #{cid}
+	          </foreach>
+	      ) &gt;= #{categoryIds.size}
 	    </if>
 	    <if test="minFee != null">
 	      AND c.annual_fee_domestic &gt;= #{minFee}
