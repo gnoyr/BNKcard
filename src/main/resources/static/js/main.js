@@ -416,7 +416,7 @@ async function runModalSearch() {
 }
 
 // ★ 상세 이동: /card-detail.html → /card/
-function goDetail(cardId) { closeSearchModal(); location.href = `/card/?index.htmlcardId=${cardId}`; }
+function goDetail(cardId) { closeSearchModal(); location.href = `/card/index.html?cardId=${cardId}`; }
 
 // ── 설문 기반 추천 ──
 const SURVEY = [
