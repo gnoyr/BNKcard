@@ -15,6 +15,8 @@ import com.bnk.domain.user.dto.response.CardStatusResponse;
 import com.bnk.domain.user.dto.response.UserResponse;
 import com.bnk.domain.user.service.UserService;
 import com.bnk.global.auth.CustomUserDetails;
+import com.bnk.global.exception.BusinessException;
+import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.response.ApiResponse;
 
 import jakarta.validation.Valid;
@@ -27,10 +29,15 @@ public class UserController {
 
     private final UserService userService;
 
+    private void requireAuth(CustomUserDetails ud) {
+        if (ud == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
+    }
+
     /** F-24 | 내 정보 조회 */
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> getMyInfo(
-            @AuthenticationPrincipal CustomUserDetails ud) {
+            @AuthenticationPrincipal(errorOnInvalidType = false) CustomUserDetails ud) {
+        requireAuth(ud);
         return ApiResponse.toOk(userService.getMyInfo(ud.getUserId()));
     }
 
@@ -41,7 +48,8 @@ public class UserController {
     @PutMapping("/me")
     public ResponseEntity<ApiResponse<Void>> updateMyInfo(
             @RequestBody @Valid UserUpdateRequest request,
-            @AuthenticationPrincipal CustomUserDetails ud) {
+            @AuthenticationPrincipal(errorOnInvalidType = false) CustomUserDetails ud) {
+        requireAuth(ud);
         userService.updateMyInfo(ud.getUserId(), request);
         return ApiResponse.toOk(null);
     }
@@ -50,7 +58,8 @@ public class UserController {
     @PatchMapping("/me/password")
     public ResponseEntity<ApiResponse<Void>> changePassword(
             @RequestBody @Valid PasswordChangeRequest request,
-            @AuthenticationPrincipal CustomUserDetails ud) {
+            @AuthenticationPrincipal(errorOnInvalidType = false) CustomUserDetails ud) {
+        requireAuth(ud);
         userService.changePassword(ud.getUserId(), request);
         return ApiResponse.toOk(null);
     }
@@ -58,7 +67,8 @@ public class UserController {
     /** RQ-F17 | 보유 카드 및 신청 현황 */
     @GetMapping("/me/cards")
     public ResponseEntity<ApiResponse<CardStatusResponse>> getMyCards(
-            @AuthenticationPrincipal CustomUserDetails ud) {
+            @AuthenticationPrincipal(errorOnInvalidType = false) CustomUserDetails ud) {
+        requireAuth(ud);
         return ApiResponse.toOk(userService.getMyCards(ud.getUserId()));
     }
 }
