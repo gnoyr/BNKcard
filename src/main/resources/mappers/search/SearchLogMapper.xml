@@ -4,7 +4,10 @@
 
 <mapper namespace="com.bnk.domain.search.mapper.SearchLogMapper">
 
-    <insert id="insertSearchLog" useGeneratedKeys="true" keyProperty="searchLogId">
+    <insert id="insertSearchLog">
+    <selectKey keyProperty="searchLogId" resultType="long" order="AFTER">
+        SELECT SEQ_SEARCH_LOGS.CURRVAL FROM DUAL
+    </selectKey>
         INSERT INTO SEARCH_LOGS (
             user_id, keyword_raw, matched_keyword_id,
             result_count, search_at, ip_address, device_info

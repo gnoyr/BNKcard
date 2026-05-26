@@ -48,24 +48,23 @@ public class UserService {
     // ================================================================
 
     /**
-     * phone 변경 시 currentPassword BCrypt 검증.
-     * 검증 실패 → INVALID_PASSWORD 예외.
-     * 검증 성공 → 포맷된 번호(010-XXXX-XXXX)로 UPDATE, is_phone_verified='N' 자동 처리.
+     * 어떤 필드를 변경하든 currentPassword BCrypt 검증 필수.
+     * phone 변경 시 → 포맷 변환(010-XXXX-XXXX) + is_phone_verified='N' 자동 처리.
      */
     @Transactional
     public void updateMyInfo(Long userId, @Valid UserUpdateRequest request) {
         User user = userMapper.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        // 폰번호 변경 시 비밀번호 재확인
-        if (request.getPhone() != null) {
-            if (request.getCurrentPassword() == null || request.getCurrentPassword().isBlank()) {
-                throw new BusinessException(ErrorCode.INVALID_INPUT,
-                        "휴대폰 번호 변경 시 현재 비밀번호 확인이 필요합니다.");
-            }
-            if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
-                throw new BusinessException(ErrorCode.INVALID_PASSWORD);
-            }
+        // 정보 수정 시 항상 현재 비밀번호 확인
+        if (request.getCurrentPassword() == null
+                || request.getCurrentPassword().isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT,
+                    "정보 수정 시 현재 비밀번호 확인이 필요합니다.");
+        }
+        if (!passwordEncoder.matches(
+                request.getCurrentPassword(), user.getPasswordHash())) {
+            throw new BusinessException(ErrorCode.INVALID_PASSWORD);
         }
 
         // 전화번호 포맷 변환 (01012345678 → 010-1234-5678)
