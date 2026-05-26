@@ -438,7 +438,7 @@ async function loadTop3() {
 // ══════════════════════════════════════════════
 //  카드 목록 — 백엔드에 categoryIds 배열 전달
 // ══════════════════════════════════════════════
-async function loadCards(page=0) {
+async function loadCards(page = 0) {
   state.currentPage = page;
   const grid = document.getElementById('card-grid');
   grid.innerHTML = `<div class="loading-wrap" style="grid-column:1/-1">
@@ -446,25 +446,29 @@ async function loadCards(page=0) {
 
   const q      = (document.getElementById('filter-q')?.value ?? '').trim();
   const type   = state.currentCardType;
-  const catIds = state.currentCategoryIds;
+  const catIds = state.currentCategoryIds;   // 배열
 
-  // URLSearchParams는 같은 키 여러 번 append 가능 → Spring @ModelAttribute List<Long> 바인딩
-  const params = new URLSearchParams({ page, size: state.PAGE_SIZE });
-  if (q)    params.set('q', q);
-  if (type) params.set('cardType', type);
+  // URLSearchParams로 파라미터 구성
+  const params = new URLSearchParams();
+  params.append('page', page);
+  params.append('size', state.PAGE_SIZE);
+  if (q)    params.append('q', q);
+  if (type) params.append('cardType', type);
 
   if (catIds.length === 1) {
-    // 단일 → 기존 categoryId 파라미터
-    params.set('categoryId', catIds[0]);
+    params.append('categoryId', catIds[0]);
   } else if (catIds.length > 1) {
-    // 다중 → categoryIds 배열 파라미터 (백엔드 CardSearchRequest.categoryIds)
     catIds.forEach(id => params.append('categoryIds', id));
   }
 
-  const data = await api('/api/cards?' + params.toString());
+  const url = '/api/cards?' + params.toString();
+  console.log('[loadCards]', url);   // 디버깅용
+
+  const data = await api(url);
 
   if (!data?.content?.length) {
-    grid.innerHTML = `<div class="empty-wrap" style="grid-column:1/-1">🔍 조건에 맞는 카드가 없습니다.</div>`;
+    grid.innerHTML = `<div class="empty-wrap" style="grid-column:1/-1">
+      🔍 조건에 맞는 카드가 없습니다.</div>`;
     document.getElementById('filter-count').textContent = '';
     renderPagination(0);
     return;
@@ -472,7 +476,7 @@ async function loadCards(page=0) {
 
   const typeLabel = { CREDIT:'신용카드', CHECK:'체크카드', PREPAID:'선불카드' }[type] ?? '';
   document.getElementById('filter-count').textContent =
-    `${typeLabel?typeLabel+' ':''}총 ${(data.totalCount??0).toLocaleString()}개`;
+    `${typeLabel ? typeLabel+' ' : ''}총 ${(data.totalCount ?? 0).toLocaleString()}개`;
   grid.innerHTML = data.content.map(c => buildFlipCard(c)).join('');
   renderPagination(data.totalCount ?? 0);
 }
@@ -708,52 +712,73 @@ function toggleModalCategory(btn, catId, catName) {
 }
 
 async function runModalSearch() {
-  const q    = document.getElementById('modal-search-input').value.trim();
-  const cats = state.modalCategoryIds;
-  if (!q && !cats.length) {
-    document.getElementById('modal-results-wrap').style.display='none'; return;
-  }
-  document.getElementById('modal-results-wrap').style.display='';
-  document.getElementById('modal-result-title').textContent='검색 중...';
-  document.getElementById('modal-results').innerHTML=
-    '<div style="text-align:center;padding:20px;color:#999"><div class="loading-spinner" style="margin:0 auto 8px"></div>불러오는 중...</div>';
+	  const q    = (document.getElementById('modal-search-input')?.value ?? '').trim();
+	  const cats = state.modalCategoryIds ?? [];
 
-  const params = new URLSearchParams({ page:0, size:10 });
-  if (q) params.set('q', q);
-  if (cats.length===1) {
-    params.set('categoryId', cats[0]);
-  } else if (cats.length>1) {
-    cats.forEach(id => params.append('categoryIds', id));
-  }
+	  if (!q && cats.length === 0) {
+	    document.getElementById('modal-results-wrap').style.display = 'none';
+	    return;
+	  }
 
-  const data = await api('/api/cards?'+params.toString());
-  const results = data?.content ?? [];
-  document.getElementById('modal-result-title').textContent=`검색 결과 (${data?.totalCount??0}건)`;
+	  document.getElementById('modal-results-wrap').style.display = '';
+	  document.getElementById('modal-result-title').textContent = '검색 중...';
+	  document.getElementById('modal-results').innerHTML =
+	    '<div style="text-align:center;padding:20px;color:#999">' +
+	    '<div class="loading-spinner" style="margin:0 auto 8px"></div>불러오는 중...</div>';
 
-  if (!results.length) {
-    document.getElementById('modal-results').innerHTML=
-      '<div style="text-align:center;color:#999;padding:20px">결과가 없습니다.</div>';
-    return;
-  }
-  document.getElementById('modal-results').innerHTML=results.map(card=>{
-    const ne=(card.cardName??'').replace(/'/g,"\\'");
-    const ce=(card.companyName??'').replace(/'/g,"\\'");
-    const th=card.thumbnailUrl?`<img src="${card.thumbnailUrl}" alt="${card.cardName}" onerror="this.style.display='none'" style="width:100%;height:100%;object-fit:cover;">`:'';
-    return `
-      <div class="modal-result-item" onclick="goDetail(${card.cardId})">
-        <div class="modal-result-thumb">${th}</div>
-        <div class="modal-result-info">
-          <div class="modal-result-name">${card.cardName??''}</div>
-          <div class="modal-result-company">${card.companyName??''} · ${cardTypeBadge(card.cardType)}</div>
-          ${card.topBenefit?`<div class="modal-result-benefit">${card.topBenefit}</div>`:''}
-        </div>
-        <div class="modal-result-actions" onclick="event.stopPropagation()">
-          <button class="btn-m-detail" onclick="goDetail(${card.cardId})">상세</button>
-          <button class="btn-m-compare" onclick="addToCart(${card.cardId},'${ne}','${ce}');closeSearchModal()">비교</button>
-        </div>
-      </div>`;
-  }).join('');
-}
+	  const params = new URLSearchParams();
+	  params.append('page', 0);
+	  params.append('size', 10);
+	  if (q) params.append('q', q);
+	  if (cats.length === 1) {
+	    params.append('categoryId', cats[0]);
+	  } else if (cats.length > 1) {
+	    cats.forEach(id => params.append('categoryIds', id));
+	  }
+
+	  const url = '/api/cards?' + params.toString();
+	  console.log('[runModalSearch]', url);  // 디버깅용
+
+	  const data = await api(url);
+	  const results = data?.content ?? [];
+
+	  document.getElementById('modal-result-title').textContent =
+	    `검색 결과 (${data?.totalCount ?? 0}건)`;
+
+	  if (!results.length) {
+	    document.getElementById('modal-results').innerHTML =
+	      '<div style="text-align:center;color:#999;padding:20px">결과가 없습니다.</div>';
+	    return;
+	  }
+
+	  document.getElementById('modal-results').innerHTML = results.map(card => {
+	    const ne = (card.cardName ?? '').replace(/'/g, "\\'");
+	    const ce = (card.companyName ?? '').replace(/'/g, "\\'");
+	    const th = card.thumbnailUrl
+	      ? `<img src="${card.thumbnailUrl}" alt="${card.cardName}"
+	             onerror="this.style.display='none'"
+	             style="width:100%;height:100%;object-fit:cover;">` : '';
+	    return `
+	      <div class="modal-result-item" onclick="goDetail(${card.cardId})">
+	        <div class="modal-result-thumb">${th}</div>
+	        <div class="modal-result-info">
+	          <div class="modal-result-name">${card.cardName ?? ''}</div>
+	          <div class="modal-result-company">
+	            ${card.companyName ?? ''} · ${cardTypeBadge(card.cardType)}
+	          </div>
+	          ${card.topBenefit
+	            ? `<div class="modal-result-benefit">${card.topBenefit}</div>` : ''}
+	        </div>
+	        <div class="modal-result-actions" onclick="event.stopPropagation()">
+	          <button class="btn-m-detail" onclick="goDetail(${card.cardId})">상세</button>
+	          <button class="btn-m-compare"
+	            onclick="addToCart(${card.cardId},'${ne}','${ce}');closeSearchModal()">
+	            비교
+	          </button>
+	        </div>
+	      </div>`;
+	  }).join('');
+	}
 
 function goDetail(cardId) { closeSearchModal(); location.href=`/card-detail.html?cardId=${cardId}`; }
 
