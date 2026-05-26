@@ -12,9 +12,11 @@ public class CardListResponse {
     private String companyName;
     private String cardType;
     private String cardStatus;
-    private LocalDateTime publishStartAt;  // 추가
+    private Long annualFeeDomestic;    
+    private Long annualFeeOverseas;    
+    private LocalDateTime publishStartAt;
     private LocalDateTime publishEndAt;
-    private String thumbnailUrl;        // CARD_IMAGES(THUMBNAIL)
-    private String topBenefit;          // CARD_BENEFITS.display_text (display_order=1)
-    private String recommendReason;     // TOP3 추천 시 사용
+    private String thumbnailUrl;
+    private String topBenefit;
+    private String recommendReason;
 }
