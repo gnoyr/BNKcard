@@ -512,32 +512,113 @@ async function doCompare() {
 }
 
 function renderCompareModal(cards) {
-  const headerCells = cards.map(c=>`
-    <th>
-      ${c.thumbnailUrl
-        ? `<img class="compare-card-img" src="${c.thumbnailUrl}" alt="${c.cardName}" onerror="this.style.display='none'">`
-        : `<span class="compare-card-img-placeholder"></span>`}
-      <br>${c.cardName}
-      <button class="compare-remove-btn" onclick="removeFromCartAndRefresh(${c.cardId})">✕ 제거</button>
-    </th>
-  `).join('');
+	  if (!cards.length) {
+	    document.getElementById('compare-modal-body').innerHTML =
+	      '<div class="compare-empty">비교할 카드가 없습니다.</div>';
+	    return;
+	  }
 
-  const rows = [
-    { label:'카드사',     vals: cards.map(c=>c.companyName??'-') },
-    { label:'유형',       vals: cards.map(c=>cardTypeBadge(c.cardType)) },
-    { label:'국내 연회비', vals: cards.map(c=>fmtFee(c.annualFeeDomestic)) },
-    { label:'해외 연회비', vals: cards.map(c=>fmtFee(c.annualFeeOverseas)) },
-    { label:'주요 혜택',  vals: cards.map(c=>(c.benefits??[]).slice(0,3).map(b=>`• ${b.displayText??b.benefitTitle??''}`).join('<br>')||'-') },
-  ].map(row=>`<tr><td>${row.label}</td>${row.vals.map(v=>`<td>${v}</td>`).join('')}</tr>`).join('');
+	  // ── 비교 기준값 계산 ──────────────────────────────────────
+	  const fees     = cards.map(c => Number(c.annualFeeDomestic) || 0);
+	  const minFee   = Math.min(...fees);
 
-  document.getElementById('compare-modal-body').innerHTML = `
-    <table class="compare-table">
-      <thead><tr><th>항목</th>${headerCells}</tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-    <p style="margin-top:16px;font-size:12px;color:#999;text-align:right;">카드를 제거하면 다시 비교하기 버튼을 눌러주세요.</p>
-  `;
-}
+	  const oFees    = cards.map(c => Number(c.annualFeeOverseas) || 0);
+	  const minOFee  = Math.min(...oFees);
+
+	  const benefitCounts = cards.map(c => (c.benefits ?? []).length);
+	  const maxBenefits   = Math.max(...benefitCounts);
+	  // ───────────────────────────────────────────────────────────
+
+	  // 헤더 — 이미지 + 카드명 + 제거 버튼
+	  const headerCells = cards.map((c, i) => {
+	    const isMaxBenefit = benefitCounts[i] === maxBenefits && maxBenefits > 0;
+	    return `
+	      <th style="position:relative;">
+	        ${isMaxBenefit ? '<div style="position:absolute;top:8px;right:8px;background:#ffd700;color:#003087;border-radius:12px;padding:2px 8px;font-size:10px;font-weight:700;">★ 혜택 최다</div>' : ''}
+	        ${c.thumbnailUrl
+	          ? `<img class="compare-card-img" src="${c.thumbnailUrl}" alt="${c.cardName}" onerror="this.style.display='none'">`
+	          : `<span class="compare-card-img-placeholder"></span>`}
+	        <br><span style="font-size:13px;font-weight:700;">${c.cardName}</span>
+	        <button class="compare-remove-btn" onclick="removeFromCartAndRefresh(${c.cardId})">✕ 제거</button>
+	      </th>
+	    `;
+	  }).join('');
+
+	  // 연회비 셀 스타일 — 가장 낮은 카드 강조
+	  function feeCell(val, minVal) {
+	    const n = Number(val) || 0;
+	    const isMin = n === minVal;
+	    const display = n === 0 ? '연회비 없음' : n.toLocaleString() + '원';
+	    if (isMin) {
+	      return `<td style="color:#00875a;font-weight:700;">
+	        ${display}<br><span style="font-size:10px;background:#e8f8f0;color:#00875a;border-radius:4px;padding:1px 6px;">최저</span>
+	      </td>`;
+	    }
+	    return `<td>${display}</td>`;
+	  }
+
+	  // 혜택 셀 — 혜택 최다 카드 강조
+	  function benefitCell(c, i) {
+	    const benefits = (c.benefits ?? []).slice(0, 4);
+	    const isMax = benefitCounts[i] === maxBenefits && maxBenefits > 0;
+	    const content = benefits.map(b =>
+	      `<div style="text-align:left;margin-bottom:4px;">• ${b.displayText ?? b.benefitTitle ?? ''}</div>`
+	    ).join('') || '-';
+	    const style = isMax ? 'background:#fffde7;' : '';
+	    return `<td style="${style}">${content}</td>`;
+	  }
+
+	  const rows = [
+	    // 카드사
+	    `<tr>
+	      <td>카드사</td>
+	      ${cards.map(c => `<td>${c.companyName ?? '-'}</td>`).join('')}
+	    </tr>`,
+	    // 유형
+	    `<tr>
+	      <td>유형</td>
+	      ${cards.map(c => `<td>${cardTypeBadge(c.cardType)}</td>`).join('')}
+	    </tr>`,
+	    // 국내 연회비
+	    `<tr>
+	      <td>국내 연회비</td>
+	      ${cards.map(c => feeCell(c.annualFeeDomestic, minFee)).join('')}
+	    </tr>`,
+	    // 해외 연회비
+	    `<tr>
+	      <td>해외 연회비</td>
+	      ${cards.map(c => feeCell(c.annualFeeOverseas, minOFee)).join('')}
+	    </tr>`,
+	    // 주요 혜택 수
+	    `<tr>
+	      <td>혜택 수</td>
+	      ${cards.map((c, i) => {
+	        const cnt = benefitCounts[i];
+	        const isMax = cnt === maxBenefits && maxBenefits > 0;
+	        return `<td style="${isMax ? 'color:#003087;font-weight:700;' : ''}">${cnt}개${isMax ? ' ★' : ''}</td>`;
+	      }).join('')}
+	    </tr>`,
+	    // 상세 혜택
+	    `<tr>
+	      <td>주요 혜택</td>
+	      ${cards.map((c, i) => benefitCell(c, i)).join('')}
+	    </tr>`,
+	  ].join('');
+
+	  document.getElementById('compare-modal-body').innerHTML = `
+	    <div style="margin-bottom:12px;font-size:12px;color:#888;">
+	      💡 <span style="color:#00875a;font-weight:600;">초록색</span>은 연회비 최저,
+	      <span style="color:#003087;font-weight:600;">★</span>은 혜택 최다 카드입니다.
+	    </div>
+	    <table class="compare-table">
+	      <thead><tr><th>항목</th>${headerCells}</tr></thead>
+	      <tbody>${rows}</tbody>
+	    </table>
+	    <p style="margin-top:16px;font-size:12px;color:#999;text-align:right;">
+	      카드를 제거하면 다시 비교하기 버튼을 눌러주세요.
+	    </p>
+	  `;
+	}
 
 function removeFromCartAndRefresh(cardId) {
   removeFromCart(cardId);
