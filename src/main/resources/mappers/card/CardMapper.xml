@@ -55,10 +55,10 @@
 	      AND (c.publish_end_at IS NULL OR c.publish_end_at &gt;= SYSTIMESTAMP)
 	    <if test="q != null and q != ''">
 	      AND (
-	            c.card_name         LIKE '%' || #{q} || '%'
+	            c.card_name           LIKE '%' || #{q} || '%'
 	         OR c.summary_description LIKE '%' || #{q} || '%'
-	         OR c.company_name      LIKE '%' || #{q} || '%'
-	         OR sk.keyword          LIKE '%' || #{q} || '%'
+	         OR c.company_name        LIKE '%' || #{q} || '%'
+	         OR sk.keyword            LIKE '%' || #{q} || '%'
 	          )
 	    </if>
 	    <if test="cardType != null and cardType != ''">
@@ -76,7 +76,7 @@
 	    <if test="maxFee != null">
 	      AND c.annual_fee_domestic &lt;= #{maxFee}
 	    </if>
-	    ORDER BY c.view_count DESC, c.created_at DESC
+	    ORDER BY c.created_at DESC
 	    OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
 	</select>
 

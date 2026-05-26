@@ -2,6 +2,7 @@ package com.bnk.domain.card.service;
 
 import java.math.BigDecimal;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -121,8 +122,8 @@ public class CardService {
 
         // THUMBNAIL 이미지 한 번에 조회
         List<CardImage> thumbnails = cardImageMapper.findByCardIdsAndType(cardIds, "THUMBNAIL");
-        Map<Long, String> thumbnailMap = thumbnails.stream()
-                .collect(Collectors.toMap(CardImage::getCardId, CardImage::getImageUrl, (e, r) -> e));
+        Map<Long, String> thumbnailMap = new HashMap<>(thumbnails.stream()
+                .collect(Collectors.toMap(CardImage::getCardId, CardImage::getImageUrl, (e, r) -> e)));
 
         // THUMBNAIL이 없는 카드는 FRONT 이미지로 보완
         List<Long> noThumbnailIds = cardIds.stream()
