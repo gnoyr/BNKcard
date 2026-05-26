@@ -1,5 +1,6 @@
 package com.bnk.domain.ai.controller;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequestMapping("/api")
 @RequiredArgsConstructor
 @Slf4j
+@ConditionalOnProperty(name = "ai.enabled", havingValue = "true")
 public class AiController {
 	
 	private final AiChatService aiChatService;
@@ -37,12 +39,6 @@ public class AiController {
         return ResponseEntity.ok("카드 데이터 인덱싱이 시작되었습니다.");
     }
 	
-	
-    /**
-     * AI 챗봇 대화.
-     * 비로그인 허용 — ud=null 이면 userId=null로 AI_CHAT_LOGS INSERT.
-     * sessionId(UUID)로 대화 맥락 유지.
-     */
     @PostMapping("/chat")
     public ResponseEntity<ApiResponse<AiChatResponse>> chat(
             @RequestBody @Valid AiChatRequest request,
