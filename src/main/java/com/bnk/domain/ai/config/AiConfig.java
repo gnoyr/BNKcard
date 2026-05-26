@@ -25,13 +25,13 @@ public class AiConfig {
 	
 	@Bean
     @Primary
-    public ChatModel primaryChatModel(@Qualifier("googleGenAiChatModel") ChatModel chatModel) {
+    ChatModel primaryChatModel(@Qualifier("googleGenAiChatModel") ChatModel chatModel) {
         return chatModel;
     }
 	
 	@Bean
     @Primary
-    public EmbeddingModel primaryEmbeddingModel(@Qualifier("ollamaEmbeddingModel") EmbeddingModel embeddingModel) {
+    EmbeddingModel primaryEmbeddingModel(@Qualifier("ollamaEmbeddingModel") EmbeddingModel embeddingModel) {
         return embeddingModel;
     }
 }
