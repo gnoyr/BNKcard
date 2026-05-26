@@ -47,20 +47,23 @@
           AND  deleted_yn  = 'N'
     </select>
 
-    <insert id="insertKeyword" useGeneratedKeys="true" keyProperty="keywordId">
-        INSERT INTO SEARCH_KEYWORDS (
-            keyword, category_id, use_yn, display_order,
-            created_at, created_by, deleted_yn
-        ) VALUES (
-            #{keyword},
-            #{categoryId,    jdbcType=NUMERIC},
-            #{useYn},
-            #{displayOrder,  jdbcType=NUMERIC},
-            SYSTIMESTAMP,
-            #{createdBy,     jdbcType=NUMERIC},
-            'N'
-        )
-    </insert>
+    <insert id="insertKeyword">
+	    <selectKey keyProperty="keywordId" resultType="long" order="AFTER">
+	        SELECT SEQ_SEARCH_KEYWORDS.CURRVAL FROM DUAL
+	    </selectKey>
+	    INSERT INTO SEARCH_KEYWORDS (
+	        keyword, category_id, use_yn, display_order,
+	        created_at, created_by, deleted_yn
+	    ) VALUES (
+	        #{keyword},
+	        #{categoryId,    jdbcType=NUMERIC},
+	        #{useYn},
+	        #{displayOrder,  jdbcType=NUMERIC},
+	        SYSTIMESTAMP,
+	        #{createdBy,     jdbcType=NUMERIC},
+	        'N'
+	    )
+	</insert>
 
     <update id="updateKeyword">
         UPDATE SEARCH_KEYWORDS
