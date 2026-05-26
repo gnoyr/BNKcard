@@ -11,7 +11,6 @@ import org.springframework.web.multipart.MultipartFile;
 import com.bnk.domain.terms.dto.request.TermsCreateRequest;
 import com.bnk.domain.terms.dto.request.TermsStatusRequest;
 import com.bnk.domain.terms.dto.response.TermsAdminResponse;
-import com.bnk.domain.terms.dto.response.TermsFileResponse;
 import com.bnk.domain.terms.dto.response.TermsMasterResponse;
 import com.bnk.domain.terms.mapper.TermsMapper;
 import com.bnk.domain.terms.model.Terms;

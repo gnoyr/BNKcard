@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.bnk.domain.card.mapper.CardCategoryMapper2">
+
+    <resultMap id="categoryMap" type="com.bnk.domain.card.model.CardCategory">
+        <id     property="categoryId"   column="category_id"/>
+        <result property="categoryCode" column="category_code"/>
+        <result property="categoryName" column="category_name"/>
+        <result property="iconCode"     column="icon_code"/>
+        <result property="displayOrder" column="display_order"/>
+        <result property="useYn"        column="use_yn"/>
+        <result property="createdAt"    column="created_at"/>
+    </resultMap>
+
+    <!-- 전체 카테고리 목록 (use_yn='Y' 필터) -->
+    <select id="getAllCategories" resultMap="categoryMap">
+        SELECT category_id, category_code, category_name,
+               icon_code, display_order, use_yn, created_at
+        FROM   CARD_CATEGORIES
+        WHERE  use_yn = 'Y'
+        ORDER  BY display_order ASC
+    </select>
+
+    <!-- 카테고리 단건 조회 -->
+    <select id="getCategory" resultMap="categoryMap">
+        SELECT category_id, category_code, category_name,
+               icon_code, display_order, use_yn, created_at
+        FROM   CARD_CATEGORIES
+        WHERE  category_id = #{categoryId}
+    </select>
+
+    <!-- 카테고리 등록 -->
+    <insert id="insertCategory">
+        INSERT INTO CARD_CATEGORIES (
+            category_code, category_name, icon_code,
+            display_order, use_yn, created_at
+        ) VALUES (
+            #{categoryCode}, #{categoryName},
+            #{iconCode,      jdbcType=VARCHAR},
+            #{displayOrder,  jdbcType=NUMERIC},
+            NVL(#{useYn, jdbcType=CHAR}, 'Y'),
+            SYSTIMESTAMP
+        )
+    </insert>
+
+    <!-- 카테고리 수정 -->
+    <update id="updateCategory">
+        UPDATE CARD_CATEGORIES
+        SET    category_name = #{categoryName},
+               icon_code     = #{iconCode,     jdbcType=VARCHAR},
+               display_order = #{displayOrder, jdbcType=NUMERIC},
+               use_yn        = #{useYn}
+        WHERE  category_id   = #{categoryId}
+    </update>
+
+    <!-- 카테고리 삭제 (use_yn = 'N' 처리) -->
+    <update id="deleteCategory">
+        UPDATE CARD_CATEGORIES
+        SET    use_yn = 'N'
+        WHERE  category_id = #{categoryId}
+    </update>
+
+</mapper>

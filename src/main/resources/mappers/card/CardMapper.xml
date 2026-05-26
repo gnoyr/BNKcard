@@ -36,74 +36,89 @@
 
     <!-- ── 사용자 카드 목록 동적 검색 ─────────────────────── -->
     <select id="findAll" resultMap="cardMap">
-        SELECT DISTINCT c.*
-        FROM CARDS c
-        <if test="q != null and q != ''">
-            LEFT JOIN CARD_KEYWORDS  ck ON c.card_id   = ck.card_id
-            LEFT JOIN SEARCH_KEYWORDS sk ON ck.keyword_id = sk.keyword_id
-                                       AND sk.deleted_yn   = 'N'
-        </if>
-        <if test="categoryId != null">
-            LEFT JOIN CARD_BENEFITS cb ON c.card_id = cb.card_id
-        </if>
-        WHERE c.card_status   = 'PUBLISHED'
-          AND c.visible_yn    = 'Y'
-          AND c.searchable_yn = 'Y'
-          AND c.deleted_yn    = 'N'
-          AND c.publish_start_at &lt;= SYSTIMESTAMP
-          AND (c.publish_end_at IS NULL OR c.publish_end_at &gt;= SYSTIMESTAMP)
-        <if test="q != null and q != ''">
-          AND (
-                c.card_name LIKE '%' || #{q} || '%'
-             OR sk.keyword  LIKE '%' || #{q} || '%'
-              )
-        </if>
-        <if test="cardType != null and cardType != ''">
-          AND c.card_type    = #{cardType}
-        </if>
-        <if test="companyName != null and companyName != ''">
-          AND c.company_name LIKE '%' || #{companyName} || '%'
-        </if>
-        <if test="categoryId != null">
-          AND cb.category_id = #{categoryId}
-        </if>
-        <if test="minFee != null">
-          AND c.annual_fee_domestic &gt;= #{minFee}
-        </if>
-        <if test="maxFee != null">
-          AND c.annual_fee_domestic &lt;= #{maxFee}
-        </if>
-        ORDER BY c.created_at DESC
-        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
-    </select>
+	    SELECT DISTINCT c.*
+	    FROM CARDS c
+	    <if test="q != null and q != ''">
+	        LEFT JOIN CARD_KEYWORDS  ck ON c.card_id    = ck.card_id
+	                                   AND ck.deleted_yn = 'N'
+	        LEFT JOIN SEARCH_KEYWORDS sk ON ck.keyword_id = sk.keyword_id
+	                                    AND sk.deleted_yn  = 'N'
+	    </if>
+	    <if test="categoryId != null">
+	        LEFT JOIN CARD_BENEFITS cb ON c.card_id = cb.card_id
+	    </if>
+	    WHERE c.card_status   = 'PUBLISHED'
+	      AND c.visible_yn    = 'Y'
+	      AND c.searchable_yn = 'Y'
+	      AND c.deleted_yn    = 'N'
+	      AND c.publish_start_at &lt;= SYSTIMESTAMP
+	      AND (c.publish_end_at IS NULL OR c.publish_end_at &gt;= SYSTIMESTAMP)
+	    <if test="q != null and q != ''">
+	      AND (
+	            c.card_name         LIKE '%' || #{q} || '%'
+	         OR c.summary_description LIKE '%' || #{q} || '%'
+	         OR c.company_name      LIKE '%' || #{q} || '%'
+	         OR sk.keyword          LIKE '%' || #{q} || '%'
+	          )
+	    </if>
+	    <if test="cardType != null and cardType != ''">
+	      AND c.card_type = #{cardType}
+	    </if>
+	    <if test="companyName != null and companyName != ''">
+	      AND c.company_name LIKE '%' || #{companyName} || '%'
+	    </if>
+	    <if test="categoryId != null">
+	      AND cb.category_id = #{categoryId}
+	    </if>
+	    <if test="minFee != null">
+	      AND c.annual_fee_domestic &gt;= #{minFee}
+	    </if>
+	    <if test="maxFee != null">
+	      AND c.annual_fee_domestic &lt;= #{maxFee}
+	    </if>
+	    ORDER BY c.view_count DESC, c.created_at DESC
+	    OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+	</select>
 
-    <select id="countAll" resultType="long">
-        SELECT COUNT(DISTINCT c.card_id)
-        FROM CARDS c
-        <if test="q != null and q != ''">
-            LEFT JOIN CARD_KEYWORDS  ck ON c.card_id   = ck.card_id
-            LEFT JOIN SEARCH_KEYWORDS sk ON ck.keyword_id = sk.keyword_id
-                                       AND sk.deleted_yn   = 'N'
-        </if>
-        <if test="categoryId != null">
-            LEFT JOIN CARD_BENEFITS cb ON c.card_id = cb.card_id
-        </if>
-        WHERE c.card_status   = 'PUBLISHED'
-          AND c.visible_yn    = 'Y'
-          AND c.searchable_yn = 'Y'
-          AND c.deleted_yn    = 'N'
-          AND c.publish_start_at &lt;= SYSTIMESTAMP
-          AND (c.publish_end_at IS NULL OR c.publish_end_at &gt;= SYSTIMESTAMP)
-        <if test="q != null and q != ''">
-          AND (c.card_name LIKE '%' || #{q} || '%' OR sk.keyword LIKE '%' || #{q} || '%')
-        </if>
-        <if test="cardType != null and cardType != ''">
-          AND c.card_type = #{cardType}
-        </if>
-        <if test="categoryId != null">
-          AND cb.category_id = #{categoryId}
-        </if>
-    </select>
+	<select id="countAll" resultType="long">
+	    SELECT COUNT(DISTINCT c.card_id)
+	    FROM CARDS c
+	    <if test="q != null and q != ''">
+	        LEFT JOIN CARD_KEYWORDS  ck ON c.card_id    = ck.card_id
+	                                   AND ck.deleted_yn = 'N'
+	        LEFT JOIN SEARCH_KEYWORDS sk ON ck.keyword_id = sk.keyword_id
+	                                    AND sk.deleted_yn  = 'N'
+	    </if>
+	    <if test="categoryId != null">
+	        LEFT JOIN CARD_BENEFITS cb ON c.card_id = cb.card_id
+	    </if>
+	    WHERE c.card_status   = 'PUBLISHED'
+	      AND c.visible_yn    = 'Y'
+	      AND c.searchable_yn = 'Y'
+	      AND c.deleted_yn    = 'N'
+	      AND c.publish_start_at &lt;= SYSTIMESTAMP
+	      AND (c.publish_end_at IS NULL OR c.publish_end_at &gt;= SYSTIMESTAMP)
+	    <if test="q != null and q != ''">
+	      AND (
+	            c.card_name           LIKE '%' || #{q} || '%'
+	         OR c.summary_description LIKE '%' || #{q} || '%'
+	         OR c.company_name        LIKE '%' || #{q} || '%'
+	         OR sk.keyword            LIKE '%' || #{q} || '%'
+	          )
+	    </if>
+	    <if test="cardType != null and cardType != ''">
+	      AND c.card_type = #{cardType}
+	    </if>
+	    <if test="categoryId != null">
+	      AND cb.category_id = #{categoryId}
+	    </if>
+	    <if test="minFee != null">
+	      AND c.annual_fee_domestic &gt;= #{minFee}
+	    </if>
+	    <if test="maxFee != null">
+	      AND c.annual_fee_domestic &lt;= #{maxFee}
+	    </if>
+	</select>
 
     <select id="findById" resultMap="cardMap">
         SELECT * FROM CARDS
