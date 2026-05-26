@@ -17,10 +17,10 @@ import com.bnk.domain.admin.mapper.ApprovalMapper;
 import com.bnk.domain.admin.model.ApprovalRequest;
 import com.bnk.domain.card.mapper.CardMapper;
 import com.bnk.domain.card.mapper.CardMapper2;
-import com.bnk.domain.card.mapper.CardStatusHistoryMapper2;
+import com.bnk.domain.card.mapper.CardStatusHistoryMapper;
 import com.bnk.domain.card.mapper.CardVersionMapper2;
 import com.bnk.domain.card.model.Card;
-import com.bnk.domain.card.model2.CardStatusHistory;
+import com.bnk.domain.card.model.CardStatusHistory;
 import com.bnk.domain.card.model2.CardVersion;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
@@ -42,7 +42,7 @@ public class ApprovalService {
     private final CardMapper               cardMapper;
     private final CardMapper2              cardMapper2;
     private final CardVersionMapper2       cardVersionMapper2;
-    private final CardStatusHistoryMapper2 cardStatusHistoryMapper2;
+    private final CardStatusHistoryMapper cardStatusHistoryMapper;
     private final ObjectMapper             objectMapper;
 
     // ─────────────────────────────────────────────────────────────
@@ -197,7 +197,7 @@ public class ApprovalService {
                     cardVersion.getVersionId(), "APPROVED", adminId);
 
             // 이력 기록
-            cardStatusHistoryMapper2.insertCardStatusHistory(
+            cardStatusHistoryMapper.insertCardStatusHistory(
                     CardStatusHistory.builder()
                             .cardId(cardId)
                             .previousStatus(previousStatus)

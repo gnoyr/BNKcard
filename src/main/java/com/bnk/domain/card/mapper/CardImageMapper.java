@@ -20,4 +20,13 @@ public interface CardImageMapper {
     
     List<CardImage> findByCardIdsAndType(@Param("cardIds") List<Long> cardIds,
     									@Param("imageType") String imageType);
+    
+    // ── CRUD ──────────────────────────────────────────────
+    int insertImages(@Param("imageList") List<CardImage> imageList);
+
+    int updateImage(CardImage image);
+
+    int deleteImage(@Param("imageId") Long imageId);
+
+    int deleteByCardId(@Param("cardId") Long cardId);
 }

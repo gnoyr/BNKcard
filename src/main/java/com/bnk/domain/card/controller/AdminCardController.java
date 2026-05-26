@@ -1,21 +1,34 @@
 package com.bnk.domain.card.controller;
 
+import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.bnk.domain.card.dto.request.AdminCardSearchRequest;
+import com.bnk.domain.card.dto.request.BenefitUpdateRequest;
 import com.bnk.domain.card.dto.request.CardCreateRequest;
 import com.bnk.domain.card.dto.request.CardStatusRequest;
 import com.bnk.domain.card.dto.request.CardUpdateRequest;
+import com.bnk.domain.card.dto.request.ContentUpdateRequest;
+import com.bnk.domain.card.dto.request.ImageUpdateRequest;
 import com.bnk.domain.card.dto.response.CardDetailResponse;
 import com.bnk.domain.card.service.AdminCardService;
 import com.bnk.global.auth.CustomAdminDetails;
 import com.bnk.global.response.ApiResponse;
 import com.bnk.global.response.PageResponse;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/cards")
@@ -57,7 +70,7 @@ public class AdminCardController {
     }
 
     /**
-     * 카드 수정 (RQ-B05).
+     * 카드 기본정보 수정 (RQ-B05).
      * 기존 CARDS 직접 수정 금지. CARD_VERSIONS snapshot + APPROVAL_REQUESTS 신규 생성.
      */
     @PutMapping("/{cardId}")
@@ -66,6 +79,34 @@ public class AdminCardController {
             @RequestBody @Valid CardUpdateRequest request,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         return ApiResponse.toOk(adminCardService.updateCard(cardId, request, ad.getAdminId()));
+    }
+    
+    // 혜택 등록/수정
+    @PutMapping("/{cardId}/benefits")
+    public ResponseEntity<ApiResponse<Map<String, Long>>> saveCardBenefits(
+            @PathVariable Long cardId,
+            @RequestBody @Valid BenefitUpdateRequest request,
+            @AuthenticationPrincipal CustomAdminDetails ad) {
+        return ApiResponse.toOk(adminCardService.saveCardBenefits(cardId, request, ad.getAdminId()));
+    }
+
+    // 이미지 등록/수정
+    @PutMapping("/{cardId}/images")
+    public ResponseEntity<ApiResponse<Map<String, Long>>> saveCardImages(
+            @PathVariable Long cardId,
+            @RequestBody @Valid ImageUpdateRequest request,
+            @AuthenticationPrincipal CustomAdminDetails ad) {
+        return ApiResponse.toOk(adminCardService.saveCardImages(cardId, request, ad.getAdminId()));
+    }
+    
+    // 콘텐츠 등록/수정
+    @PutMapping("/{cardId}/contents")
+    public ResponseEntity<ApiResponse<Void>> saveCardContents(
+            @PathVariable Long cardId,
+            @RequestBody @Valid ContentUpdateRequest request,
+            @AuthenticationPrincipal CustomAdminDetails ad) {
+        adminCardService.saveCardContents(cardId, request, ad.getAdminId());
+        return ApiResponse.toOk(null);
     }
     
     /**

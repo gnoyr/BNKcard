@@ -35,21 +35,6 @@
         <result property="deleteAt"           column="deleted_at"/>
     </resultMap>
 
-    <resultMap id="image2Map" type="com.bnk.domain.card.model2.CardImage">
-        <id     property="imageId"       column="image_id"/>
-        <result property="cardId"        column="card_id"/>
-        <result property="imageType"     column="image_type"/>
-        <result property="imageUrl"      column="image_url"/>
-        <result property="originalName"  column="original_name"/>
-        <result property="storedName"    column="stored_name"/>
-        <result property="fileSize"      column="file_size"/>
-        <result property="mimeType"      column="mime_type"/>
-        <result property="imageWidth"    column="image_width"/>
-        <result property="imageHeight"   column="image_height"/>
-        <result property="sortOrder"     column="sort_order"/>
-        <result property="createdAt"     column="created_at"/>
-    </resultMap>
-
     <select id="getCards" resultMap="card2Map">
         SELECT * FROM CARDS
         WHERE  deleted_yn = 'N'
@@ -63,65 +48,65 @@
     </select>
 
     <insert id="insertCard">
-	    <selectKey keyProperty="cardId" resultType="long" order="AFTER">
-	        SELECT card_id FROM CARDS WHERE card_code = #{cardCode}
-	        FETCH FIRST 1 ROWS ONLY
-	    </selectKey>
-	    INSERT INTO CARDS (
-	        card_code, card_type, card_name, company_name, company_code,
-	        brand_name,
-	        annual_fee_domestic, annual_fee_overseas, previous_month_spend,
-	        minimum_age, maximum_age,
-	        credit_limit_min, credit_limit_max,
-	        target_user, summary_description,
-	        searchable_yn, visible_yn, approval_required_yn,
-	        card_status, publish_start_at, publish_end_at,
-	        application_count,
-	        created_by, created_at, deleted_yn
-	    ) VALUES (
-	        #{cardCode}, #{cardType}, #{cardName}, #{companyName},
-	        NVL(#{companyCode, jdbcType=VARCHAR}, '01'),   <!-- ← 파라미터로 변경, 기본값 '01' 유지 -->
-	        #{brandName,          jdbcType=VARCHAR},
-	        #{annualFeeDomestic},
-	        #{annualFeeOverseas,  jdbcType=NUMERIC},
-	        #{previousMonthSpend, jdbcType=NUMERIC},
-	        #{minimumAge,         jdbcType=NUMERIC},
-	        #{maximumAge,         jdbcType=NUMERIC},
-	        #{creditLimitMin,     jdbcType=NUMERIC},
-	        #{creditLimitMax,     jdbcType=NUMERIC},
-	        #{targetUser,         jdbcType=VARCHAR},
-	        #{summaryDescription, jdbcType=VARCHAR},
-	        NVL(#{searchableYn,       jdbcType=CHAR}, 'Y'),
-	        NVL(#{visibleYn,          jdbcType=CHAR}, 'Y'),
-	        NVL(#{approvalRequiredYn, jdbcType=CHAR}, 'Y'),
-	        NVL(#{cardStatus,         jdbcType=VARCHAR}, 'DRAFT'),
-	        #{publishStartAt, jdbcType=TIMESTAMP},
-	        #{publishEndAt,   jdbcType=TIMESTAMP},
-	        0,
-	        #{createdBy,  jdbcType=NUMERIC},
-	        SYSTIMESTAMP, 'N'
-	    )
-	</insert>
+        <selectKey keyProperty="cardId" resultType="long" order="AFTER">
+            SELECT card_id FROM CARDS WHERE card_code = #{cardCode}
+            FETCH FIRST 1 ROWS ONLY
+        </selectKey>
+        INSERT INTO CARDS (
+            card_code, card_type, card_name, company_name, company_code,
+            brand_name,
+            annual_fee_domestic, annual_fee_overseas, previous_month_spend,
+            minimum_age, maximum_age,
+            credit_limit_min, credit_limit_max,
+            target_user, summary_description,
+            searchable_yn, visible_yn, approval_required_yn,
+            card_status, publish_start_at, publish_end_at,
+            application_count,
+            created_by, created_at, deleted_yn
+        ) VALUES (
+            #{cardCode}, #{cardType}, #{cardName}, #{companyName},
+            NVL(#{companyCode, jdbcType=VARCHAR}, '01'),
+            #{brandName,          jdbcType=VARCHAR},
+            #{annualFeeDomestic},
+            #{annualFeeOverseas,  jdbcType=NUMERIC},
+            #{previousMonthSpend, jdbcType=NUMERIC},
+            #{minimumAge,         jdbcType=NUMERIC},
+            #{maximumAge,         jdbcType=NUMERIC},
+            #{creditLimitMin,     jdbcType=NUMERIC},
+            #{creditLimitMax,     jdbcType=NUMERIC},
+            #{targetUser,         jdbcType=VARCHAR},
+            #{summaryDescription, jdbcType=VARCHAR},
+            NVL(#{searchableYn,       jdbcType=CHAR}, 'Y'),
+            NVL(#{visibleYn,          jdbcType=CHAR}, 'Y'),
+            NVL(#{approvalRequiredYn, jdbcType=CHAR}, 'Y'),
+            NVL(#{cardStatus,         jdbcType=VARCHAR}, 'DRAFT'),
+            #{publishStartAt, jdbcType=TIMESTAMP},
+            #{publishEndAt,   jdbcType=TIMESTAMP},
+            0,
+            #{createdBy, jdbcType=NUMERIC},
+            SYSTIMESTAMP, 'N'
+        )
+    </insert>
 
     <update id="updateCard">
         UPDATE CARDS
-        SET    card_type           = #{cardType},
-               card_name           = #{cardName},
-               company_name        = #{companyName},
-               brand_name          = #{brandName,          jdbcType=VARCHAR},
-               annual_fee_domestic = #{annualFeeDomestic},
-               annual_fee_overseas = #{annualFeeOverseas,  jdbcType=NUMERIC},
-               previous_month_spend= #{previousMonthSpend, jdbcType=NUMERIC},
-               minimum_age         = #{minimumAge,         jdbcType=NUMERIC},
-               maximum_age         = #{maximumAge,         jdbcType=NUMERIC},
-               credit_limit_min    = #{creditLimitMin,     jdbcType=NUMERIC},
-               credit_limit_max    = #{creditLimitMax,     jdbcType=NUMERIC},
-               target_user         = #{targetUser,         jdbcType=VARCHAR},
-               summary_description = #{summaryDescription, jdbcType=VARCHAR},
-               searchable_yn       = #{searchableYn},
-               visible_yn          = #{visibleYn},
-               updated_by          = #{updateBy,           jdbcType=NUMERIC},
-               updated_at          = SYSTIMESTAMP
+        SET    card_type            = #{cardType},
+               card_name            = #{cardName},
+               company_name         = #{companyName},
+               brand_name           = #{brandName,          jdbcType=VARCHAR},
+               annual_fee_domestic  = #{annualFeeDomestic},
+               annual_fee_overseas  = #{annualFeeOverseas,  jdbcType=NUMERIC},
+               previous_month_spend = #{previousMonthSpend, jdbcType=NUMERIC},
+               minimum_age          = #{minimumAge,         jdbcType=NUMERIC},
+               maximum_age          = #{maximumAge,         jdbcType=NUMERIC},
+               credit_limit_min     = #{creditLimitMin,     jdbcType=NUMERIC},
+               credit_limit_max     = #{creditLimitMax,     jdbcType=NUMERIC},
+               target_user          = #{targetUser,         jdbcType=VARCHAR},
+               summary_description  = #{summaryDescription, jdbcType=VARCHAR},
+               searchable_yn        = #{searchableYn},
+               visible_yn           = #{visibleYn},
+               updated_by           = #{updateBy,           jdbcType=NUMERIC},
+               updated_at           = SYSTIMESTAMP
         WHERE  card_id = #{cardId}
     </update>
 
@@ -146,40 +131,34 @@
           AND  card_status     = 'PUBLISHED'
           AND  deleted_yn      = 'N'
     </select>
-    
-    <!-- 기존 getExpiredCards 아래에 추가 -->
 
-	<!-- APPROVED 상태이고 게시 시작 시간이 지난 카드 조회 -->
-	<select id="getApprovedReadyCards" resultMap="card2Map">
-	    SELECT * FROM CARDS
-	    WHERE  card_status     = 'APPROVED'
-	      AND  publish_start_at &lt;= SYSTIMESTAMP
-	      AND  deleted_yn       = 'N'
-	</select>
-	
-	<!-- APPROVED → PUBLISHED 일괄 전환 -->
-	<update id="publishCards">
-	    UPDATE CARDS
-	    SET    card_status = 'PUBLISHED',
-	           updated_at  = SYSTIMESTAMP
-	    WHERE  card_id IN
-	    <foreach collection="cardIds" item="id" open="(" separator="," close=")">
-	        #{id}
-	    </foreach>
-	</update>
-	
-	<!-- 카드 PUBLISHED 전환 시 버전도 PUBLISHED로 -->
-	<update id="publishCardVersions">
-	    UPDATE CARD_VERSIONS
-	    SET    version_status = 'PUBLISHED',
-	           published_at   = SYSTIMESTAMP
-	    WHERE  card_id IN
-	    <foreach collection="cardIds" item="id" open="(" separator="," close=")">
-	        #{id}
-	    </foreach>
-	      AND  version_status = 'APPROVED'
-	</update>
-    
+    <select id="getApprovedReadyCards" resultMap="card2Map">
+        SELECT * FROM CARDS
+        WHERE  card_status      = 'APPROVED'
+          AND  publish_start_at &lt;= SYSTIMESTAMP
+          AND  deleted_yn       = 'N'
+    </select>
+
+    <update id="publishCards">
+        UPDATE CARDS
+        SET    card_status = 'PUBLISHED',
+               updated_at  = SYSTIMESTAMP
+        WHERE  card_id IN
+        <foreach collection="cardIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <update id="publishCardVersions">
+        UPDATE CARD_VERSIONS
+        SET    version_status = 'PUBLISHED',
+               published_at   = SYSTIMESTAMP
+        WHERE  card_id IN
+        <foreach collection="cardIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+          AND  version_status = 'APPROVED'
+    </update>
 
     <update id="expireCards">
         UPDATE CARDS
@@ -199,56 +178,6 @@
             #{id}
         </foreach>
           AND  version_status = 'PUBLISHED'
-    </update>
-
-    <!-- 카드 이미지 조회 -->
-    <select id="getImage" resultMap="image2Map">
-        SELECT * FROM CARD_IMAGES
-        WHERE  card_id = #{cardId}
-        ORDER  BY sort_order ASC NULLS LAST
-    </select>
-
-    <!-- 카드 이미지 배치 INSERT -->
-    <insert id="insertImage">
-        INSERT INTO CARD_IMAGES (
-            card_id, image_type, image_url,
-            original_name, stored_name, file_size,
-            mime_type, image_width, image_height, sort_order, created_at
-        )
-        <foreach collection="imageList" item="img" separator=" UNION ALL ">
-            SELECT
-                #{img.cardId},
-                #{img.imageType},
-                #{img.imageUrl},
-                #{img.originalName,  jdbcType=VARCHAR},
-                #{img.storedName,    jdbcType=VARCHAR},
-                #{img.fileSize,      jdbcType=NUMERIC},
-                #{img.mimeType,      jdbcType=VARCHAR},
-                #{img.imageWidth,    jdbcType=NUMERIC},
-                #{img.imageHeight,   jdbcType=NUMERIC},
-                NVL(#{img.sortOrder, jdbcType=NUMERIC}, 1),
-                SYSTIMESTAMP
-            FROM DUAL
-        </foreach>
-    </insert>
-
-    <update id="updateImage">
-        UPDATE CARD_IMAGES
-        SET    image_type    = #{imageType},
-               image_url     = #{imageUrl},
-               original_name = #{originalName, jdbcType=VARCHAR},
-               sort_order    = #{sortOrder,    jdbcType=NUMERIC}
-        WHERE  image_id = #{imageId}
-    </update>
-
-    <update id="deleteImage">
-        DELETE FROM CARD_IMAGES
-        WHERE  image_id = #{imageId}
-    </update>
-
-    <update id="deleteImageByCardId">
-        DELETE FROM CARD_IMAGES
-        WHERE  card_id = #{cardId}
     </update>
 
 </mapper>
