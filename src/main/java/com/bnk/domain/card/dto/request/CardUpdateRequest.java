@@ -13,10 +13,6 @@ public class CardUpdateRequest {
     @Size(max = 2000)
     private String changeSummary;
 
-    // 수정 가능 필드 — 모두 nullable (null이면 기존값 유지)
-    @Size(max = 200)
-    private String cardName;
-
     @Min(0)
     private Long annualFeeDomestic;
 

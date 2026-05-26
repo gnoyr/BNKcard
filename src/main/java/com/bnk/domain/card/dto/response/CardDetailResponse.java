@@ -45,17 +45,31 @@ public class CardDetailResponse {
 
     @Getter @Builder
     public static class ImageDto {
+        private Long imageId;
         private String imageType;
         private String imageUrl;
+        private String originalName;
+        private String storedName;
+        private Long fileSize;
+        private String mimeType;
+        private Integer imageWidth;
+        private Integer imageHeight;
         private Integer sortOrder;
+        private LocalDateTime createdAt;
     }
     @Getter @Builder
     public static class ContentDto {
+        private Long contentId;        // ← 추가
+        private Long cardId;           // ← 추가
         private String contentType;
         private String title;
         private String contentHtml;
         private String mobileContentHtml;
         private Integer displayOrder;
+        private String visibleYn;      // ← 추가
+        private Long createdBy;        // ← 추가
+        private LocalDateTime createdAt;  // ← 추가
+        private LocalDateTime updatedAt;  // ← 추가
     }
     @Getter @Builder
     public static class TermsFileDto {
