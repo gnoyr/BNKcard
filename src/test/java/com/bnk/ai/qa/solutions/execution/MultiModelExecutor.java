@@ -1,0 +1,476 @@
+package com.bnk.ai.qa.solutions.execution;
+
+import com.bnk.ai.qa.solutions.chatclient.ChatClientStore;
+import com.bnk.ai.qa.solutions.embedding.EmbeddingModelStore;
+import com.bnk.ai.qa.solutions.execution.ratelimit.ProviderRateLimiterRegistry;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.core.task.AsyncTaskExecutor;
+import org.jspecify.annotations.Nullable;
+
+/**
+ * Stateless executor for making LLM and embedding calls across multiple models.
+ * <p>
+ * This executor:
+ * <ul>
+ *   <li>Does NOT manage any listeners (stateless)</li>
+ *   <li>Does NOT aggregate scores (metrics do this)</li>
+ *   <li>Does NOT track chain state (metrics do this)</li>
+ *   <li>Simply executes calls on configured models in parallel and returns results</li>
+ * </ul>
+ * <p>
+ * All execution methods return {@link ModelResult} objects containing:
+ * <ul>
+ *   <li>Model ID</li>
+ *   <li>Result (if successful)</li>
+ *   <li>Duration</li>
+ *   <li>Request that was sent</li>
+ *   <li>Error (if failed)</li>
+ * </ul>
+ *
+ * <h3>Usage Example:</h3>
+ * <pre>{@code
+ * // Execute LLM call on all models
+ * List<ModelResult<Response>> results = executor.executeLlm(prompt, Response.class);
+ *
+ * for (ModelResult<Response> result : results) {
+ *     if (result.isSuccess()) {
+ *         double score = result.result().getScore();
+ *         log.info("Model {} scored {}", result.modelId(), score);
+ *     }
+ * }
+ *
+ * // Execute on specific model
+ * ModelResult<Response> singleResult = executor.executeLlmOnModel("gpt-4", prompt, Response.class);
+ * }</pre>
+ *
+ * @author Artem Simeshin
+ * @see ModelResult
+ */
+@Slf4j
+public class MultiModelExecutor {
+
+    private final ChatClientStore chatClientStore;
+
+    @Nullable
+    private final EmbeddingModelStore embeddingModelStore;
+
+    private final AsyncTaskExecutor metricExecutor;
+    private final AsyncTaskExecutor httpExecutor;
+
+    @Nullable
+    private final ProviderRateLimiterRegistry rateLimiterRegistry;
+
+    /**
+     * Creates a new executor without embedding support (single executor for both layers).
+     *
+     * @param chatClientStore store of configured AI model clients
+     * @param taskExecutor    executor for all async operations
+     */
+    public MultiModelExecutor(final ChatClientStore chatClientStore, final AsyncTaskExecutor taskExecutor) {
+        this(chatClientStore, null, taskExecutor, taskExecutor);
+    }
+
+    /**
+     * Creates a new executor with embedding support (single executor for both layers).
+     *
+     * @param chatClientStore     store of configured AI model clients
+     * @param embeddingModelStore store of configured embedding models (nullable)
+     * @param taskExecutor        executor for all async operations
+     */
+    public MultiModelExecutor(
+            final ChatClientStore chatClientStore,
+            @Nullable final EmbeddingModelStore embeddingModelStore,
+            final AsyncTaskExecutor taskExecutor) {
+        this(chatClientStore, embeddingModelStore, taskExecutor, taskExecutor);
+    }
+
+    /**
+     * Creates a new executor with separate executors for metrics and HTTP operations.
+     * <p>
+     * Using separate executors prevents deadlocks when metrics wait for HTTP responses.
+     * The metric executor handles outer async tasks (runAsync), while the HTTP executor
+     * handles LLM and embedding API calls.
+     *
+     * @param chatClientStore     store of configured AI model clients
+     * @param embeddingModelStore store of configured embedding models (nullable)
+     * @param metricExecutor      executor for metric-level async operations (runAsync)
+     * @param httpExecutor        executor for HTTP/LLM API calls
+     */
+    public MultiModelExecutor(
+            final ChatClientStore chatClientStore,
+            @Nullable final EmbeddingModelStore embeddingModelStore,
+            final AsyncTaskExecutor metricExecutor,
+            final AsyncTaskExecutor httpExecutor) {
+        this(chatClientStore, embeddingModelStore, metricExecutor, httpExecutor, null);
+    }
+
+    /**
+     * Creates a new executor with separate executors and optional rate limiting.
+     * <p>
+     * Using separate executors prevents deadlocks when metrics wait for HTTP responses.
+     * The metric executor handles outer async tasks (runAsync), while the HTTP executor
+     * handles LLM and embedding API calls.
+     * <p>
+     * When a {@link ProviderRateLimiterRegistry} is provided, all API calls are throttled
+     * through per-provider token buckets before execution. Rate limit wait time is not
+     * counted towards the {@link ModelResult#duration()}.
+     *
+     * @param chatClientStore      store of configured AI model clients
+     * @param embeddingModelStore  store of configured embedding models (nullable)
+     * @param metricExecutor       executor for metric-level async operations (runAsync)
+     * @param httpExecutor         executor for HTTP/LLM API calls
+     * @param rateLimiterRegistry  per-provider rate limiter registry (nullable, no rate limiting if null)
+     */
+    public MultiModelExecutor(
+            final ChatClientStore chatClientStore,
+            @Nullable final EmbeddingModelStore embeddingModelStore,
+            final AsyncTaskExecutor metricExecutor,
+            final AsyncTaskExecutor httpExecutor,
+            @Nullable final ProviderRateLimiterRegistry rateLimiterRegistry) {
+        this.chatClientStore = Objects.requireNonNull(chatClientStore, "chatClientStore");
+        this.embeddingModelStore = embeddingModelStore;
+        this.metricExecutor = Objects.requireNonNull(metricExecutor, "metricExecutor");
+        this.httpExecutor = Objects.requireNonNull(httpExecutor, "httpExecutor");
+        this.rateLimiterRegistry = rateLimiterRegistry;
+    }
+
+    // ============ LLM Operations - All Models ============
+
+    /**
+     * Executes LLM call on ALL configured models in parallel.
+     *
+     * @param prompt       the prompt to send
+     * @param responseType the expected response type
+     * @param <R>          the response type
+     * @return list of results from all models
+     */
+    public <R> List<ModelResult<R>> executeLlm(final String prompt, final Class<R> responseType) {
+        return executeLlm(chatClientStore.getModelIds(), prompt, responseType);
+    }
+
+    /**
+     * Executes LLM call on specified models in parallel.
+     *
+     * @param modelIds     list of model IDs to execute on
+     * @param prompt       the prompt to send
+     * @param responseType the expected response type
+     * @param <R>          the response type
+     * @return list of results from specified models
+     */
+    public <R> List<ModelResult<R>> executeLlm(
+            final List<String> modelIds, final String prompt, final Class<R> responseType) {
+        return executeLlmAsync(modelIds, prompt, responseType).join();
+    }
+
+    /**
+     * Executes LLM call on ALL configured models in parallel (async).
+     *
+     * @param prompt       the prompt to send
+     * @param responseType the expected response type
+     * @param <R>          the response type
+     * @return future with list of results from all models
+     */
+    public <R> CompletableFuture<List<ModelResult<R>>> executeLlmAsync(
+            final String prompt, final Class<R> responseType) {
+        return executeLlmAsync(chatClientStore.getModelIds(), prompt, responseType);
+    }
+
+    /**
+     * Executes LLM call on specified models in parallel (async).
+     *
+     * @param modelIds     list of model IDs to execute on
+     * @param prompt       the prompt to send
+     * @param responseType the expected response type
+     * @param <R>          the response type
+     * @return future with list of results from specified models
+     */
+    public <R> CompletableFuture<List<ModelResult<R>>> executeLlmAsync(
+            final List<String> modelIds, final String prompt, final Class<R> responseType) {
+        if (modelIds == null || modelIds.isEmpty()) {
+            return CompletableFuture.completedFuture(List.of());
+        }
+
+        final List<CompletableFuture<ModelResult<R>>> futures = modelIds.stream()
+                .map(modelId -> executeLlmOnModelAsync(modelId, prompt, responseType))
+                .toList();
+
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                .thenApply(v -> futures.stream().map(CompletableFuture::join).toList());
+    }
+
+    // ============ LLM Operations - Single Model ============
+
+    /**
+     * Executes LLM call on a SPECIFIC model.
+     *
+     * @param modelId      the model ID to execute on
+     * @param prompt       the prompt to send
+     * @param responseType the expected response type
+     * @param <R>          the response type
+     * @return result from the specified model
+     */
+    public <R> ModelResult<R> executeLlmOnModel(
+            final String modelId, final String prompt, final Class<R> responseType) {
+        return executeLlmOnModelAsync(modelId, prompt, responseType).join();
+    }
+
+    /**
+     * Executes LLM call on a SPECIFIC model (async).
+     *
+     * @param modelId      the model ID to execute on
+     * @param prompt       the prompt to send
+     * @param responseType the expected response type
+     * @param <R>          the response type
+     * @return future with result from the specified model
+     */
+    public <R> CompletableFuture<ModelResult<R>> executeLlmOnModelAsync(
+            final String modelId, final String prompt, final Class<R> responseType) {
+        return httpExecutor.submitCompletable(() -> {
+            try {
+                acquireRateLimit(modelId);
+            } catch (Exception e) {
+                log.warn("Model {} rate limited: {}", modelId, e.getMessage());
+                return ModelResult.<R>failure(modelId, Duration.ZERO, prompt, e);
+            }
+            final Instant start = Instant.now();
+            try {
+                final ChatClient client = chatClientStore.get(modelId);
+                final R response = client.prompt(prompt).call().entity(responseType);
+                final Duration duration = Duration.between(start, Instant.now());
+                return ModelResult.success(modelId, response, duration, prompt);
+            } catch (Exception e) {
+                final Duration duration = Duration.between(start, Instant.now());
+                
+                System.err.println(">>> 진짜 에러 발생 지점: " + e.getClass().getName());
+                System.err.println(">>> 에러 메시지: " + e.getMessage());
+                if (e.getCause() != null) {
+                    System.err.println(">>> 원인(Cause): " + e.getCause().getMessage());
+                    e.getCause().printStackTrace();
+                } else {
+                    e.printStackTrace();
+                }
+                return ModelResult.failure(modelId, duration, prompt, e);
+            }
+        });
+    }
+
+    // ============ Embedding Operations - All Models ============
+
+    /**
+     * Executes embedding on ALL configured embedding models in parallel.
+     *
+     * @param text the text to embed
+     * @return list of results from all embedding models
+     */
+    public List<ModelResult<float[]>> executeEmbedding(final String text) {
+        return executeEmbeddingAsync(text).join();
+    }
+
+    /**
+     * Executes embedding on ALL configured embedding models in parallel (async).
+     *
+     * @param text the text to embed
+     * @return future with list of results from all embedding models
+     */
+    public CompletableFuture<List<ModelResult<float[]>>> executeEmbeddingAsync(final String text) {
+        if (embeddingModelStore == null) {
+            return CompletableFuture.completedFuture(List.of());
+        }
+
+        final List<String> modelIds = embeddingModelStore.getModelIds();
+        final List<CompletableFuture<ModelResult<float[]>>> futures = modelIds.stream()
+                .map(modelId -> executeEmbeddingOnModelAsync(modelId, text))
+                .toList();
+
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                .thenApply(v -> futures.stream().map(CompletableFuture::join).toList());
+    }
+
+    /**
+     * Executes embeddings for multiple texts on ALL configured models.
+     *
+     * @param texts the texts to embed
+     * @return list of results from all embedding models
+     */
+    public List<ModelResult<List<float[]>>> executeEmbeddings(final List<String> texts) {
+        return executeEmbeddingsAsync(texts).join();
+    }
+
+    /**
+     * Executes embeddings for multiple texts on ALL configured models (async).
+     *
+     * @param texts the texts to embed
+     * @return future with list of results from all embedding models
+     */
+    public CompletableFuture<List<ModelResult<List<float[]>>>> executeEmbeddingsAsync(final List<String> texts) {
+        if (embeddingModelStore == null) {
+            return CompletableFuture.completedFuture(List.of());
+        }
+
+        final List<String> modelIds = embeddingModelStore.getModelIds();
+        final List<CompletableFuture<ModelResult<List<float[]>>>> futures = modelIds.stream()
+                .map(modelId -> executeEmbeddingsOnModelAsync(modelId, texts))
+                .toList();
+
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                .thenApply(v -> futures.stream().map(CompletableFuture::join).toList());
+    }
+
+    // ============ Embedding Operations - Single Model ============
+
+    /**
+     * Executes embedding on a SPECIFIC model.
+     *
+     * @param modelId the model ID to execute on
+     * @param text    the text to embed
+     * @return result from the specified model
+     */
+    public ModelResult<float[]> executeEmbeddingOnModel(final String modelId, final String text) {
+        return executeEmbeddingOnModelAsync(modelId, text).join();
+    }
+
+    /**
+     * Executes embedding on a SPECIFIC model (async).
+     *
+     * @param modelId the model ID to execute on
+     * @param text    the text to embed
+     * @return future with result from the specified model
+     */
+    public CompletableFuture<ModelResult<float[]>> executeEmbeddingOnModelAsync(
+            final String modelId, final String text) {
+        return httpExecutor.submitCompletable(() -> {
+            try {
+                acquireRateLimit(modelId);
+            } catch (Exception e) {
+                log.warn("Embedding model {} rate limited: {}", modelId, e.getMessage());
+                return ModelResult.<float[]>failure(modelId, Duration.ZERO, text, e);
+            }
+            final Instant start = Instant.now();
+            try {
+                if (embeddingModelStore == null) {
+                    throw new IllegalStateException("EmbeddingModelStore not configured");
+                }
+                final EmbeddingModel embeddingModel = embeddingModelStore.get(modelId);
+                final float[] embedding = embeddingModel.embed(text);
+                final Duration duration = Duration.between(start, Instant.now());
+                return ModelResult.success(modelId, embedding, duration, text);
+            } catch (Exception e) {
+                final Duration duration = Duration.between(start, Instant.now());
+                log.warn("Embedding model {} failed: {}", modelId, e.getMessage());
+                return ModelResult.failure(modelId, duration, text, e);
+            }
+        });
+    }
+
+    /**
+     * Executes embeddings for multiple texts on a SPECIFIC model.
+     *
+     * @param modelId the model ID to execute on
+     * @param texts   the texts to embed
+     * @return result from the specified model
+     */
+    public ModelResult<List<float[]>> executeEmbeddingsOnModel(final String modelId, final List<String> texts) {
+        return executeEmbeddingsOnModelAsync(modelId, texts).join();
+    }
+
+    /**
+     * Executes embeddings for multiple texts on a SPECIFIC model (async).
+     *
+     * @param modelId the model ID to execute on
+     * @param texts   the texts to embed
+     * @return future with result from the specified model
+     */
+    public CompletableFuture<ModelResult<List<float[]>>> executeEmbeddingsOnModelAsync(
+            final String modelId, final List<String> texts) {
+        return httpExecutor.submitCompletable(() -> {
+            final String request = String.join(", ", texts);
+            try {
+                acquireRateLimit(modelId);
+            } catch (Exception e) {
+                log.warn("Embedding model {} rate limited: {}", modelId, e.getMessage());
+                return ModelResult.<List<float[]>>failure(modelId, Duration.ZERO, request, e);
+            }
+            final Instant start = Instant.now();
+            try {
+                if (embeddingModelStore == null) {
+                    throw new IllegalStateException("EmbeddingModelStore not configured");
+                }
+                final EmbeddingModel embeddingModel = embeddingModelStore.get(modelId);
+                final List<float[]> embeddings = new ArrayList<>();
+                for (final String text : texts) {
+                    embeddings.add(embeddingModel.embed(text));
+                }
+                final Duration duration = Duration.between(start, Instant.now());
+                return ModelResult.success(modelId, embeddings, duration, request);
+            } catch (Exception e) {
+                final Duration duration = Duration.between(start, Instant.now());
+                log.warn("Embedding model {} failed: {}", modelId, e.getMessage());
+                return ModelResult.failure(modelId, duration, request, e);
+            }
+        });
+    }
+
+    // ============ Async Execution ============
+
+    /**
+     * Executes a task asynchronously using the metric executor.
+     * <p>
+     * This method should be used by metrics instead of {@code CompletableFuture.supplyAsync()}
+     * to ensure all async operations use the Spring-managed executor rather than the
+     * common ForkJoinPool.
+     * <p>
+     * Uses the metric executor (separate from HTTP executor) to prevent deadlocks
+     * when metrics wait for HTTP responses.
+     *
+     * @param task the task to execute
+     * @param <T>  the result type
+     * @return future with the task result
+     */
+    public <T> CompletableFuture<T> runAsync(final java.util.concurrent.Callable<T> task) {
+        return metricExecutor.submitCompletable(task);
+    }
+
+    // ============ Utility Methods ============
+
+    /**
+     * Gets all configured LLM model IDs.
+     *
+     * @return list of model IDs
+     */
+    public List<String> getModelIds() {
+        return chatClientStore.getModelIds();
+    }
+
+    /**
+     * Gets all configured embedding model IDs.
+     *
+     * @return list of embedding model IDs, or empty list if not configured
+     */
+    public List<String> getEmbeddingModelIds() {
+        return embeddingModelStore != null ? embeddingModelStore.getModelIds() : List.of();
+    }
+
+    // ============ Rate Limiting ============
+
+    /**
+     * Acquires a rate limit token for the given model before making an API call.
+     * <p>
+     * If no rate limiter registry is configured, this method returns immediately.
+     *
+     * @param modelId the model ID to acquire a rate limit token for
+     */
+    private void acquireRateLimit(final String modelId) {
+        if (rateLimiterRegistry == null) {
+            return;
+        }
+        rateLimiterRegistry.acquire(modelId);
+    }
+}
