@@ -26,6 +26,9 @@ public class CardCreateRequest {
     @NotBlank(message = "카드사명은 필수입니다.")
     @Size(max = 100)
     private String companyName;
+    
+    @Size(max = 10)
+    private String companyCode;     
 
     @Size(max = 50)
     private String brandName;
@@ -36,12 +39,6 @@ public class CardCreateRequest {
 
     @Min(value = 0)
     private Long annualFeeOverseas;
-
-    @Size(max = 1000)
-    private String summaryDescription;
-
-    private LocalDateTime publishStartAt;
-    private LocalDateTime publishEndAt;
     
     @NotNull(message = "전월 실적은 필수입니다.")
     @Min(value = 0)
@@ -50,8 +47,20 @@ public class CardCreateRequest {
     // nullable, 선택 입력
     @Min(value = 0) private Integer minimumAge;
     @Min(value = 0) private Integer maximumAge;
+    
+    @Min(value = 0) private Long creditLimitMin;  // ← 추가
+    @Min(value = 0) private Long creditLimitMax;  // ← 추가
 
     @Size(max = 300) private String targetUser;
+    
+    @Size(max = 1000)
+    private String summaryDescription;
+    
+    private String searchableYn;  // ← 추가
+    private String visibleYn;     // ← 추가
+
+    private LocalDateTime publishStartAt;
+    private LocalDateTime publishEndAt;
 
     @Valid
     private List<BenefitCreateRequest> benefits;
