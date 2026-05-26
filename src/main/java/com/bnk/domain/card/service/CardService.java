@@ -145,15 +145,17 @@ public class CardService {
                 ));
 
         List<CardListResponse> content = cards.stream()
-                .map(card -> CardListResponse.builder()
-                        .cardId(card.getCardId())
-                        .cardName(card.getCardName())
-                        .companyName(card.getCompanyName())
-                        .cardType(card.getCardType())
-                        .thumbnailUrl(thumbnailMap.get(card.getCardId()))
-                        .topBenefit(topBenefitMap.get(card.getCardId()))
-                        .build())
-                .collect(Collectors.toList());
+        	    .map(card -> CardListResponse.builder()
+        	        .cardId(card.getCardId())
+        	        .cardName(card.getCardName())
+        	        .companyName(card.getCompanyName())
+        	        .cardType(card.getCardType())
+        	        .annualFeeDomestic(card.getAnnualFeeDomestic())   // ← 추가
+        	        .annualFeeOverseas(card.getAnnualFeeOverseas())   // ← 추가
+        	        .thumbnailUrl(thumbnailMap.get(card.getCardId()))
+        	        .topBenefit(topBenefitMap.get(card.getCardId()))
+        	        .build())
+        	    .collect(Collectors.toList());
 
         return PageResponse.of(content, totalCount, request.getPage(), request.getSize());
     }
@@ -195,9 +197,9 @@ public class CardService {
         List<Long> cardIds = cards.stream().map(Card::getCardId).collect(Collectors.toList());
         
         List<CardImage> thumbnails = cardImageMapper.findByCardIdsAndType(cardIds, "THUMBNAIL");
-        Map<Long, String> thumbnailMap = thumbnails.stream()
-                .collect(Collectors.toMap(CardImage::getCardId, CardImage::getImageUrl, (e, r) -> e));
-
+        Map<Long, String> thumbnailMap = new HashMap<>(thumbnails.stream()
+                .collect(Collectors.toMap(CardImage::getCardId, CardImage::getImageUrl, (e, r) -> e)));
+        
         List<Long> noThumbnailIds = cardIds.stream()
                 .filter(id -> !thumbnailMap.containsKey(id))
                 .collect(Collectors.toList());
@@ -212,16 +214,17 @@ public class CardService {
 
         final String reason = recommendReason;
         return cards.stream()
-                .map(card -> CardListResponse.builder()
-                        .cardId(card.getCardId())
-                        .cardName(card.getCardName())
-                        .companyName(card.getCompanyName())
-                        .cardType(card.getCardType())
-                        .thumbnailUrl(thumbnailMap.get(card.getCardId()))
-                        .topBenefit(topBenefitMap.get(card.getCardId()))
-                        .recommendReason(reason)
-                        .build())
-                .collect(Collectors.toList());
+        	    .map(card -> CardListResponse.builder()
+        	        .cardId(card.getCardId())
+        	        .cardName(card.getCardName())
+        	        .companyName(card.getCompanyName())
+        	        .cardType(card.getCardType())
+        	        .annualFeeDomestic(card.getAnnualFeeDomestic())   // ← 추가
+        	        .thumbnailUrl(thumbnailMap.get(card.getCardId()))
+        	        .topBenefit(topBenefitMap.get(card.getCardId()))
+        	        .recommendReason(reason)
+        	        .build())
+        	    .collect(Collectors.toList());
     }
 
     // ────────────────────────────────────────────────────────────────
