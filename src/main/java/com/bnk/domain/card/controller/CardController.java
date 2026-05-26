@@ -29,9 +29,8 @@ import com.bnk.global.auth.CustomAdminDetails;
 import com.bnk.global.auth.CustomUserDetails;
 import com.bnk.global.response.ApiResponse;
 import com.bnk.global.response.PageResponse;
-import com.bnk.domain.card.mapper.CardCategoryMapper2;
+import com.bnk.domain.card.mapper.CardCategoryMapper;
 import com.bnk.domain.card.model.CardCategory;
-import com.bnk.domain.card.model.CardCategory2;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +42,7 @@ public class CardController {
 
     private final CardService cardService;
     private final AdminCardService adminCardService;
-    private final CardCategoryMapper2 cardCategoryMapper2;
+    private final CardCategoryMapper cardCategoryMapper;
     /**
      * 홈 배너 조회.
      * 비로그인: view_count 상위 3개 CARD_PROMOTIONS.banner_image_url
@@ -133,7 +132,7 @@ public class CardController {
      */
     @GetMapping("/cards/categories")
     public ResponseEntity<ApiResponse<List<CardCategory>>> getCardCategories() {
-        return ApiResponse.toOk(cardCategoryMapper2.getAllCategories());
+        return ApiResponse.toOk(cardCategoryMapper.getAllCategories());
     }
     
 }

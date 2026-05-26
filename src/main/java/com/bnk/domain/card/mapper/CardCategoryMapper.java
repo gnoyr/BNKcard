@@ -8,7 +8,7 @@ import org.apache.ibatis.annotations.Param;
 import com.bnk.domain.card.model.CardCategory;
 
 @Mapper
-public interface CardCategoryMapper2 {
+public interface CardCategoryMapper {
     
     // 전체 카테고리 ---------------------------------------
     List<CardCategory> getAllCategories();
