@@ -1,16 +1,16 @@
-package com.bnk.ai.evaluation;
+package com.bnk.ai.qa.solutions.metrics.retrieval;
 
-import ai.qa.solutions.execution.ModelResult;
-import ai.qa.solutions.execution.MultiModelExecutor;
-import ai.qa.solutions.execution.listener.dto.MetricEvaluationContext;
-import ai.qa.solutions.execution.listener.dto.MetricEvaluationResult;
-import ai.qa.solutions.execution.listener.dto.ModelExclusionEvent;
-import ai.qa.solutions.execution.listener.dto.StepResults;
-import ai.qa.solutions.execution.listener.dto.StepType;
-import ai.qa.solutions.metric.AbstractMultiModelMetric;
-import ai.qa.solutions.metric.Metric.MetricConfiguration;
-import ai.qa.solutions.metric.metadata.ContextRecallMetadata;
-import ai.qa.solutions.sample.Sample;
+import com.bnk.ai.qa.solutions.metric.Metric.MetricConfiguration;
+import com.bnk.ai.qa.solutions.execution.ModelResult;
+import com.bnk.ai.qa.solutions.execution.MultiModelExecutor;
+import com.bnk.ai.qa.solutions.execution.listener.dto.MetricEvaluationContext;
+import com.bnk.ai.qa.solutions.execution.listener.dto.MetricEvaluationResult;
+import com.bnk.ai.qa.solutions.execution.listener.dto.ModelExclusionEvent;
+import com.bnk.ai.qa.solutions.execution.listener.dto.StepResults;
+import com.bnk.ai.qa.solutions.execution.listener.dto.StepType;
+import com.bnk.ai.qa.solutions.metric.AbstractMultiModelMetric;
+import com.bnk.ai.qa.solutions.metric.metadata.ContextRecallMetadata;
+import com.bnk.ai.qa.solutions.sample.Sample;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import java.time.Duration;
 import java.time.Instant;
@@ -55,7 +55,14 @@ public class ContextRecallMetric extends AbstractMultiModelMetric<ContextRecallM
                       - statement: The individual sentence from the reference answer
                       - reason: Detailed explanation for the classification
                       - attributed: 1 if the statement can be attributed to the context, 0 otherwise
-                    """;
+                      
+					[CRITICAL OUTPUT DIRECTIVE]
+					DO NOT output your thought process, scratchpad, or step-by-step reasoning.
+					DO NOT echo or repeat these instructions.
+					DO NOT output any bullet points or conversational text before the JSON.
+					DO NOT use markdown formatting.
+					Return EXACTLY AND ONLY a raw JSON object.
+					The very first character of your output MUST be an open curly brace and the very last character MUST be a close curly brace.                    """;
 
     private final String contextRecallPrompt;
 
