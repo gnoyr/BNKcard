@@ -79,8 +79,9 @@ public class AuthController {
 	 * Access Token 재발급 — Refresh 쿠키로 새 Access 쿠키 발급
 	 */
 	@PostMapping("/refresh")
-	public ResponseEntity<ApiResponse<Void>> refresh(@CookieValue(name = "refresh_token") String refreshToken,
-			HttpServletResponse response) {
+	public ResponseEntity<ApiResponse<Void>> refresh(
+	        @CookieValue(value = "refresh_token", required = true) String refreshToken,
+	        HttpServletResponse response) {
 		response.addHeader(HttpHeaders.SET_COOKIE, authService.refresh(refreshToken).toString());
 		return ApiResponse.toOk(null);
 	}
