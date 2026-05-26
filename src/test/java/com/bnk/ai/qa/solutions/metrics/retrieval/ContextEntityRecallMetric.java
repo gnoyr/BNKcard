@@ -1,0 +1,386 @@
+package com.bnk.ai.qa.solutions.metrics.retrieval;
+
+import com.bnk.ai.qa.solutions.execution.ModelResult;
+import com.bnk.ai.qa.solutions.execution.MultiModelExecutor;
+import com.bnk.ai.qa.solutions.execution.listener.dto.MetricEvaluationContext;
+import com.bnk.ai.qa.solutions.execution.listener.dto.MetricEvaluationResult;
+import com.bnk.ai.qa.solutions.execution.listener.dto.ModelExclusionEvent;
+import com.bnk.ai.qa.solutions.execution.listener.dto.StepResults;
+import com.bnk.ai.qa.solutions.execution.listener.dto.StepType;
+import com.bnk.ai.qa.solutions.metric.AbstractMultiModelMetric;
+import com.bnk.ai.qa.solutions.metric.Metric.MetricConfiguration;
+import com.bnk.ai.qa.solutions.metric.metadata.ContextEntityRecallMetadata;
+import com.bnk.ai.qa.solutions.sample.Sample;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import lombok.Builder;
+import lombok.Data;
+import lombok.Singular;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.prompt.PromptTemplate;
+
+/**
+ * Context Entity Recall Metric - LLM-based evaluation measuring the recall of entities
+ * present in both reference and retrieved contexts relative to entities in reference alone.
+ * <p>
+ * Uses {@link MultiModelExecutor} for parallel execution across multiple models
+ * with explicit flow control and listener notifications.
+ * <p>
+ * This metric is particularly useful in fact-based use cases like tourism help desk,
+ * historical QA, etc., where entity coverage is crucial for evaluating retrieval mechanisms.
+ * <p>
+ * Score ranges from 0.0 to 1.0, where higher scores indicate better entity coverage.
+ */
+@Slf4j
+public class ContextEntityRecallMetric
+        extends AbstractMultiModelMetric<ContextEntityRecallMetric.ContextEntityRecallConfig> {
+    public static final String DEFAULT_ENTITY_EXTRACTION_PROMPT =
+            """
+                    Given a text, extract unique entities without repetition. Ensure you consider different forms or mentions of the same entity as a single entity.
+
+                    Text: {text}
+
+                    Instructions:
+                    1. Extract all named entities including:
+                       - Person names (e.g., "Albert Einstein", "Napoleon")
+                       - Place names (e.g., "Paris", "Eiffel Tower", "France")
+                       - Organizations (e.g., "UNESCO", "European Union")
+                       - Dates and times (e.g., "1889", "July 16, 1969", "7th century BC")
+                       - Events (e.g., "World War II", "Apollo 11 mission")
+                       - Products/objects (e.g., "iPhone", "Great Wall of China")
+                       - Numbers and measurements (e.g., "21,196 kilometers", "50,000 spectators")
+                    2. Avoid duplicates - treat different forms of the same entity as one
+                    3. Focus on factual, concrete entities rather than abstract concepts
+                    4. Include proper nouns, specific dates, numbers, and measurable quantities
+                    5. Exclude common words, pronouns, and generic terms
+
+                    Examples:
+                    - "The Eiffel Tower, located in Paris, France, was completed in 1889 for the World's Fair."
+                      Entities: ["Eiffel Tower", "Paris", "France", "1889", "World's Fair"]
+
+                    - "Neil Armstrong and Buzz Aldrin landed on the Moon during Apollo 11 on July 16, 1969."
+                      Entities: ["Neil Armstrong", "Buzz Aldrin", "Moon", "Apollo 11", "July 16, 1969"]
+
+                    Respond with a JSON object containing:
+                    - entities: A list of unique entities extracted from the text
+                    """;
+
+    private final String entityExtractionPrompt;
+
+    @Builder(toBuilder = true)
+    protected ContextEntityRecallMetric(final MultiModelExecutor executor, final String entityExtractionPrompt) {
+        super(executor);
+        this.entityExtractionPrompt =
+                entityExtractionPrompt != null ? entityExtractionPrompt : DEFAULT_ENTITY_EXTRACTION_PROMPT;
+    }
+
+    /**
+     * Convenience method for single-turn scoring with default configuration.
+     *
+     * @param sample the sample to evaluate
+     * @return the context entity recall score
+     */
+    public Double singleTurnScore(final Sample sample) {
+        return singleTurnScore(ContextEntityRecallConfig.builder().build(), sample);
+    }
+
+    /**
+     * Convenience method for async single-turn scoring with default configuration.
+     *
+     * @param sample the sample to evaluate
+     * @return future with the context entity recall score
+     */
+    public CompletableFuture<Double> singleTurnScoreAsync(final Sample sample) {
+        return singleTurnScoreAsync(ContextEntityRecallConfig.builder().build(), sample);
+    }
+
+    @Override
+    public Double singleTurnScore(final ContextEntityRecallConfig config, final Sample sample) {
+        return singleTurnScoreAsync(config, sample).join();
+    }
+
+    @Override
+    public CompletableFuture<Double> singleTurnScoreAsync(final ContextEntityRecallConfig config, final Sample sample) {
+        // Validate required inputs
+        final String reference = sample.getReference();
+        if (reference == null || reference.trim().isEmpty()) {
+            log.warn("No reference provided for Context Entity Recall evaluation");
+            return CompletableFuture.completedFuture(0.0);
+        }
+
+        final List<String> retrievedContexts = sample.getRetrievedContexts();
+        if (retrievedContexts == null || retrievedContexts.isEmpty()) {
+            log.warn("No retrieved contexts provided for Context Entity Recall evaluation");
+            return CompletableFuture.completedFuture(0.0);
+        }
+
+        final Instant startTime = Instant.now();
+        final List<String> modelIds =
+                config.models != null && !config.models.isEmpty() ? config.models : executor.getModelIds();
+
+        // Create evaluation-specific notifier for thread-safe parallel execution
+        final EvaluationNotifier notifier = createEvaluationNotifier();
+
+        // Notify listeners before evaluation
+        notifier.beforeMetricEvaluation(MetricEvaluationContext.builder()
+                .metricName(getName())
+                .sample(sample)
+                .config(config)
+                .modelIds(modelIds)
+                .totalSteps(3) // Extract reference entities -> Extract context entities -> Compute recall
+                .build());
+
+        return executor.runAsync(() -> {
+            log.debug("Computing context entity recall evaluation with explicit flow");
+
+            // Local accumulators for steps and exclusions
+            final List<StepResults> accumulatedSteps = new ArrayList<>();
+            final List<ModelExclusionEvent> accumulatedExclusions = new ArrayList<>();
+
+            // Track excluded models across all steps
+            final List<String> excludedModels = new ArrayList<>();
+
+            final String referencePrompt = renderEntityExtractionPrompt(reference);
+            final String combinedContexts = String.join("\n\n", retrievedContexts);
+            final String contextPrompt = renderEntityExtractionPrompt(combinedContexts);
+
+            // ========== Step 1: Extract entities from reference ==========
+            // Launch BOTH extractions in parallel - they are independent
+            final CompletableFuture<List<ModelResult<EntitiesResponse>>> step1Future =
+                    executor.executeLlmAsync(modelIds, referencePrompt, EntitiesResponse.class);
+            final CompletableFuture<List<ModelResult<EntitiesResponse>>> step2Future =
+                    executor.executeLlmAsync(modelIds, contextPrompt, EntitiesResponse.class);
+
+            // Wait for step 1 to complete and report it
+            final List<ModelResult<EntitiesResponse>> step1Results = step1Future.join();
+
+            accumulatedSteps.add(StepResults.builder()
+                    .stepName("ExtractReferenceEntities")
+                    .stepIndex(0)
+                    .totalSteps(3)
+                    .stepType(StepType.LLM)
+                    .request(referencePrompt)
+                    .results(new ArrayList<>(step1Results))
+                    .build());
+
+            // Collect successful results from step 1 (reference entities)
+            final Map<String, EntitiesResponse> step1Successful = new HashMap<>();
+            for (final ModelResult<EntitiesResponse> result : step1Results) {
+                if (result.isSuccess()) {
+                    step1Successful.put(result.modelId(), result.result());
+                } else {
+                    excludedModels.add(result.modelId());
+                    accumulatedExclusions.add(ModelExclusionEvent.builder()
+                            .modelId(result.modelId())
+                            .failedStepName("ExtractReferenceEntities")
+                            .failedStepIndex(0)
+                            .cause(result.error())
+                            .build());
+                }
+            }
+
+            if (step1Successful.isEmpty()) {
+                throw new IllegalStateException(
+                        "All models failed at step ExtractReferenceEntities for metric: " + getName());
+            }
+
+            // ========== Step 2: Extract entities from contexts ==========
+            // Wait for step 2 to complete and report it
+            final List<ModelResult<EntitiesResponse>> step2Results = step2Future.join();
+
+            accumulatedSteps.add(StepResults.builder()
+                    .stepName("ExtractContextEntities")
+                    .stepIndex(1)
+                    .totalSteps(3)
+                    .stepType(StepType.LLM)
+                    .request(contextPrompt)
+                    .results(new ArrayList<>(step2Results))
+                    .build());
+
+            // Collect successful results from step 2 (context entities)
+            final Map<String, EntitiesResponse> step2Successful = new HashMap<>();
+            for (final ModelResult<EntitiesResponse> result : step2Results) {
+                if (result.isSuccess()) {
+                    step2Successful.put(result.modelId(), result.result());
+                } else {
+                    if (!excludedModels.contains(result.modelId())) {
+                        excludedModels.add(result.modelId());
+                    }
+                    accumulatedExclusions.add(ModelExclusionEvent.builder()
+                            .modelId(result.modelId())
+                            .failedStepName("ExtractContextEntities")
+                            .failedStepIndex(1)
+                            .cause(result.error())
+                            .build());
+                }
+            }
+
+            if (step2Successful.isEmpty()) {
+                throw new IllegalStateException(
+                        "All models failed at step ExtractContextEntities for metric: " + getName());
+            }
+
+            // ========== Step 3: Compute entity recall ==========
+            final Map<String, Double> modelScores = new HashMap<>();
+            // Only use models that succeeded in BOTH steps
+            for (final String modelId : step2Successful.keySet()) {
+                if (!step1Successful.containsKey(modelId)) {
+                    continue; // Skip models that failed step1
+                }
+                final EntitiesResponse referenceEntitiesResponse = step1Successful.get(modelId);
+                final EntitiesResponse contextEntitiesResponse = step2Successful.get(modelId);
+
+                final double score = calculateEntityRecall(referenceEntitiesResponse, contextEntitiesResponse);
+                modelScores.put(modelId, score);
+            }
+
+            // Create synthetic results for notification
+            final List<ModelResult<Double>> step3Results = modelScores.entrySet().stream()
+                    .map(e -> ModelResult.success(e.getKey(), e.getValue(), Duration.ZERO, "compute"))
+                    .toList();
+
+            accumulatedSteps.add(StepResults.builder()
+                    .stepName("ComputeEntityRecall")
+                    .stepIndex(2)
+                    .totalSteps(3)
+                    .stepType(StepType.COMPUTE)
+                    .results(new ArrayList<>(step3Results))
+                    .build());
+
+            final double aggregatedScore = aggregate(modelScores);
+
+            // Build metadata
+            final Map<String, List<String>> refEntitiesMap = new HashMap<>();
+            final Map<String, List<String>> ctxEntitiesMap = new HashMap<>();
+            final Map<String, Set<String>> commonEntitiesMap = new HashMap<>();
+            int recallNumerator = 0;
+            int recallDenominator = 0;
+
+            for (final String modelId : modelScores.keySet()) {
+                final EntitiesResponse refResp = step1Successful.get(modelId);
+                final EntitiesResponse ctxResp = step2Successful.get(modelId);
+                refEntitiesMap.put(modelId, refResp.entities() != null ? refResp.entities() : List.of());
+                ctxEntitiesMap.put(modelId, ctxResp.entities() != null ? ctxResp.entities() : List.of());
+
+                final Set<String> refNorm = normalizeEntities(refResp.entities());
+                final Set<String> ctxNorm = normalizeEntities(ctxResp.entities());
+                final Set<String> common = new HashSet<>(refNorm);
+                common.retainAll(ctxNorm);
+                commonEntitiesMap.put(modelId, common);
+            }
+            // Use first successful model for aggregate counts
+            if (!modelScores.isEmpty()) {
+                final String firstModelId = modelScores.keySet().iterator().next();
+                final Set<String> refNorm =
+                        normalizeEntities(step1Successful.get(firstModelId).entities());
+                final Set<String> common = commonEntitiesMap.get(firstModelId);
+                recallDenominator = refNorm.size();
+                recallNumerator = common != null ? common.size() : 0;
+            }
+
+            // Notify with full results
+            final Duration duration = Duration.between(startTime, Instant.now());
+            notifier.afterMetricEvaluation(MetricEvaluationResult.builder()
+                    .metricName(getName())
+                    .sample(sample)
+                    .config(config)
+                    .modelIds(modelIds)
+                    .aggregatedScore(aggregatedScore)
+                    .modelScores(modelScores)
+                    .excludedModels(excludedModels)
+                    .totalDuration(duration)
+                    .steps(accumulatedSteps)
+                    .exclusions(accumulatedExclusions)
+                    .metadata(new ContextEntityRecallMetadata(
+                            refEntitiesMap, ctxEntitiesMap, commonEntitiesMap, recallNumerator, recallDenominator))
+                    .build());
+
+            return aggregatedScore;
+        });
+    }
+
+    private String renderEntityExtractionPrompt(final String text) {
+        return PromptTemplate.builder()
+                .template(this.entityExtractionPrompt)
+                .variables(Map.of("text", text))
+                .build()
+                .render();
+    }
+
+    private double calculateEntityRecall(
+            final EntitiesResponse referenceEntitiesResponse, final EntitiesResponse contextEntitiesResponse) {
+        if (referenceEntitiesResponse == null || referenceEntitiesResponse.entities() == null) {
+            log.warn("No reference entities found");
+            return 0.0;
+        }
+
+        if (contextEntitiesResponse == null || contextEntitiesResponse.entities() == null) {
+            log.warn("No context entities found");
+            return 0.0;
+        }
+
+        // Convert to lowercase sets for case-insensitive comparison
+        final Set<String> referenceEntities = normalizeEntities(referenceEntitiesResponse.entities());
+        final Set<String> contextEntities = normalizeEntities(contextEntitiesResponse.entities());
+
+        if (referenceEntities.isEmpty()) {
+            log.warn("No entities extracted from reference");
+            return 0.0;
+        }
+
+        // Find intersection of entities
+        final Set<String> commonEntities = new HashSet<>(referenceEntities);
+        commonEntities.retainAll(contextEntities);
+
+        log.debug("Reference entities: {}", referenceEntities);
+        log.debug("Context entities: {}", contextEntities);
+        log.debug("Common entities: {}", commonEntities);
+
+        // Entity recall = |intersection| / |reference entities|
+        final double recall = (double) commonEntities.size() / referenceEntities.size();
+
+        log.debug("Entity recall: {} / {} = {}", commonEntities.size(), referenceEntities.size(), recall);
+
+        return recall;
+    }
+
+    /**
+     * Normalizes a list of entities to lowercase for case-insensitive comparison.
+     */
+    private Set<String> normalizeEntities(final List<String> entities) {
+        final Set<String> normalized = new HashSet<>();
+        if (entities == null) {
+            return normalized;
+        }
+        for (final String entity : entities) {
+            if (entity != null && !entity.trim().isEmpty()) {
+                normalized.add(entity.trim().toLowerCase());
+            }
+        }
+        return normalized;
+    }
+
+    /**
+     * Response DTO for entity extraction
+     */
+    public record EntitiesResponse(
+            @JsonPropertyDescription("List of unique entities extracted from the text") List<String> entities) {}
+
+    @Data
+    @Builder
+    public static class ContextEntityRecallConfig implements MetricConfiguration {
+        @Singular
+        private List<String> models;
+
+        @Builder.Default
+        private String language = "en";
+    }
+}

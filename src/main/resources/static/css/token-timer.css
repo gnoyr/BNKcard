@@ -1,0 +1,50 @@
+/* ════════════════════════════════════════════
+   헤더 토큰 타이머 (header.js 전용)
+   #hdrTokenTimer — Access Token 남은 유효 시간 표시
+════════════════════════════════════════════ */
+
+/* 기본 타이머 스타일 */
+.header-nav__timer {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;  /* 숫자 너비 고정 → 레이아웃 흔들림 방지 */
+  letter-spacing: 0.04em;
+  color: var(--gray-400);
+  background: var(--gray-100);
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  padding: 3px 9px;
+  min-width: 68px;
+  text-align: center;
+  transition: color 0.3s, background 0.3s, border-color 0.3s;
+  cursor: default;
+  user-select: none;
+}
+
+/* 5분 미만 — 경고 상태 */
+.header-nav__timer--warn {
+  color: #c05700;
+  background: #fff4e5;
+  border-color: #f59e0b;
+  animation: timerPulse 1s ease-in-out infinite;
+}
+
+@keyframes timerPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.65; }
+}
+
+/* 관리자 헤더 안에서 타이머 색조 조정 */
+.site-header--admin .header-nav__timer {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+}
+
+.site-header--admin .header-nav__timer--warn {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  border-color: #fbbf24;
+}
