@@ -26,8 +26,8 @@ public class UserUpdateRequest {
     private Boolean marketingAgree;
 
     /**
-     * 비밀번호 재확인 (phone 변경 시에만 필수)
-     * 서버에서 phone != null 이면 이 필드가 있는지 검증
+     * 비밀번호 재확인 (모든 정보 수정 시 필수)
+     * 서버에서 null 또는 빈 값이면 INVALID_INPUT 예외 발생
      */
     private String currentPassword;
 }
