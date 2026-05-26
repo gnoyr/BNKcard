@@ -39,12 +39,6 @@ public class AiController {
         return ResponseEntity.ok("카드 데이터 인덱싱이 시작되었습니다.");
     }
 	
-	
-    /**
-     * AI 챗봇 대화.
-     * 비로그인 허용 — ud=null 이면 userId=null로 AI_CHAT_LOGS INSERT.
-     * sessionId(UUID)로 대화 맥락 유지.
-     */
     @PostMapping("/chat")
     public ResponseEntity<ApiResponse<AiChatResponse>> chat(
             @RequestBody @Valid AiChatRequest request,
