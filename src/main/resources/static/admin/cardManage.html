@@ -94,8 +94,6 @@
       <div id="page-list-benefit" style="display:none;">
         <div>
           <span>전체 혜택 <strong id="benefitTotalCount">-</strong>개</span>
-          &nbsp;
-          <button onclick="openBenefitDetail('new')">＋ 혜택 등록</button>
         </div>
         <br>
         <div>
@@ -131,8 +129,6 @@
 	<div id="page-list-image" style="display:none;">
 	  <div>
 	    <span>전체 이미지 <strong id="imageTotalCount">-</strong>개</span>
-	    &nbsp;
-	    <button onclick="openImageDetail('new')">＋ 이미지 등록</button>
 	  </div>
 	  <br>
 	  <div>
@@ -168,8 +164,6 @@
 	<div id="page-list-content" style="display:none;">
 	  <div>
 	    <span>전체 콘텐츠 <strong id="contentTotalCount">-</strong>개</span>
-	    &nbsp;
-	    <button onclick="openContentDetail('new')">＋ 콘텐츠 등록</button>
 	  </div>
 	  <br>
 	  <div>
@@ -599,25 +593,25 @@
 	  <br><br>
 	
 	  <table border="1">
-	    <thead>
-	      <tr>
-	        <th>카테고리ID</th>
-	        <th>혜택명 *</th>
-	        <th>혜택유형 *</th>
-	        <th>할인율</th>
-	        <th>할인금액</th>
-	        <th>적립율</th>
-	        <th>캐시백율</th>
-	        <th>월한도</th>
-	        <th>일한도</th>
-	        <th>최소결제</th>
-	        <th>혜택조건</th>
-	        <th>표시문구</th>
-	        <th>노출순서</th>
-	        <th>노출여부</th>
-	        <th>삭제</th>
-	      </tr>
-	    </thead>
+		<thead>
+		  <tr>
+		    <th>카테고리</th>
+		    <th>혜택명 *</th>
+		    <th>혜택유형 *</th>
+		    <th>할인율(%)</th>
+		    <th>할인금액</th>
+		    <th>적립율(%)</th>
+		    <th>캐시백율(%)</th>
+		    <th>월한도</th>
+		    <th>일한도</th>
+		    <th>최소결제</th>
+		    <th>혜택조건</th>
+		    <th>표시문구</th>
+		    <th>노출순서</th>
+		    <th>노출여부</th>
+		    <th>삭제</th>
+		  </tr>
+		</thead>
 	    <tbody id="benefit-edit-tbody"></tbody>
 	  </table>
 	
@@ -640,21 +634,20 @@
 	  <br><br>
 	
 	  <table border="1">
-	    <thead>
-	      <tr>
-	        <th>이미지유형 *</th>
-	        <th>이미지URL *</th>
-	        <th>원본파일명</th>
-	        <th>저장파일명</th>
-	        <th>파일크기</th>
-	        <th>MIME타입</th>
-	        <th>가로(px)</th>
-	        <th>세로(px)</th>
-	        <th>노출순서</th>
-	        <th>미리보기</th>
-	        <th>삭제</th>
-	      </tr>
-	    </thead>
+		<thead>
+		  <tr>
+		    <th>이미지유형 *</th>
+		    <th>이미지URL *</th>
+		    <th>원본파일명</th>
+		    <th>저장파일명</th>
+		    <th>MIME타입</th>
+		    <th>가로(px)</th>
+		    <th>세로(px)</th>
+		    <th>노출순서</th>
+		    <th>미리보기</th>
+		    <th>삭제</th>
+		  </tr>
+		</thead>
 	    <tbody id="image-edit-tbody"></tbody>
 	  </table>
 	
@@ -769,9 +762,8 @@
     return checked ? checked.value : null;
   }
 
-  function numOrNull(id) {
-    const v = document.getElementById(id).value;
-    return v === '' ? null : Number(v);
+  function numOrNull(val) {
+	return (val === '' || val == null) ? null : Number(val);
   }
 
   // 사이드바 메뉴 전환
@@ -1044,23 +1036,27 @@
   }
 
   async function submitEditInfo() {
-    const annualFeeDomestic = document.getElementById('edit-annualFeeDomestic').value;
-    const changeSummary     = document.getElementById('edit-changeSummary').value.trim();
+	const annualFeeDomestic  = document.getElementById('edit-annualFeeDomestic').value;
+	const annualFeeOverseas  = document.getElementById('edit-annualFeeOverseas').value;
+	const previousMonthSpend = document.getElementById('edit-previousMonthSpend').value;
+	const changeSummary      = document.getElementById('edit-changeSummary').value.trim();
 
-    if (annualFeeDomestic === '') { alert('국내 연회비는 필수입니다.'); return; }
-    if (!changeSummary)           { alert('수정 사유는 필수입니다.'); return; }
+	if (annualFeeDomestic === '' || Number(annualFeeDomestic) < 0)  { alert('국내 연회비는 필수입니다.'); return; }
+	if (annualFeeOverseas === '' || Number(annualFeeOverseas) < 0)  { alert('해외 연회비를 입력하세요.'); return; }
+	if (previousMonthSpend === '' || Number(previousMonthSpend) < 0){ alert('전월 실적 조건을 입력하세요.'); return; }
+	if (!changeSummary) { alert('수정 사유는 필수입니다.'); return; }
 
     const publishStartAt = document.getElementById('edit-publishStartAt').value;
     const publishEndAt   = document.getElementById('edit-publishEndAt').value;
 
     const body = {
       annualFeeDomestic:  Number(annualFeeDomestic),
-      annualFeeOverseas:  numOrNull('edit-annualFeeOverseas'),
-      previousMonthSpend: numOrNull('edit-previousMonthSpend'),
-      minimumAge:         numOrNull('edit-minimumAge'),
-      maximumAge:         numOrNull('edit-maximumAge'),
-      creditLimitMin:     numOrNull('edit-creditLimitMin'),
-      creditLimitMax:     numOrNull('edit-creditLimitMax'),
+      annualFeeOverseas:  Number(annualFeeOverseas),
+      previousMonthSpend: Number(previousMonthSpend),
+      minimumAge:         numOrNull(document.getElementById('edit-minimumAge').value),
+      maximumAge:         numOrNull(document.getElementById('edit-maximumAge').value),
+      creditLimitMin:     numOrNull(document.getElementById('edit-creditLimitMin').value),
+      creditLimitMax:     numOrNull(document.getElementById('edit-creditLimitMax').value),
       targetUser:         document.getElementById('edit-targetUser').value.trim() || null,
       summaryDescription: document.getElementById('edit-summaryDescription').value.trim() || null,
       searchableYn:       getRadioValue('edit-searchableYn'),
@@ -1088,24 +1084,6 @@
       alert('오류: ' + err.message);
     }
   }
-
-  function openEditBenefit() {
-    hideAll();
-    document.getElementById('page-edit-benefit').style.display = '';
-  }
-
-  function openEditImage() {
-    hideAll();
-    document.getElementById('page-edit-image').style.display = '';
-  }
-
-  function openEditContent() {
-    hideAll();
-    document.getElementById('page-edit-content').style.display = '';
-    document.getElementById('content-cardId-input').value = currentCardId;
-    loadContentForEdit();
-  }
-
 
   // ================================================================
   // 혜택 — 목록 / 상세 / 수정
@@ -1309,106 +1287,143 @@
   }
 
   function appendBenefitRow(b) {
-    const tbody = document.getElementById('benefit-edit-tbody');
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><input type="number" class="b-categoryId" value="${b?.categoryId ?? ''}" style="width:60px;" /></td>
-      <td><input type="text" class="b-benefitTitle" value="${b?.benefitTitle ?? ''}" style="width:100px;" /></td>
-      <td>
-        <select class="b-benefitType">
-          <option value="DISCOUNT" ${b?.benefitType === 'DISCOUNT' ? 'selected' : ''}>할인</option>
-          <option value="POINT"    ${b?.benefitType === 'POINT'    ? 'selected' : ''}>포인트</option>
-          <option value="CASHBACK" ${b?.benefitType === 'CASHBACK' ? 'selected' : ''}>캐시백</option>
-        </select>
-      </td>
-      <td><input type="number" class="b-discountRate" value="${b?.discountRate != null ? b.discountRate * 100 : ''}" step="0.1" style="width:60px;" /></td>
-      <td><input type="number" class="b-discountAmount" value="${b?.discountAmount ?? ''}" style="width:80px;" /></td>
-      <td><input type="number" class="b-pointRate" value="${b?.pointRate != null ? b.pointRate * 100 : ''}" step="0.1" style="width:60px;" /></td>
-      <td><input type="number" class="b-cashbackRate" value="${b?.cashbackRate != null ? b.cashbackRate * 100 : ''}" step="0.1" style="width:60px;" /></td>
-      <td><input type="number" class="b-monthlyLimitAmount" value="${b?.monthlyLimitAmount ?? ''}" style="width:80px;" /></td>
-      <td><input type="number" class="b-dailyLimitAmount" value="${b?.dailyLimitAmount ?? ''}" style="width:80px;" /></td>
-      <td><input type="number" class="b-minimumPaymentAmount" value="${b?.minimumPaymentAmount ?? ''}" style="width:80px;" /></td>
-      <td><input type="text" class="b-benefitCondition" value="${b?.benefitCondition ?? ''}" style="width:100px;" /></td>
-      <td><input type="text" class="b-displayText" value="${b?.displayText ?? ''}" style="width:100px;" /></td>
-      <td><input type="number" class="b-displayOrder" value="${b?.displayOrder ?? ''}" style="width:50px;" /></td>
-      <td>
-        <select class="b-visibleYn">
-          <option value="Y" ${(b?.visibleYn ?? 'Y') === 'Y' ? 'selected' : ''}>예</option>
-          <option value="N" ${b?.visibleYn === 'N' ? 'selected' : ''}>아니오</option>
-        </select>
-      </td>
-      <td><button onclick="this.closest('tr').remove()">삭제</button></td>
-    `;
-    tbody.appendChild(tr);
-  }
+	  const tbody = document.getElementById('benefit-edit-tbody');
+	  const tr = document.createElement('tr');
 
-  function pctToDecimal(val) {
-    // 입력값이 퍼센트(예: 5.0)면 소수(0.05)로 변환
-    return val === '' || val == null ? null : Number(val) / 100;
-  }
+	  const catOptions = cardCategories.map(c =>
+	    `<option value="${c.categoryId}" ${b?.categoryId == c.categoryId ? 'selected' : ''}>
+	      [${c.categoryId}] ${c.categoryName}
+	    </option>`
+	  ).join('');
+
+	  tr.innerHTML = `
+	    <td>
+	      <select class="b-categoryId" style="width:120px;">
+	        <option value="">-- 선택 --</option>
+	        ${catOptions}
+	      </select>
+	    </td>
+	    <td><input type="text" class="b-benefitTitle" value="${b?.benefitTitle ?? ''}" style="width:100px;"></td>
+	    <td>
+	      <select class="b-benefitType" onchange="onBenefitTypeChange(this)">
+	        <option value="RATE_DISCOUNT"  ${b?.benefitType === 'RATE_DISCOUNT'  ? 'selected' : ''}>할인율</option>
+	        <option value="FIXED_DISCOUNT" ${b?.benefitType === 'FIXED_DISCOUNT' ? 'selected' : ''}>고정할인</option>
+	        <option value="POINT"          ${b?.benefitType === 'POINT'          ? 'selected' : ''}>포인트</option>
+	        <option value="CASHBACK"       ${b?.benefitType === 'CASHBACK'       ? 'selected' : ''}>캐시백</option>
+	        <option value="FREE"           ${b?.benefitType === 'FREE'           ? 'selected' : ''}>무료</option>
+	      </select>
+	    </td>
+	    <td><input type="number" class="b-discountRate"  step="0.1" style="width:55px;"
+	      value="${b?.discountRate != null ? b.discountRate * 100 : ''}"></td>
+	    <td><input type="number" class="b-discountAmount" style="width:70px;"
+	      value="${b?.discountAmount ?? ''}"></td>
+	    <td><input type="number" class="b-pointRate" step="0.1" style="width:55px;"
+	      value="${b?.pointRate != null ? b.pointRate * 100 : ''}"></td>
+	    <td><input type="number" class="b-cashbackRate" step="0.1" style="width:55px;"
+	      value="${b?.cashbackRate != null ? b.cashbackRate * 100 : ''}"></td>
+	    <td><input type="number" class="b-monthlyLimitAmount" style="width:70px;"
+	      value="${b?.monthlyLimitAmount ?? ''}"></td>
+	    <td><input type="number" class="b-dailyLimitAmount" style="width:70px;"
+	      value="${b?.dailyLimitAmount ?? ''}"></td>
+	    <td><input type="number" class="b-minimumPaymentAmount" style="width:70px;"
+	      value="${b?.minimumPaymentAmount ?? ''}"></td>
+	    <td><input type="text" class="b-benefitCondition" style="width:80px;"
+	      value="${b?.benefitCondition ?? ''}"></td>
+	    <td><input type="text" class="b-displayText" style="width:80px;"
+	      value="${b?.displayText ?? ''}"></td>
+	    <td><input type="number" class="b-displayOrder" style="width:45px;"
+	      value="${b?.displayOrder ?? ''}"></td>
+	    <td>
+	      <select class="b-visibleYn">
+	        <option value="Y" ${(b?.visibleYn ?? 'Y') === 'Y' ? 'selected' : ''}>예</option>
+	        <option value="N" ${b?.visibleYn === 'N' ? 'selected' : ''}>아니오</option>
+	      </select>
+	    </td>
+	    <td><button type="button" onclick="this.closest('tr').remove()">삭제</button></td>
+	  `;
+	  tbody.appendChild(tr);
+
+	  // 행 추가 후 유형별 필드 활성화 상태 적용
+	  const select = tr.querySelector('.b-benefitType');
+	  onBenefitTypeChange(select, b);
+	}
 
   async function submitBenefitEdit() {
-    const changeSummary = document.getElementById('benefit-changeSummary').value.trim();
-    if (!changeSummary) { alert('수정 사유는 필수입니다.'); return; }
+	  const changeSummary = document.getElementById('benefit-changeSummary').value.trim();
+	  if (!changeSummary) { alert('수정 사유는 필수입니다.'); return; }
 
-    const rows = document.querySelectorAll('#benefit-edit-tbody tr');
-    const benefits = [];
+	  const rows = document.querySelectorAll('#benefit-edit-tbody tr');
+	  const benefits = [];
 
-    for (const row of rows) {
-      const benefitTitle = row.querySelector('.b-benefitTitle').value.trim();
-      const benefitType  = row.querySelector('.b-benefitType').value;
-      if (!benefitTitle) { alert('혜택명은 필수입니다.'); return; }
-      if (!benefitType)  { alert('혜택유형은 필수입니다.'); return; }
+	  for (const row of rows) {
+	    const benefitTitle = row.querySelector('.b-benefitTitle').value.trim();
+	    const benefitType  = row.querySelector('.b-benefitType').value;
+	    if (!benefitTitle) { alert('혜택명은 필수입니다.'); return; }
+	    if (!benefitType)  { alert('혜택유형은 필수입니다.'); return; }
 
-      const drVal  = row.querySelector('.b-discountRate').value;
-      const prVal  = row.querySelector('.b-pointRate').value;
-      const crVal  = row.querySelector('.b-cashbackRate').value;
-      const daVal  = row.querySelector('.b-discountAmount').value;
-      const mlVal  = row.querySelector('.b-monthlyLimitAmount').value;
-      const dlVal  = row.querySelector('.b-dailyLimitAmount').value;
-      const mpVal  = row.querySelector('.b-minimumPaymentAmount').value;
-      const doVal  = row.querySelector('.b-displayOrder').value;
-      const catVal = row.querySelector('.b-categoryId').value;
+	    // 유효성 검사 (0 이상)
+	    const checks = [
+	      { cls: '.b-discountRate',         msg: '할인율은 0 이상이어야 합니다.' },
+	      { cls: '.b-pointRate',            msg: '적립율은 0 이상이어야 합니다.' },
+	      { cls: '.b-cashbackRate',         msg: '캐시백율은 0 이상이어야 합니다.' },
+	      { cls: '.b-discountAmount',       msg: '할인금액은 0 이상이어야 합니다.' },
+	      { cls: '.b-monthlyLimitAmount',   msg: '월한도는 0 이상이어야 합니다.' },
+	      { cls: '.b-dailyLimitAmount',     msg: '일한도는 0 이상이어야 합니다.' },
+	      { cls: '.b-minimumPaymentAmount', msg: '최소결제금액은 0 이상이어야 합니다.' },
+	      { cls: '.b-displayOrder',         msg: '노출순서는 0 이상이어야 합니다.' },
+	    ];
+	    for (const c of checks) {
+	      const v = row.querySelector(c.cls).value;
+	      if (v !== '' && Number(v) < 0) { alert(c.msg); return; }
+	    }
 
-      benefits.push({
-        categoryId:            catVal === '' ? null : Number(catVal),
-        benefitTitle,
-        benefitType,
-        discountRate:          pctToDecimal(drVal),
-        discountAmount:        daVal === '' ? null : Number(daVal),
-        pointRate:             pctToDecimal(prVal),
-        cashbackRate:          pctToDecimal(crVal),
-        monthlyLimitAmount:    mlVal === '' ? null : Number(mlVal),
-        dailyLimitAmount:      dlVal === '' ? null : Number(dlVal),
-        minimumPaymentAmount:  mpVal === '' ? null : Number(mpVal),
-        benefitCondition:      row.querySelector('.b-benefitCondition').value.trim() || null,
-        displayText:           row.querySelector('.b-displayText').value.trim() || null,
-        displayOrder:          doVal === '' ? null : Number(doVal),
-        visibleYn:             row.querySelector('.b-visibleYn').value,
-      });
-    }
+	    const catVal = row.querySelector('.b-categoryId').value;
+	    const drVal  = row.querySelector('.b-discountRate').value;
+	    const prVal  = row.querySelector('.b-pointRate').value;
+	    const crVal  = row.querySelector('.b-cashbackRate').value;
+	    const daVal  = row.querySelector('.b-discountAmount').value;
+	    const mlVal  = row.querySelector('.b-monthlyLimitAmount').value;
+	    const dlVal  = row.querySelector('.b-dailyLimitAmount').value;
+	    const mpVal  = row.querySelector('.b-minimumPaymentAmount').value;
+	    const doVal  = row.querySelector('.b-displayOrder').value;
 
-    try {
-      const res = await fetch(`/api/admin/cards/${currentBenefit.cardId}/benefits`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ benefits, changeSummary }),
-      });
-      if (res.status === 401) { location.href = '/admin/login'; return; }
-      const json = await res.json();
-      if (!res.ok) { alert('저장 실패: ' + (json?.message ?? `서버 오류 (${res.status})`)); return; }
-      alert(`저장 완료.\n버전 ID: ${json.data?.versionId ?? '-'}`);
-      // 혜택 목록 갱신 후 상세로 복귀
-      await loadBenefits(0);
-      const updated = allBenefits.find(b => b.cardId === currentBenefit.cardId);
-      if (updated) currentBenefit = updated;
-      showBenefitDetail();
-    } catch (err) {
-      alert('오류: ' + err.message);
-    }
-  }
+	    benefits.push({
+	      categoryId:           catVal === '' ? null : Number(catVal),
+	      benefitTitle,
+	      benefitType,
+	      discountRate:         cPctToDecimal(drVal),
+	      discountAmount:       daVal === '' ? null : Number(daVal),
+	      pointRate:            cPctToDecimal(prVal),
+	      cashbackRate:         cPctToDecimal(crVal),
+	      monthlyLimitAmount:   mlVal === '' ? null : Number(mlVal),
+	      dailyLimitAmount:     dlVal === '' ? null : Number(dlVal),
+	      minimumPaymentAmount: mpVal === '' ? null : Number(mpVal),
+	      benefitCondition:     row.querySelector('.b-benefitCondition').value.trim() || null,
+	      displayText:          row.querySelector('.b-displayText').value.trim() || null,
+	      displayOrder:         doVal === '' ? null : Number(doVal),
+	      visibleYn:            row.querySelector('.b-visibleYn').value,
+	    });
+	  }
 
+	  try {
+	    const res = await fetch(`/api/admin/cards/${currentBenefit.cardId}/benefits`, {
+	      method: 'PUT',
+	      headers: { 'Content-Type': 'application/json' },
+	      credentials: 'include',
+	      body: JSON.stringify({ benefits, changeSummary }),
+	    });
+	    if (res.status === 401) { location.href = '/admin/login'; return; }
+	    const json = await res.json();
+	    if (!res.ok) { alert('저장 실패: ' + (json?.message ?? `서버 오류 (${res.status})`)); return; }
+	    alert(`저장 완료.\n버전 ID: ${json.data?.versionId ?? '-'}`);
+	    await loadBenefits(0);
+	    const updated = allBenefits.find(b => b.cardId === currentBenefit.cardId);
+	    if (updated) currentBenefit = updated;
+	    showBenefitDetail();
+	  } catch (err) {
+	    alert('오류: ' + err.message);
+	  }
+	}
 
 	// ================================================================
 	// 이미지 — 목록 / 상세 / 수정
@@ -1561,7 +1576,6 @@
 	  document.getElementById('id-imageUrl').textContent   = img.imageUrl ?? '-';
 	  document.getElementById('id-originalName').textContent = img.originalName ?? '-';
 	  document.getElementById('id-storedName').textContent   = img.storedName ?? '-';
-	  document.getElementById('id-fileSize').textContent     = img.fileSize != null ? img.fileSize.toLocaleString() + ' B' : '-';
 	  document.getElementById('id-mimeType').textContent     = img.mimeType ?? '-';
 	  document.getElementById('id-imageWidth').textContent   = img.imageWidth ?? '-';
 	  document.getElementById('id-imageHeight').textContent  = img.imageHeight ?? '-';
@@ -1616,56 +1630,88 @@
 	      </select>
 	    </td>
 	    <td><input type="text" class="i-imageUrl" value="${img?.imageUrl ?? ''}" style="width:200px;"
-	      oninput="updatePreview(this)" /></td>
-	    <td><input type="text" class="i-originalName" value="${img?.originalName ?? ''}" style="width:100px;" /></td>
-	    <td><input type="text" class="i-storedName" value="${img?.storedName ?? ''}" style="width:100px;" /></td>
-	    <td><input type="number" class="i-fileSize" value="${img?.fileSize ?? ''}" style="width:70px;" /></td>
-	    <td><input type="text" class="i-mimeType" value="${img?.mimeType ?? ''}" style="width:80px;" /></td>
-	    <td><input type="number" class="i-imageWidth" value="${img?.imageWidth ?? ''}" style="width:60px;" /></td>
-	    <td><input type="number" class="i-imageHeight" value="${img?.imageHeight ?? ''}" style="width:60px;" /></td>
-	    <td><input type="number" class="i-sortOrder" value="${img?.sortOrder ?? ''}" style="width:50px;" /></td>
-	    <td class="i-preview">${img?.imageUrl ? `<img src="${img.imageUrl}" style="height:50px;">` : '-'}</td>
-	    <td><button onclick="this.closest('tr').remove()">삭제</button></td>
+	      oninput="editUpdatePreview(this)"></td>
+	    <td><input type="text"   class="i-originalName" value="${img?.originalName ?? ''}" style="width:90px;"></td>
+	    <td><input type="text"   class="i-storedName"   value="${img?.storedName   ?? ''}" style="width:90px;"></td>
+	    <td><input type="text"   class="i-mimeType"     readonly style="width:80px; background:#f0f0f0;"
+	      value="${img?.mimeType ?? ''}"></td>
+	    <td><input type="number" class="i-imageWidth"   readonly style="width:55px; background:#f0f0f0;"
+	      value="${img?.imageWidth ?? ''}"></td>
+	    <td><input type="number" class="i-imageHeight"  readonly style="width:55px; background:#f0f0f0;"
+	      value="${img?.imageHeight ?? ''}"></td>
+	    <td><input type="number" class="i-sortOrder"    value="${img?.sortOrder ?? ''}" style="width:45px;"></td>
+	    <td class="i-preview">
+	      ${img?.imageUrl ? `<img src="${img.imageUrl}" style="height:40px;" onerror="this.style.display='none'">` : '-'}
+	    </td>
+	    <td><button type="button" onclick="this.closest('tr').remove()">삭제</button></td>
 	  `;
 	  tbody.appendChild(tr);
+
+	  // 기존 이미지 로드 시 mimeType/가로/세로 자동 추출
+	  if (img?.imageUrl && (!img.mimeType || !img.imageWidth)) {
+	    const urlInput = tr.querySelector('.i-imageUrl');
+	    editUpdatePreview(urlInput);
+	  }
 	}
 	
-	function updatePreview(input) {
-	  const td = input.closest('tr').querySelector('.i-preview');
-	  td.innerHTML = input.value ? `<img src="${input.value}" style="height:50px;" onerror="this.style.display='none'">` : '-';
+	function editUpdatePreview(input) {
+	  const tr = input.closest('tr');
+	  const td = tr.querySelector('.i-preview');
+	  const url = input.value;
+
+	  // mimeType 자동 추출
+	  const ext = url.split('.').pop().toLowerCase().split('?')[0];
+	  const mimeMap = {
+	    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+	    gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml'
+	  };
+	  tr.querySelector('.i-mimeType').value = mimeMap[ext] ?? '';
+
+	  // 가로/세로 자동 추출
+	  if (url) {
+	    const img = new Image();
+	    img.onload = () => {
+	      tr.querySelector('.i-imageWidth').value  = img.naturalWidth;
+	      tr.querySelector('.i-imageHeight').value = img.naturalHeight;
+	    };
+	    img.src = url;
+	    td.innerHTML = `<img src="${url}" style="height:40px;" onerror="this.style.display='none'">`;
+	  } else {
+	    tr.querySelector('.i-imageWidth').value  = '';
+	    tr.querySelector('.i-imageHeight').value = '';
+	    td.innerHTML = '-';
+	  }
 	}
 	
 	async function submitImageEdit() {
 	  const changeSummary = document.getElementById('image-changeSummary').value.trim();
 	  if (!changeSummary) { alert('수정 사유는 필수입니다.'); return; }
-	
+
 	  const rows = document.querySelectorAll('#image-edit-tbody tr');
 	  const images = [];
-	
+
 	  for (const row of rows) {
 	    const imageType = row.querySelector('.i-imageType').value;
 	    const imageUrl  = row.querySelector('.i-imageUrl').value.trim();
 	    if (!imageType) { alert('이미지 유형은 필수입니다.'); return; }
 	    if (!imageUrl)  { alert('이미지 URL은 필수입니다.'); return; }
-	
-	    const fsVal = row.querySelector('.i-fileSize').value;
+
 	    const iwVal = row.querySelector('.i-imageWidth').value;
 	    const ihVal = row.querySelector('.i-imageHeight').value;
 	    const soVal = row.querySelector('.i-sortOrder').value;
-	
+
 	    images.push({
 	      imageType,
 	      imageUrl,
 	      originalName: row.querySelector('.i-originalName').value.trim() || null,
 	      storedName:   row.querySelector('.i-storedName').value.trim()   || null,
-	      fileSize:     fsVal === '' ? null : Number(fsVal),
 	      mimeType:     row.querySelector('.i-mimeType').value.trim()     || null,
 	      imageWidth:   iwVal === '' ? null : Number(iwVal),
 	      imageHeight:  ihVal === '' ? null : Number(ihVal),
 	      sortOrder:    soVal === '' ? null : Number(soVal),
 	    });
 	  }
-	
+
 	  try {
 	    const res = await fetch(`/api/admin/cards/${currentImage.cardId}/images`, {
 	      method: 'PUT',
@@ -2345,10 +2391,6 @@
 	    btn.disabled = false;
 	    btn.textContent = '결재 요청 (등록 신청)';
 	  }
-	}
-
-	function numOrNull(val) {
-	  return (val === '' || val == null) ? null : Number(val);
 	}
 
 	function cPctToDecimal(val) {
