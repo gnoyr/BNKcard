@@ -4,7 +4,7 @@
 
 <mapper namespace="com.bnk.domain.card.mapper.CardContentMapper">
 
-    <resultMap id="contentMap" type="com.bnk.domain.card.model2.CardContent">
+    <resultMap id="contentMap" type="com.bnk.domain.card.model.CardContent">
         <id     property="contentId"         column="content_id"/>
         <result property="cardId"            column="card_id"/>
         <result property="contentType"       column="content_type"/>
@@ -25,5 +25,31 @@
           AND  visible_yn = 'Y'
         ORDER  BY display_order ASC NULLS LAST
     </select>
+    
+    <insert id="insertContents">
+	    INSERT INTO CARD_CONTENTS (
+	        card_id, content_type, title,
+	        content_html, mobile_content_html,
+	        display_order, visible_yn, created_by, created_at
+	    )
+	    <foreach collection="contentList" item="c" separator=" UNION ALL ">
+	        SELECT
+	            #{c.cardId},
+	            #{c.contentType},
+	            #{c.title},
+	            #{c.contentHtml,       jdbcType=CLOB},
+	            #{c.mobileContentHtml, jdbcType=CLOB},
+	            #{c.displayOrder,      jdbcType=NUMERIC},
+	            NVL(#{c.visibleYn,     jdbcType=CHAR}, 'Y'),
+	            #{c.createdBy,         jdbcType=NUMERIC},
+	            SYSTIMESTAMP
+	        FROM DUAL
+	    </foreach>
+	</insert>
+	
+	<delete id="deleteByCardId">
+	    DELETE FROM CARD_CONTENTS
+	    WHERE card_id = #{cardId}
+	</delete>
 
 </mapper>

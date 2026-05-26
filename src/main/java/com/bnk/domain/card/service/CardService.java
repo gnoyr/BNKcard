@@ -26,8 +26,8 @@ import com.bnk.domain.card.mapper.CardImageMapper;     // 새로 만들어야 �
 import com.bnk.domain.card.mapper.CardMapper;
 import com.bnk.domain.card.model.Card;
 import com.bnk.domain.card.model.CardBenefit;
+import com.bnk.domain.card.model.CardContent;
 import com.bnk.domain.card.model.CardImage;
-import com.bnk.domain.card.model2.CardContent;
 import com.bnk.domain.search.mapper.SearchLogMapper;
 import com.bnk.domain.search.model.SearchLog;
 import com.bnk.domain.spending.mapper.SpendingPatternMapper;

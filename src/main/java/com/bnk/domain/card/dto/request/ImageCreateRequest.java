@@ -1,4 +1,4 @@
-package com.bnk.domain.card.dto.request2;
+package com.bnk.domain.card.dto.request;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
