@@ -36,11 +36,11 @@ ext {
 
 dependencies {
 	//AI 테스트
-	testImplementation 'io.github.ai-qa-solutions:spring-ai-ragas-spring-boot-starter:0.3.3'
+    implementation("org.springframework.ai:spring-ai-starter-model-ollama:2.0.0-M7")
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	implementation("org.springframework.boot:spring-boot-starter-jdbc:4.1.0-RC1")
 	implementation 'org.springframework.boot:spring-boot-starter-web'
-	
+	testImplementation("com.h2database:h2:2.4.240")
 	
 	
 	
