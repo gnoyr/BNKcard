@@ -1,6 +1,7 @@
 package com.bnk.domain.card.service;
 
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -191,8 +192,7 @@ public class AdminCardService {
                 .companyName(existing.getCompanyName())         // 수정 불가
                 .companyCode(existing.getCompanyCode())         // 수정 불가
                 .brandName(existing.getBrandName())             // 수정 불가
-                .cardName(request.getCardName() != null
-                        ? request.getCardName() : existing.getCardName())
+                .cardName(existing.getCardName())				// 수정 불가
                 .annualFeeDomestic(request.getAnnualFeeDomestic() != null
                         ? request.getAnnualFeeDomestic() : existing.getAnnualFeeDomestic())
                 .annualFeeOverseas(request.getAnnualFeeOverseas() != null
@@ -225,6 +225,8 @@ public class AdminCardService {
                 .applicationCount(existing.getApplicationCount())
                 .createdBy(existing.getCreatedBy())
                 .createdAt(existing.getCreatedAt())
+                .updatedBy(adminId)                    // ← 추가
+                .updatedAt(LocalDateTime.now())        // ← 추가
                 .deletedYn(existing.getDeletedYn())
                 .deletedAt(existing.getDeletedAt())
                 .build();
@@ -468,24 +470,38 @@ public class AdminCardService {
         // 이미지 목록 (FRONT, BACK, THUMBNAIL, DETAIL 전부)
         List<CardImage> images = cardImageMapper.findByCardId(cardId);
         List<CardDetailResponse.ImageDto> imageDtos = images.stream()
-                .map(img -> CardDetailResponse.ImageDto.builder()
-                        .imageType(img.getImageType())
-                        .imageUrl(img.getImageUrl())
-                        .sortOrder(img.getSortOrder())
-                        .build())
-                .collect(Collectors.toList());
+        	    .map(img -> CardDetailResponse.ImageDto.builder()
+        	        .imageId(img.getImageId())
+        	        .imageType(img.getImageType())
+        	        .imageUrl(img.getImageUrl())
+        	        .originalName(img.getOriginalName())
+        	        .storedName(img.getStoredName())
+        	        .fileSize(img.getFileSize())
+        	        .mimeType(img.getMimeType())
+        	        .imageWidth(img.getImageWidth())
+        	        .imageHeight(img.getImageHeight())
+        	        .sortOrder(img.getSortOrder())
+        	        .createdAt(img.getCreatedAt())
+        	        .build())
+        	    .collect(Collectors.toList());
 
         // 카드 콘텐츠 (INTRO/GUIDE/NOTICE 등) - display_order ASC
         List<CardContent> contents = cardContentMapper.findByCardId(cardId);
         List<CardDetailResponse.ContentDto> contentDtos = contents.stream()
-                .map(c -> CardDetailResponse.ContentDto.builder()
-                        .contentType(c.getContentType())
-                        .title(c.getTitle())
-                        .contentHtml(c.getContentHtml())
-                        .mobileContentHtml(c.getMobileContentHtml())
-                        .displayOrder(c.getDisplayOrder())
-                        .build())
-                .collect(Collectors.toList());
+        	    .map(c -> CardDetailResponse.ContentDto.builder()
+        	        .contentId(c.getContentId())        // ← 추가
+        	        .cardId(c.getCardId())              // ← 추가
+        	        .contentType(c.getContentType())
+        	        .title(c.getTitle())
+        	        .contentHtml(c.getContentHtml())
+        	        .mobileContentHtml(c.getMobileContentHtml())
+        	        .displayOrder(c.getDisplayOrder())
+        	        .visibleYn(c.getVisibleYn())        // ← 추가
+        	        .createdBy(c.getCreatedBy())        // ← 추가
+        	        .createdAt(c.getCreatedAt())        // ← 추가
+        	        .updatedAt(c.getUpdatedAt())        // ← 추가
+        	        .build())
+        	    .collect(Collectors.toList());
 
         // 카드 신청 약관 (packageType = "CARD_APPLICATION" 고정)
         List<CardDetailResponse.TermsFileDto> termsFileDtos =
