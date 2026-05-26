@@ -42,7 +42,10 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	testImplementation("com.h2database:h2:2.4.240")
 	
-	
+	// ── Redis ───────────────────────────────────────────
+    // MemoryTokenStore → RedisTokenStore 전환
+    // 이메일 인증 토큰 / 비밀번호 재설정 토큰 TTL 관리
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	
 
 	// ── GenAI ─────────────────────────────────────────────
