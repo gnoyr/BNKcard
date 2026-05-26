@@ -33,7 +33,7 @@ import org.springframework.stereotype.Component;
  * ────────────────────────────────────────────────────────────────────────────────
  */
 @Component
-public class MemoryTokenStore {
+public class MemoryTokenStore implements TokenStore {
 
 	private static class TokenWrapper {
 		final String value;
