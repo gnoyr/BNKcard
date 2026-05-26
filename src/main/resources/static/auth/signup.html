@@ -22,6 +22,7 @@
   <main class="page-wrap">
     <div class="auth-card wide">
 
+      <!-- 스텝 바 -->
       <div class="step-bar">
         <div class="step-item active" id="step-dot-1">
           <div class="step-num" id="step-num-1">1</div>
@@ -41,8 +42,9 @@
 
       <h1 class="page-title">회원가입</h1>
 
-      <!-- ── STEP 1 : 약관동의 ── -->
-      <!-- [개선] form 태그 추가 / onclick 제거 → auth-js.js addEventListener로 이동 -->
+      <!-- ════════════════════════════════════════
+           STEP 1 : 약관 동의
+      ════════════════════════════════════════ -->
       <div id="view-step1" class="view active">
         <form id="termsForm" novalidate>
           <div id="terms-loading" class="notice-box">약관을 불러오는 중...</div>
@@ -56,17 +58,20 @@
         </form>
       </div>
 
-      <!-- ── STEP 2 : 회원정보 입력 ── -->
+      <!-- ════════════════════════════════════════
+           STEP 2 : 회원정보 입력
+      ════════════════════════════════════════ -->
       <div id="view-step2" class="view">
-        <!-- [개선] form 태그 추가 / onclick 제거 → auth-js.js addEventListener로 이동 -->
         <form id="signupForm" novalidate>
+
+          <!-- ── 이메일 인증 ── -->
+          <div class="form-section-title">이메일 인증</div>
 
           <div class="form-group">
             <label class="form-label" for="email">이메일 <span class="required">*</span></label>
             <div class="input-row">
               <input class="form-input" type="email" id="email"
                 placeholder="이메일 주소를 입력하세요" autocomplete="email" />
-              <!-- [개선] onclick 제거 → addEventListener로 이동 -->
               <button class="btn btn-outline" type="button" id="btnSendCode">인증코드 발송</button>
             </div>
             <div id="code-sent-msg" class="helper is-hidden">
@@ -81,12 +86,14 @@
               <input class="form-input" type="text" id="verifyCode"
                 placeholder="6자리 코드 입력" maxlength="6"
                 inputmode="numeric" autocomplete="one-time-code" />
-              <!-- [개선] onclick 제거 → addEventListener로 이동 -->
               <button class="btn btn-outline" type="button" id="btnVerifyCode">확인</button>
             </div>
             <div id="verify-success" class="helper ok is-hidden">✓ 이메일 인증이 완료되었습니다.</div>
             <div id="verify-error" class="alert alert-error"></div>
           </div>
+
+          <!-- ── 비밀번호 ── -->
+          <div class="form-section-title">비밀번호 설정</div>
 
           <div class="form-group">
             <label class="form-label" for="password">비밀번호 <span class="required">*</span></label>
@@ -94,9 +101,7 @@
               <input class="form-input" type="password" id="password"
                 placeholder="영문, 숫자, 특수문자 포함 8자 이상"
                 autocomplete="new-password" />
-              <!-- [개선] onclick 제거 → addEventListener로 이동 -->
-              <button class="pw-toggle" type="button" id="btnPwToggle1"
-                title="비밀번호 표시/숨김"></button>
+              <button class="pw-toggle" type="button" id="btnPwToggle1" title="비밀번호 표시/숨김"></button>
             </div>
             <div class="strength-wrap is-hidden" id="signup-pw-strength">
               <div class="strength-track">
@@ -112,12 +117,13 @@
               <input class="form-input" type="password" id="passwordConfirm"
                 placeholder="비밀번호를 다시 입력하세요"
                 autocomplete="new-password" />
-              <!-- [개선] onclick 제거 → addEventListener로 이동 -->
-              <button class="pw-toggle" type="button" id="btnPwToggle2"
-                title="비밀번호 표시/숨김"></button>
+              <button class="pw-toggle" type="button" id="btnPwToggle2" title="비밀번호 표시/숨김"></button>
             </div>
             <p class="helper" id="pw-match-msg"></p>
           </div>
+
+          <!-- ── 기본 정보 (필수) ── -->
+          <div class="form-section-title">기본 정보 <span class="required">*</span></div>
 
           <div class="form-group">
             <label class="form-label" for="name">이름 <span class="required">*</span></label>
@@ -128,53 +134,89 @@
           <div class="form-group">
             <label class="form-label" for="phone">휴대전화 번호 <span class="required">*</span></label>
             <input class="form-input" type="tel" id="phone"
-              placeholder="'-' 없이 숫자만 입력" maxlength="11"
-              autocomplete="tel" />
+              placeholder="01012345678 (숫자만 입력)" maxlength="11"
+              inputmode="numeric" autocomplete="tel" />
           </div>
 
           <div class="form-group">
             <label class="form-label" for="birthDate">생년월일</label>
             <input class="form-input" type="date" id="birthDate"
-              autocomplete="bday" />
+              min="1900-01-01" max="2010-12-31" />
           </div>
 
+          <!-- ── 추가 정보 (선택) ── -->
+          <div class="form-section-title">추가 정보 <span class="form-label-note">(선택)</span></div>
+
+          <div class="form-group">
+            <label class="form-label" for="job">직업</label>
+            <select class="form-input" id="job">
+              <option value="">선택 안함</option>
+              <option value="EMPLOYED">직장인</option>
+              <option value="SELF_EMPLOYED">자영업자</option>
+              <option value="STUDENT">학생</option>
+              <option value="UNEMPLOYED">무직</option>
+              <option value="OTHER">기타</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="incomeLevelCode">소득 등급</label>
+            <select class="form-input" id="incomeLevelCode">
+              <option value="">선택 안함</option>
+              <option value="LV1">LV1 (연 3천만원 미만)</option>
+              <option value="LV2">LV2 (연 3천~5천만원)</option>
+              <option value="LV3">LV3 (연 5천만~1억원)</option>
+              <option value="LV4">LV4 (연 1억원 이상)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="creditScore">신용점수
+              <span class="form-label-note">(300~1000)</span>
+            </label>
+            <input class="form-input" type="number" id="creditScore"
+              placeholder="신용점수를 입력하세요 (예: 750)"
+              min="300" max="1000" inputmode="numeric" />
+            <p class="helper">신용점수를 모르시면 비워두셔도 됩니다.</p>
+          </div>
+
+          <!-- ── 마케팅 동의 ── -->
+          <div class="form-group">
+            <label class="form-check-row">
+              <input type="checkbox" id="marketingAgree" />
+              <span>마케팅 정보 수신 동의 <span class="form-label-note">(선택)</span></span>
+            </label>
+          </div>
+
+          <!-- ── 에러 / 버튼 ── -->
           <div id="signup-error" class="alert alert-error"></div>
 
-          <div class="btn-row btn-row--top">
-            <!-- [개선] onclick 제거 → addEventListener로 이동 -->
+          <div class="btn-row">
             <button class="btn btn-secondary" type="button" id="btnStep2Back">이전</button>
-            <button class="btn btn-primary" type="submit" id="btnSignupSubmit">다음</button>
+            <button class="btn btn-primary" type="submit" id="btnSignup">가입 완료</button>
           </div>
 
         </form>
       </div>
 
-      <!-- ── STEP 3 : 가입완료 ── -->
+      <!-- ════════════════════════════════════════
+           STEP 3 : 가입 완료
+      ════════════════════════════════════════ -->
       <div id="view-step3" class="view">
-        <div class="success-box">
-          <div class="success-icon"></div>
-          <div>
-            <p class="success-text"><span id="done-name"></span>님, 가입을 환영합니다!</p>
-            <p class="success-sub" id="done-email-display"></p>
-          </div>
+        <div class="done-wrap">
+          <div class="done-icon">🎉</div>
+          <h2 class="done-title"><span id="done-name"></span>님, 환영합니다!</h2>
+          <p class="done-email" id="done-email-display"></p>
+          <p class="done-msg">부산은행 회원가입이 완료되었습니다.</p>
         </div>
-
         <div class="btn-row">
-          <a href="login.html" class="btn btn-primary btn-block">로그인 하러 가기</a>
+          <a href="/auth/login.html" class="btn btn-primary">로그인하기</a>
         </div>
       </div>
 
-    </div>
+    </div><!-- /.auth-card -->
   </main>
 
-  <footer class="site-footer">
-    <strong>BNK부산은행</strong><br />
-    부산광역시 부산진구 부전동 830-38 &nbsp;|&nbsp; 대표전화 1588-6200<br />
-    © 2025 BNK Busan Bank. All rights reserved.
-  </footer>
-
-  <div id="toast-container"></div>
-  <script src="/js/header.js"></script>
   <script src="/js/auth-js.js"></script>
 </body>
 </html>

@@ -6,86 +6,117 @@
   <title>BNK 부산은행 카드</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; background: #f4f6fa; color: #222; min-height: 100vh; }
+    body { font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; background: #f4f6fa; color: #222; }
     a { text-decoration: none; color: inherit; }
     button { cursor: pointer; border: none; background: none; font-family: inherit; }
 
-    .header { background: #003087; color: #fff; padding: 0 32px; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+    /* ── Header ── */
+    .header { background: #003087; color: #fff; padding: 0 32px; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
     .header-logo { font-size: 20px; font-weight: 700; }
     .header-logo span { color: #ffd700; }
-    .header-nav { display: flex; gap: 20px; align-items: center; font-size: 14px; }
-    .header-nav a { color: #fff; opacity: 0.85; }
-    .header-nav a:hover { opacity: 1; }
+    .header-nav { display: flex; gap: 20px; font-size: 14px; }
+    .header-nav a { color: rgba(255,255,255,.85); }
+    .header-nav a:hover { color: #fff; }
 
-    .hero { background: linear-gradient(135deg, #003087 0%, #0066cc 60%, #0099ff 100%); padding: 60px 32px 80px; text-align: center; color: #fff; }
+    /* ── Hero ── */
+    .hero { background: linear-gradient(135deg,#003087 0%,#0066cc 60%,#0099ff 100%); padding: 60px 32px 80px; text-align: center; color: #fff; }
     .hero h1 { font-size: 32px; font-weight: 700; margin-bottom: 10px; }
-    .hero p  { font-size: 16px; opacity: 0.85; margin-bottom: 32px; }
-    .search-bar { display: flex; max-width: 560px; margin: 0 auto; background: #fff; border-radius: 50px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+    .hero p  { font-size: 16px; opacity: .85; margin-bottom: 32px; }
+    .search-bar { display: flex; max-width: 560px; margin: 0 auto; background: #fff; border-radius: 50px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,.2); }
     .search-bar input { flex: 1; border: none; outline: none; padding: 14px 24px; font-size: 15px; color: #222; }
     .search-bar button { background: #ffd700; color: #003087; font-weight: 700; font-size: 15px; padding: 14px 28px; }
     .popular-keywords { margin-top: 16px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-    .popular-keywords span { font-size: 12px; color: rgba(255,255,255,0.7); }
-    .kw-tag { background: rgba(255,255,255,0.18); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 20px; padding: 4px 12px; font-size: 13px; cursor: pointer; }
-    .kw-tag:hover { background: rgba(255,255,255,0.32); }
+    .popular-keywords span { font-size: 12px; color: rgba(255,255,255,.7); }
+    .kw-tag { background: rgba(255,255,255,.18); color: #fff; border: 1px solid rgba(255,255,255,.3); border-radius: 20px; padding: 4px 12px; font-size: 13px; cursor: pointer; }
+    .kw-tag:hover { background: rgba(255,255,255,.32); }
 
+    /* ── Section ── */
     .section { max-width: 1120px; margin: 0 auto; padding: 48px 24px; }
     .section-title { font-size: 22px; font-weight: 700; color: #003087; margin-bottom: 6px; }
     .section-sub { font-size: 13px; color: #888; margin-bottom: 28px; }
 
-    .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 24px; }
-    .top3-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 28px; }
-    @media (max-width: 768px) { .top3-grid { grid-template-columns: 1fr; } .card-grid { grid-template-columns: 1fr 1fr; } }
-    @media (max-width: 480px) { .card-grid { grid-template-columns: 1fr; } }
+    /* ── TOP3 포디움 ── */
+    .top3-podium { display: flex; align-items: flex-end; justify-content: center; gap: 16px; }
+    .podium-item { transition: transform .3s; }
+    .podium-item.center { order: 2; transform: scale(1.08); z-index: 2; }
+    .podium-item.left   { order: 1; transform: scale(0.92); opacity: .9; }
+    .podium-item.right  { order: 3; transform: scale(0.92); opacity: .9; }
+    .podium-item:hover  { transform: scale(1.05) !important; opacity: 1 !important; z-index: 3; }
+    .podium-flip { perspective: 900px; height: 320px; width: 260px; }
+    .podium-item.center .podium-flip { height: 340px; width: 280px; }
+    @media (max-width: 700px) {
+      .top3-podium { flex-direction: column; align-items: center; }
+      .podium-item.center, .podium-item.left, .podium-item.right { transform: none; opacity: 1; order: unset; }
+      .podium-flip { width: 100% !important; max-width: 300px; }
+    }
+
+    /* ── Card Flip ── */
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap: 24px; }
+    @media (max-width:768px) { .card-grid { grid-template-columns:1fr 1fr; } }
+    @media (max-width:480px) { .card-grid { grid-template-columns:1fr; } }
 
     .flip-wrapper { perspective: 1000px; height: 340px; }
-    .flip-inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform 0.55s cubic-bezier(0.4,0.2,0.2,1); }
+    .flip-inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .55s cubic-bezier(.4,.2,.2,1); }
     .flip-wrapper:hover .flip-inner { transform: rotateY(180deg); }
-    .flip-front, .flip-back { position: absolute; width: 100%; height: 100%; border-radius: 16px; backface-visibility: hidden; -webkit-backface-visibility: hidden; overflow: hidden; box-shadow: 0 4px 20px rgba(0,48,135,0.12); }
+    .flip-front, .flip-back { position: absolute; width: 100%; height: 100%; border-radius: 16px; backface-visibility: hidden; -webkit-backface-visibility: hidden; overflow: hidden; box-shadow: 0 4px 20px rgba(0,48,135,.12); }
     .flip-front { background: #fff; display: flex; flex-direction: column; }
-    .card-img-wrap { flex: 1; background: linear-gradient(145deg, #e8eef6, #d0ddf0); display: flex; align-items: center; justify-content: center; overflow: hidden; }
-    .card-img-wrap img { max-height: 160px; max-width: 90%; object-fit: contain; filter: drop-shadow(0 6px 16px rgba(0,48,135,0.18)); }
-    .card-img-placeholder { width: 200px; height: 120px; background: linear-gradient(135deg, #003087, #0066cc); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; font-weight: 600; text-align: center; padding: 12px; }
+    .card-img-wrap { flex: 1; background: linear-gradient(145deg,#e8eef6,#d0ddf0); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .card-img-wrap img { max-height: 160px; max-width: 90%; object-fit: contain; filter: drop-shadow(0 6px 16px rgba(0,48,135,.18)); }
+    .card-img-placeholder { width: 200px; height: 120px; background: linear-gradient(135deg,#003087,#0066cc); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; font-weight: 600; text-align: center; padding: 12px; }
     .card-front-info { padding: 16px 18px; border-top: 1px solid #f0f2f6; }
     .card-type-badge { display: inline-block; font-size: 11px; font-weight: 600; color: #0066cc; background: #e8f0fe; border-radius: 4px; padding: 2px 8px; margin-bottom: 6px; }
     .card-name { font-size: 15px; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .card-company { font-size: 12px; color: #888; }
     .card-fee { font-size: 13px; color: #444; margin-top: 4px; }
-    .flip-back { transform: rotateY(180deg); background: linear-gradient(145deg, #003087, #0055bb); color: #fff; display: flex; flex-direction: column; padding: 24px 20px 20px; }
-    .back-card-name { font-size: 15px; font-weight: 700; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px; }
-    .back-benefit { flex: 1; font-size: 13px; line-height: 1.7; opacity: 0.9; overflow: hidden; }
+    .flip-back { transform: rotateY(180deg); background: linear-gradient(145deg,#003087,#0055bb); color: #fff; display: flex; flex-direction: column; padding: 24px 20px 20px; }
+    .back-card-name { font-size: 15px; font-weight: 700; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,.2); padding-bottom: 10px; }
+    .back-benefit { flex: 1; font-size: 13px; line-height: 1.7; opacity: .9; overflow: hidden; }
     .benefit-item { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 6px; }
     .benefit-dot { width: 6px; height: 6px; border-radius: 50%; background: #ffd700; margin-top: 6px; flex-shrink: 0; }
     .back-actions { display: flex; gap: 8px; margin-top: 14px; }
     .btn-detail, .btn-compare, .btn-apply { flex: 1; padding: 9px 6px; border-radius: 8px; font-size: 12px; font-weight: 600; text-align: center; }
-    .btn-detail  { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); }
+    .btn-detail  { background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.3); }
     .btn-compare { background: #ffd700; color: #003087; }
     .btn-apply   { background: #fff; color: #003087; }
-
     .top3-rank { position: absolute; top: 12px; left: 12px; z-index: 2; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; }
     .rank-1 { background: #ffd700; color: #003087; }
     .rank-2 { background: #c0c0c0; color: #333; }
     .rank-3 { background: #cd7f32; color: #fff; }
 
-    .category-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
-    .cat-btn { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 24px; font-size: 13px; font-weight: 500; border: 1.5px solid #dde3ef; color: #444; background: #fff; transition: all .2s; }
-    .cat-btn:hover, .cat-btn.active { border-color: #003087; color: #003087; background: #e8f0fe; }
+    /* ── 카드 유형 탭 ── */
+    .type-tab-bar { display: flex; border-bottom: 2px solid #e0e7f5; margin-bottom: 20px; overflow-x: auto; }
+    .type-tab { padding: 12px 28px; font-size: 15px; font-weight: 600; color: #888; border-bottom: 3px solid transparent; margin-bottom: -2px; white-space: nowrap; transition: all .2s; }
+    .type-tab:hover { color: #003087; }
+    .type-tab.active { color: #003087; border-bottom-color: #003087; }
 
+    /* ── 카테고리 버튼 (중복선택, 교집합 AND) ── */
+    .category-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+    .cat-btn { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 24px; font-size: 13px; font-weight: 500; border: 1.5px solid #dde3ef; color: #444; background: #fff; transition: all .2s; }
+    .cat-btn:hover { border-color: #003087; color: #003087; background: #e8f0fe; }
+    .cat-btn.active { border-color: #003087; color: #fff; background: #003087; }
+    .cat-hint { font-size: 12px; color: #aaa; margin-bottom: 16px; }
+    .cat-selected-info { font-size: 12px; color: #0066cc; margin-bottom: 12px; min-height: 16px; font-weight: 500; }
+
+    /* ── 필터 바 ── */
     .filter-row { display: flex; gap: 12px; align-items: center; margin-bottom: 24px; flex-wrap: wrap; }
-    .filter-row select, .filter-row input[type=text] { padding: 8px 14px; border: 1.5px solid #dde3ef; border-radius: 8px; font-size: 13px; outline: none; background: #fff; color: #333; }
+    .filter-row input { padding: 8px 14px; border: 1.5px solid #dde3ef; border-radius: 8px; font-size: 13px; outline: none; background: #fff; color: #333; }
     .filter-count { font-size: 13px; color: #888; margin-left: auto; }
 
+    /* ── 로딩/빈화면 ── */
     .loading-wrap, .empty-wrap { text-align: center; padding: 60px 20px; color: #999; }
-    .loading-spinner { width: 40px; height: 40px; border: 3px solid #e0e7f5; border-top-color: #003087; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+    .loading-spinner { width: 40px; height: 40px; border: 3px solid #e0e7f5; border-top-color: #003087; border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 16px; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── 페이지네이션 ── */
     .pagination { display: flex; justify-content: center; gap: 6px; margin-top: 40px; }
     .page-btn { width: 38px; height: 38px; border-radius: 8px; border: 1.5px solid #dde3ef; background: #fff; color: #444; font-size: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
     .page-btn:hover, .page-btn.active { background: #003087; color: #fff; border-color: #003087; }
-    .page-btn:disabled { opacity: 0.4; pointer-events: none; }
+    .page-btn:disabled { opacity: .4; pointer-events: none; }
 
-    .compare-cart { position: fixed; right: 0; bottom: 80px; width: 220px; background: #fff; border-radius: 16px 0 0 16px; box-shadow: -4px 4px 24px rgba(0,48,135,0.18); padding: 16px 14px; z-index: 200; transform: translateX(100%); transition: transform .35s cubic-bezier(0.4,0.2,0.2,1); }
+    /* ── 비교 카트 ── */
+    .compare-cart { position: fixed; right: 0; bottom: 80px; width: 220px; background: #fff; border-radius: 16px 0 0 16px; box-shadow: -4px 4px 24px rgba(0,48,135,.18); padding: 16px 14px; z-index: 200; transform: translateX(100%); transition: transform .35s; }
     .compare-cart.open { transform: translateX(0); }
-    .cart-toggle { position: fixed; right: 0; bottom: 80px; background: #003087; color: #fff; padding: 10px 12px; border-radius: 8px 0 0 8px; font-size: 12px; font-weight: 600; z-index: 201; writing-mode: vertical-rl; cursor: pointer; letter-spacing: 1px; box-shadow: -2px 2px 8px rgba(0,0,0,0.2); }
+    .cart-toggle { position: fixed; right: 0; bottom: 80px; background: #003087; color: #fff; padding: 10px 12px; border-radius: 8px 0 0 8px; font-size: 12px; font-weight: 600; z-index: 201; writing-mode: vertical-rl; cursor: pointer; letter-spacing: 1px; box-shadow: -2px 2px 8px rgba(0,0,0,.2); }
     .cart-title { font-size: 14px; font-weight: 700; color: #003087; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
     .cart-item { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #f0f2f6; font-size: 12px; }
     .cart-item-name { flex: 1; line-height: 1.4; color: #333; }
@@ -94,10 +125,10 @@
     .btn-cart-compare { width: 100%; margin-top: 12px; padding: 10px; background: #003087; color: #fff; border-radius: 8px; font-size: 13px; font-weight: 700; }
     .btn-cart-compare:disabled { background: #ccc; }
 
-    /* 검색 오버레이 */
-    .search-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 500; align-items: flex-start; justify-content: center; padding-top: 60px; }
+    /* ── 검색 오버레이 ── */
+    .search-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 500; align-items: flex-start; justify-content: center; padding-top: 60px; }
     .search-overlay.open { display: flex; }
-    .search-modal { background: #fff; border-radius: 16px; width: 100%; max-width: 720px; max-height: 80vh; overflow-y: auto; padding: 28px 24px; box-shadow: 0 8px 40px rgba(0,0,0,0.3); animation: slideDown 0.25s ease; }
+    .search-modal { background: #fff; border-radius: 16px; width: 100%; max-width: 720px; max-height: 80vh; overflow-y: auto; padding: 28px 24px; box-shadow: 0 8px 40px rgba(0,0,0,.3); animation: slideDown .25s ease; }
     @keyframes slideDown { from { transform: translateY(-20px); opacity:0; } to { transform: translateY(0); opacity:1; } }
     .modal-search-bar { display: flex; border: 2px solid #003087; border-radius: 50px; overflow: hidden; margin-bottom: 20px; }
     .modal-search-bar input { flex: 1; border: none; outline: none; padding: 12px 20px; font-size: 15px; color: #222; }
@@ -106,13 +137,15 @@
     .suggest-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
     .suggest-tag { background: #f0f4fb; color: #003087; border-radius: 20px; padding: 6px 14px; font-size: 13px; cursor: pointer; }
     .suggest-tag:hover { background: #d4e2f7; }
-    .modal-cat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 24px; }
-    .modal-cat-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 8px; border: 1.5px solid #dde3ef; border-radius: 10px; font-size: 12px; color: #444; background: #fafbff; cursor: pointer; }
-    .modal-cat-btn:hover, .modal-cat-btn.active { border-color: #003087; background: #e8f0fe; color: #003087; }
+    .modal-cat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 8px; }
+    .modal-cat-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 8px; border: 1.5px solid #dde3ef; border-radius: 10px; font-size: 12px; color: #444; background: #fafbff; cursor: pointer; transition: all .15s; }
+    .modal-cat-btn:hover { border-color: #003087; background: #e8f0fe; color: #003087; }
+    .modal-cat-btn.active { border-color: #003087; background: #003087; color: #fff; }
     .modal-cat-btn .cat-em { font-size: 22px; }
-    .modal-result-item { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid #f0f2f6; cursor: pointer; border-radius: 8px; }
+    .modal-cat-selected { font-size: 12px; color: #0066cc; margin-bottom: 12px; min-height: 16px; }
+    .modal-result-item { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid #f0f2f6; cursor: pointer; }
     .modal-result-item:hover { background: #f8faff; }
-    .modal-result-thumb { width: 64px; height: 40px; background: linear-gradient(135deg, #003087, #0066cc); border-radius: 6px; overflow: hidden; flex-shrink: 0; display:flex; align-items:center; justify-content:center; }
+    .modal-result-thumb { width: 64px; height: 40px; background: linear-gradient(135deg,#003087,#0066cc); border-radius: 6px; overflow: hidden; flex-shrink: 0; display:flex; align-items:center; justify-content:center; }
     .modal-result-thumb img { width: 100%; height: 100%; object-fit: cover; }
     .modal-result-info { flex: 1; }
     .modal-result-name { font-size: 14px; font-weight: 600; color: #1a1a2e; }
@@ -123,27 +156,27 @@
     .btn-m-detail  { background: #f0f4fb; color: #003087; }
     .btn-m-compare { background: #003087; color: #fff; }
 
-    /* 비교 모달 */
-    .compare-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 800; align-items: center; justify-content: center; padding: 20px; }
+    /* ── 비교 모달 ── */
+    .compare-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 800; align-items: center; justify-content: center; padding: 20px; }
     .compare-modal-overlay.open { display: flex; }
-    .compare-modal { background: #fff; border-radius: 16px; width: 100%; max-width: 900px; max-height: 85vh; overflow-y: auto; box-shadow: 0 16px 60px rgba(0,0,0,0.35); animation: modalIn 0.25s ease; }
-    @keyframes modalIn { from { transform: scale(0.95) translateY(10px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+    .compare-modal { background: #fff; border-radius: 16px; width: 100%; max-width: 900px; max-height: 85vh; overflow-y: auto; box-shadow: 0 16px 60px rgba(0,0,0,.35); animation: modalIn .25s ease; }
+    @keyframes modalIn { from { transform: scale(.95) translateY(10px); opacity:0; } to { transform: scale(1) translateY(0); opacity:1; } }
     .compare-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid #eee; position: sticky; top: 0; background: #fff; z-index: 1; border-radius: 16px 16px 0 0; }
     .compare-modal-title { font-size: 18px; font-weight: 700; color: #003087; }
     .compare-modal-close { width: 32px; height: 32px; border-radius: 50%; background: #f0f2f6; color: #555; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-    .compare-modal-close:hover { background: #e0e5ef; }
     .compare-modal-body { padding: 24px; }
     .compare-table { width: 100%; border-collapse: collapse; }
-    .compare-table th { background: #003087; color: #fff; padding: 12px 16px; font-size: 13px; text-align: center; min-width: 160px; }
+    .compare-table th { background: #003087; color: #fff; padding: 12px 16px; font-size: 13px; text-align: center; min-width: 160px; position: relative; }
     .compare-table th:first-child { text-align: left; width: 110px; background: #002060; }
     .compare-table td { padding: 12px 16px; font-size: 13px; border-bottom: 1px solid #f0f2f6; vertical-align: top; text-align: center; }
     .compare-table td:first-child { font-weight: 600; color: #555; text-align: left; background: #f8faff; }
-    .compare-table tr:nth-child(even) td:not(:first-child) { background: #f8faff; }
+    .compare-table tr:nth-child(even) td:not(:first-child) { background: #fafcff; }
     .compare-card-img { width: 80px; height: 50px; object-fit: contain; border-radius: 6px; margin-bottom: 6px; }
-    .compare-card-img-placeholder { width: 80px; height: 50px; background: linear-gradient(135deg, #003087, #0066cc); border-radius: 6px; display: inline-block; margin-bottom: 6px; }
+    .compare-card-img-placeholder { width: 80px; height: 50px; background: linear-gradient(135deg,#003087,#0066cc); border-radius: 6px; display: inline-block; margin-bottom: 6px; }
     .compare-empty { text-align: center; padding: 48px; color: #bbb; }
     .compare-remove-btn { display: block; margin: 8px auto 0; padding: 4px 10px; background: #fce4ec; color: #c62828; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; }
 
+    /* ── 토스트 ── */
     .toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(80px); background: #1a1a2e; color: #fff; padding: 12px 24px; border-radius: 50px; font-size: 14px; z-index: 9999; opacity: 0; transition: all .3s; }
     .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
   </style>
@@ -169,41 +202,46 @@
   <div class="popular-keywords" id="popular-keywords"><span>인기 :</span></div>
 </section>
 
+<!-- TOP3 포디움 -->
 <section class="section" id="top3">
   <div class="section-title">🏆 TOP3 추천 카드</div>
   <div class="section-sub">많은 분들이 선택한 인기 카드입니다</div>
-  <div class="top3-grid" id="top3-grid">
-    <div class="loading-wrap" style="grid-column:1/-1"><div class="loading-spinner"></div></div>
+  <div class="top3-podium" id="top3-podium">
+    <div class="loading-wrap"><div class="loading-spinner"></div></div>
   </div>
 </section>
 
+<!-- 전체 카드 -->
 <section class="section" id="card-list">
   <div class="section-title">💳 전체 카드</div>
-  <div class="section-sub">혜택 카테고리와 카드 유형으로 필터링하세요</div>
+  <div class="section-sub">카드 유형과 혜택 카테고리로 필터링하세요</div>
 
-  <!-- 카테고리 버튼 — JS로 동적 생성 -->
+  <!-- 카드 유형 탭 -->
+  <div class="type-tab-bar">
+    <button class="type-tab active" data-type="" onclick="selectCardType(this,'')">전체 카드</button>
+    <button class="type-tab" data-type="CREDIT" onclick="selectCardType(this,'CREDIT')">신용카드</button>
+    <button class="type-tab" data-type="CHECK"  onclick="selectCardType(this,'CHECK')">체크카드</button>
+    <button class="type-tab" data-type="PREPAID" onclick="selectCardType(this,'PREPAID')">선불카드</button>
+  </div>
+
+  <!-- 혜택 카테고리 (AND 교집합) -->
   <div class="category-bar" id="category-bar">
     <div class="loading-spinner" style="width:20px;height:20px;border-width:2px;margin:8px 0;"></div>
   </div>
+  <div class="cat-hint">💡 여러 카테고리를 선택하면 모든 혜택을 가진 카드만 표시됩니다</div>
+  <div class="cat-selected-info" id="cat-selected-info"></div>
 
+  <!-- 검색 -->
   <div class="filter-row">
-    <select id="filter-type" onchange="loadCards(0)">
-      <option value="">전체 유형</option>
-      <option value="CREDIT">신용카드</option>
-      <option value="CHECK">체크카드</option>
-      <option value="PREPAID">선불카드</option>
-    </select>
     <input type="text" id="filter-q" placeholder="카드명 검색..."
-           onkeydown="if(event.key==='Enter') loadCards(0)" style="width:200px">
-    <button onclick="loadCards(0)" style="padding:8px 18px;background:#003087;color:#fff;border-radius:8px;font-size:13px;cursor:pointer;">검색</button>
-    <button onclick="resetFilter()" style="padding:8px 14px;background:#f0f2f6;color:#666;border-radius:8px;font-size:13px;cursor:pointer;">초기화</button>
+           onkeydown="if(event.key==='Enter') loadCards(0)" style="width:220px">
+    <button onclick="loadCards(0)" style="padding:8px 18px;background:#003087;color:#fff;border-radius:8px;font-size:13px;">검색</button>
+    <button onclick="resetFilter()" style="padding:8px 14px;background:#f0f2f6;color:#666;border-radius:8px;font-size:13px;">초기화</button>
     <span class="filter-count" id="filter-count"></span>
   </div>
 
   <div class="card-grid" id="card-grid">
-    <div class="loading-wrap" style="grid-column:1/-1">
-      <div class="loading-spinner"></div><p>카드를 불러오는 중...</p>
-    </div>
+    <div class="loading-wrap" style="grid-column:1/-1"><div class="loading-spinner"></div><p>카드를 불러오는 중...</p></div>
   </div>
   <div class="pagination" id="pagination"></div>
 </section>
@@ -213,7 +251,7 @@
   <div class="search-modal">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <strong style="font-size:16px;">카드 검색</strong>
-      <button onclick="closeSearchModal()" style="font-size:20px;color:#888;cursor:pointer;">✕</button>
+      <button onclick="closeSearchModal()" style="font-size:20px;color:#888;">✕</button>
     </div>
     <div class="modal-search-bar">
       <input type="text" id="modal-search-input" placeholder="카드명, 혜택 검색..."
@@ -222,10 +260,13 @@
     </div>
     <div class="modal-section-title">추천 검색어</div>
     <div class="suggest-list" id="suggest-list"></div>
-    <div class="modal-section-title">혜택 카테고리</div>
+    <div class="modal-section-title">혜택 카테고리
+      <span style="font-size:11px;color:#aaa;font-weight:400;"> (중복 선택 = AND 교집합)</span>
+    </div>
     <div class="modal-cat-grid" id="modal-cat-grid">
       <div class="loading-spinner" style="width:20px;height:20px;border-width:2px;grid-column:1/-1;margin:8px auto;"></div>
     </div>
+    <div class="modal-cat-selected" id="modal-cat-selected"></div>
     <div id="modal-results-wrap" style="display:none">
       <div class="modal-section-title" id="modal-result-title">검색 결과</div>
       <div id="modal-results"></div>
@@ -246,7 +287,7 @@
   </div>
 </div>
 
-<div class="cart-toggle" id="cart-toggle" onclick="toggleCart()">비교<br>카트</div>
+<div class="cart-toggle" onclick="toggleCart()">비교<br>카트</div>
 <div class="compare-cart" id="compare-cart">
   <div class="cart-title">비교 카트 <span id="cart-count" style="color:#0066cc">(0/3)</span></div>
   <div id="cart-items"><div class="cart-empty">카드를 추가하세요</div></div>
@@ -255,12 +296,16 @@
 <div class="toast" id="toast"></div>
 
 <script>
+// ══════════════════════════════════════════════
+//  전역 상태
+// ══════════════════════════════════════════════
 const state = {
   compareCart: [],
   cartOpen: false,
   currentPage: 0,
-  currentCategoryId: '',
-  modalCategoryId: '',
+  currentCategoryIds: [],   // AND 교집합 배열
+  modalCategoryIds: [],
+  currentCardType: '',
   PAGE_SIZE: 12,
   categories: [],
 };
@@ -273,20 +318,27 @@ const CAT_EMOJI = {
   LOCAL:'🏘️', BUSINESS:'💼', ETC:'✨',
 };
 
-function toast(msg, duration=2200) {
+// ══════════════════════════════════════════════
+//  유틸
+// ══════════════════════════════════════════════
+function toast(msg, dur=2200) {
   const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), duration);
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), dur);
 }
 function fmtFee(v) {
-  if (!v && v !== 0) return '-';
+  if (v === null || v === undefined) return '-';
   return Number(v) === 0 ? '연회비 없음' : Number(v).toLocaleString() + '원';
 }
 function cardTypeBadge(t) {
   return { CREDIT:'신용', CHECK:'체크', PREPAID:'선불', HYBRID:'하이브리드' }[t] ?? t;
 }
-
+function safeImgHtml(url, alt) {
+  if (!url) return `<div class="card-img-placeholder">${alt}</div>`;
+  const e = alt.replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  return `<img src="${url}" alt="${e}"
+    onerror="this.style.display='none';this.parentElement.innerHTML='<div class=\\'card-img-placeholder\\'>${e}</div>'">`;
+}
 async function api(url) {
   try {
     const res = await fetch(url, { credentials:'include' });
@@ -295,38 +347,53 @@ async function api(url) {
   } catch { return null; }
 }
 
-function safeImgHtml(url, alt) {
-  if (!url) return `<div class="card-img-placeholder">${alt}</div>`;
-  const altEsc = alt.replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-  return `<img src="${url}" alt="${altEsc}"
-    onerror="this.style.display='none';this.parentElement.innerHTML='<div class=\\'card-img-placeholder\\'>${altEsc}</div>'">`;
-}
-
-// 카테고리 로드 — GET /api/cards/categories
+// ══════════════════════════════════════════════
+//  카테고리 로드
+// ══════════════════════════════════════════════
 async function loadCategories() {
   const data = await api('/api/cards/categories');
   if (!data?.length) return;
   state.categories = data;
 
-  const bar = document.getElementById('category-bar');
-  bar.innerHTML = `
-    <button class="cat-btn active" onclick="selectCategory(this,'')">🃏 전체</button>
-    ${data.map(c => `
-      <button class="cat-btn" onclick="selectCategory(this,'${c.categoryId}')">
-        ${CAT_EMOJI[c.categoryCode]??'🔹'} ${c.categoryName}
-      </button>
-    `).join('')}
-  `;
+  document.getElementById('category-bar').innerHTML = data.map(c => `
+    <button class="cat-btn" data-id="${c.categoryId}" data-name="${c.categoryName}"
+            onclick="toggleCategory(this,'${c.categoryId}','${c.categoryName}')">
+      ${CAT_EMOJI[c.categoryCode]??'🔹'} ${c.categoryName}
+    </button>`).join('');
 
-  const grid = document.getElementById('modal-cat-grid');
-  grid.innerHTML = data.slice(0,12).map(c => `
-    <button class="modal-cat-btn" onclick="modalSelectCategory(this,'${c.categoryId}')">
+  document.getElementById('modal-cat-grid').innerHTML = data.slice(0,12).map(c => `
+    <button class="modal-cat-btn" data-id="${c.categoryId}" data-name="${c.categoryName}"
+            onclick="toggleModalCategory(this,'${c.categoryId}','${c.categoryName}')">
       <span class="cat-em">${CAT_EMOJI[c.categoryCode]??'🔹'}</span>${c.categoryName}
-    </button>
-  `).join('');
+    </button>`).join('');
 }
 
-// 인기 검색어 — GET /api/search/keywords/popular
+// ── 메인 카테고리 AND 토글 ─────────────────
+function toggleCategory(btn, catId, catName) {
+  const idx = state.currentCategoryIds.indexOf(catId);
+  if (idx === -1) { state.currentCategoryIds.push(catId); btn.classList.add('active'); }
+  else            { state.currentCategoryIds.splice(idx,1); btn.classList.remove('active'); }
+  updateCatInfo('cat-selected-info', state.currentCategoryIds);
+  loadCards(0);
+}
+function updateCatInfo(elId, ids) {
+  const el = document.getElementById(elId);
+  if (!ids.length) { el.textContent = ''; return; }
+  const names = ids.map(id => state.categories.find(c=>String(c.categoryId)===String(id))?.categoryName ?? id);
+  el.textContent = '선택된 혜택 (AND): ' + names.join(' + ');
+}
+
+// ── 카드 유형 탭 ──────────────────────────────
+function selectCardType(btn, cardType) {
+  document.querySelectorAll('.type-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.currentCardType = cardType;
+  loadCards(0);
+}
+
+// ══════════════════════════════════════════════
+//  인기 검색어
+// ══════════════════════════════════════════════
 async function loadPopularKeywords() {
   const data = await api('/api/search/keywords/popular');
   const wrap = document.getElementById('popular-keywords');
@@ -342,55 +409,89 @@ async function loadPopularKeywords() {
   });
 }
 
-// TOP3 — GET /api/cards/top3?surveyResult=
+// ══════════════════════════════════════════════
+//  TOP3 포디움 (1위 중앙 크게)
+// ══════════════════════════════════════════════
 async function loadTop3() {
-  const grid = document.getElementById('top3-grid');
+  const container = document.getElementById('top3-podium');
   const data = await api('/api/cards/top3?surveyResult=');
   if (!data?.length) {
-    grid.innerHTML = '<div class="empty-wrap" style="grid-column:1/-1">추천 카드를 불러올 수 없습니다.</div>';
+    container.innerHTML = '<div class="empty-wrap">추천 카드를 불러올 수 없습니다.</div>';
     return;
   }
-  grid.innerHTML = data.slice(0,3).map((card,i) => buildFlipCard(card,i+1)).join('');
+
+  // 순서: left(2위), center(1위), right(3위)
+  const ordered = [
+    { card: data[1], cls: 'left',   rank: 2 },
+    { card: data[0], cls: 'center', rank: 1 },
+    { card: data[2], cls: 'right',  rank: 3 },
+  ].filter(o => o.card);
+
+  container.innerHTML = ordered.map(o => `
+    <div class="podium-item ${o.cls}">
+      <div class="podium-flip">
+        ${buildFlipCard(o.card, o.rank)}
+      </div>
+    </div>`).join('');
 }
 
-// 카드 목록 — GET /api/cards
-async function loadCards(page=0) {
+// ══════════════════════════════════════════════
+//  카드 목록 — 백엔드에 categoryIds 배열 전달
+// ══════════════════════════════════════════════
+async function loadCards(page = 0) {
   state.currentPage = page;
   const grid = document.getElementById('card-grid');
-  grid.innerHTML = `<div class="loading-wrap" style="grid-column:1/-1"><div class="loading-spinner"></div><p>불러오는 중...</p></div>`;
+  grid.innerHTML = `<div class="loading-wrap" style="grid-column:1/-1">
+    <div class="loading-spinner"></div><p>불러오는 중...</p></div>`;
 
-  const q        = document.getElementById('filter-q').value.trim();
-  const cardType = document.getElementById('filter-type').value;
-  const catId    = state.currentCategoryId;
+  const q      = (document.getElementById('filter-q')?.value ?? '').trim();
+  const type   = state.currentCardType;
+  const catIds = state.currentCategoryIds;   // 배열
 
-  const params = new URLSearchParams({ page, size: state.PAGE_SIZE });
-  if (q)       params.set('q', q);
-  if (cardType) params.set('cardType', cardType);
-  if (catId)   params.set('categoryId', catId);
+  // URLSearchParams로 파라미터 구성
+  const params = new URLSearchParams();
+  params.append('page', page);
+  params.append('size', state.PAGE_SIZE);
+  if (q)    params.append('q', q);
+  if (type) params.append('cardType', type);
 
-  const data = await api('/api/cards?' + params.toString());
+  if (catIds.length === 1) {
+    params.append('categoryId', catIds[0]);
+  } else if (catIds.length > 1) {
+    catIds.forEach(id => params.append('categoryIds', id));
+  }
+
+  const url = '/api/cards?' + params.toString();
+  console.log('[loadCards]', url);   // 디버깅용
+
+  const data = await api(url);
 
   if (!data?.content?.length) {
-    grid.innerHTML = `<div class="empty-wrap" style="grid-column:1/-1">🔍 조건에 맞는 카드가 없습니다.</div>`;
+    grid.innerHTML = `<div class="empty-wrap" style="grid-column:1/-1">
+      🔍 조건에 맞는 카드가 없습니다.</div>`;
     document.getElementById('filter-count').textContent = '';
     renderPagination(0);
     return;
   }
 
-  document.getElementById('filter-count').textContent = `총 ${(data.totalCount??0).toLocaleString()}개`;
+  const typeLabel = { CREDIT:'신용카드', CHECK:'체크카드', PREPAID:'선불카드' }[type] ?? '';
+  document.getElementById('filter-count').textContent =
+    `${typeLabel ? typeLabel+' ' : ''}총 ${(data.totalCount ?? 0).toLocaleString()}개`;
   grid.innerHTML = data.content.map(c => buildFlipCard(c)).join('');
-  renderPagination(data.totalCount??0);
+  renderPagination(data.totalCount ?? 0);
 }
 
-// 카드 플립 HTML 빌더
+// ══════════════════════════════════════════════
+//  카드 플립 빌더
+// ══════════════════════════════════════════════
 function buildFlipCard(card, rank=null) {
   const rankBadge = rank ? `<div class="top3-rank rank-${rank}">${rank}</div>` : '';
-  const imgHtml = safeImgHtml(card.thumbnailUrl, card.cardName??'');
+  const imgHtml   = safeImgHtml(card.thumbnailUrl, card.cardName??'');
   const benefitText = card.topBenefit ?? card.summaryDescription ?? '다양한 혜택 제공';
-  const benefitLines = benefitText.split(/[,\.\n]\s*/).slice(0,3).map(b=>b.trim()).filter(Boolean)
+  const lines = benefitText.split(/[,\.\n]\s*/).slice(0,3).map(b=>b.trim()).filter(Boolean)
     .map(b=>`<div class="benefit-item"><span class="benefit-dot"></span>${b}</div>`).join('');
-  const nameEsc = (card.cardName??'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
-  const compEsc = (card.companyName??'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+  const ne = (card.cardName??'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+  const ce = (card.companyName??'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
   return `
     <div class="flip-wrapper">
       <div class="flip-inner">
@@ -406,46 +507,47 @@ function buildFlipCard(card, rank=null) {
         </div>
         <div class="flip-back">
           <div class="back-card-name">${card.cardName??''}</div>
-          <div class="back-benefit">${benefitLines||benefitText}</div>
+          <div class="back-benefit">${lines||benefitText}</div>
           <div class="back-actions">
-            <button class="btn-detail" onclick="event.stopPropagation();location.href='/card-detail.html?cardId=${card.cardId}'">자세히</button>
-            <button class="btn-compare" onclick="event.stopPropagation();addToCart(${card.cardId},'${nameEsc}','${compEsc}')">비교</button>
-            <button class="btn-apply" onclick="event.stopPropagation();location.href='/card-detail.html?cardId=${card.cardId}'">신청</button>
+            <button class="btn-detail"  onclick="event.stopPropagation();location.href='/card-detail.html?cardId=${card.cardId}'">자세히</button>
+            <button class="btn-compare" onclick="event.stopPropagation();addToCart(${card.cardId},'${ne}','${ce}')">비교</button>
+            <button class="btn-apply"   onclick="event.stopPropagation();location.href='/card-detail.html?cardId=${card.cardId}'">신청</button>
           </div>
         </div>
       </div>
     </div>`;
 }
 
-// 페이지네이션
-function renderPagination(totalCount) {
-  const totalPages = Math.ceil(totalCount / state.PAGE_SIZE);
+// ══════════════════════════════════════════════
+//  페이지네이션
+// ══════════════════════════════════════════════
+function renderPagination(total) {
+  const tp = Math.ceil(total / state.PAGE_SIZE);
   const el = document.getElementById('pagination');
-  if (totalPages <= 1) { el.innerHTML=''; return; }
-  const cur=state.currentPage, start=Math.max(0,cur-2), end=Math.min(totalPages-1,start+4);
-  let html = `<button class="page-btn" onclick="loadCards(${cur-1})" ${cur===0?'disabled':''}>‹</button>`;
-  for (let i=start;i<=end;i++) html+=`<button class="page-btn ${i===cur?'active':''}" onclick="loadCards(${i})">${i+1}</button>`;
-  html+=`<button class="page-btn" onclick="loadCards(${cur+1})" ${cur>=totalPages-1?'disabled':''}>›</button>`;
-  el.innerHTML = html;
+  if (tp <= 1) { el.innerHTML=''; return; }
+  const cur=state.currentPage, s=Math.max(0,cur-2), e=Math.min(tp-1,s+4);
+  let h = `<button class="page-btn" onclick="loadCards(${cur-1})" ${cur===0?'disabled':''}>‹</button>`;
+  for (let i=s;i<=e;i++) h+=`<button class="page-btn ${i===cur?'active':''}" onclick="loadCards(${i})">${i+1}</button>`;
+  h+=`<button class="page-btn" onclick="loadCards(${cur+1})" ${cur>=tp-1?'disabled':''}>›</button>`;
+  el.innerHTML=h;
 }
 
-// 카테고리 선택
-function selectCategory(btn, catId) {
-  document.querySelectorAll('#category-bar .cat-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  state.currentCategoryId = catId;
-  loadCards(0);
-}
+// ══════════════════════════════════════════════
+//  초기화
+// ══════════════════════════════════════════════
 function resetFilter() {
   document.getElementById('filter-q').value='';
-  document.getElementById('filter-type').value='';
-  state.currentCategoryId='';
+  state.currentCardType=''; state.currentCategoryIds=[];
+  document.querySelectorAll('.type-tab').forEach(b=>b.classList.remove('active'));
+  document.querySelector('.type-tab[data-type=""]')?.classList.add('active');
   document.querySelectorAll('#category-bar .cat-btn').forEach(b=>b.classList.remove('active'));
-  document.querySelector('#category-bar .cat-btn')?.classList.add('active');
+  document.getElementById('cat-selected-info').textContent='';
   loadCards(0);
 }
 
-// 비교 카트
+// ══════════════════════════════════════════════
+//  비교 카트 (remove 버그 수정)
+// ══════════════════════════════════════════════
 function toggleCart() {
   state.cartOpen = !state.cartOpen;
   document.getElementById('compare-cart').classList.toggle('open', state.cartOpen);
@@ -459,51 +561,51 @@ function addToCart(cardId, cardName, companyName) {
   toast(`"${cardName}" 비교 카트에 추가됐습니다.`);
 }
 function removeFromCart(cardId) {
-  state.compareCart = state.compareCart.filter(c=>c.cardId!==cardId);
+  // ── 버그 수정: filter로 해당 카드만 제거 ──
+  state.compareCart = state.compareCart.filter(c => c.cardId !== cardId);
   renderCart();
 }
 function renderCart() {
   const cnt = state.compareCart.length;
-  document.getElementById('cart-count').textContent = `(${cnt}/3)`;
-  document.getElementById('btn-do-compare').disabled = cnt < 2;
-  const wrap = document.getElementById('cart-items');
-  if (cnt===0) { wrap.innerHTML='<div class="cart-empty">카드를 추가하세요</div>'; return; }
-  wrap.innerHTML = state.compareCart.map(c=>`
+  document.getElementById('cart-count').textContent=`(${cnt}/3)`;
+  document.getElementById('btn-do-compare').disabled = cnt<2;
+  const w = document.getElementById('cart-items');
+  if (!cnt) { w.innerHTML='<div class="cart-empty">카드를 추가하세요</div>'; return; }
+  w.innerHTML = state.compareCart.map(c=>`
     <div class="cart-item">
-      <div class="cart-item-name">${c.cardName}<br><span style="color:#999;font-size:11px">${c.companyName}</span></div>
+      <div class="cart-item-name">${c.cardName}<br>
+        <span style="color:#999;font-size:11px">${c.companyName}</span></div>
       <button class="cart-remove" onclick="removeFromCart(${c.cardId})">✕</button>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
-// 비교 모달 열기/닫기
+// ══════════════════════════════════════════════
+//  비교 모달
+// ══════════════════════════════════════════════
 function openCompareModal() {
   document.getElementById('compare-modal-overlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
+  document.body.style.overflow='hidden';
 }
 function closeCompareModal() {
   document.getElementById('compare-modal-overlay').classList.remove('open');
-  document.body.style.overflow = '';
+  document.body.style.overflow='';
 }
 function handleCompareOverlayClick(e) {
   if (e.target===document.getElementById('compare-modal-overlay')) closeCompareModal();
 }
 
-// 카드 비교 실행 — POST /api/cards/compare
 async function doCompare() {
   const cardIds = state.compareCart.map(c=>c.cardId);
   if (cardIds.length<2) { toast('2개 이상 선택하세요.'); return; }
-
   openCompareModal();
-  document.getElementById('compare-modal-body').innerHTML =
+  document.getElementById('compare-modal-body').innerHTML=
     '<div class="compare-empty"><div class="loading-spinner" style="margin:0 auto 12px"></div>불러오는 중...</div>';
-
-  const res = await fetch('/api/cards/compare', {
+  const res = await fetch('/api/cards/compare',{
     method:'POST', headers:{'Content-Type':'application/json'},
-    credentials:'include', body: JSON.stringify({ cardIds }),
+    credentials:'include', body:JSON.stringify({cardIds})
   });
   const json = await res.json().catch(()=>null);
-  if (!json?.data?.length) {
+  if (!json?.data?.length){
     document.getElementById('compare-modal-body').innerHTML='<div class="compare-empty">비교 데이터를 불러올 수 없습니다.</div>';
     return;
   }
@@ -512,139 +614,74 @@ async function doCompare() {
 }
 
 function renderCompareModal(cards) {
-	  if (!cards.length) {
-	    document.getElementById('compare-modal-body').innerHTML =
-	      '<div class="compare-empty">비교할 카드가 없습니다.</div>';
-	    return;
-	  }
+  const fees   = cards.map(c=>Number(c.annualFeeDomestic)||0);
+  const minFee = Math.min(...fees);
+  const oFees  = cards.map(c=>Number(c.annualFeeOverseas)||0);
+  const minO   = Math.min(...oFees);
+  const bCnts  = cards.map(c=>(c.benefits??[]).length);
+  const maxB   = Math.max(...bCnts);
 
-	  // ── 비교 기준값 계산 ──────────────────────────────────────
-	  const fees     = cards.map(c => Number(c.annualFeeDomestic) || 0);
-	  const minFee   = Math.min(...fees);
+  const headerCells = cards.map((c,i)=>`
+    <th style="position:relative;">
+      ${bCnts[i]===maxB&&maxB>0?'<div style="position:absolute;top:8px;right:8px;background:#ffd700;color:#003087;border-radius:12px;padding:2px 8px;font-size:10px;font-weight:700;">★ 혜택 최다</div>':''}
+      ${c.thumbnailUrl?`<img class="compare-card-img" src="${c.thumbnailUrl}" alt="${c.cardName}" onerror="this.style.display='none'">`:`<span class="compare-card-img-placeholder"></span>`}
+      <br><span style="font-size:13px;font-weight:700;">${c.cardName}</span>
+      <button class="compare-remove-btn" onclick="removeFromCartAndRefresh(${c.cardId})">✕ 제거</button>
+    </th>`).join('');
 
-	  const oFees    = cards.map(c => Number(c.annualFeeOverseas) || 0);
-	  const minOFee  = Math.min(...oFees);
+  function feeCell(val, minVal){
+    const n=Number(val)||0, d=n===0?'연회비 없음':n.toLocaleString()+'원';
+    return n===minVal
+      ?`<td style="color:#00875a;font-weight:700;">${d}<br><span style="font-size:10px;background:#e8f8f0;color:#00875a;border-radius:4px;padding:1px 6px;">최저</span></td>`
+      :`<td>${d}</td>`;
+  }
 
-	  const benefitCounts = cards.map(c => (c.benefits ?? []).length);
-	  const maxBenefits   = Math.max(...benefitCounts);
-	  // ───────────────────────────────────────────────────────────
+  const rows=[
+    `<tr><td>카드사</td>${cards.map(c=>`<td>${c.companyName??'-'}</td>`).join('')}</tr>`,
+    `<tr><td>유형</td>${cards.map(c=>`<td>${cardTypeBadge(c.cardType)}</td>`).join('')}</tr>`,
+    `<tr><td>국내 연회비</td>${cards.map(c=>feeCell(c.annualFeeDomestic,minFee)).join('')}</tr>`,
+    `<tr><td>해외 연회비</td>${cards.map(c=>feeCell(c.annualFeeOverseas,minO)).join('')}</tr>`,
+    `<tr><td>혜택 수</td>${cards.map((c,i)=>`<td style="${bCnts[i]===maxB&&maxB>0?'color:#003087;font-weight:700;':''}">${bCnts[i]}개${bCnts[i]===maxB&&maxB>0?' ★':''}</td>`).join('')}</tr>`,
+    `<tr><td>주요 혜택</td>${cards.map((c,i)=>`<td style="${bCnts[i]===maxB&&maxB>0?'background:#fffde7;':''}text-align:left;">${(c.benefits??[]).slice(0,3).map(b=>`• ${b.displayText??b.benefitTitle??''}`).join('<br>')||'-'}</td>`).join('')}</tr>`,
+  ].join('');
 
-	  // 헤더 — 이미지 + 카드명 + 제거 버튼
-	  const headerCells = cards.map((c, i) => {
-	    const isMaxBenefit = benefitCounts[i] === maxBenefits && maxBenefits > 0;
-	    return `
-	      <th style="position:relative;">
-	        ${isMaxBenefit ? '<div style="position:absolute;top:8px;right:8px;background:#ffd700;color:#003087;border-radius:12px;padding:2px 8px;font-size:10px;font-weight:700;">★ 혜택 최다</div>' : ''}
-	        ${c.thumbnailUrl
-	          ? `<img class="compare-card-img" src="${c.thumbnailUrl}" alt="${c.cardName}" onerror="this.style.display='none'">`
-	          : `<span class="compare-card-img-placeholder"></span>`}
-	        <br><span style="font-size:13px;font-weight:700;">${c.cardName}</span>
-	        <button class="compare-remove-btn" onclick="removeFromCartAndRefresh(${c.cardId})">✕ 제거</button>
-	      </th>
-	    `;
-	  }).join('');
+  document.getElementById('compare-modal-body').innerHTML=`
+    <div style="margin-bottom:12px;font-size:12px;color:#888;">
+      💡 <span style="color:#00875a;font-weight:600;">초록색</span> = 연회비 최저 &nbsp;|&nbsp;
+         <span style="color:#003087;font-weight:600;">★</span> = 혜택 최다
+    </div>
+    <table class="compare-table">
+      <thead><tr><th>항목</th>${headerCells}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p style="margin-top:16px;font-size:12px;color:#999;text-align:right;">카드를 제거하면 다시 비교하기 버튼을 눌러주세요.</p>`;
+}
 
-	  // 연회비 셀 스타일 — 가장 낮은 카드 강조
-	  function feeCell(val, minVal) {
-	    const n = Number(val) || 0;
-	    const isMin = n === minVal;
-	    const display = n === 0 ? '연회비 없음' : n.toLocaleString() + '원';
-	    if (isMin) {
-	      return `<td style="color:#00875a;font-weight:700;">
-	        ${display}<br><span style="font-size:10px;background:#e8f8f0;color:#00875a;border-radius:4px;padding:1px 6px;">최저</span>
-	      </td>`;
-	    }
-	    return `<td>${display}</td>`;
-	  }
-
-	  // 혜택 셀 — 혜택 최다 카드 강조
-	  function benefitCell(c, i) {
-	    const benefits = (c.benefits ?? []).slice(0, 4);
-	    const isMax = benefitCounts[i] === maxBenefits && maxBenefits > 0;
-	    const content = benefits.map(b =>
-	      `<div style="text-align:left;margin-bottom:4px;">• ${b.displayText ?? b.benefitTitle ?? ''}</div>`
-	    ).join('') || '-';
-	    const style = isMax ? 'background:#fffde7;' : '';
-	    return `<td style="${style}">${content}</td>`;
-	  }
-
-	  const rows = [
-	    // 카드사
-	    `<tr>
-	      <td>카드사</td>
-	      ${cards.map(c => `<td>${c.companyName ?? '-'}</td>`).join('')}
-	    </tr>`,
-	    // 유형
-	    `<tr>
-	      <td>유형</td>
-	      ${cards.map(c => `<td>${cardTypeBadge(c.cardType)}</td>`).join('')}
-	    </tr>`,
-	    // 국내 연회비
-	    `<tr>
-	      <td>국내 연회비</td>
-	      ${cards.map(c => feeCell(c.annualFeeDomestic, minFee)).join('')}
-	    </tr>`,
-	    // 해외 연회비
-	    `<tr>
-	      <td>해외 연회비</td>
-	      ${cards.map(c => feeCell(c.annualFeeOverseas, minOFee)).join('')}
-	    </tr>`,
-	    // 주요 혜택 수
-	    `<tr>
-	      <td>혜택 수</td>
-	      ${cards.map((c, i) => {
-	        const cnt = benefitCounts[i];
-	        const isMax = cnt === maxBenefits && maxBenefits > 0;
-	        return `<td style="${isMax ? 'color:#003087;font-weight:700;' : ''}">${cnt}개${isMax ? ' ★' : ''}</td>`;
-	      }).join('')}
-	    </tr>`,
-	    // 상세 혜택
-	    `<tr>
-	      <td>주요 혜택</td>
-	      ${cards.map((c, i) => benefitCell(c, i)).join('')}
-	    </tr>`,
-	  ].join('');
-
-	  document.getElementById('compare-modal-body').innerHTML = `
-	    <div style="margin-bottom:12px;font-size:12px;color:#888;">
-	      💡 <span style="color:#00875a;font-weight:600;">초록색</span>은 연회비 최저,
-	      <span style="color:#003087;font-weight:600;">★</span>은 혜택 최다 카드입니다.
-	    </div>
-	    <table class="compare-table">
-	      <thead><tr><th>항목</th>${headerCells}</tr></thead>
-	      <tbody>${rows}</tbody>
-	    </table>
-	    <p style="margin-top:16px;font-size:12px;color:#999;text-align:right;">
-	      카드를 제거하면 다시 비교하기 버튼을 눌러주세요.
-	    </p>
-	  `;
-	}
-
+// ── 비교 카드 제거 후 갱신 ──────────────────────────────
 function removeFromCartAndRefresh(cardId) {
-  removeFromCart(cardId);
+  removeFromCart(cardId);  // filter로 해당 카드만 제거
   if (state.compareCart.length < 2) {
-    document.getElementById('compare-modal-body').innerHTML='<div class="compare-empty">비교할 카드가 2개 이상 필요합니다.<br>카드를 더 추가해주세요.</div>';
+    document.getElementById('compare-modal-body').innerHTML=
+      '<div class="compare-empty">비교할 카드가 2개 이상 필요합니다.<br>카드를 더 추가해주세요.</div>';
     return;
   }
   doCompare();
 }
 
-// 검색 모달
+// ══════════════════════════════════════════════
+//  검색 모달
+// ══════════════════════════════════════════════
 async function openSearchModal(keyword='') {
   document.getElementById('search-overlay').classList.add('open');
   const input = document.getElementById('modal-search-input');
-  input.value = keyword;
-  input.focus();
-  document.body.style.overflow = 'hidden';
-
+  input.value=keyword; input.focus();
+  document.body.style.overflow='hidden';
   const suggest = await api('/api/search/keywords/suggest');
   const suggestEl = document.getElementById('suggest-list');
   if (suggest?.length) {
-    suggestEl.innerHTML = suggest.slice(0,12).map(kw=>`
+    suggestEl.innerHTML=suggest.slice(0,12).map(kw=>`
       <button class="suggest-tag" onclick="modalSetKeyword('${(kw.keyword??kw).replace(/'/g,"\\'")}')">
-        ${kw.keyword??kw}
-      </button>
-    `).join('');
+        ${kw.keyword??kw}</button>`).join('');
   } else {
     suggestEl.innerHTML='<span style="color:#bbb;font-size:13px">추천 검색어가 없습니다.</span>';
   }
@@ -652,78 +689,107 @@ async function openSearchModal(keyword='') {
 }
 function closeSearchModal() {
   document.getElementById('search-overlay').classList.remove('open');
-  document.body.style.overflow = '';
-  state.modalCategoryId = '';
+  document.body.style.overflow='';
+  state.modalCategoryIds=[];
   document.querySelectorAll('.modal-cat-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('modal-cat-selected').textContent='';
 }
 function handleOverlayClick(e) {
   if (e.target===document.getElementById('search-overlay')) closeSearchModal();
 }
 function modalSetKeyword(kw) {
-  document.getElementById('modal-search-input').value = kw;
+  document.getElementById('modal-search-input').value=kw;
   runModalSearch();
 }
-function modalSelectCategory(btn, catId) {
-  document.querySelectorAll('.modal-cat-btn').forEach(b=>b.classList.remove('active'));
-  if (state.modalCategoryId===catId) { state.modalCategoryId=''; }
-  else { btn.classList.add('active'); state.modalCategoryId=catId; }
+
+// 모달 카테고리 AND 토글
+function toggleModalCategory(btn, catId, catName) {
+  const idx = state.modalCategoryIds.indexOf(catId);
+  if (idx===-1) { state.modalCategoryIds.push(catId); btn.classList.add('active'); }
+  else          { state.modalCategoryIds.splice(idx,1); btn.classList.remove('active'); }
+  updateCatInfo('modal-cat-selected', state.modalCategoryIds);
   runModalSearch();
 }
 
 async function runModalSearch() {
-  const q   = document.getElementById('modal-search-input').value.trim();
-  const cat = state.modalCategoryId;
-  if (!q && !cat) { document.getElementById('modal-results-wrap').style.display='none'; return; }
+	  const q    = (document.getElementById('modal-search-input')?.value ?? '').trim();
+	  const cats = state.modalCategoryIds ?? [];
 
-  document.getElementById('modal-results-wrap').style.display='';
-  document.getElementById('modal-result-title').textContent='검색 중...';
-  document.getElementById('modal-results').innerHTML=
-    '<div style="text-align:center;padding:20px;color:#999"><div class="loading-spinner" style="margin:0 auto 8px"></div>불러오는 중...</div>';
+	  if (!q && cats.length === 0) {
+	    document.getElementById('modal-results-wrap').style.display = 'none';
+	    return;
+	  }
 
-  const params = new URLSearchParams({ page:0, size:10 });
-  if (q)   params.set('q', q);
-  if (cat) params.set('categoryId', cat);
+	  document.getElementById('modal-results-wrap').style.display = '';
+	  document.getElementById('modal-result-title').textContent = '검색 중...';
+	  document.getElementById('modal-results').innerHTML =
+	    '<div style="text-align:center;padding:20px;color:#999">' +
+	    '<div class="loading-spinner" style="margin:0 auto 8px"></div>불러오는 중...</div>';
 
-  const data = await api('/api/cards?' + params.toString());
-  const results = data?.content ?? [];
-  document.getElementById('modal-result-title').textContent=`검색 결과 (${data?.totalCount??0}건)`;
+	  const params = new URLSearchParams();
+	  params.append('page', 0);
+	  params.append('size', 10);
+	  if (q) params.append('q', q);
+	  if (cats.length === 1) {
+	    params.append('categoryId', cats[0]);
+	  } else if (cats.length > 1) {
+	    cats.forEach(id => params.append('categoryIds', id));
+	  }
 
-  if (!results.length) {
-    document.getElementById('modal-results').innerHTML='<div style="text-align:center;color:#999;padding:20px">결과가 없습니다.</div>';
-    return;
-  }
-  document.getElementById('modal-results').innerHTML = results.map(card=>{
-    const nameEsc=(card.cardName??'').replace(/'/g,"\\'");
-    const compEsc=(card.companyName??'').replace(/'/g,"\\'");
-    const thumbHtml=card.thumbnailUrl
-      ?`<img src="${card.thumbnailUrl}" alt="${card.cardName}" onerror="this.style.display='none'" style="width:100%;height:100%;object-fit:cover;">` :'';
-    return `
-      <div class="modal-result-item" onclick="goDetail(${card.cardId})">
-        <div class="modal-result-thumb">${thumbHtml}</div>
-        <div class="modal-result-info">
-          <div class="modal-result-name">${card.cardName??''}</div>
-          <div class="modal-result-company">${card.companyName??''} · ${cardTypeBadge(card.cardType)}</div>
-          ${card.topBenefit?`<div class="modal-result-benefit">${card.topBenefit}</div>`:''}
-        </div>
-        <div class="modal-result-actions" onclick="event.stopPropagation()">
-          <button class="btn-m-detail" onclick="goDetail(${card.cardId})">상세</button>
-          <button class="btn-m-compare" onclick="addToCart(${card.cardId},'${nameEsc}','${compEsc}');closeSearchModal()">비교</button>
-        </div>
-      </div>`;
-  }).join('');
-}
+	  const url = '/api/cards?' + params.toString();
+	  console.log('[runModalSearch]', url);  // 디버깅용
+
+	  const data = await api(url);
+	  const results = data?.content ?? [];
+
+	  document.getElementById('modal-result-title').textContent =
+	    `검색 결과 (${data?.totalCount ?? 0}건)`;
+
+	  if (!results.length) {
+	    document.getElementById('modal-results').innerHTML =
+	      '<div style="text-align:center;color:#999;padding:20px">결과가 없습니다.</div>';
+	    return;
+	  }
+
+	  document.getElementById('modal-results').innerHTML = results.map(card => {
+	    const ne = (card.cardName ?? '').replace(/'/g, "\\'");
+	    const ce = (card.companyName ?? '').replace(/'/g, "\\'");
+	    const th = card.thumbnailUrl
+	      ? `<img src="${card.thumbnailUrl}" alt="${card.cardName}"
+	             onerror="this.style.display='none'"
+	             style="width:100%;height:100%;object-fit:cover;">` : '';
+	    return `
+	      <div class="modal-result-item" onclick="goDetail(${card.cardId})">
+	        <div class="modal-result-thumb">${th}</div>
+	        <div class="modal-result-info">
+	          <div class="modal-result-name">${card.cardName ?? ''}</div>
+	          <div class="modal-result-company">
+	            ${card.companyName ?? ''} · ${cardTypeBadge(card.cardType)}
+	          </div>
+	          ${card.topBenefit
+	            ? `<div class="modal-result-benefit">${card.topBenefit}</div>` : ''}
+	        </div>
+	        <div class="modal-result-actions" onclick="event.stopPropagation()">
+	          <button class="btn-m-detail" onclick="goDetail(${card.cardId})">상세</button>
+	          <button class="btn-m-compare"
+	            onclick="addToCart(${card.cardId},'${ne}','${ce}');closeSearchModal()">
+	            비교
+	          </button>
+	        </div>
+	      </div>`;
+	  }).join('');
+	}
 
 function goDetail(cardId) { closeSearchModal(); location.href=`/card-detail.html?cardId=${cardId}`; }
 
-document.addEventListener('keydown', e => {
+document.addEventListener('keydown', e=>{
   if (e.key==='Escape') { closeSearchModal(); closeCompareModal(); }
 });
-document.getElementById('hero-search').addEventListener('keydown', e => {
+document.getElementById('hero-search').addEventListener('keydown', e=>{
   if (e.key==='Enter') openSearchModal(e.target.value.trim());
 });
 
-// 초기화
-(async function init() {
+(async function init(){
   await loadCategories();
   await loadPopularKeywords();
   await loadTop3();

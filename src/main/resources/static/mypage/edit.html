@@ -9,14 +9,12 @@
 </head>
 <body>
 
-	<!-- header.js 가 site-header 주입 -->
 	<div id="app-header"></div>
 
-	<!-- 페이지 내비 바 (뒤로가기 + 페이지명) -->
 	<nav class="page-nav">
 		<button class="page-nav__back" onclick="history.back()">마이페이지</button>
-		<span class="page-nav__sep">›</span> <span class="page-nav__title">내
-			정보 수정</span>
+		<span class="page-nav__sep">›</span>
+		<span class="page-nav__title">내 정보 수정</span>
 	</nav>
 
 	<div class="page-wrap">
@@ -27,31 +25,38 @@
 
 		<form id="editForm" novalidate>
 
+			<!-- 기본 정보 -->
 			<div class="card">
 				<div class="card__head">기본 정보</div>
 
 				<div class="form-group">
-					<label class="form-label" for="name">이름</label> <input
-						class="form-control" type="text" id="name" placeholder="이름 입력"
-						maxlength="20" autocomplete="off" /> <span class="form-error"
-						id="name-err"></span>
+					<label class="form-label" for="name">이름</label>
+					<input class="form-control" type="text" id="name"
+						placeholder="이름 입력" maxlength="20" autocomplete="off" />
+					<span class="form-error" id="name-err"></span>
 				</div>
 
 				<div class="form-group">
-					<label class="form-label" for="phone">휴대폰 번호</label> <input
-						class="form-control" type="tel" id="phone"
-						placeholder="새 번호 입력 (예: 01012345678)" maxlength="11"
-						autocomplete="off" /> <span class="form-error" id="phone-err"></span>
+					<label class="form-label">현재 휴대폰 번호</label>
+					<p class="form-current-value" id="currentPhone">불러오는 중...</p>
 				</div>
 
+				<div class="form-group">
+					<label class="form-label" for="phone">새 휴대폰 번호</label>
+					<input class="form-control" type="tel" id="phone"
+						placeholder="변경할 번호 입력 (예: 01012345678)" maxlength="11"
+						autocomplete="off" />
+					<span class="form-error" id="phone-err"></span>
+				</div>
 			</div>
 
+			<!-- 추가 정보 -->
 			<div class="card">
 				<div class="card__head">추가 정보</div>
 
 				<div class="form-group">
-					<label class="form-label" for="job">직업</label> <select
-						class="form-control" id="job">
+					<label class="form-label" for="job">직업</label>
+					<select class="form-control" id="job">
 						<option value="">선택 안함</option>
 						<option value="EMPLOYED">직장인</option>
 						<option value="SELF_EMPLOYED">자영업</option>
@@ -62,8 +67,8 @@
 				</div>
 
 				<div class="form-group">
-					<label class="form-label" for="incomeLevelCode">소득 등급</label> <select
-						class="form-control" id="incomeLevelCode">
+					<label class="form-label" for="incomeLevelCode">소득 등급</label>
+					<select class="form-control" id="incomeLevelCode">
 						<option value="">선택 안함</option>
 						<option value="LV1">LV1 (3천만 미만)</option>
 						<option value="LV2">LV2 (3천~5천만)</option>
@@ -73,20 +78,30 @@
 				</div>
 			</div>
 
+			<!-- 알림 설정 -->
 			<div class="card">
 				<div class="card__head">알림 설정</div>
 
-				<div class="form-group form-group--toggle">
-					<label class="form-label">푸시 알림</label> <label class="toggle">
-						<input type="checkbox" id="pushEnabled" /> <span
-						class="toggle__track"></span>
+				<!-- toggle-track (CSS와 일치하도록 수정) -->
+				<div class="toggle-row">
+					<div>
+						<div class="toggle-row__label">푸시 알림</div>
+						<div class="toggle-row__sub">앱 푸시 알림 수신 여부</div>
+					</div>
+					<label class="toggle">
+						<input type="checkbox" id="pushEnabled" />
+						<span class="toggle-track"></span>
 					</label>
 				</div>
 
-				<div class="form-group form-group--toggle">
-					<label class="form-label">마케팅 수신 동의</label> <label class="toggle">
-						<input type="checkbox" id="marketingAgree" /> <span
-						class="toggle__track"></span>
+				<div class="toggle-row">
+					<div>
+						<div class="toggle-row__label">마케팅 수신 동의</div>
+						<div class="toggle-row__sub">이벤트·혜택 정보 수신 여부</div>
+					</div>
+					<label class="toggle">
+						<input type="checkbox" id="marketingAgree" />
+						<span class="toggle-track"></span>
 					</label>
 				</div>
 			</div>
@@ -99,10 +114,31 @@
 		</form>
 	</div>
 
+	<!-- 비밀번호 확인 모달 -->
+	<div class="modal-overlay" id="pwConfirmModal">
+		<div class="modal">
+			<div class="modal__title">비밀번호 확인</div>
+			<div class="modal__body">
+				정보를 변경하려면 현재 비밀번호를 입력해주세요.
+			</div>
+			<div class="form-group" style="margin-bottom:0">
+				<div class="pw-field">
+					<input class="form-control" type="password" id="confirmPwInput"
+						placeholder="현재 비밀번호" autocomplete="current-password" />
+					<button type="button" class="pw-toggle" data-target="confirmPwInput">표시</button>
+				</div>
+				<span class="form-error" id="confirmPwErr"></span>
+			</div>
+			<div class="modal__actions" style="margin-top:16px">
+				<button class="btn btn-outline" id="modalCancelBtn">취소</button>
+				<button class="btn btn-primary" id="modalConfirmBtn">확인</button>
+			</div>
+		</div>
+	</div>
+
 	<div id="toast-container"></div>
 
 	<script src="/js/header.js"></script>
 	<script src="/js/mypage.js"></script>
-	<script src="/js/mypage-edit.js"></script>
 </body>
 </html>

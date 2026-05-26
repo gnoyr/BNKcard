@@ -16,7 +16,340 @@
 <main>
 
 </main>
+<!-- BNK AI Chatbot Widget: 이 div 하나만 여러 페이지에 복사해서 사용 -->
+<div
+  id="bnk-ai-chatbot"
+  data-api-url="/api/chat"
+  data-bot-image="https://objectstorage.ap-chuncheon-1.oraclecloud.com/n/axa1llzzkj5q/b/terms/o/images%2Fimageshachi-fotor-2026052617514.png"
+>
+  <style>
+    #bnk-ai-chatbot {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 9999;
+      font-family: Arial, sans-serif;
+    }
 
+    #bnk-ai-chatbot * {
+      box-sizing: border-box;
+    }
+
+    #bnk-ai-chatbot .chat-toggle {
+      width: 72px;
+      height: 72px;
+      border: none;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+      cursor: pointer;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    #bnk-ai-chatbot .chat-toggle img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    #bnk-ai-chatbot .chat-window {
+      display: none;
+      position: absolute;
+      right: 0;
+      bottom: 88px;
+      width: 360px;
+      height: 520px;
+      background: #ffffff;
+      border-radius: 18px;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+      overflow: hidden;
+      border: 1px solid #e5e5e5;
+    }
+
+    #bnk-ai-chatbot.open .chat-window {
+      display: flex;
+      flex-direction: column;
+    }
+
+    #bnk-ai-chatbot .chat-header {
+      height: 56px;
+      background: #005bac;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      font-weight: bold;
+    }
+
+    #bnk-ai-chatbot .chat-close {
+      border: none;
+      background: transparent;
+      color: #ffffff;
+      font-size: 22px;
+      cursor: pointer;
+    }
+
+    #bnk-ai-chatbot .chat-messages {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      background: #f7f9fc;
+    }
+
+	#bnk-ai-chatbot .message {
+	  max-width: 82%;
+	  margin-bottom: 10px;
+	  padding: 10px 12px;
+	  border-radius: 14px;
+	  font-size: 14px;
+	  line-height: 1.5;
+	  white-space: normal;
+	  word-break: keep-all;
+	  text-align: left;
+	}
+
+    #bnk-ai-chatbot .message.bot {
+      background: #ffffff;
+      color: #222222;
+      border: 1px solid #e5e5e5;
+      border-bottom-left-radius: 4px;
+    }
+
+    #bnk-ai-chatbot .message.user {
+      margin-left: auto;
+      background: #005bac;
+      color: #ffffff;
+      border-bottom-right-radius: 4px;
+    }
+
+    #bnk-ai-chatbot .chat-input-area {
+      display: flex;
+      gap: 8px;
+      padding: 12px;
+      background: #ffffff;
+      border-top: 1px solid #e5e5e5;
+    }
+
+    #bnk-ai-chatbot .chat-input {
+      flex: 1;
+      height: 42px;
+      border: 1px solid #d0d7de;
+      border-radius: 12px;
+      padding: 0 12px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    #bnk-ai-chatbot .chat-input:focus {
+      border-color: #005bac;
+    }
+
+    #bnk-ai-chatbot .chat-send {
+      width: 64px;
+      border: none;
+      border-radius: 12px;
+      background: #005bac;
+      color: #ffffff;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #bnk-ai-chatbot .chat-send:disabled {
+      background: #a7b7c7;
+      cursor: not-allowed;
+    }
+
+    @media (max-width: 480px) {
+      #bnk-ai-chatbot {
+        right: 16px;
+        bottom: 16px;
+      }
+
+      #bnk-ai-chatbot .chat-window {
+        width: calc(100vw - 32px);
+        height: 70vh;
+        right: 0;
+        bottom: 84px;
+      }
+    }
+  </style>
+
+  <div class="chat-window" aria-label="AI 채팅창">
+    <div class="chat-header">
+      <span>BNK AI 상담원</span>
+      <button type="button" class="chat-close" aria-label="채팅창 닫기">×</button>
+    </div>
+
+    <div class="chat-messages">
+      <div class="message bot">
+        안녕하세요. BNK 카드 AI 상담원입니다.
+        궁금한 카드 혜택을 물어보세요.
+      </div>
+    </div>
+
+    <form class="chat-input-area">
+      <input
+        type="text"
+        class="chat-input"
+        placeholder="메시지를 입력하세요"
+        autocomplete="off"
+      />
+      <button type="submit" class="chat-send">전송</button>
+    </form>
+  </div>
+
+	<button type="button" class="chat-toggle" aria-label="AI 채팅 열기">
+	  <img alt="AI 챗봇" />
+	</button>
+
+  <script>
+    (function () {
+      const widget = document.getElementById("bnk-ai-chatbot");
+      if (!widget) return;
+
+      const apiUrl = widget.dataset.apiUrl || "/api/chat";
+      const botImage = widget.dataset.botImage || "/images/ai-chatbot.png";
+
+      const toggleButton = widget.querySelector(".chat-toggle");
+      const closeButton = widget.querySelector(".chat-close");
+      const botImageElement = widget.querySelector(".chat-toggle img");
+      const form = widget.querySelector(".chat-input-area");
+      const input = widget.querySelector(".chat-input");
+      const sendButton = widget.querySelector(".chat-send");
+      const messages = widget.querySelector(".chat-messages");
+
+      botImageElement.src = botImage;
+
+      const sessionKey = "bnk_ai_chat_session_id";
+
+      function getSessionId() {
+        let sessionId = sessionStorage.getItem(sessionKey);
+
+        if (!sessionId) {
+          sessionId = "web-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+          sessionStorage.setItem(sessionKey, sessionId);
+        }
+
+        return sessionId;
+      }
+
+      function appendMessage(type, text) {
+        const message = document.createElement("div");
+        message.className = "message " + type;
+        message.textContent = text;
+        messages.appendChild(message);
+        messages.scrollTop = messages.scrollHeight;
+      }
+
+      function extractResponseText(json) {
+        /*
+          백엔드 응답이 ApiResponse<AiChatResponse> 형태일 가능성을 고려해서
+          여러 구조를 안전하게 처리합니다.
+
+          예상 예:
+          {
+            "data": {
+              "chatId": 1,
+              "sessionId": "...",
+              "response": "답변 내용"
+            }
+          }
+        */
+
+        if (!json) return "응답이 비어 있습니다.";
+
+        if (json.response) return json.response;
+        if (json.data && json.data.response) return json.data.response;
+        if (json.result && json.result.response) return json.result.response;
+        if (json.body && json.body.response) return json.body.response;
+
+        return "응답 형식을 확인해 주세요.";
+      }
+
+      function getCsrfHeaders() {
+        const token = document.querySelector('meta[name="_csrf"]')?.content;
+        const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+
+        if (token && header) {
+          return {
+            [header]: token
+          };
+        }
+
+        return {};
+      }
+
+      async function sendMessage(userInput) {
+        appendMessage("user", userInput);
+
+        input.value = "";
+        input.disabled = true;
+        sendButton.disabled = true;
+
+        const loadingMessage = document.createElement("div");
+        loadingMessage.className = "message bot";
+        loadingMessage.textContent = "답변을 생성하고 있습니다...";
+        messages.appendChild(loadingMessage);
+        messages.scrollTop = messages.scrollHeight;
+
+        try {
+          const response = await fetch(apiUrl, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/json",
+              ...getCsrfHeaders()
+            },
+            body: JSON.stringify({
+              sessionId: getSessionId(),
+              userInput: userInput
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error("HTTP " + response.status);
+          }
+
+          const json = await response.json();
+          loadingMessage.textContent = extractResponseText(json);
+        } catch (error) {
+          console.error(error);
+          loadingMessage.textContent =
+            "죄송합니다. 채팅 요청 중 오류가 발생했습니다.";
+        } finally {
+          input.disabled = false;
+          sendButton.disabled = false;
+          input.focus();
+        }
+      }
+
+      toggleButton.addEventListener("click", function () {
+        widget.classList.toggle("open");
+
+        if (widget.classList.contains("open")) {
+          input.focus();
+        }
+      });
+
+      closeButton.addEventListener("click", function () {
+        widget.classList.remove("open");
+      });
+
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+
+        const userInput = input.value.trim();
+
+        if (!userInput) return;
+
+        sendMessage(userInput);
+      });
+    })();
+  </script>
+</div>
 <div id="toast-container"></div>
 <script src="/js/header.js"></script>
 <script src="/js/main.js"></script>
