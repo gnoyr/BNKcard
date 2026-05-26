@@ -3,6 +3,8 @@ package com.bnk.domain.card.dto.request2;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.bnk.domain.card.dto.request.ImageCreateRequest;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
