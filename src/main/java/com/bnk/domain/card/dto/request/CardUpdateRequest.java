@@ -48,4 +48,9 @@ public class CardUpdateRequest {
 
     @Pattern(regexp = "Y|N")
     private String visibleYn;
+    
+    @Pattern(regexp = "Y|N")
+    private String deletedYn;
+    
+    private String cardStatus;
 }

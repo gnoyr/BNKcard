@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>카드 등록 신청</title>
+</head>
+<body>
+
+<h2>카드 등록 신청</h2>
+<p><a href="cardManage.html">← 카드 목록으로</a></p>
+<p style="color:gray; font-size:13px;">
+  ※ 등록 신청 후 결재가 완료되면 카드가 게시됩니다. (DRAFT → REVIEW → APPROVED → PUBLISHED)
+</p>
+
+<!-- 단계 표시 -->
+<div id="step-indicator">
+  <span id="si-1">[ 1. 기본정보 ]</span>
+  &nbsp;→&nbsp;
+  <span id="si-2">2. 혜택</span>
+  &nbsp;→&nbsp;
+  <span id="si-3">3. 이미지</span>
+  &nbsp;→&nbsp;
+  <span id="si-4">4. 콘텐츠</span>
+  &nbsp;→&nbsp;
+  <span id="si-5">5. 확인 및 제출</span>
+</div>
+
+<hr>
+
+<!-- =============================================================== -->
+<!-- STEP 1: 기본정보                                                 -->
+<!-- =============================================================== -->
+<div id="step-1">
+  <h3>STEP 1 / 5 — 기본 정보</h3>
+  <table border="1" cellpadding="6" cellspacing="0">
+    <tr>
+      <th>카드 코드 <span style="color:red">*</span></th>
+      <td>
+        <input type="text" id="f-cardCode" placeholder="예: BNK_FRIENDS_CREDIT_001" style="width:280px">
+        <br><small style="color:gray">영문/숫자/언더바만 허용, 최대 50자</small>
+      </td>
+    </tr>
+    <tr>
+      <th>카드 유형 <span style="color:red">*</span></th>
+      <td>
+        <select id="f-cardType">
+          <option value="">-- 선택 --</option>
+          <option value="CREDIT">신용카드</option>
+          <option value="CHECK">체크카드</option>
+          <option value="PREPAID">선불카드</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <th>카드명 <span style="color:red">*</span></th>
+      <td><input type="text" id="f-cardName" placeholder="예: BNK 프렌즈 신용카드" style="width:280px"></td>
+    </tr>
+    <tr>
+      <th>카드사명 <span style="color:red">*</span></th>
+      <td><input type="text" id="f-companyName" placeholder="예: BNK부산은행" style="width:200px"></td>
+    </tr>
+    <tr>
+      <th>브랜드</th>
+      <td>
+        <select id="f-brandName">
+          <option value="">-- 선택 --</option>
+          <option value="VISA">VISA</option>
+          <option value="MASTER">MASTER</option>
+          <option value="AMEX">AMEX</option>
+          <option value="UNIONPAY">UNIONPAY</option>
+          <option value="LOCAL">LOCAL</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <th>국내 연회비 <span style="color:red">*</span></th>
+      <td><input type="number" id="f-annualFeeDomestic" min="0" value="0" style="width:150px"> 원</td>
+    </tr>
+    <tr>
+      <th>해외 연회비</th>
+      <td><input type="number" id="f-annualFeeOverseas" min="0" placeholder="미입력 시 0" style="width:150px"> 원</td>
+    </tr>
+    <tr>
+      <th>전월 실적 조건</th>
+      <td><input type="number" id="f-previousMonthSpend" min="0" placeholder="미입력 시 0" style="width:150px"> 원</td>
+    </tr>
+    <tr>
+      <th>신청 최소 나이</th>
+      <td><input type="number" id="f-minimumAge" min="0" max="100" placeholder="예: 19" style="width:80px"> 세</td>
+    </tr>
+    <tr>
+      <th>신청 최대 나이</th>
+      <td><input type="number" id="f-maximumAge" min="0" max="100" placeholder="예: 80" style="width:80px"> 세</td>
+    </tr>
+    <tr>
+      <th>최소 한도</th>
+      <td><input type="number" id="f-creditLimitMin" min="0" placeholder="원 단위" style="width:150px"> 원</td>
+    </tr>
+    <tr>
+      <th>최대 한도</th>
+      <td><input type="number" id="f-creditLimitMax" min="0" placeholder="원 단위" style="width:150px"> 원</td>
+    </tr>
+    <tr>
+      <th>타겟 사용자</th>
+      <td><input type="text" id="f-targetUser" placeholder="예: 20~30대 직장인" style="width:280px"></td>
+    </tr>
+    <tr>
+      <th>요약 설명</th>
+      <td><textarea id="f-summaryDescription" rows="3" style="width:350px" placeholder="카드 요약 설명 (최대 1000자)"></textarea></td>
+    </tr>
+    <tr>
+      <th>검색 노출</th>
+      <td>
+        <label><input type="radio" name="f-searchableYn" value="Y" checked> 예</label>
+        &nbsp;
+        <label><input type="radio" name="f-searchableYn" value="N"> 아니오</label>
+      </td>
+    </tr>
+    <tr>
+      <th>화면 노출</th>
+      <td>
+        <label><input type="radio" name="f-visibleYn" value="Y" checked> 예</label>
+        &nbsp;
+        <label><input type="radio" name="f-visibleYn" value="N"> 아니오</label>
+      </td>
+    </tr>
+    <tr>
+      <th>게시 시작 일시</th>
+      <td><input type="datetime-local" id="f-publishStartAt"></td>
+    </tr>
+    <tr>
+      <th>게시 종료 일시</th>
+      <td><input type="datetime-local" id="f-publishEndAt"></td>
+    </tr>
+  </table>
+  <br>
+  <button onclick="location.href='cardManage.html'">취소</button>
+  &nbsp;
+  <button onclick="goStep(2)">다음 → (혜택 입력)</button>
+</div>
+
+<!-- =============================================================== -->
+<!-- STEP 2: 혜택                                                     -->
+<!-- =============================================================== -->
+<div id="step-2" style="display:none;">
+  <h3>STEP 2 / 5 — 혜택 입력</h3>
+  <p style="color:gray; font-size:13px;">혜택이 없으면 건너뛰어도 됩니다. 등록 후 혜택 목록에서 개별 추가도 가능합니다.</p>
+
+  <button onclick="addBenefitRow()">+ 혜택 추가</button>
+  <br><br>
+
+  <table border="1" cellpadding="4" cellspacing="0">
+    <thead>
+      <tr>
+        <th>카테고리ID</th>
+        <th>혜택명 <span style="color:red">*</span></th>
+        <th>혜택유형 <span style="color:red">*</span></th>
+        <th>할인율(%)</th>
+        <th>할인금액(원)</th>
+        <th>적립율(%)</th>
+        <th>캐시백율(%)</th>
+        <th>월한도(원)</th>
+        <th>일한도(원)</th>
+        <th>최소결제(원)</th>
+        <th>혜택조건</th>
+        <th>표시문구</th>
+        <th>노출순서</th>
+        <th>노출여부</th>
+        <th>삭제</th>
+      </tr>
+    </thead>
+    <tbody id="benefit-tbody"></tbody>
+  </table>
+
+  <br>
+  <button onclick="goStep(1)">← 이전 (기본정보)</button>
+  &nbsp;
+  <button onclick="goStep(3)">다음 → (이미지 입력)</button>
+</div>
+
+<!-- =============================================================== -->
+<!-- STEP 3: 이미지                                                   -->
+<!-- =============================================================== -->
+<div id="step-3" style="display:none;">
+  <h3>STEP 3 / 5 — 이미지 입력</h3>
+  <p style="color:gray; font-size:13px;">이미지가 없으면 건너뛰어도 됩니다. 등록 후 이미지 목록에서 개별 추가도 가능합니다.</p>
+
+  <button onclick="addImageRow()">+ 이미지 추가</button>
+  <br><br>
+
+  <table border="1" cellpadding="4" cellspacing="0">
+    <thead>
+      <tr>
+        <th>이미지유형 <span style="color:red">*</span></th>
+        <th>이미지URL <span style="color:red">*</span></th>
+        <th>원본파일명</th>
+        <th>저장파일명</th>
+        <th>파일크기(B)</th>
+        <th>MIME타입</th>
+        <th>가로(px)</th>
+        <th>세로(px)</th>
+        <th>노출순서</th>
+        <th>미리보기</th>
+        <th>삭제</th>
+      </tr>
+    </thead>
+    <tbody id="image-tbody"></tbody>
+  </table>
+
+  <br>
+  <button onclick="goStep(2)">← 이전 (혜택 입력)</button>
+  &nbsp;
+  <button onclick="goStep(4)">다음 → (콘텐츠 입력)</button>
+</div>
+
+<!-- =============================================================== -->
+<!-- STEP 4: 콘텐츠                                                   -->
+<!-- =============================================================== -->
+<div id="step-4" style="display:none;">
+  <h3>STEP 4 / 5 — 콘텐츠 입력</h3>
+  <p style="color:gray; font-size:13px;">콘텐츠가 없으면 건너뛰어도 됩니다. 등록 후 콘텐츠 목록에서 개별 추가도 가능합니다.</p>
+
+  <button onclick="addContentRow()">+ 콘텐츠 추가</button>
+  <br><br>
+
+  <table border="1" cellpadding="4" cellspacing="0">
+    <thead>
+      <tr>
+        <th>콘텐츠유형 <span style="color:red">*</span></th>
+        <th>제목 <span style="color:red">*</span></th>
+        <th>웹 HTML</th>
+        <th>모바일 HTML</th>
+        <th>노출순서</th>
+        <th>노출여부</th>
+        <th>삭제</th>
+      </tr>
+    </thead>
+    <tbody id="content-tbody"></tbody>
+  </table>
+
+  <br>
+  <button onclick="goStep(3)">← 이전 (이미지 입력)</button>
+  &nbsp;
+  <button onclick="goStep(5)">다음 → (확인 및 제출)</button>
+</div>
+
+<!-- =============================================================== -->
+<!-- STEP 5: 확인 및 제출                                             -->
+<!-- =============================================================== -->
+<div id="step-5" style="display:none;">
+  <h3>STEP 5 / 5 — 확인 및 등록 신청</h3>
+
+  <h4>[ 기본 정보 확인 ]</h4>
+  <table border="1" cellpadding="6" cellspacing="0" id="confirm-basic-table">
+    <tr><th style="width:130px">카드 코드</th><td id="c-cardCode"></td></tr>
+    <tr><th>카드 유형</th><td id="c-cardType"></td></tr>
+    <tr><th>카드명</th><td id="c-cardName"></td></tr>
+    <tr><th>카드사</th><td id="c-companyName"></td></tr>
+    <tr><th>브랜드</th><td id="c-brandName"></td></tr>
+    <tr><th>국내 연회비</th><td id="c-annualFeeDomestic"></td></tr>
+    <tr><th>해외 연회비</th><td id="c-annualFeeOverseas"></td></tr>
+    <tr><th>전월 실적</th><td id="c-previousMonthSpend"></td></tr>
+    <tr><th>나이 제한</th><td id="c-age"></td></tr>
+    <tr><th>한도</th><td id="c-limit"></td></tr>
+    <tr><th>타겟 사용자</th><td id="c-targetUser"></td></tr>
+    <tr><th>요약 설명</th><td id="c-summaryDescription"></td></tr>
+    <tr><th>검색/화면 노출</th><td id="c-visibility"></td></tr>
+    <tr><th>게시 기간</th><td id="c-publish"></td></tr>
+  </table>
+
+  <br>
+  <h4>[ 혜택 <span id="c-benefitCount">0</span>건 ]</h4>
+  <table border="1" cellpadding="4" cellspacing="0">
+    <thead>
+      <tr>
+        <th>혜택명</th><th>유형</th><th>할인율</th><th>적립율</th><th>캐시백</th><th>월한도</th><th>표시문구</th>
+      </tr>
+    </thead>
+    <tbody id="c-benefit-tbody"></tbody>
+  </table>
+
+  <br>
+  <h4>[ 이미지 <span id="c-imageCount">0</span>건 ]</h4>
+  <table border="1" cellpadding="4" cellspacing="0">
+    <thead>
+      <tr><th>유형</th><th>URL</th><th>미리보기</th></tr>
+    </thead>
+    <tbody id="c-image-tbody"></tbody>
+  </table>
+
+  <br>
+  <h4>[ 콘텐츠 <span id="c-contentCount">0</span>건 ]</h4>
+  <table border="1" cellpadding="4" cellspacing="0">
+    <thead>
+      <tr><th>유형</th><th>제목</th><th>노출순서</th><th>노출여부</th></tr>
+    </thead>
+    <tbody id="c-content-tbody"></tbody>
+  </table>
+
+  <br>
+  <hr>
+  <h4>결재 요청 사유 <span style="color:red">*</span></h4>
+  <textarea id="f-changeSummary" rows="3" style="width:400px"
+    placeholder="등록 신청 사유를 입력하세요. 결재 라인에 표시됩니다."></textarea>
+
+  <br><br>
+  <button onclick="goStep(4)">← 이전 (콘텐츠 입력)</button>
+  &nbsp;
+  <button id="btn-submit" onclick="submitCreate()">결재 요청 (등록 신청)</button>
+  &nbsp;
+  <button onclick="location.href='cardManage.html'">취소</button>
+
+  <br><br>
+  <div id="msg"></div>
+</div>
+
+
+<!-- =============================================================== -->
+<!-- SCRIPT                                                           -->
+<!-- =============================================================== -->
+<script>
+
+  // ── 공통 유틸 ──────────────────────────────────────────────────────
+
+  const TYPE_LABEL = { CREDIT: '신용카드', CHECK: '체크카드', PREPAID: '선불카드' };
+
+  function numOrNull(val) {
+    return (val === '' || val == null) ? null : Number(val);
+  }
+
+  function getRadio(name) {
+    const el = document.querySelector(`input[name="${name}"]:checked`);
+    return el ? el.value : null;
+  }
+
+  function pctToDecimal(val) {
+    return (val === '' || val == null) ? null : Number(val) / 100;
+  }
+
+  function won(v) {
+    return (v != null && v !== '') ? Number(v).toLocaleString() + '원' : '-';
+  }
+
+  function pct(v) {
+    return (v != null && v !== '') ? Number(v).toFixed(1) + '%' : '-';
+  }
+
+  // ── 단계 이동 ──────────────────────────────────────────────────────
+
+  const STEP_COUNT = 5;
+
+  function goStep(n) {
+    if (n === 2 && !validateStep1()) return;
+    if (n === 5) fillConfirm();
+
+    for (let i = 1; i <= STEP_COUNT; i++) {
+      document.getElementById('step-' + i).style.display = (i === n) ? '' : 'none';
+    }
+
+    // 단계 표시 업데이트
+    for (let i = 1; i <= STEP_COUNT; i++) {
+      const labels = ['1. 기본정보', '2. 혜택', '3. 이미지', '4. 콘텐츠', '5. 확인 및 제출'];
+      const el = document.getElementById('si-' + i);
+      if (el) {
+        el.textContent = (i === n) ? '[ ' + labels[i - 1] + ' ]' : labels[i - 1];
+        el.style.fontWeight = (i === n) ? 'bold' : 'normal';
+      }
+    }
+  }
+
+  // ── STEP 1 유효성 ─────────────────────────────────────────────────
+
+  function validateStep1() {
+    const cardCode    = document.getElementById('f-cardCode').value.trim();
+    const cardType    = document.getElementById('f-cardType').value;
+    const cardName    = document.getElementById('f-cardName').value.trim();
+    const companyName = document.getElementById('f-companyName').value.trim();
+    const fee         = document.getElementById('f-annualFeeDomestic').value;
+
+    if (!cardCode) { alert('카드 코드를 입력하세요.'); return false; }
+    if (!/^[A-Za-z0-9_]+$/.test(cardCode)) {
+      alert('카드 코드는 영문/숫자/언더바만 허용됩니다.'); return false;
+    }
+    if (cardCode.length > 50) { alert('카드 코드는 최대 50자입니다.'); return false; }
+    if (!cardType)    { alert('카드 유형을 선택하세요.'); return false; }
+    if (!cardName)    { alert('카드명을 입력하세요.'); return false; }
+    if (!companyName) { alert('카드사명을 입력하세요.'); return false; }
+    if (fee === '' || Number(fee) < 0) {
+      alert('국내 연회비를 입력하세요. (0 이상)'); return false;
+    }
+    return true;
+  }
+
+  // ── STEP 2: 혜택 행 추가 / 렌더 ──────────────────────────────────
+
+  function addBenefitRow(b) {
+    const tbody = document.getElementById('benefit-tbody');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="number" class="b-categoryId" value="${b?.categoryId ?? ''}" style="width:60px;"></td>
+      <td><input type="text" class="b-benefitTitle" value="${b?.benefitTitle ?? ''}" style="width:100px;"></td>
+      <td>
+        <select class="b-benefitType">
+          <option value="DISCOUNT" ${b?.benefitType === 'DISCOUNT' ? 'selected' : ''}>할인</option>
+          <option value="POINT"    ${b?.benefitType === 'POINT'    ? 'selected' : ''}>포인트</option>
+          <option value="CASHBACK" ${b?.benefitType === 'CASHBACK' ? 'selected' : ''}>캐시백</option>
+        </select>
+      </td>
+      <td><input type="number" class="b-discountRate"          value="${b?.discountRate  != null ? b.discountRate  * 100 : ''}" step="0.1" style="width:55px;"></td>
+      <td><input type="number" class="b-discountAmount"        value="${b?.discountAmount        ?? ''}" style="width:70px;"></td>
+      <td><input type="number" class="b-pointRate"             value="${b?.pointRate     != null ? b.pointRate     * 100 : ''}" step="0.1" style="width:55px;"></td>
+      <td><input type="number" class="b-cashbackRate"          value="${b?.cashbackRate  != null ? b.cashbackRate  * 100 : ''}" step="0.1" style="width:55px;"></td>
+      <td><input type="number" class="b-monthlyLimitAmount"    value="${b?.monthlyLimitAmount    ?? ''}" style="width:70px;"></td>
+      <td><input type="number" class="b-dailyLimitAmount"      value="${b?.dailyLimitAmount      ?? ''}" style="width:70px;"></td>
+      <td><input type="number" class="b-minimumPaymentAmount"  value="${b?.minimumPaymentAmount  ?? ''}" style="width:70px;"></td>
+      <td><input type="text"   class="b-benefitCondition"      value="${b?.benefitCondition      ?? ''}" style="width:90px;"></td>
+      <td><input type="text"   class="b-displayText"           value="${b?.displayText           ?? ''}" style="width:90px;"></td>
+      <td><input type="number" class="b-displayOrder"          value="${b?.displayOrder          ?? ''}" style="width:45px;"></td>
+      <td>
+        <select class="b-visibleYn">
+          <option value="Y" ${(b?.visibleYn ?? 'Y') === 'Y' ? 'selected' : ''}>예</option>
+          <option value="N" ${b?.visibleYn === 'N' ? 'selected' : ''}>아니오</option>
+        </select>
+      </td>
+      <td><button type="button" onclick="this.closest('tr').remove()">삭제</button></td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  function collectBenefits() {
+    const rows = document.querySelectorAll('#benefit-tbody tr');
+    const benefits = [];
+    for (const row of rows) {
+      const benefitTitle = row.querySelector('.b-benefitTitle').value.trim();
+      const benefitType  = row.querySelector('.b-benefitType').value;
+      if (!benefitTitle) { alert('혜택명은 필수입니다.'); return null; }
+      if (!benefitType)  { alert('혜택유형은 필수입니다.'); return null; }
+
+      benefits.push({
+        categoryId:           numOrNull(row.querySelector('.b-categoryId').value),
+        benefitTitle,
+        benefitType,
+        discountRate:         pctToDecimal(row.querySelector('.b-discountRate').value),
+        discountAmount:       numOrNull(row.querySelector('.b-discountAmount').value),
+        pointRate:            pctToDecimal(row.querySelector('.b-pointRate').value),
+        cashbackRate:         pctToDecimal(row.querySelector('.b-cashbackRate').value),
+        monthlyLimitAmount:   numOrNull(row.querySelector('.b-monthlyLimitAmount').value),
+        dailyLimitAmount:     numOrNull(row.querySelector('.b-dailyLimitAmount').value),
+        minimumPaymentAmount: numOrNull(row.querySelector('.b-minimumPaymentAmount').value),
+        benefitCondition:     row.querySelector('.b-benefitCondition').value.trim() || null,
+        displayText:          row.querySelector('.b-displayText').value.trim() || null,
+        displayOrder:         numOrNull(row.querySelector('.b-displayOrder').value),
+        visibleYn:            row.querySelector('.b-visibleYn').value,
+      });
+    }
+    return benefits;
+  }
+
+  // ── STEP 3: 이미지 행 추가 ───────────────────────────────────────
+
+  function addImageRow(img) {
+    const tbody = document.getElementById('image-tbody');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <select class="i-imageType">
+          <option value="FRONT"     ${img?.imageType === 'FRONT'     ? 'selected' : ''}>앞면</option>
+          <option value="BACK"      ${img?.imageType === 'BACK'      ? 'selected' : ''}>뒷면</option>
+          <option value="THUMBNAIL" ${img?.imageType === 'THUMBNAIL' ? 'selected' : ''}>썸네일</option>
+          <option value="DETAIL"    ${img?.imageType === 'DETAIL'    ? 'selected' : ''}>상세</option>
+        </select>
+      </td>
+      <td><input type="text" class="i-imageUrl" value="${img?.imageUrl ?? ''}" style="width:200px;"
+        oninput="updateImgPreview(this)"></td>
+      <td><input type="text"   class="i-originalName" value="${img?.originalName ?? ''}" style="width:90px;"></td>
+      <td><input type="text"   class="i-storedName"   value="${img?.storedName   ?? ''}" style="width:90px;"></td>
+      <td><input type="number" class="i-fileSize"     value="${img?.fileSize     ?? ''}" style="width:65px;"></td>
+      <td><input type="text"   class="i-mimeType"     value="${img?.mimeType     ?? ''}" style="width:80px;" placeholder="image/jpeg"></td>
+      <td><input type="number" class="i-imageWidth"   value="${img?.imageWidth   ?? ''}" style="width:55px;"></td>
+      <td><input type="number" class="i-imageHeight"  value="${img?.imageHeight  ?? ''}" style="width:55px;"></td>
+      <td><input type="number" class="i-sortOrder"    value="${img?.sortOrder    ?? ''}" style="width:45px;"></td>
+      <td class="i-preview">${img?.imageUrl ? `<img src="${img.imageUrl}" style="height:40px;">` : '-'}</td>
+      <td><button type="button" onclick="this.closest('tr').remove()">삭제</button></td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  function updateImgPreview(input) {
+    const td = input.closest('tr').querySelector('.i-preview');
+    td.innerHTML = input.value
+      ? `<img src="${input.value}" style="height:40px;" onerror="this.style.display='none'">`
+      : '-';
+  }
+
+  function collectImages() {
+    const rows = document.querySelectorAll('#image-tbody tr');
+    const images = [];
+    for (const row of rows) {
+      const imageType = row.querySelector('.i-imageType').value;
+      const imageUrl  = row.querySelector('.i-imageUrl').value.trim();
+      if (!imageType) { alert('이미지 유형은 필수입니다.'); return null; }
+      if (!imageUrl)  { alert('이미지 URL은 필수입니다.'); return null; }
+      images.push({
+        imageType,
+        imageUrl,
+        originalName: row.querySelector('.i-originalName').value.trim() || null,
+        storedName:   row.querySelector('.i-storedName').value.trim()   || null,
+        fileSize:     numOrNull(row.querySelector('.i-fileSize').value),
+        mimeType:     row.querySelector('.i-mimeType').value.trim()     || null,
+        imageWidth:   numOrNull(row.querySelector('.i-imageWidth').value),
+        imageHeight:  numOrNull(row.querySelector('.i-imageHeight').value),
+        sortOrder:    numOrNull(row.querySelector('.i-sortOrder').value),
+      });
+    }
+    return images;
+  }
+
+  // ── STEP 4: 콘텐츠 행 추가 ───────────────────────────────────────
+
+  function addContentRow(c) {
+    const tbody = document.getElementById('content-tbody');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <select class="c-contentType">
+          <option value="INTRO"  ${c?.contentType === 'INTRO'  ? 'selected' : ''}>소개</option>
+          <option value="GUIDE"  ${c?.contentType === 'GUIDE'  ? 'selected' : ''}>이용안내</option>
+          <option value="NOTICE" ${c?.contentType === 'NOTICE' ? 'selected' : ''}>유의사항</option>
+        </select>
+      </td>
+      <td><input type="text" class="c-title" value="${c?.title ?? ''}" style="width:130px;"></td>
+      <td><textarea class="c-contentHtml" style="width:140px; height:55px;">${c?.contentHtml ?? ''}</textarea></td>
+      <td><textarea class="c-mobileContentHtml" style="width:140px; height:55px;">${c?.mobileContentHtml ?? ''}</textarea></td>
+      <td><input type="number" class="c-displayOrder" value="${c?.displayOrder ?? ''}" style="width:45px;"></td>
+      <td>
+        <select class="c-visibleYn">
+          <option value="Y" ${(c?.visibleYn ?? 'Y') === 'Y' ? 'selected' : ''}>예</option>
+          <option value="N" ${c?.visibleYn === 'N' ? 'selected' : ''}>아니오</option>
+        </select>
+      </td>
+      <td><button type="button" onclick="this.closest('tr').remove()">삭제</button></td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  function collectContents() {
+    const rows = document.querySelectorAll('#content-tbody tr');
+    const contents = [];
+    for (const row of rows) {
+      const contentType = row.querySelector('.c-contentType').value;
+      const title       = row.querySelector('.c-title').value.trim();
+      if (!contentType) { alert('콘텐츠 유형은 필수입니다.'); return null; }
+      if (!title)       { alert('콘텐츠 제목은 필수입니다.'); return null; }
+      contents.push({
+        contentType,
+        title,
+        contentHtml:       row.querySelector('.c-contentHtml').value       || null,
+        mobileContentHtml: row.querySelector('.c-mobileContentHtml').value || null,
+        displayOrder:      numOrNull(row.querySelector('.c-displayOrder').value),
+        visibleYn:         row.querySelector('.c-visibleYn').value,
+      });
+    }
+    return contents;
+  }
+
+  // ── STEP 5: 확인 화면 채우기 ──────────────────────────────────────
+
+  function fillConfirm() {
+    const cardCode    = document.getElementById('f-cardCode').value.trim();
+    const cardType    = document.getElementById('f-cardType').value;
+    const cardName    = document.getElementById('f-cardName').value.trim();
+    const companyName = document.getElementById('f-companyName').value.trim();
+    const brandName   = document.getElementById('f-brandName').value;
+    const feeDom      = document.getElementById('f-annualFeeDomestic').value;
+    const feeOvs      = document.getElementById('f-annualFeeOverseas').value;
+    const prevSpend   = document.getElementById('f-previousMonthSpend').value;
+    const minAge      = document.getElementById('f-minimumAge').value;
+    const maxAge      = document.getElementById('f-maximumAge').value;
+    const limitMin    = document.getElementById('f-creditLimitMin').value;
+    const limitMax    = document.getElementById('f-creditLimitMax').value;
+    const targetUser  = document.getElementById('f-targetUser').value.trim();
+    const summary     = document.getElementById('f-summaryDescription').value.trim();
+    const searchYn    = getRadio('f-searchableYn');
+    const visibleYn   = getRadio('f-visibleYn');
+    const pubStart    = document.getElementById('f-publishStartAt').value;
+    const pubEnd      = document.getElementById('f-publishEndAt').value;
+
+    document.getElementById('c-cardCode').textContent         = cardCode || '-';
+    document.getElementById('c-cardType').textContent         = TYPE_LABEL[cardType] || cardType || '-';
+    document.getElementById('c-cardName').textContent         = cardName || '-';
+    document.getElementById('c-companyName').textContent      = companyName || '-';
+    document.getElementById('c-brandName').textContent        = brandName || '-';
+    document.getElementById('c-annualFeeDomestic').textContent = won(feeDom);
+    document.getElementById('c-annualFeeOverseas').textContent = won(feeOvs);
+    document.getElementById('c-previousMonthSpend').textContent = won(prevSpend);
+    document.getElementById('c-age').textContent              =
+      (minAge || maxAge) ? `${minAge || '-'} 세 ~ ${maxAge || '-'} 세` : '-';
+    document.getElementById('c-limit').textContent            =
+      (limitMin || limitMax) ? `${won(limitMin)} ~ ${won(limitMax)}` : '-';
+    document.getElementById('c-targetUser').textContent       = targetUser || '-';
+    document.getElementById('c-summaryDescription').textContent = summary || '-';
+    document.getElementById('c-visibility').textContent       =
+      `검색: ${searchYn === 'Y' ? '예' : '아니오'} / 화면: ${visibleYn === 'Y' ? '예' : '아니오'}`;
+    document.getElementById('c-publish').textContent          =
+      (pubStart || pubEnd) ? `${pubStart || '-'} ~ ${pubEnd || '-'}` : '-';
+
+    // 혜택 확인 테이블
+    const benefitRows = document.querySelectorAll('#benefit-tbody tr');
+    document.getElementById('c-benefitCount').textContent = benefitRows.length;
+    const cBenefitTbody = document.getElementById('c-benefit-tbody');
+    if (benefitRows.length === 0) {
+      cBenefitTbody.innerHTML = '<tr><td colspan="7">혜택 없음</td></tr>';
+    } else {
+      cBenefitTbody.innerHTML = Array.from(benefitRows).map(row => `
+        <tr>
+          <td>${row.querySelector('.b-benefitTitle').value || '-'}</td>
+          <td>${row.querySelector('.b-benefitType').value || '-'}</td>
+          <td>${pct(row.querySelector('.b-discountRate').value)}</td>
+          <td>${pct(row.querySelector('.b-pointRate').value)}</td>
+          <td>${pct(row.querySelector('.b-cashbackRate').value)}</td>
+          <td>${won(row.querySelector('.b-monthlyLimitAmount').value)}</td>
+          <td>${row.querySelector('.b-displayText').value || '-'}</td>
+        </tr>
+      `).join('');
+    }
+
+    // 이미지 확인 테이블
+    const imageRows = document.querySelectorAll('#image-tbody tr');
+    document.getElementById('c-imageCount').textContent = imageRows.length;
+    const cImageTbody = document.getElementById('c-image-tbody');
+    if (imageRows.length === 0) {
+      cImageTbody.innerHTML = '<tr><td colspan="3">이미지 없음</td></tr>';
+    } else {
+      cImageTbody.innerHTML = Array.from(imageRows).map(row => {
+        const url = row.querySelector('.i-imageUrl').value.trim();
+        return `
+          <tr>
+            <td>${row.querySelector('.i-imageType').value || '-'}</td>
+            <td style="max-width:200px; word-break:break-all;">${url || '-'}</td>
+            <td>${url ? `<img src="${url}" style="height:40px;" onerror="this.style.display='none'">` : '-'}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // 콘텐츠 확인 테이블
+    const contentRows = document.querySelectorAll('#content-tbody tr');
+    document.getElementById('c-contentCount').textContent = contentRows.length;
+    const cContentTbody = document.getElementById('c-content-tbody');
+    if (contentRows.length === 0) {
+      cContentTbody.innerHTML = '<tr><td colspan="4">콘텐츠 없음</td></tr>';
+    } else {
+      cContentTbody.innerHTML = Array.from(contentRows).map(row => `
+        <tr>
+          <td>${row.querySelector('.c-contentType').value || '-'}</td>
+          <td>${row.querySelector('.c-title').value || '-'}</td>
+          <td>${row.querySelector('.c-displayOrder').value || '-'}</td>
+          <td>${row.querySelector('.c-visibleYn').value}</td>
+        </tr>
+      `).join('');
+    }
+  }
+
+  // ── 최종 제출 ────────────────────────────────────────────────────
+
+  async function submitCreate() {
+    const changeSummary = document.getElementById('f-changeSummary').value.trim();
+    if (!changeSummary) { alert('결재 요청 사유를 입력하세요.'); return; }
+
+    const benefits = collectBenefits();
+    if (benefits === null) return;
+
+    const images = collectImages();
+    if (images === null) return;
+
+    const contents = collectContents();
+    if (contents === null) return;
+
+    const publishStartAt = document.getElementById('f-publishStartAt').value;
+    const publishEndAt   = document.getElementById('f-publishEndAt').value;
+
+    const body = {
+      cardCode:            document.getElementById('f-cardCode').value.trim(),
+      cardType:            document.getElementById('f-cardType').value,
+      cardName:            document.getElementById('f-cardName').value.trim(),
+      companyName:         document.getElementById('f-companyName').value.trim(),
+      brandName:           document.getElementById('f-brandName').value || null,
+      annualFeeDomestic:   Number(document.getElementById('f-annualFeeDomestic').value),
+      annualFeeOverseas:   numOrNull(document.getElementById('f-annualFeeOverseas').value),
+      previousMonthSpend:  numOrNull(document.getElementById('f-previousMonthSpend').value),
+      minimumAge:          numOrNull(document.getElementById('f-minimumAge').value),
+      maximumAge:          numOrNull(document.getElementById('f-maximumAge').value),
+      creditLimitMin:      numOrNull(document.getElementById('f-creditLimitMin').value),
+      creditLimitMax:      numOrNull(document.getElementById('f-creditLimitMax').value),
+      targetUser:          document.getElementById('f-targetUser').value.trim() || null,
+      summaryDescription:  document.getElementById('f-summaryDescription').value.trim() || null,
+      searchableYn:        getRadio('f-searchableYn'),
+      visibleYn:           getRadio('f-visibleYn'),
+      publishStartAt:      publishStartAt ? publishStartAt + ':00' : null,
+      publishEndAt:        publishEndAt   ? publishEndAt   + ':00' : null,
+      changeSummary,
+      benefits,
+      images,
+      contents,
+    };
+
+    const btn = document.getElementById('btn-submit');
+    btn.disabled = true;
+    btn.textContent = '처리 중...';
+    document.getElementById('msg').textContent = '';
+
+    try {
+      const res = await fetch('/api/admin/cards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      });
+
+      if (res.status === 401) { location.href = '/admin/login'; return; }
+      const json = await res.json().catch(() => null);
+
+      if (res.ok) {
+        const d = json?.data ?? {};
+        document.getElementById('msg').innerHTML = `
+          <b style="color:green">✅ 등록 신청 완료!</b><br>
+          카드 ID: ${d.cardId ?? '-'} &nbsp;|&nbsp;
+          버전 ID: ${d.versionId ?? '-'} &nbsp;|&nbsp;
+          결재 ID: ${d.approvalId ?? '-'}<br>
+          결재 완료 후 게시됩니다.
+          <br><br>
+          <a href="approvalList.html">결재 목록 바로가기 →</a>
+          &nbsp;|&nbsp;
+          <a href="cardManage.html">카드 목록으로</a>
+        `;
+        btn.textContent = '등록 완료';
+      } else {
+        const errMsg = json?.message ?? `서버 오류 (${res.status})`;
+        document.getElementById('msg').textContent = '❌ 등록 실패: ' + errMsg;
+        btn.disabled = false;
+        btn.textContent = '결재 요청 (등록 신청)';
+      }
+    } catch (e) {
+      document.getElementById('msg').textContent = '❌ 오류: ' + e.message;
+      btn.disabled = false;
+      btn.textContent = '결재 요청 (등록 신청)';
+    }
+  }
+
+</script>
+
+</body>
+</html>
