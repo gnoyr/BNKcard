@@ -41,4 +41,7 @@ public interface CardMapper {
 
     int updateCardStatus(@Param("cardId") Long cardId,
                          @Param("cardStatus") String cardStatus);
+    
+    
+    
 }
