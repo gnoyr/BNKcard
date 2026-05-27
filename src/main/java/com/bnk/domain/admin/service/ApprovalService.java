@@ -15,6 +15,7 @@ import com.bnk.domain.admin.dto.response.ApprovalDetailResponse;
 import com.bnk.domain.admin.dto.response.ApprovalListResponse;
 import com.bnk.domain.admin.mapper.ApprovalMapper;
 import com.bnk.domain.admin.model.ApprovalRequest;
+import com.bnk.domain.card.dto.request.CardSnapshot;
 import com.bnk.domain.card.mapper.CardMapper;
 import com.bnk.domain.card.mapper.CardMapper2;
 import com.bnk.domain.card.mapper.CardStatusHistoryMapper;
@@ -113,6 +114,20 @@ public class ApprovalService {
                                 .build())
                         .collect(Collectors.toList())
                 : Collections.emptyList();
+        
+        CardSnapshot snapshotInfo = null;
+        if (approval.getTargetId() != null && approval.getRequestTypeCode().startsWith("CARD_")) {
+            CardVersion cardVersion = cardVersionMapper2.getCardVersion(approval.getTargetId());
+            if (cardVersion != null && cardVersion.getSnapshotJson() != null) {
+                try {
+                    snapshotInfo = objectMapper.readValue(
+                            cardVersion.getSnapshotJson(), CardSnapshot.class);
+                } catch (JsonProcessingException e) {
+                    log.warn("[결재상세] snapshot 파싱 실패: approvalId={}, versionId={}",
+                            approvalId, approval.getTargetId(), e);
+                }
+            }
+        }
 
         return ApprovalDetailResponse.builder()
                 .approvalId(approval.getApprovalId())
@@ -125,6 +140,7 @@ public class ApprovalService {
                 .requestedAt(approval.getRequestedAt())
                 .completedAt(approval.getCompletedAt())
                 .lines(lineItems)
+                .snapshot(snapshotInfo)
                 .build();
     }
 

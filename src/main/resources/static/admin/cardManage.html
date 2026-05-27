@@ -3,23 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <title>카드 관리 | BNK 관리자</title>
-  <style>
-    .nav-btn {
-      display: block;
-      width: 100%;
-      text-align: left;
-      padding: 7px 10px;
-      margin-bottom: 2px;
-      border: none;
-      border-radius: 6px;
-      background: none;
-      cursor: pointer;
-      font-size: 13.5px;
-      color: #555;
-    }
-    .nav-btn:hover { background: #ececec; color: #111; }
-    .nav-btn.active { background: #fff; color: #111; font-weight: 600; border: 1px solid #ddd; }
-  </style>
+  <link rel="stylesheet" href="/css/cardManage-list.css">
+  <link rel="stylesheet" href="/css/cardManage-detail.css">
+  <link rel="stylesheet" href="/css/cardManage-edit.css">
 </head>
 <body>
 
@@ -1877,6 +1863,10 @@
 	      imageHeight:  ihVal === '' ? null : Number(ihVal),
 	      sortOrder:    soVal === '' ? null : Number(soVal),
 	    });
+	    
+	    if (images.some(i => i.sortOrder == null)) {
+	      alert('이미지 노출순서는 필수입니다.'); createGoStep(3); return;
+	    }
 	  }
 
 	  try {
