@@ -71,7 +71,6 @@ function toggleCategory(btn, catId, catName) {
     const idx = state.currentCategoryIds.indexOf(catId);
     if (idx === -1) { state.currentCategoryIds.push(catId); btn.classList.add('active'); }
     else { state.currentCategoryIds.splice(idx, 1); btn.classList.remove('active'); }
-    updateCatInfo('cat-selected-info', state.currentCategoryIds);
     loadCards(0);
 }
 function updateCatInfo(elId, ids) {
