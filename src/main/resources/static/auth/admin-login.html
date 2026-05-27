@@ -102,7 +102,7 @@
   }
 
   function resolveRedirect(roles) {
-    if (hasRole(roles, 'SUPER_ADMIN')) return '/admin/approvalList.html';
+    if (hasRole(roles, 'SUPER_ADMIN')) return '/admin/approvalManage.html';
     if (hasRole(roles, 'MANAGER'))    return '/admin/cardManage.html';
     if (hasRole(roles, 'OPERATOR'))   return '/admin/userManage.html';
     // 알 수 없는 role — 로그인 화면에 오류 표시
