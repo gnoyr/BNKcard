@@ -88,6 +88,7 @@ public class SecurityConfig {
 		List<String> origins = Arrays.stream(allowedOrigins.split(",")).map(String::trim).filter(s -> !s.isEmpty())
 				.toList();
 		configuration.setAllowedOrigins(origins);
+		configuration.setAllowedHeaders(List.of("*"));
 
 		configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 
