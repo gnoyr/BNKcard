@@ -40,6 +40,8 @@ public interface AdminUserMapper {
                           @Param("lastLoginAt") LocalDateTime lastLoginAt);
 
     int unlockUser(@Param("userId") Long userId);
+    
+    int updateUserStatus(@Param("userId") Long userId, @Param("statusCode") String statusCode);
 
     int insertAuditLog(@Param("actorType")  String actorType,
                        @Param("actorId")    Long   actorId,
