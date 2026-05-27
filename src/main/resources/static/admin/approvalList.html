@@ -1,19 +1,21 @@
-<!-- approvalList.html 전체 수정본 -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>결재 신청서 관리 | BNK 관리자</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>결재 목록 | BNK 관리자</title>
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/teal-theme.css">
 </head>
 <body>
+
+<div id="app-header"></div>
 
 <h2>결재 목록</h2>
 <p>
   <a href="cardManage.html">[카드 목록]</a>
   &nbsp;|&nbsp;
-  <a href="termsList.html">[약관 목록]</a>
-  &nbsp;|&nbsp;
-  <a href="cardCreate.html">[카드 등록 신청]</a>
+  <a href="requestApproval.html">[결재 처리]</a>
 </p>
 
 <label>상태:
@@ -73,7 +75,7 @@
     if (type)   url += '&requestTypeCode=' + type;
 
     const res = await fetch(url, { credentials: 'include' });
-    if (res.status === 401) { location.href = '/admin/login'; return; }
+    if (res.status === 401) { location.href = '/auth/admin-login.html'; return; }
     const data = await res.json().catch(() => null);
     const tbody = document.getElementById('approvalTbody');
 
@@ -92,23 +94,15 @@
     }
 
     tbody.innerHTML = content.map(a => {
-      // 결재 라인 현황 요약
       const lineSummary = a.lines?.length
         ? a.lines.map(l => {
-            const color = l.statusCode === 'APPROVED' ? 'green'
-                        : l.statusCode === 'REJECTED' ? 'red' : 'orange';
+            const color = l.statusCode === 'APPROVED' ? 'green' : l.statusCode === 'REJECTED' ? 'red' : 'orange';
             return `<span style="color:${color}">[${l.approvalOrder}]${l.approverName ?? '?'}</span>`;
           }).join(' → ')
         : '-';
 
-      const statusColor = a.statusCode === 'PENDING'  ? 'orange'
-                        : a.statusCode === 'APPROVED' ? 'green' : 'red';
-
-      const typeLabel = {
-        CARD_PUBLISH:  '카드 등록',
-        CARD_UPDATE:   '카드 수정',
-        TERMS_PUBLISH: '약관 등록',
-      }[a.requestTypeCode] ?? a.requestTypeCode;
+      const statusColor = a.statusCode === 'PENDING' ? 'orange' : a.statusCode === 'APPROVED' ? 'green' : 'red';
+      const typeLabel = { CARD_PUBLISH: '카드 등록', CARD_UPDATE: '카드 수정', TERMS_PUBLISH: '약관 등록' }[a.requestTypeCode] ?? a.requestTypeCode;
 
       return `
         <tr>
@@ -119,13 +113,8 @@
           <td><b style="color:${statusColor}">${a.statusCode}</b></td>
           <td>${a.requestedAt ? a.requestedAt.substring(0,16) : '-'}</td>
           <td style="font-size:12px">${lineSummary}</td>
-          <td>
-            <a href="approvalDetail.html?approvalId=${a.approvalId}">
-              ${a.statusCode === 'PENDING' ? '▶ 처리' : '상세'}
-            </a>
-          </td>
-        </tr>
-      `;
+          <td><a href="approvalDetail.html?approvalId=${a.approvalId}">${a.statusCode === 'PENDING' ? '▶ 처리' : '상세'}</a></td>
+        </tr>`;
     }).join('');
 
     renderPagination(totalCount);
@@ -135,23 +124,19 @@
     const totalPages = Math.ceil(totalCount / PAGE_SIZE);
     const el = document.getElementById('pagination');
     if (totalPages <= 1) { el.innerHTML = ''; return; }
-
     const startPage = Math.max(0, currentPage - 2);
     const endPage   = Math.min(totalPages - 1, startPage + 4);
-
-    let html = `<button onclick="loadApprovals(${currentPage - 1})"
-                  ${currentPage === 0 ? 'disabled' : ''}>이전</button> `;
+    let html = `<button onclick="loadApprovals(${currentPage - 1})" ${currentPage === 0 ? 'disabled' : ''}>이전</button> `;
     for (let i = startPage; i <= endPage; i++) {
-      html += `<button onclick="loadApprovals(${i})"
-                 ${i === currentPage ? 'disabled style="font-weight:bold"' : ''}>${i + 1}</button> `;
+      html += `<button onclick="loadApprovals(${i})" ${i === currentPage ? 'disabled style="font-weight:bold"' : ''}>${i + 1}</button> `;
     }
-    html += `<button onclick="loadApprovals(${currentPage + 1})"
-               ${currentPage === totalPages - 1 ? 'disabled' : ''}>다음</button>`;
+    html += `<button onclick="loadApprovals(${currentPage + 1})" ${currentPage === totalPages - 1 ? 'disabled' : ''}>다음</button>`;
     el.innerHTML = html;
   }
 
   loadApprovals();
 </script>
 
+<script src="/js/header.js"></script>
 </body>
 </html>
