@@ -4,11 +4,12 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Getter @NoArgsConstructor
+@Setter @Getter @NoArgsConstructor
 public class CardCreateRequest {
 
     @NotBlank(message = "카드 코드는 필수입니다.")
