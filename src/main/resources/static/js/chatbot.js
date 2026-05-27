@@ -104,7 +104,7 @@
         try {
             const response = await fetch(apiUrl, {
                 method: "POST",
-                credentials: "same-origin",
+                credentials: "omit",
                 headers: {
                     "Content-Type": "application/json",
                     ...getCsrfHeaders()
