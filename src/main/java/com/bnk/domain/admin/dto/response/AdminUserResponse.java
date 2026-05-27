@@ -19,6 +19,25 @@ public class AdminUserResponse {
     private Integer creditScore;
     private LocalDateTime lastLoginAt;
     private LocalDateTime createdAt;
+    
+    // 기존 필드들 아래에 추가
+    private String job;
+    private String incomeLevelCode;
+    private Integer loginFailCount;
+    private LocalDateTime lockedUntil;
+    private LocalDateTime lastPasswordChangedAt;
+    private String isEmailVerified;
+    private String isPhoneVerified;
+    private String pushEnabled;
+    private String marketingAgree;
+    private String privacyAgree;
+    private LocalDateTime dormantAt;
+    private LocalDateTime withdrawnAt;
+    private LocalDateTime updatedAt;
+    private String deletedYn;
+    // ciValue, passwordHash는 보안상 제외
+    
+    
     // 상세 조회 추가 필드
     private List<LoginHistoryItem> loginHistories;
     private List<AgreementItem> agreements;
