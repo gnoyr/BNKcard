@@ -104,20 +104,19 @@ a {
 /* 변경 및 보완된 슬라이더 핵심 CSS */
 .card-image-container {
 	flex-shrink: 0;
-	width: 280px;
+	width: 260px;
 	position: relative;
-	padding: 0 20px; /* 화살표가 안 잘리도록 양옆 공간 확보 */
+	padding: 0 16px;
 	box-sizing: border-box;
 }
 
 .card-image-wrap {
-	width: 100%; /* 확보된 안쪽 너비에 맞춤 */
-	height: 180px;
-	background: linear-gradient(145deg, #e8eef6, #ccd8ef);
-	border-radius: 16px;
+	width: 100%;
+	height: 340px;
+	border-radius: 20px;
 	overflow: hidden;
 	position: relative;
-	box-shadow: 0 8px 32px rgba(0, 48, 135, 0.15);
+	border-radius: 20px;
 }
 
 .slider-track {
@@ -139,10 +138,10 @@ a {
 }
 
 .slider-slide img {
-	width: 100%; /* 가로 꽉 채우기 */
-	height: 100%; /* 세로 꽉 채우기 */
-	object-fit: contain; /* 비율 유지하면서 최대 크기로 확대 */
-	filter: drop-shadow(0 4px 12px rgba(0, 48, 135, 0.2));
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+	filter: drop-shadow(0 6px 16px rgba(0, 48, 135, 0.25));
 }
 
 .slider-btn {
@@ -436,6 +435,7 @@ a {
 	overflow-x: auto;
 	scrollbar-width: none;
 	-ms-overflow-style: none;
+	top: 60px;
 }
 
 .tab-bar::-webkit-scrollbar {
@@ -463,12 +463,10 @@ a {
 }
 
 .tab-content {
-	background: #fff;
-	border-radius: 0 0 12px 12px;
-	box-shadow: 0 2px 12px rgba(0, 48, 135, 0.06);
-	padding: 32px;
-	min-height: 200px;
 	display: none;
+	height: calc(100vh - 60px - 60px);
+	overflow-y: auto;
+	padding: 20px;
 }
 
 .tab-content.active {
@@ -594,9 +592,10 @@ a {
 
 .terms-preview {
 	margin-top: 12px;
-	display: flex;
-	gap: 8px;
+	display: none;
 	flex-wrap: wrap;
+	height: auto;
+	overflow-x: visible;
 }
 
 .terms-preview img {
