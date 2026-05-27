@@ -32,8 +32,8 @@ public class AdminAuthController {
 
     /**
      * 관리자 로그인 — Access + Refresh 쿠키 발급.
-     * HttpServletRequest 를 Service 로 전달하여
-     * ip_address / user_agent 를 LOGIN_HISTORIES 에 기록.
+     * HttpServletRequest를 Service로 전달하여
+     * ip_address / user_agent를 LOGIN_HISTORIES에 기록.
      */
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<Void>> adminLogin(
@@ -49,33 +49,45 @@ public class AdminAuthController {
 
     /**
      * 관리자 로그아웃 — DB 세션 revoke + 쿠키 삭제.
-     * /api/auth/logout 은 CustomUserDetails 를 주입받으므로
-     * 관리자 토큰(ADMIN_ACCESS)으로 호출하면 ud == null → NPE 발생.
-     * 관리자 전용 엔드포인트를 분리하여 CustomAdminDetails 로 수신.
+     *
+     *      errorOnInvalidType 기본값(true)이면 ClassCastException 또는 NPE 발생.
+     *      false로 설정하면 타입 불일치 시 null로 안전하게 주입됨.
+     *      ad가 null이면 DB revoke를 생략하고 쿠키만 삭제하여 정상 응답.
+     *		CookieUtil path 변경 배포 전 발급된 구버전 쿠키(path=/api/auth/refresh)가
+     *      브라우저에 잔류할 수 있으므로 로그아웃 시 함께 삭제.
+     *      7일(refresh-expiration) 경과 후 구 쿠키가 자연 만료되면 제거 가능.
+     *
+     *   AuthService.logout(Long userId)이 USER_SESSIONS.revoke_all을 처리하므로
      */
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> adminLogout(
-            @AuthenticationPrincipal CustomAdminDetails ad,
+            @AuthenticationPrincipal(errorOnInvalidType = false) CustomAdminDetails ad,
             HttpServletResponse response) {
 
-        authService.logout(ad.getAdminId());
+        // ad == null: 토큰 만료/미인증 상태 → DB revoke 생략, 쿠키만 삭제
+        if (ad != null) {
+            authService.logout(ad.getAdminId());
+        }
+
+        // 현재 path="/api/auth" 쿠키 삭제
         response.addHeader(HttpHeaders.SET_COOKIE, cookieUtil.deleteAccessCookie().toString());
         response.addHeader(HttpHeaders.SET_COOKIE, cookieUtil.deleteRefreshCookie().toString());
+
+        // 구버전 path="/api/auth/refresh" 쿠키 잔류분 삭제 (과도기 대응)
+        response.addHeader(HttpHeaders.SET_COOKIE, cookieUtil.deleteLegacyRefreshCookie().toString());
+
         return ApiResponse.toNoContent();
     }
 
     /**
-     * [신규] 관리자 인증 상태 확인 — header.js 에서 사용
+     * 관리자 인증 상태 확인 — header.js에서 사용.
      *
-     * 기존: header.js 가 GET /api/admin/dashboard 응답 여부로 인증 판단
+     * 기존: header.js가 GET /api/admin/dashboard 응답 여부로 인증 판단
      *       → 대시보드 API 지연·변경 시 인증 흐름 영향
      *
      * 개선: 전용 /me 엔드포인트로 분리
      *       → 인증 확인 책임을 대시보드와 분리
      *       → @AuthenticationPrincipal 주입 실패(미인증) 시 401 자동 반환
-     *
-     * SecurityConfig: /api/admin/** → hasAnyRole(...) 이미 적용되어 있으므로
-     *                 별도 permitAll 추가 없이 동작.
      */
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<AdminMeResponse>> getAdminMe(
