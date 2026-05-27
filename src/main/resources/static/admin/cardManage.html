@@ -3,11 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <title>카드 관리 | BNK 관리자</title>
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/teal-theme.css">
   <link rel="stylesheet" href="/css/cardManage-list.css">
   <link rel="stylesheet" href="/css/cardManage-detail.css">
   <link rel="stylesheet" href="/css/cardManage-edit.css">
+  <link rel="stylesheet" href="/css/cardManage-create.css">
 </head>
+
 <body>
+<div id="app-header"></div>
 
 <table style="width:100%; border-collapse:collapse;">
   <tr>
@@ -18,12 +23,12 @@
         카드 관리
       </div>
       <div style="padding:8px;">
-        <div style="padding:10px 10px 4px; font-size:10.5px; font-weight:700; color:#aaa;">카드</div>
+        <div style="padding:10px 10px 4px; font-size:10.5px; font-weight:700; color: #ccc;">카드</div>
         <button class="nav-btn" onclick="switchMenu('list', event)">📋 카드 목록</button>
         <button class="nav-btn" onclick="switchMenu('benefit', event)">🎁 혜택 목록</button>
         <button class="nav-btn" onclick="switchMenu('image', event)">🖼️ 이미지 목록</button>
         <button class="nav-btn" onclick="switchMenu('content', event)">📝 콘텐츠 목록</button>
-        <div style="padding:10px 10px 4px; font-size:10.5px; font-weight:700; color:#aaa; margin-top:6px;">약관</div>
+        <div style="padding:10px 10px 4px; font-size:10.5px; font-weight:700; color: #ccc; margin-top:6px;">약관</div>
         <button class="nav-btn" onclick="switchMenu('terms', event)">📄 약관 목록</button>
       </div>
     </td>
@@ -53,7 +58,7 @@
           <select id="filterStatus">
             <option value="">전체 상태</option>
             <option value="DRAFT">초안</option>
-            <option value="REVIEW">심사중</option>
+            <option value="REVIEW">반려</option>
             <option value="APPROVED">승인</option>
             <option value="PUBLISHED">게시중</option>
             <option value="STOPPED">중단</option>
@@ -206,10 +211,9 @@
 	    </select>
 	    <select id="termsTypeFilter">
 	      <option value="">전체 유형</option>
-	      <option value="SERVICE">서비스 이용약관</option>
-	      <option value="PRIVACY">개인정보 처리방침</option>
-	      <option value="MARKETING">마케팅 수신 동의</option>
-	      <option value="FINANCIAL">금융거래 약관</option>
+		  <option value="COMMON">공통 약관</option>
+		  <option value="PRIVACY">개인정보처리방침</option>
+		  <option value="CARD_SERVICE">카드 서비스 약관</option>
 	    </select>
 	    <button onclick="filterTerms()">검색</button>
 	    <button onclick="resetTermsSearch()">초기화</button>
@@ -381,19 +385,23 @@
 	
 	  <h2>약관 상세</h2>
 	  <table border="1"><tbody>
-	    <tr><th>약관 ID</th><td id="td-termsId">-</td></tr>
-	    <tr><th>마스터 ID</th><td id="td-termsMasterId">-</td></tr>
-	    <tr><th>제목</th><td id="td-title">-</td></tr>
-	    <tr><th>유형</th><td id="td-termsType">-</td></tr>
-	    <tr><th>버전</th><td id="td-version">-</td></tr>
-	    <tr><th>상태</th><td id="td-status">-</td></tr>
-	    <tr><th>필수여부</th><td id="td-requiredYn">-</td></tr>
-	    <tr><th>재동의 필요</th><td id="td-reconsentRequiredYn">-</td></tr>
-	    <tr><th>시행일</th><td id="td-effectiveFrom">-</td></tr>
-	    <tr><th>등록일시</th><td id="td-createdAt">-</td></tr>
-	    <tr><th>수정일시</th><td id="td-updatedAt">-</td></tr>
-	    <tr><th>약관 본문 (HTML)</th><td id="td-contentHtml" style="max-width:600px; word-break:break-all;">-</td></tr>
-	  </tbody></table>
+	  <tr><th>약관 ID</th><td id="td-termsId">-</td></tr>
+	  <tr><th>마스터 ID</th><td id="td-termsMasterId">-</td></tr>
+	  <tr><th>제목</th><td id="td-title">-</td></tr>
+	  <tr><th>유형</th><td id="td-termsType">-</td></tr>
+	  <tr><th>버전</th><td id="td-version">-</td></tr>
+	  <tr><th>상태</th><td id="td-status">-</td></tr>
+	  <tr><th>필수여부</th><td id="td-requiredYn">-</td></tr>
+	  <tr><th>재동의 필요</th><td id="td-reconsentRequiredYn">-</td></tr>
+	  <tr><th>시행일</th><td id="td-effectiveFrom">-</td></tr>
+	  <tr><th>종료일</th><td id="td-effectiveTo">-</td></tr>      <!-- 추가 -->
+	  <tr><th>문서 해시</th><td id="td-documentHash">-</td></tr>  <!-- 추가 -->
+	  <tr><th>내부 메모</th><td id="td-internalNote">-</td></tr>  <!-- 추가 -->
+	  <tr><th>승인자 ID</th><td id="td-approvedBy">-</td></tr>    <!-- 추가 -->
+	  <tr><th>승인일시</th><td id="td-approvedAt">-</td></tr>     <!-- 추가 -->
+	  <tr><th>등록일시</th><td id="td-createdAt">-</td></tr>
+	  <tr><th>약관 본문 (HTML)</th><td id="td-contentHtml" style="max-width:600px; word-break:break-all;">-</td></tr>
+	</tbody></table>
 	
 	  <h3>첨부 파일</h3>
 	  <div id="td-fileArea">불러오는 중...</div>
@@ -856,7 +864,7 @@
 
   const TYPE_LABEL = { CREDIT: '신용', CHECK: '체크', PREPAID: '선불' };
   const STAT_LABEL = {
-    DRAFT: '초안', REVIEW: '심사중', APPROVED: '승인',
+    DRAFT: '초안', REVIEW: '반려', APPROVED: '승인',
     PUBLISHED: '게시중', STOPPED: '중단', EXPIRED: '만료',
   };
 
@@ -2156,8 +2164,9 @@
 	// 약관 — 목록 / 상세 / 등록
 	// ================================================================
 
+	const TERMS_TYPE_LABEL = {COMMON: '공통 약관', PRIVACY: '개인정보처리방침', CARD_SERVICE: '카드 서비스 약관'};
 	const TERMS_STAT_LABEL = {
-	  DRAFT:'초안', REVIEW:'심사중', APPROVED:'승인', PUBLISHED:'게시중', EXPIRED:'만료'
+	  DRAFT:'초안', REVIEW:'반려', APPROVED:'승인', PUBLISHED:'게시중', EXPIRED:'만료'
 	};
 
 	let termsCurrentPage = 0;
@@ -2196,7 +2205,7 @@
 	    <tr style="cursor:pointer;" onclick="fetchTermsDetail(${t.termsId})">
 	      <td>${t.termsId}</td>
 	      <td>${t.title ?? '-'}</td>
-	      <td>${t.termsType ?? '-'}</td>
+	      <td>${TERMS_TYPE_LABEL[t.termsType] ?? t.termsType ?? '-'}</td>
 	      <td>${t.version ?? '-'}</td>
 	      <td><b>${TERMS_STAT_LABEL[t.status] ?? t.status ?? '-'}</b></td>
 	      <td>${t.requiredYn === 'Y' ? '필수' : '선택'}</td>
@@ -2250,8 +2259,10 @@
 	  currentTerms = { termsId };
 	  showTermsDetail();
 	  ['td-termsId','td-termsMasterId','td-title','td-termsType','td-version','td-status',
-	   'td-requiredYn','td-reconsentRequiredYn','td-effectiveFrom','td-createdAt','td-updatedAt','td-contentHtml']
-	    .forEach(id => { document.getElementById(id).textContent = '불러오는 중...'; });
+	  'td-requiredYn','td-reconsentRequiredYn','td-effectiveFrom','td-effectiveTo',
+	  'td-documentHash','td-internalNote','td-approvedBy','td-approvedAt',
+	  'td-createdAt','td-contentHtml']
+	   .forEach(id => { document.getElementById(id).textContent = '불러오는 중...'; });
 	  document.getElementById('td-fileArea').innerHTML = '불러오는 중...';
 	  document.getElementById('terms-status-panel').style.display = 'none';
 	  document.getElementById('terms-file-panel').style.display   = 'none';
@@ -2268,19 +2279,23 @@
 	  }
 	}
 
-	function renderTermsDetail(t) {
+	function renderTermsDetail(t) {		
 	  document.getElementById('td-termsId').textContent             = t.termsId ?? '-';
 	  document.getElementById('td-termsMasterId').textContent       = t.termsMasterId ?? '-';
 	  document.getElementById('td-title').textContent               = t.title ?? '-';
-	  document.getElementById('td-termsType').textContent           = t.termsType ?? '-';
+	  document.getElementById('td-termsType').textContent           = TERMS_TYPE_LABEL[t.termsType] ?? t.termsType ?? '-';
 	  document.getElementById('td-version').textContent             = t.version ?? '-';
 	  document.getElementById('td-status').textContent              = TERMS_STAT_LABEL[t.status] ?? t.status ?? '-';
 	  document.getElementById('td-requiredYn').textContent          = t.requiredYn === 'Y' ? '필수' : '선택';
 	  document.getElementById('td-reconsentRequiredYn').textContent = t.reconsentRequiredYn === 'Y' ? 'Y (재동의 알림 발송)' : 'N';
 	  document.getElementById('td-effectiveFrom').textContent       = t.effectiveFrom ?? '-';
+	  document.getElementById('td-effectiveTo').textContent         = t.effectiveTo ?? '-';        // 추가
+	  document.getElementById('td-documentHash').textContent        = t.documentHash ?? '-';       // 추가
+	  document.getElementById('td-internalNote').textContent        = t.internalNote ?? '-';       // 추가
+	  document.getElementById('td-approvedBy').textContent          = t.approvedBy ?? '-';         // 추가
+	  document.getElementById('td-approvedAt').textContent          = fmt(t.approvedAt);           // 추가
 	  document.getElementById('td-createdAt').textContent           = fmt(t.createdAt);
-	  document.getElementById('td-updatedAt').textContent           = fmt(t.updatedAt);
-	  document.getElementById('td-contentHtml').textContent         = t.contentHtml ?? '-';
+	  document.getElementById('td-contentHtml').textContent         = t.contentHtml ?? '-';		
 	}
 
 	async function loadTermsFiles(termsId) {
@@ -2929,5 +2944,7 @@
 
 </script>
 
+<div id="toast-container"></div>
+<script src="/js/header.js"></script>
 </body>
 </html>
