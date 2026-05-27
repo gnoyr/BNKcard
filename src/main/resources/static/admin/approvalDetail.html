@@ -1,25 +1,19 @@
-<!-- approval-detail.html?approvalId=1
-     연결 API:
-       GET  /api/admin/approvals/{approvalId}          → 결재 상세
-       POST /api/admin/approvals/{approvalId}/approve  → 승인
-       POST /api/admin/approvals/{approvalId}/reject   → 반려
-     응답 구조 (ApprovalDetailResponse):
-       { approvalId, requestTypeCode, requesterName, targetName,
-         statusCode, requestComment, requestedAt, completedAt,
-         lines: [ { approvalLineId, approvalOrder, approverName,
-                    statusCode, commentText, approvedAt, isCurrentUser } ] }
-     isCurrentUser=true 인 라인이 있을 때만 승인/반려 버튼 활성화
--->
+<!-- approval-detail.html?approvalId=1 -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>결재 상세 | BNK 관리자</title>
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/teal-theme.css">
 </head>
 <body>
 
+<div id="app-header"></div>
+
 <h2>결재 상세</h2>
-<p><a href="approval-list.html">← 결재 목록</a></p>
+<p><a href="requestApproval.html">← 결재 목록</a></p>
 
 <h3>기본 정보</h3>
 <table border="1" cellpadding="6" cellspacing="0" id="infoTable">
@@ -51,13 +45,9 @@
     <input type="text" id="commentInput" placeholder="결재 의견 입력" style="width:300px">
   </label>
   <br><br>
-  <button onclick="doApprove()" style="background:#28a745;color:#fff;padding:8px 20px">
-    ✔ 승인
-  </button>
+  <button onclick="doApprove()" style="background:#28a745;color:#fff;padding:8px 20px">✔ 승인</button>
   &nbsp;
-  <button onclick="doReject()" style="background:#dc3545;color:#fff;padding:8px 20px">
-    ✗ 반려
-  </button>
+  <button onclick="doReject()" style="background:#dc3545;color:#fff;padding:8px 20px">✗ 반려</button>
 </div>
 
 <br>
@@ -73,8 +63,7 @@
   }
 
   async function api(method, url, body) {
-    const opts = { method, credentials: 'include',
-                   headers: { 'Content-Type': 'application/json' } };
+    const opts = { method, credentials: 'include', headers: { 'Content-Type': 'application/json' } };
     if (body) opts.body = JSON.stringify(body);
     const res = await fetch(url, opts);
     return { ok: res.ok, data: await res.json().catch(() => null) };
@@ -104,7 +93,6 @@
       <tr><th>완료일시</th><td>${a.completedAt ? a.completedAt.substring(0,16) : '-'}</td></tr>
     `;
 
-    // 라인 목록
     let canProcess = false;
     if (a.lines && a.lines.length > 0) {
       lineTbody.innerHTML = a.lines.map(l => {
@@ -113,22 +101,16 @@
           <tr style="background:${l.isCurrentUser ? '#fffde7' : ''}">
             <td>${l.approvalOrder}</td>
             <td>${l.approverName ?? '-'}${l.isCurrentUser ? ' ★ (내 차례)' : ''}</td>
-            <td><b style="color:${l.statusCode === 'PENDING' ? 'orange'
-                                : l.statusCode === 'APPROVED' ? 'green' : 'red'}">
-                ${l.statusCode}</b></td>
+            <td><b style="color:${l.statusCode === 'PENDING' ? 'orange' : l.statusCode === 'APPROVED' ? 'green' : 'red'}">${l.statusCode}</b></td>
             <td>${l.commentText ?? '-'}</td>
             <td>${l.approvedAt ? l.approvedAt.substring(0,16) : '-'}</td>
-          </tr>
-        `;
+          </tr>`;
       }).join('');
     } else {
       lineTbody.innerHTML = '<tr><td colspan="5">결재 라인 없음</td></tr>';
     }
 
-    // 처리 버튼 표시 여부 (내 차례이고 전체 상태가 PENDING일 때)
-    if (canProcess && a.statusCode === 'PENDING') {
-      actionArea.style.display = 'block';
-    }
+    if (canProcess && a.statusCode === 'PENDING') actionArea.style.display = 'block';
   }
 
   async function doApprove() {
@@ -147,7 +129,6 @@
   async function doReject() {
     const comment = document.getElementById('commentInput').value.trim();
     if (!comment) { alert('반려 시 의견은 필수입니다.'); return; }
-
     const r = await api('POST', `/api/admin/approvals/${approvalId}/reject`, { comment });
     const msg = document.getElementById('msg');
     if (r.ok) {
@@ -162,5 +143,6 @@
   loadDetail();
 </script>
 
+<script src="/js/header.js"></script>
 </body>
 </html>

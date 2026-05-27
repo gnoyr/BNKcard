@@ -5,16 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>관리자 로그인 – BNK</title>
 <link rel="stylesheet" href="/css/auth.css"/>
+<link rel="stylesheet" href="/css/teal-theme.css"/>
 <style>
   body { background: #1a1a2e; }
   .site-header { background: #16213e; border-bottom: 1px solid #0f3460; }
-  .logo-badge  { background: #e94560; }
-  .auth-card   { border-top: 3px solid #e94560; }
-
+  .logo-badge  { background: var(--teal-600); }
+  .auth-card   { border-top: 3px solid var(--teal-600); }
   .admin-badge {
     display: inline-flex; align-items: center; gap: 6px;
-    background: #fff0f0; color: #c8102e; font-size: 11px; font-weight: 700;
-    padding: 4px 10px; border-radius: 20px; border: 1px solid #fca5a5;
+    background: var(--teal-50); color: var(--teal-800); font-size: 11px; font-weight: 700;
+    padding: 4px 10px; border-radius: 20px; border: 1px solid var(--teal-200);
     margin-bottom: 16px; letter-spacing: .05em;
   }
   .admin-warn {
@@ -25,7 +25,7 @@
   .lock-info { font-size: 12px; color: #6b7280; text-align: center; margin-top: 14px; }
   .back-link { display: block; text-align: center; margin-top: 16px;
                font-size: 12px; color: #9ca3af; text-decoration: none; }
-  .back-link:hover { color: #c8102e; }
+  .back-link:hover { color: var(--teal-400); }
   .site-footer { background: #111827; }
 </style>
 </head>
@@ -77,86 +77,8 @@
   © 2025 BNK Busan Bank. All rights reserved.
 </footer>
 
-<script>
-  function togglePw() {
-    const inp = document.getElementById('password');
-    const btn = inp.parentElement.querySelector('.pw-toggle');
-    inp.type = inp.type === 'password' ? 'text' : 'password';
-    btn.classList.toggle('is-visible');
-  }
-
-  function showErr(msg) {
-    const el = document.getElementById('login-error');
-    el.textContent = msg; el.style.display = 'block';
-  }
-  function clearErr() {
-    const el = document.getElementById('login-error');
-    el.textContent = ''; el.style.display = 'none';
-  }
-
-  // role 문자열에서 접두사 제거 후 비교 ("ROLE_MANAGER" → "MANAGER")
-  function hasRole(roles, target) {
-    return roles.some(r => r.replace(/^ROLE_/, '') === target);
-  }
-
-  function resolveRedirect(roles) {
-    if (hasRole(roles, 'SUPER_ADMIN')) return '/admin/approvalList.html';
-    if (hasRole(roles, 'MANAGER'))    return '/admin/cardManage.html';
-    if (hasRole(roles, 'OPERATOR'))   return '/admin/userManage.html';
-    // 알 수 없는 role — 로그인 화면에 오류 표시
-    return null;
-  }
-
-  async function adminLogin() {
-    clearErr();
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value;
-    const btn      = document.getElementById('loginBtn');
-
-    if (!username || !password) { showErr('아이디와 비밀번호를 모두 입력해주세요.'); return; }
-
-    btn.disabled = true; btn.textContent = '로그인 중...';
-
-    try {
-      // 1. 로그인 API
-      const loginRes  = await fetch('/api/admin/auth/login', {
-        method:      'POST',
-        credentials: 'include',
-        headers:     { 'Content-Type': 'application/json' },
-        body:        JSON.stringify({ username, password }),
-      });
-      const loginJson = await loginRes.json().catch(() => ({}));
-
-      if (!loginRes.ok) {
-        const msg = loginJson.message || '로그인에 실패했습니다.';
-        showErr(loginRes.status === 423 || msg.includes('잠')
-          ? '⚠ ' + msg + ' 잠금은 30분 후 자동 해제됩니다.'
-          : msg);
-        return;
-      }
-
-      // 2. 세션 캐시 저장
-      sessionStorage.setItem('bnk_login_at',  String(Date.now()));
-      sessionStorage.setItem('bnk_user_name', username);
-
-      // 3. role 확인
-      const meRes  = await fetch('/api/admin/auth/me', { credentials: 'include' });
-      const meJson = await meRes.json().catch(() => ({}));
-      const roles  = meJson.data?.roles ?? [];
-
-      const dest = resolveRedirect(roles);
-      if (dest) {
-        window.location.href = dest;
-      } else {
-        showErr('할당된 역할이 없습니다. 관리자에게 문의하세요.');
-      }
-
-    } catch {
-      showErr('서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
-    } finally {
-      btn.disabled = false; btn.textContent = '관리자 로그인';
-    }
-  }
-</script>
+<div id="toast-container"></div>
+<script src="/js/header.js"></script>
+<script src="/js/auth.js"></script>
 </body>
 </html>
