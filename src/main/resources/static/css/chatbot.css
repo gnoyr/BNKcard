@@ -137,6 +137,30 @@
 	cursor: not-allowed;
 }
 
+#bnk-ai-chatbot .message.bot ul {
+  padding-left: 18px;
+  margin: 6px 0;
+}
+#bnk-ai-chatbot .message.bot li {
+  margin-bottom: 4px;
+}
+#bnk-ai-chatbot .message.bot strong {
+  font-weight: 700;
+}
+#bnk-ai-chatbot .message.bot code {
+  background: #f0f4f8;
+  border-radius: 4px;
+  padding: 2px 5px;
+  font-family: monospace;
+  font-size: 13px;
+}
+#bnk-ai-chatbot .message.bot pre {
+  background: #f0f4f8;
+  border-radius: 8px;
+  padding: 10px;
+  overflow-x: auto;
+}
+
 /* 모바일 전용 반응형 스타일 */
 @media ( max-width : 480px) {
 	#bnk-ai-chatbot {
