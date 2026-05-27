@@ -10,6 +10,7 @@
         <result property="cardType"           column="card_type"/>
         <result property="cardName"           column="card_name"/>
         <result property="companyName"        column="company_name"/>
+        <result property="companyCode"        column="company_code"/>
         <result property="brandName"          column="brand_name"/>
         <result property="annualFeeDomestic"  column="annual_fee_domestic"/>
         <result property="annualFeeOverseas"  column="annual_fee_overseas"/>
@@ -30,8 +31,10 @@
         <result property="viewCount"          column="view_count"/>
         <result property="createdBy"          column="created_by"/>
         <result property="createdAt"          column="created_at"/>
-        <result property="updatedAt"          column="updated_at"/>
+        <result property="updatedBy"          column="updated_by"/>
+        <result property="updatedAt"          column="updated_at"/>  
         <result property="deletedYn"          column="deleted_yn"/>
+        <result property="deletedAt"          column="deleted_at"/>
     </resultMap>
 
     <!-- ── 사용자 카드 목록 동적 검색 ─────────────────────── -->

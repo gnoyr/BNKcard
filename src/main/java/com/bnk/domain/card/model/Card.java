@@ -3,6 +3,7 @@ package com.bnk.domain.card.model;
 import lombok.*;
 import java.time.LocalDateTime;
 
+@Setter
 @Getter
 @Builder
 @NoArgsConstructor
