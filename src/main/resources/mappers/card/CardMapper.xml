@@ -76,8 +76,9 @@
 	      )
 	    </if>
 		<if test="categoryIds != null and categoryIds.size() &gt; 1">
-			AND EXISTS (
-			SELECT 1 FROM CARD_BENEFITS cb2
+			AND (
+			SELECT COUNT(DISTINCT cb2.category_id)
+			FROM CARD_BENEFITS cb2
 			WHERE cb2.card_id = c.card_id
 			AND cb2.visible_yn = 'Y'
 			AND cb2.category_id IN
@@ -85,7 +86,7 @@
 				separator="," close=")">
 				#{cid}
 			</foreach>
-			)
+			) &gt;= #{categoryCount}
 		</if>
 	    <if test="minFee != null">
 	      AND c.annual_fee_domestic &gt;= #{minFee}
@@ -132,16 +133,16 @@
 	      )
 		</if>
 		<if test="categoryIds != null and categoryIds.size() &gt; 1">
-			AND EXISTS (
-			SELECT 1 FROM CARD_BENEFITS cb2
-			WHERE cb2.card_id = c.card_id
-			AND cb2.visible_yn = 'Y'
-			AND cb2.category_id IN
-			<foreach collection="categoryIds" item="cid" open="("
-				separator="," close=")">
-				#{cid}
-			</foreach>
-			)
+		  AND (
+		      SELECT COUNT(DISTINCT cb2.category_id)
+		      FROM   CARD_BENEFITS cb2
+		      WHERE  cb2.card_id    = c.card_id
+		        AND  cb2.visible_yn = 'Y'
+		        AND  cb2.category_id IN
+		      <foreach collection="categoryIds" item="cid" open="(" separator="," close=")">
+		          #{cid}
+		      </foreach>
+		  ) &gt;= #{categoryCount}
 		</if>
 	    <if test="minFee != null">
 	      AND c.annual_fee_domestic &gt;= #{minFee}
