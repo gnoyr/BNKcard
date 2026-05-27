@@ -1,5 +1,6 @@
 package com.bnk.domain.auth.controller;
 
+import org.apache.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -67,12 +68,24 @@ public class AuthController {
 	 * / user_agent 를 LOGIN_HISTORIES 에 기록.
 	 */
 	@PostMapping("/login")
-	public ResponseEntity<ApiResponse<Void>> login(@RequestBody @Valid LoginRequest request,
-			HttpServletRequest httpRequest, HttpServletResponse response) {
-		AuthTokenResult result = authService.login(request, httpRequest);
-		response.addHeader(HttpHeaders.SET_COOKIE, result.getAccessCookie().toString());
-		response.addHeader(HttpHeaders.SET_COOKIE, result.getRefreshCookie().toString());
-		return ResponseEntity.ok(ApiResponse.message("로그인에 성공했습니다."));
+	public ResponseEntity<ApiResponse<Void>> login(
+	        @RequestBody @Valid LoginRequest request,
+	        HttpServletRequest httpRequest,
+	        HttpServletResponse response) {
+
+	    AuthTokenResult result = authService.login(request, httpRequest);
+
+	    // 신규 쿠키 발급 전, 구버전 path 쿠키 잔류분 강제 삭제
+	    // (CookieUtil path 변경 배포 과도기 대응 — 7일 후 제거 가능)
+	    response.addHeader(HttpHeaders.SET_COOKIE,
+	        cookieUtil.deleteLegacyRefreshCookie().toString());
+
+	    response.addHeader(HttpHeaders.SET_COOKIE,
+	        result.getAccessCookie().toString());
+	    response.addHeader(HttpHeaders.SET_COOKIE,
+	        result.getRefreshCookie().toString());
+
+	    return ResponseEntity.ok(ApiResponse.message("로그인에 성공했습니다."));
 	}
 
 	/**
@@ -80,8 +93,12 @@ public class AuthController {
 	 */
 	@PostMapping("/refresh")
 	public ResponseEntity<ApiResponse<Void>> refresh(
-	        @CookieValue(value = "refresh_token", required = true) String refreshToken,
-	        HttpServletResponse response) {
+			@CookieValue(value = "refresh_token", required = false) String refreshToken, HttpServletResponse response) {
+		if (refreshToken == null || refreshToken.isBlank()) {
+	        // 쿠키 자체가 없는 경우 → 재로그인 유도
+	        return ResponseEntity.status(HttpStatus.SC_UNAUTHORIZED)
+	                .body(ApiResponse.message("세션이 만료되었습니다. 다시 로그인해 주세요."));
+	    }
 		response.addHeader(HttpHeaders.SET_COOKIE, authService.refresh(refreshToken).toString());
 		return ApiResponse.toOk(null);
 	}
