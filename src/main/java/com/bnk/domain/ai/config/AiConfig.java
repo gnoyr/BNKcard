@@ -29,7 +29,14 @@ public class AiConfig {
         return chatModel;
     }
 	
-
+	@Bean
+	@Primary
+	public EmbeddingModel primaryEmbeddingModelgenai(
+	        @Qualifier("googleGenAiTextEmbedding") EmbeddingModel embeddingModel
+	) {
+	    return embeddingModel;
+	}
+	
 	//@Bean
     //@Primary	
     public EmbeddingModel primaryEmbeddingModel(@Qualifier("ollamaEmbeddingModel") EmbeddingModel embeddingModel) {
