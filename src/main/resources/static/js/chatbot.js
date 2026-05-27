@@ -54,7 +54,13 @@
   function appendMessage(type, text) {
     const div = document.createElement("div");
     div.className = "message " + type;
-    div.textContent = text;
+
+    if (type === "bot") {
+      div.innerHTML = parseMarkdown(text);  // bot만 마크다운 파싱
+    } else {
+      div.textContent = text;               // user는 XSS 방지 위해 textContent 유지
+    }
+
     messages.appendChild(div);
     messages.scrollTop = messages.scrollHeight;
     return div;
@@ -114,7 +120,8 @@
       }
 
       const json = await response.json();
-      loadingEl.textContent = extractResponseText(json);
+	  const responseText = extractResponseText(json);
+	  loadingEl.innerHTML = parseMarkdown(responseText);
 
     } catch (err) {
       console.error("[BNK Chatbot] API 오류:", err);
@@ -163,5 +170,29 @@
   closeButton.addEventListener("click", function () {
     widget.classList.remove("open");
   });
+  
+  // ── 마크다운 → HTML 변환 (경량 파서) ────────────────────────
+  function parseMarkdown(text) {
+    return text
+      // 코드블록 ```...```
+      .replace(/```[\w]*\n?([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+      // 인라인 코드 `...`
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      // 굵게 **...**
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      // 기울임 *...*
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      // 제목 ## / #
+      .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+      .replace(/^## (.+)$/gm,  '<h3>$1</h3>')
+      .replace(/^# (.+)$/gm,   '<h2>$1</h2>')
+      // 순서없는 목록 - item
+      .replace(/^\s*[-*] (.+)$/gm, '<li>$1</li>')
+      .replace(/(<li>.*<\/li>)/s,  '<ul>$1</ul>')
+      // 수평선 ---
+      .replace(/^---$/gm, '<hr/>')
+      // 줄바꿈 \n
+      .replace(/\n/g, '<br/>');
+  }
 
 })();
