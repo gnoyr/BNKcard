@@ -134,6 +134,7 @@ function renderPage(card, termsWithFiles) {
         <button class="tab-btn" onclick="switchTab(this,'tab-fee')">연회비/수수료</button>
         <button class="tab-btn" onclick="switchTab(this,'tab-etc')">기타</button>
         <button class="tab-btn" onclick="switchTab(this,'tab-terms')">상품약관</button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-notice')">유의사항</button>
       </div>
 
       <div class="tab-content active" id="tab-product">${renderTabProduct(card)}</div>
@@ -141,17 +142,8 @@ function renderPage(card, termsWithFiles) {
       <div class="tab-content" id="tab-fee">${renderTabFee(card)}</div>
       <div class="tab-content" id="tab-etc">${renderTabEtc(card)}</div>
       <div class="tab-content" id="tab-terms">${renderTabTerms(termsWithFiles)}</div>
+      <div class="tab-content" id="tab-notice">${renderTabNotice(card)}</div>
     </div>
-
-    <section class="notice-section">
-      <div class="section-heading">📢 유의사항</div>
-      ${renderNotice(card)}
-    </section>
-
-    <footer>
-      <strong>BNK 부산은행</strong><br>
-      본 카드 상품 정보는 2024년 기준이며 변경될 수 있습니다.
-    </footer>
   `;
 }
 
@@ -181,7 +173,6 @@ function renderBenefitsRaw(benefits) {
   `;
 }
 
-// ── 이미지 슬라이더 내부 구동 제어 엔진 ──
 // ── 이미지 슬라이더 내부 구동 제어 엔진 ──
 let currentSlide = 0;
 function initImageSlider() {
@@ -315,10 +306,19 @@ function renderTabTerms(termsWithFiles) {
   }).join('');
 }
 
-function renderNotice(card) {
-  return `<table class="notice-table"><tbody><tr><td>1</td><td>혜택은 전월 실적 조건 충족 시 적용됩니다.</td></tr></tbody></table>`;
+function renderTabNotice(card) {
+  return `
+    <div class="tab-content-title">📢 유의사항</div>
+    <table class="notice-table">
+      <tbody>
+        <tr><td>1</td><td>혜택은 전월 실적 조건 충족 시 적용됩니다.</td></tr>
+        <tr><td>2</td><td>연회비는 카드 발급 시 부과되며, 해지 시 일할 환급됩니다.</td></tr>
+        <tr><td>3</td><td>본 카드 상품 정보는 변경될 수 있으니 최신 정보를 확인하세요.</td></tr>
+        <tr><td>4</td><td>문의: BNK부산은행 고객센터 1588-6200</td></tr>
+      </tbody>
+    </table>
+  `;
 }
-
 function switchTab(btn, tabId) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));

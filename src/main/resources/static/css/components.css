@@ -345,3 +345,99 @@
 .toast--error   { background: #dc2626; color: #fff; }
 .toast--info    { background: #2563eb; color: #fff; }
 .toast--warning { background: #d97706; color: #fff; }
+
+/* ══════════════════════════════════════════════════════
+   헤더 우측 네비 요소 시각적 스타일 강화
+   대상: 비로그인(로그인·회원가입), 로그인(이름·마이페이지·타이머·버튼)
+   ══════════════════════════════════════════════════════ */
+
+/* 로그인 / 회원가입 링크 → 필 버튼형 */
+.header-nav a[href="/auth/login.html"],
+.header-nav a[href="/auth/signup.html"] {
+    padding: 5px 14px !important;
+    border-radius: 20px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    border-bottom: none !important;
+    transition: background .2s, color .2s !important;
+}
+
+.header-nav a[href="/auth/login.html"] {
+    background: transparent;
+    border: 1.5px solid #C8102E !important;
+    color: #C8102E !important;
+}
+
+.header-nav a[href="/auth/login.html"]:hover {
+    background: #C8102E !important;
+    color: #fff !important;
+}
+
+.header-nav a[href="/auth/signup.html"] {
+    background: #C8102E;
+    color: #fff !important;
+    border: 1.5px solid #C8102E !important;
+}
+
+.header-nav a[href="/auth/signup.html"]:hover {
+    background: #A00D24 !important;
+    border-color: #A00D24 !important;
+}
+
+/* 로그인 상태: 사용자 이름 */
+.header-nav__username {
+    font-size: 13px;
+    font-weight: 700;
+    color: #C8102E;
+    background: #F9E5E8;
+    border-radius: 20px;
+    padding: 4px 12px;
+}
+
+/* 마이페이지 링크 */
+.header-nav a[href="/mypage/index.html"] {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 6px;
+    background: #f4f4f5;
+    border-bottom: none !important;
+    color: #3f3f46 !important;
+}
+
+.header-nav a[href="/mypage/index.html"]:hover {
+    background: #e4e4e7;
+    color: #C8102E !important;
+}
+
+/* Access Token 타이머 — 배지형 */
+.header-nav__timer {
+    font-size: 11px;
+    font-weight: 600;
+    color: #52525b;
+    background: #f4f4f5;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.03em;
+    cursor: default;
+}
+
+/* 토큰 재발급·로그아웃 버튼 */
+.header-nav__btn {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    padding: 4px 12px !important;
+    border-radius: 6px !important;
+    border: 1.5px solid #e4e4e7 !important;
+    color: #52525b !important;
+    background: #fff !important;
+    transition: background .15s, border-color .15s, color .15s !important;
+}
+
+.header-nav__btn:hover {
+    background: #f4f4f5 !important;
+    border-color: #C8102E !important;
+    color: #C8102E !important;
+    border-bottom: 1.5px solid #C8102E !important;
+}

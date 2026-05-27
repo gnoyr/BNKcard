@@ -37,7 +37,7 @@ import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.util.CookieUtil;
 import com.bnk.global.util.MaskingUtil;
-import com.bnk.global.util.TokenStore;
+import com.bnk.global.util.MemoryTokenStore;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -56,7 +56,7 @@ public class AuthService {
 	private final PasswordEncoder passwordEncoder;
 	private final JwtTokenProvider jwtTokenProvider;
 	private final CookieUtil cookieUtil;
-	private final TokenStore tokenStore;
+	private final MemoryTokenStore tokenStore;
 	private final EmailService mailService;
 
 	private static final String KEY_VERIFIED = "email:verified:";
