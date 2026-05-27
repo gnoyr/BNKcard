@@ -193,5 +193,20 @@
     "name": "spring.mail.username",
     "type": "java.lang.String",
     "description": "메일 발신 계정 주소. 예: bnkcard.noreply@gmail.com"
+  },
+  {
+    "name": "spring.data.redis.enabled",
+    "type": "java.lang.String",
+    "description": "Redis를 사용할지 여부"
+  },
+  {
+    "name": "spring.ai.ollama.base-url",
+    "type": "java.lang.String",
+    "description": "Ollama Base Url 설정"
+  },
+  {
+    "name": "spring.ai.ollama.embedding.options.model",
+    "type": "java.lang.String",
+    "description": "Ollama에서 사용할 모델"
   }
 ]}

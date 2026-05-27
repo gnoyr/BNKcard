@@ -78,7 +78,7 @@ function updateCatInfo(elId, ids) {
     const el = document.getElementById(elId);
     if (!ids.length) { el.textContent = ''; return; }
     const names = ids.map(id => state.categories.find(c => String(c.categoryId) === String(id))?.categoryName ?? id);
-    el.textContent = '선택된 혜택 (AND): ' + names.join(' + ');
+    el.textContent = '선택된 혜택 : ' + names.join(' , ');
 }
 function selectCardType(btn, cardType) {
     document.querySelectorAll('.type-tab').forEach(b => b.classList.remove('active'));
@@ -155,8 +155,57 @@ async function loadCards(page = 0) {
 
 // ── 카드 플립 빌더 ──
 function buildFlipCard(card, rank = null) {
-    const rankBadge = rank ? `<div class="top3-rank rank-${rank}">${rank}</div>` : '';
+    const ne = (card.cardName ?? '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    const ce = (card.companyName ?? '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
     const imgHtml = safeImgHtml(card.thumbnailUrl, card.cardName ?? '');
+    const backText = card.topBenefit ?? card.summaryDescription ?? '다양한 혜택 제공';
+    const lines = backText.split(/[,\.\n]\s*/).slice(0, 3).map(b => b.trim()).filter(Boolean)
+        .map(b => `<div class="benefit-item"><span class="benefit-dot"></span>${b}</div>`).join('');
+
+    // ★ TOP3
+    if (rank) {
+        const rankBadge = `<div class="top3-rank rank-${rank}">${rank}</div>`;
+        const feeText = card.annualFeeDomestic === 0 || card.annualFeeDomestic === null
+            ? '연회비 없음'
+            : Number(card.annualFeeDomestic).toLocaleString() + '원';
+        const benefitText = card.topBenefit ?? '';
+        const benefitTags = benefitText
+            ? benefitText.split(/[,\/]\s*/).slice(0, 2).map(t => t.trim()).filter(Boolean)
+                .map(t => `<span style="display:inline-block;background:rgba(255,255,255,.18);color:#fff;border-radius:10px;padding:2px 9px;font-size:10px;margin:1px;">${t}</span>`)
+                .join('') : '';
+        return `
+        <div class="flip-wrapper">
+          <div class="flip-inner">
+            <!-- 앞면: 이미지 + 이름만 -->
+            <div class="flip-front top3-front">
+              ${rankBadge}
+              <div class="card-img-wrap top3-img-wrap">${imgHtml}</div>
+              <div class="top3-name-bar">
+                <div class="top3-card-label">${card.cardName ?? ''}</div>
+              </div>
+            </div>
+            <!-- 뒷면: 기존 앞면 정보 + 액션 버튼 -->
+            <div class="flip-back">
+              <div class="back-card-name">${card.cardName ?? ''}</div>
+              <div class="back-meta">
+                <span class="back-type-badge">${cardTypeBadge(card.cardType)}</span>
+                <span class="back-company">${card.companyName ?? 'BNK부산은행'}</span>
+              </div>
+              <div class="back-fee">💳 ${feeText}</div>
+              <div class="back-benefit">${lines || backText}</div>
+              ${benefitTags ? `<div style="margin:6px 0 2px;">${benefitTags}</div>` : ''}
+              <div class="back-actions">
+                <button class="btn-detail"  onclick="event.stopPropagation();location.href='/card/index.html?cardId=${card.cardId}'">자세히</button>
+                <button class="btn-compare" onclick="event.stopPropagation();addToCart(${card.cardId},'${ne}','${ce}')">비교</button>
+                <button class="btn-apply"   onclick="event.stopPropagation();location.href='/card/index.html?cardId=${card.cardId}'">신청</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    // ★ 일반 그리드 카드 (기존 그대로)
+    const rankBadge = '';
     const benefitText = card.topBenefit ?? '';
     const benefitTags = benefitText
         ? benefitText.split(/[,\/]\s*/).slice(0, 2).map(t => t.trim()).filter(Boolean)
@@ -165,12 +214,6 @@ function buildFlipCard(card, rank = null) {
     const feeDisplay = card.annualFeeDomestic === 0 || card.annualFeeDomestic === null
         ? '<span style="color:#00875a;font-weight:700;">연회비 없음</span>'
         : Number(card.annualFeeDomestic).toLocaleString() + '원';
-    const backText = card.topBenefit ?? card.summaryDescription ?? '다양한 혜택 제공';
-    const lines = backText.split(/[,\.\n]\s*/).slice(0, 3).map(b => b.trim()).filter(Boolean)
-        .map(b => `<div class="benefit-item"><span class="benefit-dot"></span>${b}</div>`).join('');
-    const ne = (card.cardName ?? '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-    const ce = (card.companyName ?? '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-    // ★ 상세 링크: /card-detail.html → /card/
     return `
     <div class="flip-wrapper">
       <div class="flip-inner">
@@ -197,7 +240,6 @@ function buildFlipCard(card, rank = null) {
       </div>
     </div>`;
 }
-
 // ── 페이지네이션 ──
 function renderPagination(total) {
     const tp = Math.ceil(total / state.PAGE_SIZE);

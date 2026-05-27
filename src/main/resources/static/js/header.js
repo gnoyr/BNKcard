@@ -102,56 +102,61 @@
 
   /* 일반 사용자 인증 확인 */
   async function checkUserAuth() {
-    let name = null;
+      let name = null;
 
-    // sessionStorage 캐시 우선 사용 → 유효한 캐시면 API 호출 생략
-    const cachedName    = sessionStorage.getItem(CACHE_KEY_NAME);
-    const cachedLoginAt = sessionStorage.getItem(CACHE_KEY_LOGIN_AT);
-    const cacheValid    = cachedName && cachedLoginAt &&
-                          (Date.now() - Number(cachedLoginAt)) < 10 * 60 * 1000; // 10분
+      const cachedName    = sessionStorage.getItem(CACHE_KEY_NAME);
+      const cachedLoginAt = sessionStorage.getItem(CACHE_KEY_LOGIN_AT);
+      const cacheValid    = cachedName && cachedLoginAt &&
+                            (Date.now() - Number(cachedLoginAt)) < 10 * 60 * 1000;
 
-    if (cacheValid) {
-      name = cachedName;
-    } else {
-      try {
-        let res = await fetch('/api/users/me', { credentials: 'include' });
+      if (cacheValid) {
+          name = cachedName;
+      } else {
+          try {
+              const res = await fetch('/api/users/me', { credentials: 'include' });
 
-        if (res.status === 401) {
-          const refreshed = await tryRefresh();
-          if (refreshed) {
-            res = await fetch('/api/users/me', { credentials: 'include' });
-          }
-        }
-
-        if (res.ok) {
-          const json = await res.json().catch(() => ({}));
-          name = json.data?.name ?? '회원';
-
-          // 인증 성공 시 캐시 저장
-          sessionStorage.setItem(CACHE_KEY_NAME,     name);
-          sessionStorage.setItem(CACHE_KEY_LOGIN_AT, String(Date.now()));
-        }
-      } catch {
-        /* 네트워크 오류는 비로그인으로 처리 */
+              if (res.status === 401) {
+                  // → 비로그인 사용자의 불필요한 /api/auth/refresh 호출 제거
+                  const hadSession = !!sessionStorage.getItem(CACHE_KEY_LOGIN_AT);
+                  if (hadSession) {
+                      const refreshed = await tryRefresh();
+                      if (refreshed) {
+                          const retryRes = await fetch('/api/users/me', { credentials: 'include' });
+                          if (retryRes.ok) {
+                              const json = await retryRes.json().catch(() => ({}));
+                              name = json.data?.name ?? '회원';
+                              sessionStorage.setItem(CACHE_KEY_NAME, name);
+                              sessionStorage.setItem(CACHE_KEY_LOGIN_AT, String(Date.now()));
+                          }
+                      } else {
+                          // refresh도 실패 → 세션 캐시 정리
+                          sessionStorage.removeItem(CACHE_KEY_NAME);
+                          sessionStorage.removeItem(CACHE_KEY_LOGIN_AT);
+                      }
+                  }
+                  // hadSession이 false면 → 순수 비로그인, refresh 시도 안 함
+              } else if (res.ok) {
+                  const json = await res.json().catch(() => ({}));
+                  name = json.data?.name ?? '회원';
+                  sessionStorage.setItem(CACHE_KEY_NAME, name);
+                  sessionStorage.setItem(CACHE_KEY_LOGIN_AT, String(Date.now()));
+              }
+          } catch { /* 네트워크 오류 → 비로그인 처리 */ }
       }
-    }
 
-    const loggedIn = name !== null;
+      const loggedIn = name !== null;
 
-    if (IS_AUTH && loggedIn && REDIRECT_IF_LOGGED_IN.includes(path)) {
-      location.replace(HOME_URL);
-      return;
-    }
-
-    if (NEED_AUTH && !loggedIn) {
-      const next = encodeURIComponent(location.pathname + location.search);
-      location.replace(`${LOGIN_URL}?next=${next}`);
-      return;
-    }
-
-    renderNav(loggedIn, name);
+      if (IS_AUTH && loggedIn && REDIRECT_IF_LOGGED_IN.includes(path)) {
+          location.replace(HOME_URL);
+          return;
+      }
+      if (NEED_AUTH && !loggedIn) {
+          const next = encodeURIComponent(location.pathname + location.search);
+          location.replace(`${LOGIN_URL}?next=${next}`);
+          return;
+      }
+      renderNav(loggedIn, name);
   }
-
   /* 관리자 인증 확인
    * /api/admin/auth/me 전용 엔드포인트 사용
    * → 대시보드 API 변경·지연의 영향 차단

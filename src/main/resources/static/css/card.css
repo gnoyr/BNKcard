@@ -95,9 +95,9 @@ a {
 .card-hero-inner {
 	max-width: 1000px;
 	margin: 0 auto;
-	padding: 48px 32px;
+	padding: 32px 32px;
 	display: flex;
-	gap: 48px;
+	gap: 40px;
 	align-items: flex-start;
 }
 
@@ -112,7 +112,7 @@ a {
 
 .card-image-wrap {
 	width: 100%;
-	height: 340px;
+	height: 280px;
 	border-radius: 20px;
 	overflow: hidden;
 	position: relative;
@@ -135,6 +135,7 @@ a {
 	justify-content: center;
 	box-sizing: border-box;
 	padding: 8px; /* 카드가 테두리에 너무 붙지 않게 여백 */
+	background: linear-gradient(145deg, var(--teal-50), var(--teal-100));
 }
 
 .slider-slide img {
@@ -307,7 +308,7 @@ a {
 /* ② 상세 혜택 (원래대로 격자형 상시 펼침 구조 복원) */
 .benefit-section {
 	max-width: 1000px;
-	margin: 32px auto;
+	margin: 16px auto;
 	padding: 0 32px;
 }
 
@@ -466,7 +467,7 @@ a {
 	display: none;
 	height: calc(100vh - 60px - 60px);
 	overflow-y: auto;
-	padding: 20px;
+	padding: 24px 28px;
 }
 
 .tab-content.active {
@@ -612,9 +613,7 @@ a {
 
 /* ④ 공지사항 */
 .notice-section {
-	max-width: 1000px;
-	margin: 32px auto;
-	padding: 0 32px 48px;
+    display: none;
 }
 
 .notice-table {
@@ -778,4 +777,8 @@ footer strong {
 		width: 100%;
 		text-align: center;
 	}
+}
+
+#bnk-ai-chatbot {
+    bottom: 108px; /* sticky-bar 높이(~80px) + 여유 24px */
 }

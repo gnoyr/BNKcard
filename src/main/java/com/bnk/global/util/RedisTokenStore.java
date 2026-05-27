@@ -2,6 +2,7 @@ package com.bnk.global.util;
 
 import java.util.concurrent.TimeUnit;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -22,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 @Primary          // MemoryTokenStore 보다 우선 등록
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "spring.data.redis.enabled", havingValue = "true")
 public class RedisTokenStore implements TokenStore {
 
     private final StringRedisTemplate redisTemplate;

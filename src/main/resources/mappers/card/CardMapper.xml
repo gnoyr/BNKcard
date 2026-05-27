@@ -38,7 +38,6 @@
     </resultMap>
 
     <!-- ── 사용자 카드 목록 동적 검색 ─────────────────────── -->
-	<!-- ── 사용자 카드 목록 동적 검색 ─────────────────────── -->
 	<select id="findAll" resultMap="cardMap">
 	    SELECT DISTINCT c.*
 	    FROM CARDS c
@@ -77,16 +76,16 @@
 	      )
 	    </if>
 		<if test="categoryIds != null and categoryIds.size() &gt; 1">
-		  AND (
-		      SELECT COUNT(DISTINCT cb2.category_id)
-		      FROM   CARD_BENEFITS cb2
-		      WHERE  cb2.card_id    = c.card_id
-		        AND  cb2.visible_yn = 'Y'
-		        AND  cb2.category_id IN
-		      <foreach collection="categoryIds" item="cid" open="(" separator="," close=")">
-		          #{cid}
-		      </foreach>
-		  ) &gt;= #{categoryCount}
+			AND EXISTS (
+			SELECT 1 FROM CARD_BENEFITS cb2
+			WHERE cb2.card_id = c.card_id
+			AND cb2.visible_yn = 'Y'
+			AND cb2.category_id IN
+			<foreach collection="categoryIds" item="cid" open="("
+				separator="," close=")">
+				#{cid}
+			</foreach>
+			)
 		</if>
 	    <if test="minFee != null">
 	      AND c.annual_fee_domestic &gt;= #{minFee}
@@ -131,18 +130,18 @@
 	            AND  cb.category_id = #{categoryId}
 	            AND  cb.visible_yn  = 'Y'
 	      )
-	    </if>
-	    <if test="categoryIds != null and categoryIds.size() &gt; 1">
-		  AND (
-		      SELECT COUNT(DISTINCT cb2.category_id)
-		      FROM   CARD_BENEFITS cb2
-		      WHERE  cb2.card_id    = c.card_id
-		        AND  cb2.visible_yn = 'Y'
-		        AND  cb2.category_id IN
-		      <foreach collection="categoryIds" item="cid" open="(" separator="," close=")">
-		          #{cid}
-		      </foreach>
-		  ) &gt;= #{categoryCount}
+		</if>
+		<if test="categoryIds != null and categoryIds.size() &gt; 1">
+			AND EXISTS (
+			SELECT 1 FROM CARD_BENEFITS cb2
+			WHERE cb2.card_id = c.card_id
+			AND cb2.visible_yn = 'Y'
+			AND cb2.category_id IN
+			<foreach collection="categoryIds" item="cid" open="("
+				separator="," close=")">
+				#{cid}
+			</foreach>
+			)
 		</if>
 	    <if test="minFee != null">
 	      AND c.annual_fee_domestic &gt;= #{minFee}
