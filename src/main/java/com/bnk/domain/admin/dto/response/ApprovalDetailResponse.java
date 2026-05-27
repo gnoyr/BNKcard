@@ -6,6 +6,8 @@ import lombok.Getter;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.bnk.domain.card.dto.request.CardSnapshot;
+
 @Getter
 @Builder
 public class ApprovalDetailResponse {
@@ -20,6 +22,7 @@ public class ApprovalDetailResponse {
     private LocalDateTime requestedAt;
     private LocalDateTime completedAt;
 
+    private CardSnapshot snapshot;
     private List<LineItem> lines;
 
     @Getter

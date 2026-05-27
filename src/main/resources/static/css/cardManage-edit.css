@@ -1,0 +1,442 @@
+@charset "UTF-8";
+
+/* ============================================================
+   cardManage.css — 수정 화면
+   #page-edit-basic  #page-edit-benefit
+   #page-edit-image  #page-edit-content
+   ============================================================ */
+
+/* ── 수정 공통 헤더 버튼 (← 상세로) ── */
+[id^="page-edit"] > button:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  color: var(--gray-600);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--ease), border-color var(--ease);
+  margin-bottom: 4px;
+}
+[id^="page-edit"] > button:first-child:hover {
+  background: var(--teal-50);
+  border-color: var(--teal-400);
+  color: var(--teal-800);
+}
+
+/* ── h2 타이틀 ── */
+[id^="page-edit"] h2 {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--teal-800);
+  letter-spacing: -.3px;
+  margin: 14px 0 18px;
+}
+
+/* ── + 행 추가 버튼 (혜택/이미지/콘텐츠) ── */
+[id^="page-edit"] > button:nth-child(3) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: var(--white);
+  border: 1px solid var(--teal-400);
+  border-radius: var(--radius-sm);
+  color: var(--teal-600);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  margin-bottom: 14px;
+  transition: background var(--ease), color var(--ease);
+}
+[id^="page-edit"] > button:nth-child(3):hover {
+  background: var(--teal-600);
+  color: var(--white);
+}
+
+/* ============================================================
+   카드 기본정보 수정 — key-value 폼 테이블
+   ============================================================ */
+#page-edit-basic > table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--white);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: none !important;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 20px;
+}
+
+#page-edit-basic table th {
+  width: 150px;
+  padding: 11px 16px;
+  background: var(--gray-50);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--gray-600);
+  border: none !important;
+  border-bottom: 1px solid var(--gray-100) !important;
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+#page-edit-basic table td {
+  padding: 9px 16px;
+  border: none !important;
+  border-bottom: 1px solid var(--gray-100) !important;
+  vertical-align: middle;
+}
+
+#page-edit-basic table tr:last-child th,
+#page-edit-basic table tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* 수정 불가 input (readonly) */
+#page-edit-basic input[readonly] {
+  height: 34px;
+  padding: 0 12px;
+  background: var(--gray-100) !important;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--gray-400);
+  font-family: inherit;
+  cursor: not-allowed;
+}
+
+/* 수정 가능 input / select / textarea */
+#page-edit-basic input:not([readonly]),
+#page-edit-basic select,
+#page-edit-basic textarea {
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--gray-800);
+  background: var(--white);
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--ease), box-shadow var(--ease);
+}
+#page-edit-basic input:not([readonly]):focus,
+#page-edit-basic select:focus,
+#page-edit-basic textarea:focus {
+  border-color: var(--teal-400);
+  box-shadow: 0 0 0 3px rgba(58,175,196,.15);
+}
+#page-edit-basic textarea {
+  height: auto;
+  padding: 8px 12px;
+  resize: vertical;
+  min-height: 72px;
+}
+
+/* select 화살표 */
+#page-edit-basic select {
+  appearance: none;
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239BB4BB' stroke-width='1.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  cursor: pointer;
+}
+
+/* 비활성화 select */
+#page-edit-basic select:disabled {
+  background-color: var(--gray-100);
+  color: var(--gray-400);
+  cursor: not-allowed;
+}
+
+/* 라디오 버튼 그룹 */
+#page-edit-basic label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--gray-800);
+  cursor: pointer;
+  margin-right: 16px;
+}
+#page-edit-basic input[type="radio"] {
+  height: auto;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--teal-600);
+  cursor: pointer;
+}
+
+/* 수정 사유 input — 넓게 */
+#edit-changeSummary {
+  width: 400px !important;
+}
+
+/* ── 저장 / 취소 버튼 영역 ── */
+.edit-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* br 태그 대신 쓸 수 있도록 — 기존 br 숨김 */
+[id^="page-edit"] > br { display: none; }
+
+/* 저장 버튼 */
+[id^="page-edit"] > button[onclick*="submit"],
+[id^="page-edit"] > button[onclick*="Edit"] {
+  padding: 9px 24px;
+  background: var(--teal-600);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--ease), transform var(--ease);
+}
+[id^="page-edit"] > button[onclick*="submit"]:hover,
+[id^="page-edit"] > button[onclick*="Edit"]:hover {
+  background: var(--teal-800);
+  transform: translateY(-1px);
+}
+
+/* 취소 버튼 */
+[id^="page-edit"] > button[onclick*="Detail"],
+[id^="page-edit"] > button[onclick*="show"] {
+  padding: 9px 20px;
+  background: var(--white);
+  color: var(--gray-600);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--ease), border-color var(--ease);
+}
+[id^="page-edit"] > button[onclick*="Detail"]:hover,
+[id^="page-edit"] > button[onclick*="show"]:hover {
+  background: var(--gray-100);
+  border-color: var(--gray-400);
+}
+
+/* ============================================================
+   인라인 편집 테이블 (혜택 / 이미지 / 콘텐츠 수정)
+   — tbody에 행을 동적으로 추가하는 wide 테이블
+   ============================================================ */
+#page-edit-benefit > table,
+#page-edit-image   > table,
+#page-edit-content > table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--white);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: none !important;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 18px;
+  display: block;          /* 가로 스크롤 허용 */
+  overflow-x: auto;
+}
+
+/* 헤더 */
+#benefit-edit-tbody thead tr,
+#image-edit-tbody   thead tr,
+#content-edit-tbody thead tr,
+#page-edit-benefit table thead tr,
+#page-edit-image   table thead tr,
+#page-edit-content table thead tr {
+  background: var(--teal-800);
+}
+
+#page-edit-benefit table thead th,
+#page-edit-image   table thead th,
+#page-edit-content table thead th {
+  padding: 10px 12px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--white);
+  border: none !important;
+  white-space: nowrap;
+  text-align: left;
+}
+
+/* tbody 행 */
+#page-edit-benefit table tbody tr,
+#page-edit-image   table tbody tr,
+#page-edit-content table tbody tr {
+  border-bottom: 1px solid var(--gray-100);
+}
+#page-edit-benefit table tbody tr:last-child,
+#page-edit-image   table tbody tr:last-child,
+#page-edit-content table tbody tr:last-child {
+  border-bottom: none;
+}
+#page-edit-benefit table tbody tr:hover,
+#page-edit-image   table tbody tr:hover,
+#page-edit-content table tbody tr:hover {
+  background: var(--teal-50);
+}
+
+#page-edit-benefit table tbody td,
+#page-edit-image   table tbody td,
+#page-edit-content table tbody td {
+  padding: 8px 10px;
+  border: none !important;
+  vertical-align: middle;
+}
+
+/* 인라인 input */
+#page-edit-benefit table input,
+#page-edit-image   table input,
+#page-edit-content table input {
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--gray-800);
+  background: var(--white);
+  outline: none;
+  transition: border-color var(--ease), box-shadow var(--ease);
+}
+#page-edit-benefit table input:focus,
+#page-edit-image   table input:focus,
+#page-edit-content table input:focus {
+  border-color: var(--teal-400);
+  box-shadow: 0 0 0 2px rgba(58,175,196,.12);
+}
+
+/* readonly input (MIME, 가로/세로 등) */
+#page-edit-image table input[readonly] {
+  background: var(--gray-100);
+  color: var(--gray-400);
+  cursor: not-allowed;
+}
+
+/* 인라인 select */
+#page-edit-benefit table select,
+#page-edit-image   table select,
+#page-edit-content table select {
+  height: 30px;
+  padding: 0 22px 0 8px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--gray-800);
+  background: var(--white);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239BB4BB' stroke-width='1.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  outline: none;
+  cursor: pointer;
+}
+
+/* 비활성화 input (혜택 유형별 비활성) */
+#page-edit-benefit table input:disabled {
+  background: var(--gray-100);
+  color: var(--gray-400);
+  cursor: not-allowed;
+  border-color: var(--gray-200);
+}
+
+/* textarea (콘텐츠 HTML) */
+#page-edit-content table textarea {
+  padding: 6px 8px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--gray-800);
+  resize: vertical;
+  outline: none;
+  transition: border-color var(--ease);
+}
+#page-edit-content table textarea:focus {
+  border-color: var(--teal-400);
+  box-shadow: 0 0 0 2px rgba(58,175,196,.12);
+}
+
+/* 행 삭제 버튼 */
+#page-edit-benefit table button,
+#page-edit-image   table button,
+#page-edit-content table button {
+  height: 28px;
+  padding: 0 10px;
+  background: var(--white);
+  color: #C0392B;
+  border: 1px solid #FADBD8;
+  border-radius: var(--radius-sm);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--ease), color var(--ease);
+  white-space: nowrap;
+}
+#page-edit-benefit table button:hover,
+#page-edit-image   table button:hover,
+#page-edit-content table button:hover {
+  background: #FADBD8;
+}
+
+/* 미리보기 이미지 (이미지 수정 tbody) */
+#image-edit-tbody img {
+  height: 40px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-200);
+  object-fit: cover;
+  vertical-align: middle;
+}
+
+/* ── 수정 사유 영역 ── */
+.edit-reason-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+/* 수정 사유 label */
+[id^="page-edit"] > label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-600);
+  white-space: nowrap;
+}
+
+/* 수정 사유 input */
+#benefit-changeSummary,
+#image-changeSummary,
+#content-changeSummary {
+  height: 36px;
+  width: 400px !important;
+  padding: 0 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--gray-800);
+  outline: none;
+  transition: border-color var(--ease), box-shadow var(--ease);
+}
+#benefit-changeSummary:focus,
+#image-changeSummary:focus,
+#content-changeSummary:focus {
+  border-color: var(--teal-600);
+  box-shadow: 0 0 0 3px rgba(0,103,127,.12);
+}
