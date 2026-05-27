@@ -113,6 +113,8 @@ public class AdminCardService {
                     .map(b -> toBenefitEntity(b, card.getCardId()))
                     .collect(Collectors.toList());
             cardBenefitMapper.insertBenefits(benefits);
+
+            benefits = cardBenefitMapper.findByCardId(card.getCardId());
         }
 
         // 3. CARD_IMAGES INSERT
