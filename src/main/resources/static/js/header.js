@@ -236,10 +236,6 @@
 
     nav.innerHTML = `
       <span class="header-nav__username">${esc(name)}님</span>
-      <a href="/admin/index.html">대시보드</a>
-      <a href="/admin/cardManage.html">카드 관리</a>
-      <a href="/admin/userManage.html">회원 관리</a>
-      <a href="/admin/requestApproval.html">결재 처리</a>
       <span class="header-nav__timer" id="hdrTokenTimer" title="Access Token 남은 시간">--:--:--</span>
       <button class="header-nav__btn" id="hdrLogout">로그아웃</button>`;
 
