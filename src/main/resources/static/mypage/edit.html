@@ -6,6 +6,7 @@
 <title>내 정보 수정 | 부산은행</title>
 <link rel="stylesheet" href="/css/mypage.css" />
 <link rel="stylesheet" href="/css/components.css" />
+<link rel="stylesheet" href="/css/teal-theme.css" />
 </head>
 <body>
 
@@ -25,7 +26,6 @@
 
 		<form id="editForm" novalidate>
 
-			<!-- 기본 정보 -->
 			<div class="card">
 				<div class="card__head">기본 정보</div>
 
@@ -50,7 +50,6 @@
 				</div>
 			</div>
 
-			<!-- 추가 정보 -->
 			<div class="card">
 				<div class="card__head">추가 정보</div>
 
@@ -76,33 +75,12 @@
 						<option value="LV4">LV4 (1억 이상)</option>
 					</select>
 				</div>
-			</div>
 
-			<!-- 알림 설정 -->
-			<div class="card">
-				<div class="card__head">알림 설정</div>
-
-				<!-- toggle-track (CSS와 일치하도록 수정) -->
-				<div class="toggle-row">
-					<div>
-						<div class="toggle-row__label">푸시 알림</div>
-						<div class="toggle-row__sub">앱 푸시 알림 수신 여부</div>
-					</div>
-					<label class="toggle">
-						<input type="checkbox" id="pushEnabled" />
-						<span class="toggle-track"></span>
-					</label>
-				</div>
-
-				<div class="toggle-row">
-					<div>
-						<div class="toggle-row__label">마케팅 수신 동의</div>
-						<div class="toggle-row__sub">이벤트·혜택 정보 수신 여부</div>
-					</div>
-					<label class="toggle">
-						<input type="checkbox" id="marketingAgree" />
-						<span class="toggle-track"></span>
-					</label>
+				<div class="form-group">
+					<label class="form-label" for="creditScore">신용점수</label>
+					<input class="form-control" type="number" id="creditScore"
+						placeholder="300~900" min="300" max="900" />
+					<span class="form-error" id="creditScore-err"></span>
 				</div>
 			</div>
 
@@ -112,28 +90,6 @@
 			</div>
 
 		</form>
-	</div>
-
-	<!-- 비밀번호 확인 모달 -->
-	<div class="modal-overlay" id="pwConfirmModal">
-		<div class="modal">
-			<div class="modal__title">비밀번호 확인</div>
-			<div class="modal__body">
-				정보를 변경하려면 현재 비밀번호를 입력해주세요.
-			</div>
-			<div class="form-group" style="margin-bottom:0">
-				<div class="pw-field">
-					<input class="form-control" type="password" id="confirmPwInput"
-						placeholder="현재 비밀번호" autocomplete="current-password" />
-					<button type="button" class="pw-toggle" data-target="confirmPwInput">표시</button>
-				</div>
-				<span class="form-error" id="confirmPwErr"></span>
-			</div>
-			<div class="modal__actions" style="margin-top:16px">
-				<button class="btn btn-outline" id="modalCancelBtn">취소</button>
-				<button class="btn btn-primary" id="modalConfirmBtn">확인</button>
-			</div>
-		</div>
 	</div>
 
 	<div id="toast-container"></div>
