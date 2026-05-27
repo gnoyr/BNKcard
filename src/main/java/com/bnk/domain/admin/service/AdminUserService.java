@@ -182,10 +182,24 @@ public class AdminUserService {
                 .maskedEmail(MaskingUtil.maskEmail(user.getEmail()))
                 .maskedPhone(MaskingUtil.maskPhone(user.getPhone()))
                 .birthDate(user.getBirthDate())
+                .job(user.getJob())                                          // 추가
+                .incomeLevelCode(user.getIncomeLevelCode())                  // 추가
                 .statusCode(user.getStatusCode())
                 .creditScore(user.getCreditScore())
+                .loginFailCount(user.getLoginFailCount())                    // 추가
+                .lockedUntil(user.getLockedUntil())                          // 추가
                 .lastLoginAt(user.getLastLoginAt())
+                .lastPasswordChangedAt(user.getLastPasswordChangedAt())      // 추가
+                .isEmailVerified(user.getIsEmailVerified())                  // 추가
+                .isPhoneVerified(user.getIsPhoneVerified())                  // 추가
+                .pushEnabled(user.getPushEnabled())                          // 추가
+                .marketingAgree(user.getMarketingAgree())                    // 추가
+                .privacyAgree(user.getPrivacyAgree())                        // 추가
+                .dormantAt(user.getDormantAt())                              // 추가
+                .withdrawnAt(user.getWithdrawnAt())                          // 추가
                 .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())                              // 추가
+                .deletedYn(user.getDeletedYn())                             // 추가
                 .loginHistories(loginHistories)
                 .agreements(agreements)
                 .applications(applications)
@@ -207,5 +221,22 @@ public class AdminUserService {
                 "ADMIN", adminId, "UNLOCK_USER",
                 "USER", userId, "계정 잠금 강제 해제", null);
         log.info("[계정잠금해제] adminId={} → userId={}", adminId, userId);
+    }
+    
+    
+    // ================================================================
+    // 회원 상태 변경
+    // ================================================================    
+    @Transactional
+    public void changeUserStatus(Long userId, String statusCode, Long adminId) {
+        int affected = adminUserMapper.updateUserStatus(userId, statusCode);
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND,
+                    "상태 변경 대상 유저를 찾을 수 없습니다. userId=" + userId);
+        }
+        adminUserMapper.insertAuditLog(
+                "ADMIN", adminId, "USER_STATUS_CHANGE",
+                "USER", userId, "회원 상태 변경: " + statusCode, null);
+        log.info("[회원상태변경] adminId={} → userId={}, status={}", adminId, userId, statusCode);
     }
 }

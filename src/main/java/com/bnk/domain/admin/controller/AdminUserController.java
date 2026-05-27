@@ -8,6 +8,9 @@ import com.bnk.global.auth.CustomAdminDetails;
 import com.bnk.global.response.ApiResponse;
 import com.bnk.global.response.PageResponse;
 import lombok.RequiredArgsConstructor;
+
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -62,6 +65,15 @@ public class AdminUserController {
             @PathVariable Long userId,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         adminUserService.unlockUser(userId, ad.getAdminId());
+        return ApiResponse.toOk(null);
+    }
+    
+    @PatchMapping("/users/{userId}/status")
+    public ResponseEntity<ApiResponse<Void>> changeUserStatus(
+            @PathVariable Long userId,
+            @RequestBody Map<String, String> body,
+            @AuthenticationPrincipal CustomAdminDetails ad) {
+        adminUserService.changeUserStatus(userId, body.get("statusCode"), ad.getAdminId());
         return ApiResponse.toOk(null);
     }
 }

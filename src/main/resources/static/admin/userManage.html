@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>회원 관리</title>
+  <title>회원 관리 | BNK 관리자</title>
 </head>
 <body>
 
@@ -98,7 +98,6 @@
       <tr>
         <th>로그인 일시</th>
         <th>결과</th>
-        <th>실패 사유</th>
         <th>IP</th>
       </tr>
     </thead>
@@ -263,17 +262,34 @@ function buildQuery(page) {
   }
 
   function renderDetailInfo(u) {
-    document.getElementById('detail-info').innerHTML = `
-      <tr><th>회원 ID</th><td>${u.userId}</td></tr>
-      <tr><th>이름</th><td>${u.name ?? '-'}</td></tr>
-      <tr><th>이메일</th><td>${u.maskedEmail ?? '-'}</td></tr>
-      <tr><th>전화번호</th><td>${u.maskedPhone ?? '-'}</td></tr>
-      <tr><th>생년월일</th><td>${u.birthDate ?? '-'}</td></tr>
-      <tr><th>상태</th><td>${u.statusCode ?? '-'}</td></tr>
-      <tr><th>신용점수</th><td>${u.creditScore ?? '-'}</td></tr>
-      <tr><th>최근 로그인</th><td>${fmt(u.lastLoginAt)}</td></tr>
-      <tr><th>가입일</th><td>${fmt(u.createdAt)}</td></tr>
-    `;
+	  const yn = v => v === 'Y' ? '✅ 예' : v === 'N' ? '❌ 아니오' : '-';
+	  const fmt2 = v => v ? new Date(v).toLocaleString('ko-KR') : '-';
+	
+	  document.getElementById('detail-info').innerHTML = `
+	    <tr><th>회원 ID</th><td>${u.userId}</td></tr>
+	    <tr><th>이름</th><td>${u.name ?? '-'}</td></tr>
+	    <tr><th>이메일</th><td>${u.maskedEmail ?? '-'}</td></tr>
+	    <tr><th>전화번호</th><td>${u.maskedPhone ?? '-'}</td></tr>
+	    <tr><th>생년월일</th><td>${u.birthDate ?? '-'}</td></tr>
+	    <tr><th>직업</th><td>${u.job ?? '-'}</td></tr>
+	    <tr><th>소득수준</th><td>${u.incomeLevelCode ?? '-'}</td></tr>
+	    <tr><th>신용점수</th><td>${u.creditScore ?? '-'}</td></tr>
+	    <tr><th>상태</th><td>${u.statusCode ?? '-'}</td></tr>
+	    <tr><th>로그인 실패 횟수</th><td>${u.loginFailCount ?? '0'}</td></tr>
+	    <tr><th>계정 잠금 해제 시각</th><td>${fmt2(u.lockedUntil)}</td></tr>
+	    <tr><th>최근 로그인</th><td>${fmt2(u.lastLoginAt)}</td></tr>
+	    <tr><th>비밀번호 최근 변경</th><td>${fmt2(u.lastPasswordChangedAt)}</td></tr>
+	    <tr><th>이메일 인증</th><td>${yn(u.isEmailVerified)}</td></tr>
+	    <tr><th>전화 인증</th><td>${yn(u.isPhoneVerified)}</td></tr>
+	    <tr><th>푸시 알림</th><td>${yn(u.pushEnabled)}</td></tr>
+	    <tr><th>마케팅 수신 동의</th><td>${yn(u.marketingAgree)}</td></tr>
+	    <tr><th>개인정보 처리 동의</th><td>${yn(u.privacyAgree)}</td></tr>
+	    <tr><th>휴면 전환 일시</th><td>${fmt2(u.dormantAt)}</td></tr>
+	    <tr><th>탈퇴 처리 일시</th><td>${fmt2(u.withdrawnAt)}</td></tr>
+	    <tr><th>가입일</th><td>${fmt2(u.createdAt)}</td></tr>
+	    <tr><th>최종 수정일</th><td>${fmt2(u.updatedAt)}</td></tr>
+	    <tr><th>삭제 여부</th><td>${u.deletedYn ?? '-'}</td></tr>
+	  `;
   }
 
   function renderLoginHistories(list) {
@@ -286,7 +302,6 @@ function buildQuery(page) {
       <tr>
         <td>${fmt(h.loginAt)}</td>
         <td>${h.loginResultCode ?? '-'}</td>
-        <td>${h.failReason ?? '-'}</td>
         <td>${h.ipAddress ?? '-'}</td>
       </tr>
     `).join('');
