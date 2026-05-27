@@ -438,6 +438,12 @@ button {
 	border-bottom: 2px solid #e0e7f5;
 	margin-bottom: 20px;
 	overflow-x: auto;
+	scrollbar-width: none;
+  	-ms-overflow-style: none;
+}
+
+.type-tab-bar::-webkit-scrollbar {
+  display: none;
 }
 
 .type-tab {

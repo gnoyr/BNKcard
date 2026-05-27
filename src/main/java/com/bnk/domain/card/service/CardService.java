@@ -306,10 +306,24 @@ public class CardService {
 
         List<Long> cardIds = request.getCardIds();
 
-        // 혜택 한 번에 조회 후 그룹핑
+        // ① 혜택 한 번에 조회 후 그룹핑
         List<CardBenefit> allBenefits = cardBenefitMapper.findByCardIds(cardIds);
         Map<Long, List<CardBenefit>> benefitMap = allBenefits.stream()
                 .collect(Collectors.groupingBy(CardBenefit::getCardId));
+
+        // ② 썸네일 이미지 한 번에 조회 (THUMBNAIL → 없으면 FRONT 폴백)
+        List<CardImage> thumbnails = cardImageMapper.findByCardIdsAndType(cardIds, "THUMBNAIL");
+        Map<Long, String> thumbnailMap = new HashMap<>(thumbnails.stream()
+                .collect(Collectors.toMap(
+                        CardImage::getCardId, CardImage::getImageUrl, (e, r) -> e)));
+
+        List<Long> noThumbnailIds = cardIds.stream()
+                .filter(id -> !thumbnailMap.containsKey(id))
+                .collect(Collectors.toList());
+        if (!noThumbnailIds.isEmpty()) {
+            cardImageMapper.findByCardIdsAndType(noThumbnailIds, "FRONT")
+                    .forEach(img -> thumbnailMap.putIfAbsent(img.getCardId(), img.getImageUrl()));
+        }
 
         return cardIds.stream()
                 .map(cardId -> {
@@ -337,14 +351,16 @@ public class CardService {
                             .cardId(card.getCardId())
                             .cardName(card.getCardName())
                             .companyName(card.getCompanyName())
+                            .cardType(card.getCardType())
                             .annualFeeDomestic(card.getAnnualFeeDomestic())
+                            .annualFeeOverseas(card.getAnnualFeeOverseas())
+                            .thumbnailUrl(thumbnailMap.get(cardId))
                             .benefits(benefitDtos)
                             .build();
                 })
                 .filter(r -> r != null)
                 .collect(Collectors.toList());
     }
-
     // ────────────────────────────────────────────────────────────────
     // 혜택 시뮬레이션
     // MIN(monthlyAmount * rate, monthlyLimitAmount)
