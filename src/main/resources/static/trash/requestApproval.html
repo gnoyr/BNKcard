@@ -2,7 +2,10 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>결재 신청서 목록</title>
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/teal-theme.css">
 </head>
 <body>
 
@@ -70,7 +73,6 @@
         tbody.innerHTML = `<tr><td colspan="5">결재 신청 내역이 없습니다.</td></tr>`;
         return;
       }
-      
       tbody.innerHTML = items.map((item, index) => `
       <tr data-id="${item.approvalId}" style="cursor:pointer;">
         <td>${index + 1}</td>
@@ -83,70 +85,52 @@
 
       tbody.querySelectorAll('tr[data-id]').forEach(row => {
         row.addEventListener('click', () => {
-          location.href = `/admin/approvals/detail.html?id=${row.dataset.id}`;
+          location.href = `/admin/approvalDetail.html?approvalId=${row.dataset.id}`;
         });
       });
     }
 
     function renderPagination(totalCount) {
-   	  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
-   	  const el = document.getElementById('pagination');
+      const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+      const el = document.getElementById('pagination');
+      if (totalPages <= 1) { el.innerHTML = ''; return; }
+      const startPage = Math.max(0, currentPage - 2);
+      const endPage   = Math.min(totalPages - 1, startPage + 4);
+      let html = `<button data-page="${currentPage - 1}" ${currentPage === 0 ? 'disabled' : ''}>&lsaquo;</button> `;
+      for (let i = startPage; i <= endPage; i++) {
+        html += `<button data-page="${i}" ${i === currentPage ? 'disabled style="font-weight:bold"' : ''}>${i + 1}</button> `;
+      }
+      html += `<button data-page="${currentPage + 1}" ${currentPage >= totalPages - 1 ? 'disabled' : ''}>&rsaquo;</button>`;
+      el.innerHTML = html;
+      el.querySelectorAll('button[data-page]').forEach(btn => {
+        btn.addEventListener('click', () => loadApprovals(Number(btn.dataset.page)));
+      });
+    }
 
-   	  if (totalPages <= 1) { el.innerHTML = ''; return; }
-
-   	  const startPage = Math.max(0, currentPage - 2);
-   	  const endPage   = Math.min(totalPages - 1, startPage + 4);
-
-   	  let html = `<button data-page="${currentPage - 1}"
-   	                ${currentPage === 0 ? 'disabled' : ''}>&lsaquo;</button> `;
-
-   	  for (let i = startPage; i <= endPage; i++) {
-   	    html += `<button data-page="${i}"
-   	               ${i === currentPage ? 'disabled' : ''}>${i + 1}</button> `;
-   	  }
-
-   	  html += `<button data-page="${currentPage + 1}"
-   	             ${currentPage === totalPages - 1 ? 'disabled' : ''}>&rsaquo;</button>`;
-
-   	  el.innerHTML = html;
-   	  el.querySelectorAll('button[data-page]:not([disabled])').forEach(btn => {
-   	    btn.addEventListener('click', () => load(Number(btn.dataset.page)));
-   	  });
-   	}
-
-    async function fetchApprovals(page) {
+    async function loadApprovals(page = 0) {
+      currentPage = page;
       const status = document.getElementById('filter-status').value;
       const type   = document.getElementById('filter-type').value;
-      const params = new URLSearchParams({ page, size: PAGE_SIZE });
-      if (status) params.set('statusCode', status);
-      if (type)   params.set('requestTypeCode', type);
+      let url = `/api/admin/approvals?page=${page}&size=${PAGE_SIZE}`;
+      if (status) url += '&statusCode=' + status;
+      if (type)   url += '&requestTypeCode=' + type;
 
-      const res  = await fetch(`/api/admin/approvals?${params}`, { credentials: 'include' });
-      if (!res.ok) throw new Error(res.status);
-      const json = await res.json();
-      return json.data; // PageResponse
-    }
-    
-    async function load(page) {
-      currentPage = page;
-      document.getElementById('table-body').innerHTML =
-        `<tr><td colspan="5">불러오는 중...</td></tr>`;
       try {
-        const data = await fetchApprovals(page);
-        document.getElementById('total-count').textContent = `총 ${data.totalCount ?? 0}건`;
-        renderTable(data.content);
-        renderPagination(data.totalCount);
+        const res = await fetch(url, { credentials: 'include' });
+        if (res.status === 401) { location.href = '/auth/admin-login.html'; return; }
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.data) { renderTable([]); return; }
+        const { content, totalCount } = data.data;
+        document.getElementById('total-count').textContent = `총 ${totalCount ?? 0}건`;
+        renderTable(content ?? []);
+        renderPagination(totalCount ?? 0);
       } catch (e) {
-        document.getElementById('table-body').innerHTML =
-          `<tr><td colspan="5">데이터를 불러오지 못했습니다. (${e.message})</td></tr>`;
+        document.getElementById('table-body').innerHTML = `<tr><td colspan="5">오류: ${e.message}</td></tr>`;
       }
     }
 
-    document.getElementById('btn-search').addEventListener('click', () => load(0));
-
-    // 페이지 진입 시 바로 전체 조회
-    load(0);
+    document.getElementById('btn-search').addEventListener('click', () => loadApprovals(0));
+    loadApprovals();
   </script>
-
 </body>
 </html>
