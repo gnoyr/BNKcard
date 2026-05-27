@@ -29,9 +29,10 @@ public class AiConfig {
         return chatModel;
     }
 	
-	@Bean
-    @Primary
-    EmbeddingModel primaryEmbeddingModel(@Qualifier("ollamaEmbeddingModel") EmbeddingModel embeddingModel) {
+
+	//@Bean
+    //@Primary	
+    public EmbeddingModel primaryEmbeddingModel(@Qualifier("ollamaEmbeddingModel") EmbeddingModel embeddingModel) {
         return embeddingModel;
     }
 }
