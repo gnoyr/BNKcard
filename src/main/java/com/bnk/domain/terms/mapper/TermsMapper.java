@@ -55,5 +55,9 @@ public interface TermsMapper {
     /** TERMS_MASTERS 전체 목록 */
     List<TermsMaster> findAllMasters();
     
+ // TermsMapper.java에 추가
+    /** 동일 terms_master_id의 기존 PUBLISHED 약관을 SUPERSEDED로 변경 (자신 제외) */
+    int supersedePreviousPublished(@Param("termsMasterId") Long termsMasterId,
+                                    @Param("currentTermsId") Long currentTermsId);
    
 }
