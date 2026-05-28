@@ -1892,42 +1892,54 @@
       r.json.data.map(m => `<option value="${m.termsMasterId}">[${m.termsType}] ${m.title}</option>`).join('');
   }
 
+//수정 후
   async function submitTermsCreate() {
-    const masterId  = document.getElementById('ct-termsMasterId').value;
-    const version   = document.getElementById('ct-version').value.trim();
-    const effFrom   = document.getElementById('ct-effectiveFrom').value;
-    const required  = document.getElementById('ct-requiredYn').value;
-    const reconsent = document.getElementById('ct-reconsentRequiredYn').value;
-    const content   = document.getElementById('ct-contentHtml').value;
-    const summary   = document.getElementById('ct-changeSummary').value;
-    const pdfInput  = document.getElementById('ct-pdfFile');
-    const msg       = document.getElementById('ct-msg');
-    if (!masterId) { showToast('약관 마스터를 선택하세요.', 'error'); return; }
-    if (!version)  { showToast('버전을 입력하세요.', 'error'); return; }
-    if (!effFrom)  { showToast('시행일을 입력하세요.', 'error'); return; }
-    if (!pdfInput.files.length) { showToast('PDF 파일을 선택하세요.', 'error'); return; }
+      const masterId  = document.getElementById('ct-termsMasterId').value;
+      const version   = document.getElementById('ct-version').value.trim();
+      const effFrom   = document.getElementById('ct-effectiveFrom').value;
+      const required  = document.getElementById('ct-requiredYn').value;
+      const reconsent = document.getElementById('ct-reconsentRequiredYn').value;
+      const content   = document.getElementById('ct-contentHtml').value;
+      const summary   = document.getElementById('ct-changeSummary').value;
+      const pdfInput  = document.getElementById('ct-pdfFile');
 
-    const formData = new FormData();
-    formData.append('termsMasterId',        masterId);
-    formData.append('version',              version);
-    formData.append('effectiveFrom',        effFrom);
-    formData.append('requiredYn',           required);
-    formData.append('reconsentRequiredYn',  reconsent);
-    formData.append('contentHtml',          content);
-    formData.append('changeSummary',        summary);
-    formData.append('file',                 pdfInput.files[0]);
+      if (!masterId) { showToast('약관 마스터를 선택하세요.', 'error'); return; }
+      if (!version)  { showToast('버전을 입력하세요.', 'error'); return; }
+      if (!effFrom)  { showToast('시행일을 입력하세요.', 'error'); return; }
+      if (!pdfInput.files.length) { showToast('PDF 파일을 선택하세요.', 'error'); return; }
 
-    const r = await adminApiMultipart('POST', '/api/admin/terms', formData);
-    if (!r.ok) {
-      const errMsg = extractMsg(r.json, `서버 오류 (${r.status ?? ''})`);
-      msg.innerHTML = `<span style="color:red">❌ 등록 실패: ${errMsg}</span>`;
-      showToast('등록 실패: ' + errMsg, 'error');
-      return;
-    }
-    msg.innerHTML = `<span style="color:green"><b>✅ 약관이 DRAFT 상태로 등록되었습니다.</b></span>`;
-    showToast('약관 등록 신청이 완료되었습니다.', 'success');
-    await loadTerms(0);
-    setTimeout(() => switchMenu('terms', null), 1500);
+      // request 파트를 JSON Blob으로 생성
+      const requestBlob = new Blob([JSON.stringify({
+          termsMasterId:       masterId,
+          version:             version,
+          effectiveFrom:       effFrom,
+          requiredYn:          required,
+          reconsentRequiredYn: reconsent,
+          contentHtml:         content,
+          changeSummary:       summary
+      })], { type: 'application/json' });
+
+      const formData = new FormData();
+      formData.append('request', requestBlob);          // ← 'request' 파트명 일치
+      formData.append('pdfFile', pdfInput.files[0]);    // ← 'pdfFile' 파트명 일치
+
+      const r = await adminApiMultipart('POST', '/api/admin/terms', formData);
+      if (!r.ok) {
+          showToast('등록 실패: ' + extractMsg(r.json, `오류 ${r.status ?? ''}`), 'error');
+          return;
+      }
+
+      const data = r.json?.data ?? {};
+      showToast(
+          `✅ 약관 등록 완료!\n결재 ID: ${data.approvalId ?? '-'}\n약관 ID: ${data.termsId ?? '-'}\n결재 승인 후 게시됩니다.`,
+          'success'
+      );
+      document.getElementById('ct-msg').innerHTML =
+          `<b style="color:green">등록 완료 — 결재 ID: ${data.approvalId ?? '-'}</b><br>
+           <a href="#" onclick="showApprovalList()">결재 목록 바로가기 →</a>`;
+
+      // 약관 목록으로 이동
+      setTimeout(() => showTermsList(), 2000);
   }
 
   // ================================================================

@@ -8,14 +8,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.bnk.domain.admin.mapper.ApprovalMapper;
+import com.bnk.domain.admin.model.ApprovalLine;
+import com.bnk.domain.admin.model.ApprovalRequest;
 import com.bnk.domain.terms.dto.request.TermsCreateRequest;
 import com.bnk.domain.terms.dto.request.TermsStatusRequest;
 import com.bnk.domain.terms.dto.response.TermsAdminResponse;
+import com.bnk.domain.terms.dto.response.TermsFileResponse;
 import com.bnk.domain.terms.dto.response.TermsMasterResponse;
 import com.bnk.domain.terms.mapper.TermsMapper;
 import com.bnk.domain.terms.model.Terms;
 import com.bnk.domain.terms.model.TermsFile;
-import com.bnk.domain.terms.model.TermsMaster;
 import com.bnk.domain.terms.service.PdfConvertService;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
@@ -25,6 +28,7 @@ import com.bnk.global.util.ObjectStorageService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -34,223 +38,74 @@ public class AdminTermsService {
     private final PdfConvertService    pdfConvertService;
     private final FileStorageService   fileStorageService;
     private final ObjectStorageService objectStorageService;
+    private final ApprovalMapper       approvalMapper;   // ← 추가
 
-    /**
-     * B-11 약관 신규 버전 등록 + PDF 변환 (RQ-B11, B-13).
-     * Object Storage에 PDF/JPG 업로드 → Public URL DB 저장 (만료 없음).
-     */
+    // ══════════════════════════════════════════════════════════════════
+    // 약관 신규 등록 + 결재 신청 (수정 후)
+    // ══════════════════════════════════════════════════════════════════
     @Transactional
-    public void registerTermsWithPdf(TermsCreateRequest request, MultipartFile pdfFile) throws IOException {
+    public java.util.Map<String, Long> registerTermsWithApproval(
+            TermsCreateRequest request,
+            MultipartFile pdfFile,
+            Long adminId) throws IOException {
 
-        // ── 1. TERMS INSERT (status = DRAFT) ──────────────────────────────
+        // ── 1. TERMS INSERT (status = DRAFT) ──────────────────────────
         Terms terms = Terms.builder()
                 .termsMasterId(request.getTermsMasterId())
                 .version(request.getVersion())
                 .contentHtml(request.getContentHtml())
                 .requiredYn(request.getRequiredYn())
+                .reconsentRequiredYn(request.getReconsentRequiredYn())
                 .effectiveFrom(request.getEffectiveFrom())
                 .build();
-        termsMapper.insertTerms(terms);
+        termsMapper.insertTerms(terms);   // termsId 채번 완료
 
-        // ── 2. PDF 메타데이터 추출 (로컬 저장 없음) ───────────────────────
-        UploadResult pdfMeta = fileStorageService.extractMeta(pdfFile, "terms");
+        log.info("[약관등록] TERMS INSERT 완료: termsId={}, status=DRAFT", terms.getTermsId());
 
-        // ── 3. pdfFile.getBytes()를 한 번만 호출해서 재사용 ───────────────
-        // 기존: upload()에서 1번, convertPdfToImageBytes() 내부에서 InputStream으로 1번
-        // 수정: 여기서 1번만 읽고 upload에 넘긴 뒤, convertPdfToImageBytes는 InputStream 사용
-        byte[] pdfBytes = pdfFile.getBytes();
+        // ── 2. PDF/JPG 파일 업로드 ────────────────────────────────────
+        uploadTermsFiles(terms.getTermsId(), pdfFile);
 
-        // ── 4. Object Storage에 PDF 원본 업로드 ───────────────────────────
-        objectStorageService.upload(
-                pdfMeta.getObjectName(),   // "terms/UUID.pdf"
-                pdfBytes,
-                pdfMeta.getMimeType()      // "application/pdf"
-        );
+        // ── 3. TERMS_STATUS_HISTORY INSERT (DRAFT 최초 이력) ──────────
+        termsMapper.insertStatusHistory(
+                terms.getTermsId(), null, "DRAFT", adminId, "약관 신규 등록");
 
-        // ── 5. Public URL 생성 (만료 없음) ────────────────────────────────
-        // 변경 전: createDownloadUrl() → 24시간 만료 PAR URL
-        // 변경 후: getPublicUrl()     → 영구 Public URL (버킷 Public 설정 필요)
-        String pdfUrl = objectStorageService.getPublicUrl(pdfMeta.getObjectName());
-
-        // ── 6. TERMS_FILES INSERT (PDF) ───────────────────────────────────
-        termsMapper.insertTermsFile(TermsFile.builder()
-                .termsId(terms.getTermsId())
-                .fileType("PDF")
-                .filePath(pdfUrl)                       // ← 영구 Public URL
-                .originalName(pdfMeta.getOriginalName())
-                .storedName(pdfMeta.getStoredName())
-                .fileExtension(pdfMeta.getFileExtension())
-                .fileSize(pdfMeta.getFileSize())
-                .mimeType(pdfMeta.getMimeType())
-                .isPrimary("Y")
-                .build());
-
-        // ── 7. PDF → JPG 변환 (메모리 기반, InputStream 사용) ─────────────
-        // PdfConvertService 내부에서 pdfFile.getInputStream()으로 읽으므로
-        // 위의 pdfFile.getBytes()와 중복 로드 없이 동작
-        List<byte[]> imageBytesList = pdfConvertService.convertPdfToImageBytes(pdfFile);
-
-        // ── 8. 페이지별 JPG 업로드 + TERMS_FILES INSERT ───────────────────
-        String baseName = pdfMeta.getStoredName()
-                .substring(0, pdfMeta.getStoredName().lastIndexOf("."));
-        // baseName = "UUID" (확장자 제거)
-
-        for (int i = 0; i < imageBytesList.size(); i++) {
-            String imageStoredName = baseName + "_page" + (i + 1) + ".jpg";
-            String imageObjectName = "terms/" + imageStoredName;
-
-            // JPG Object Storage 업로드
-            objectStorageService.upload(
-                    imageObjectName,
-                    imageBytesList.get(i),
-                    "image/jpeg"
-            );
-
-            // 변경 전: createDownloadUrl() → 24시간 만료 PAR URL
-            // 변경 후: getPublicUrl()     → 영구 Public URL
-            String imageUrl = objectStorageService.getPublicUrl(imageObjectName);
-
-            // TERMS_FILES INSERT (IMAGE)
-            termsMapper.insertTermsFile(TermsFile.builder()
-                    .termsId(terms.getTermsId())
-                    .fileType("IMAGE")
-                    .filePath(imageUrl)                 // ← 영구 Public URL
-                    .originalName(pdfMeta.getOriginalName().replace(".pdf", ".jpg"))
-                    .storedName(imageStoredName)
-                    .fileExtension("jpg")
-                    .mimeType("image/jpeg")
-                    .isPrimary("N")
-                    .build());
-        }
-
-        log.info("[약관등록] 완료: termsId={}, version={}, pdfUrl={}, pages={}",
-                terms.getTermsId(), request.getVersion(), pdfUrl, imageBytesList.size());
-    }
-
-    /**
-     * B-12 약관 상태 변경
-     * DRAFT → REVIEW → APPROVED → PUBLISHED
-     * PUBLISHED 전환 시 reconsent_required_yn='Y' 이면 재동의 알림 발송
-     */
-    @Transactional
-    public void changeTermsStatus(Long termsId, TermsStatusRequest request, Long adminId) {
-
-        Terms terms = termsMapper.findById(termsId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.TERMS_NOT_FOUND));
-
-        String previousStatus = terms.getStatus();
-        String newStatus      = request.getNewStatus();
-
-        if (previousStatus.equals(newStatus)) {
-            return;
-        }
-
-        termsMapper.updateTermsStatus(termsId, newStatus, adminId);
-        termsMapper.insertStatusHistory(termsId, previousStatus, newStatus,
-                adminId, request.getChangedReason());
-
-        if ("PUBLISHED".equals(newStatus) && "Y".equals(terms.getReconsentRequiredYn())) {
-            List<Long> userIds = termsMapper.findUserIdsForReconsent(termsId);
-            for (Long userId : userIds) {
-                termsMapper.insertNotificationHistory(termsId, userId, "EMAIL");
-            }
-            log.info("[약관상태변경] PUBLISHED → 재동의 알림 발송 대상: {}명, termsId={}",
-                    userIds.size(), termsId);
-        }
-
-        log.info("[약관상태변경] termsId={}, {} → {}, adminId={}",
-                termsId, previousStatus, newStatus, adminId);
-    }
-    
-    /** TERMS_MASTERS 목록 조회 */
-    @Transactional(readOnly = true)
-    public List<TermsMasterResponse> getTermsMasters() {
-        List<TermsMaster> masters = termsMapper.findAllMasters();
-        return masters.stream()
-                .map(m -> TermsMasterResponse.builder()
-                        .termsMasterId(m.getTermsMasterId())
-                        .termsType(m.getTermsType())
-                        .title(m.getTitle())
-                        .description(m.getDescription())
-                        .build())
-                .collect(Collectors.toList());
-    }
-
-    /** 관리자 약관 목록 조회 (status 필터 가능) */
-    @Transactional(readOnly = true)
-    public List<TermsAdminResponse> getTermsList(String status) {
-        List<Terms> termsList = termsMapper.findAllForAdmin(status);
-        return termsList.stream()
-                .map(t -> TermsAdminResponse.builder()
-                        .termsId(t.getTermsId())
-                        .termsMasterId(t.getTermsMasterId())
-                        .title(t.getTitle())
-                        .termsType(t.getTermsType())
-                        .version(t.getVersion())
-                        .status(t.getStatus())
-                        .requiredYn(t.getRequiredYn())
-                        .reconsentRequiredYn(t.getReconsentRequiredYn())
-                        .effectiveFrom(t.getEffectiveFrom())
-                        .createdAt(t.getCreatedAt())
-                        .build())
-                .collect(Collectors.toList());
-    }
-
-    /** 관리자 약관 상세 조회 */
-    @Transactional(readOnly = true)
-    public TermsAdminResponse getTermsDetail(Long termsId) {
-        Terms terms = termsMapper.findById(termsId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.TERMS_NOT_FOUND));
-
-        List<com.bnk.domain.terms.model.TermsFile> files =
-                termsMapper.findFilesByTermsId(termsId);
-
-        List<com.bnk.domain.terms.dto.response.TermsFileResponse> fileResponses = files.stream()
-                .map(f -> com.bnk.domain.terms.dto.response.TermsFileResponse.builder()
-                        .fileId(f.getFileId())
-                        .termsId(f.getTermsId())
-                        .fileType(f.getFileType())
-                        .filePath(f.getFilePath())
-                        .originalName(f.getOriginalName())
-                        .isPrimary(f.getIsPrimary())
-                        .build())
-                .collect(Collectors.toList());
-
-        return TermsAdminResponse.builder()
-                .termsId(terms.getTermsId())
-                .termsMasterId(terms.getTermsMasterId())
-                .title(terms.getTitle())
-                .termsType(terms.getTermsType())
-                .version(terms.getVersion())
-                .contentHtml(terms.getContentHtml())    
-                .requiredYn(terms.getRequiredYn())
-                .reconsentRequiredYn(terms.getReconsentRequiredYn())
-                .status(terms.getStatus())
-                .effectiveFrom(terms.getEffectiveFrom())
-                .effectiveTo(terms.getEffectiveTo())     
-                .documentHash(terms.getDocumentHash())  
-                .internalNote(terms.getInternalNote())    
-                .approvedBy(terms.getApprovedBy())       
-                .approvedAt(terms.getApprovedAt())        
-                .createdAt(terms.getCreatedAt())
-                .files(fileResponses)
+        // ── 4. APPROVAL_REQUESTS INSERT ───────────────────────────────
+        ApprovalRequest approval = ApprovalRequest.builder()
+                .requestTypeCode("TERMS_PUBLISH")
+                .requesterAdminId(adminId)
+                .targetId(terms.getTermsId())      // ← terms_id를 직접 target_id로
+                .requestComment(request.getChangeSummary())
                 .build();
+        approvalMapper.insertApprovalRequest(approval);
+
+        log.info("[약관등록] APPROVAL_REQUESTS INSERT 완료: approvalId={}", approval.getApprovalId());
+
+        // ── 5. APPROVAL_LINES INSERT ──────────────────────────────────
+        // 결재자는 1번 관리자(superAdmin) 고정 — 실 운영에서는 결재라인 설정 기반으로 동적 지정
+        ApprovalLine line = ApprovalLine.builder()
+                .approvalId(approval.getApprovalId())
+                .approverAdminId(1L)
+                .approvalOrder(1)
+                .statusCode("PENDING")
+                .build();
+        approvalMapper.insertApprovalLine(line);
+
+        log.info("[약관등록] APPROVAL_LINES INSERT 완료: approvalLineId={}", line.getApprovalLineId());
+
+        java.util.Map<String, Long> result = new java.util.HashMap<>();
+        result.put("termsId",    terms.getTermsId());
+        result.put("approvalId", approval.getApprovalId());
+        return result;
     }
-    
-    @Transactional
-    public void addFileToExistingTerms(Long termsId, MultipartFile pdfFile) throws IOException {
 
-        // terms 존재 확인
-        termsMapper.findById(termsId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.TERMS_NOT_FOUND));
-
+    // ── PDF + JPG 파일 업로드 공통 메서드 ─────────────────────────────
+    private void uploadTermsFiles(Long termsId, MultipartFile pdfFile) throws IOException {
         UploadResult pdfMeta = fileStorageService.extractMeta(pdfFile, "terms");
         byte[] pdfBytes = pdfFile.getBytes();
 
         objectStorageService.upload(pdfMeta.getObjectName(), pdfBytes, pdfMeta.getMimeType());
         String pdfUrl = objectStorageService.getPublicUrl(pdfMeta.getObjectName());
 
-        // PDF 파일 INSERT
         termsMapper.insertTermsFile(TermsFile.builder()
                 .termsId(termsId)
                 .fileType("PDF")
@@ -263,7 +118,6 @@ public class AdminTermsService {
                 .isPrimary("Y")
                 .build());
 
-        // JPG 변환 + 업로드
         List<byte[]> imageBytesList = pdfConvertService.convertPdfToImageBytes(pdfFile);
         String baseName = pdfMeta.getStoredName()
                 .substring(0, pdfMeta.getStoredName().lastIndexOf("."));
@@ -285,9 +139,120 @@ public class AdminTermsService {
                     .isPrimary("N")
                     .build());
         }
-
-        log.info("[파일추가] 완료: termsId={}, pages={}", termsId, imageBytesList.size());
+        log.info("[약관등록] 파일 업로드 완료: termsId={}, pages={}", termsId, imageBytesList.size());
     }
 
-    
+    // ══════════════════════════════════════════════════════════════════
+    // 기존 약관에 파일만 추가 (파일 업로드 탭)
+    // ══════════════════════════════════════════════════════════════════
+    @Transactional
+    public void addFileToExistingTerms(Long termsId, MultipartFile pdfFile) throws IOException {
+        termsMapper.findById(termsId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TERMS_NOT_FOUND));
+        uploadTermsFiles(termsId, pdfFile);
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // 약관 상태 직접 변경 (관리자 수동 — 긴급 처리용으로만 사용)
+    // 정상 흐름은 Approval 승인을 통해 처리됨
+    // ══════════════════════════════════════════════════════════════════
+    @Transactional
+    public void changeTermsStatus(Long termsId, TermsStatusRequest request, Long adminId) {
+        Terms terms = termsMapper.findById(termsId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TERMS_NOT_FOUND));
+
+        String previousStatus = terms.getStatus();
+        String newStatus      = request.getNewStatus();
+        if (previousStatus.equals(newStatus)) return;
+
+        termsMapper.updateTermsStatus(termsId, newStatus, adminId);
+        termsMapper.insertStatusHistory(termsId, previousStatus, newStatus,
+                adminId, request.getChangedReason());
+
+        if ("PUBLISHED".equals(newStatus)) {
+            // 같은 terms_master_id의 기존 PUBLISHED → SUPERSEDED 처리
+            termsMapper.supersedePreviousPublished(terms.getTermsMasterId(), termsId);
+            log.info("[약관상태변경] 기존 PUBLISHED → SUPERSEDED 처리: termsMasterId={}",
+                    terms.getTermsMasterId());
+
+            if ("Y".equals(terms.getReconsentRequiredYn())) {
+                List<Long> userIds = termsMapper.findUserIdsForReconsent(termsId);
+                userIds.forEach(uid -> termsMapper.insertNotificationHistory(termsId, uid, "EMAIL"));
+                log.info("[약관상태변경] 재동의 알림 {}명 발송: termsId={}", userIds.size(), termsId);
+            }
+        }
+        log.info("[약관상태변경] termsId={}, {} → {}", termsId, previousStatus, newStatus);
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // 조회 메서드들 (변경 없음)
+    // ══════════════════════════════════════════════════════════════════
+    @Transactional(readOnly = true)
+    public List<TermsAdminResponse> getTermsList(String status) {
+        return termsMapper.findAllForAdmin(status).stream()
+                .map(t -> TermsAdminResponse.builder()
+                        .termsId(t.getTermsId())
+                        .termsMasterId(t.getTermsMasterId())
+                        .title(t.getTitle())
+                        .version(t.getVersion())
+                        .status(t.getStatus())
+                        .requiredYn(t.getRequiredYn())
+                        .reconsentRequiredYn(t.getReconsentRequiredYn())
+                        .effectiveFrom(t.getEffectiveFrom())
+                        .createdAt(t.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public TermsAdminResponse getTermsDetail(Long termsId) {
+        Terms terms = termsMapper.findByIdWithMaster(termsId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TERMS_NOT_FOUND));
+
+        List<TermsFile> files = termsMapper.findFilesByTermsId(termsId);
+
+        // TermsAdminResponse.files 타입 = List<TermsFileResponse>
+        List<TermsFileResponse> fileResponses = files.stream()
+                .map(f -> TermsFileResponse.builder()
+                        .fileId(f.getFileId())
+                        .termsId(f.getTermsId())
+                        .fileType(f.getFileType())
+                        .filePath(f.getFilePath())
+                        .originalName(f.getOriginalName())
+                        .isPrimary(f.getIsPrimary())
+                        .build())
+                .collect(Collectors.toList());
+
+        return TermsAdminResponse.builder()
+                .termsId(terms.getTermsId())
+                .termsMasterId(terms.getTermsMasterId())
+                .title(terms.getTitle())
+                .termsType(terms.getTermsType())
+                .version(terms.getVersion())
+                .contentHtml(terms.getContentHtml())
+                .status(terms.getStatus())
+                .requiredYn(terms.getRequiredYn())
+                .reconsentRequiredYn(terms.getReconsentRequiredYn())
+                .effectiveFrom(terms.getEffectiveFrom())
+                .effectiveTo(terms.getEffectiveTo())
+                .documentHash(terms.getDocumentHash())
+                .internalNote(terms.getInternalNote())
+                .approvedBy(terms.getApprovedBy())
+                .approvedAt(terms.getApprovedAt())
+                .createdAt(terms.getCreatedAt())
+                .files(fileResponses)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<TermsMasterResponse> getTermsMasters() {
+        return termsMapper.findAllMasters().stream()
+                .map(m -> TermsMasterResponse.builder()
+                        .termsMasterId(m.getTermsMasterId())
+                        .termsType(m.getTermsType())
+                        .title(m.getTitle())
+                        .description(m.getDescription())
+                        .build())
+                .collect(Collectors.toList());
+    }
 }
