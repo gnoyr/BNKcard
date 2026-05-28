@@ -3,6 +3,23 @@
    대상: 헤더, 세션 바, 토스트
    ============================================================= */
 
+:root {
+	--teal-50: #E0F4F7;
+	--teal-100: #B3E3EC;
+	--teal-200: #7ECFDD;
+	--teal-400: #3AAFC4;
+	--teal-600: #00677F;
+	--teal-800: #004D61;
+	--teal-900: #003040;
+	
+	/* 기존 빨간색 계열을 Teal로 매핑 */
+	--primary: var(--teal-600);
+	--primary-dark: var(--teal-800);
+	--primary-mid: var(--teal-400);
+	--primary-pale: var(--teal-50);
+	--primary-muted: var(--teal-600); /* 10% opacity 효과 대응 */
+}
+
 /* ── 사이트 헤더 ── */
 .site-header {
 	background: #ffffff;
@@ -27,7 +44,7 @@
 .logo-badge {
 	width: 32px;
 	height: 32px;
-	background: #C8102E;
+	background: var(--primary);
 	border-radius: 6px;
 	display: flex;
 	align-items: center;
@@ -63,14 +80,14 @@
 }
 
 .header-nav a:hover, .header-nav a.active {
-	color: #C8102E;
-	border-bottom-color: #C8102E;
+	color: var(--primary);
+	border-bottom-color: var(--primary);
 }
 
 .header-nav__username {
 	font-size: 13px;
 	font-weight: 700;
-	color: #C8102E;
+	color: var(--primary);
 }
 
 .header-nav__btn {
@@ -86,13 +103,12 @@
 }
 
 .header-nav__btn:hover {
-	color: #C8102E;
-	border-bottom-color: #C8102E;
+	color: var(--primary);
+	border-bottom-color: var(--primary);
 }
-
 /* ── 마이페이지 헤더 (mp-header) ── */
 .mp-header {
-	background: #C8102E;
+	background: var(--primary);
 	height: 58px;
 	display: flex;
 	align-items: center;
@@ -101,7 +117,7 @@
 	position: sticky;
 	top: 0;
 	z-index: 100;
-	box-shadow: 0 2px 10px rgba(200, 16, 46, .4);
+	box-shadow: 0 2px 10px rgba(0, 103, 127, .4);
 }
 
 .mp-header__logo {
@@ -322,7 +338,7 @@ to {
 }
 
 .logo-badge--admin {
-	background: #e94560;
+	background: var(--teal-400);
 	font-size: 11px;
 	letter-spacing: -0.3px;
 }
@@ -337,12 +353,12 @@ to {
 
 .site-header--admin .header-nav a:hover, .site-header--admin .header-nav a.active
 	{
-	color: #e94560;
-	border-bottom-color: #e94560;
+	color: var(--teal-400);
+	border-bottom-color: var(--teal-400);
 }
 
 .site-header--admin .header-nav__username {
-	color: #e94560;
+	color: var(--teal-400);
 }
 
 .site-header--admin .header-nav__btn {
@@ -350,8 +366,8 @@ to {
 }
 
 .site-header--admin .header-nav__btn:hover {
-	color: #e94560;
-	border-bottom-color: #e94560;
+	color: var(--teal-400);
+	border-bottom-color: var(--teal-400);
 }
 
 /* ── 페이지 내비 바 (마이페이지 서브 페이지용 뒤로가기 바) ── */
@@ -391,7 +407,7 @@ to {
 
 .page-nav__back:hover {
 	background: #e4e4e7;
-	color: #C8102E;
+	color: var(--primary);
 }
 
 .page-nav__sep {
@@ -475,32 +491,32 @@ to {
 
 .header-nav a[href="/auth/login.html"] {
 	background: transparent;
-	border: 1.5px solid #C8102E !important;
-	color: #C8102E !important;
+	border: 1.5px solid var(--primary) !important;
+	color: var(--primary) !important;
 }
 
 .header-nav a[href="/auth/login.html"]:hover {
-	background: #C8102E !important;
+	background: var(--primary) !important;
 	color: #fff !important;
 }
 
 .header-nav a[href="/auth/signup.html"] {
-	background: #C8102E;
+	background: var(--primary);
 	color: #fff !important;
-	border: 1.5px solid #C8102E !important;
+	border: 1.5px solid var(--primary) !important;
 }
 
 .header-nav a[href="/auth/signup.html"]:hover {
-	background: #A00D24 !important;
-	border-color: #A00D24 !important;
+	background: var(--primary-dark) !important;
+	border-color: var(--primary-dark) !important;
 }
 
 /* 로그인 상태: 사용자 이름 */
 .header-nav__username {
 	font-size: 13px;
 	font-weight: 700;
-	color: #C8102E;
-	background: #F9E5E8;
+	color: var(--primary);
+	background: var(--teal-50);
 	border-radius: 20px;
 	padding: 4px 12px;
 }
@@ -518,7 +534,7 @@ to {
 
 .header-nav a[href="/mypage/index.html"]:hover {
 	background: #e4e4e7;
-	color: #C8102E !important;
+	color: var(--primary) !important;
 }
 
 /* Access Token 타이머 — 배지형 */
@@ -548,7 +564,7 @@ to {
 
 .header-nav__btn:hover {
 	background: #f4f4f5 !important;
-	border-color: #C8102E !important;
-	color: #C8102E !important;
-	border-bottom: 1.5px solid #C8102E !important;
+	border-color: var(--primary) !important;
+	color: var(--primary) !important;
+	border-bottom-color: var(--primary) !important;
 }
