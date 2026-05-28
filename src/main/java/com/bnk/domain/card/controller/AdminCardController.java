@@ -53,7 +53,7 @@ public class AdminCardController {
      */
     @GetMapping("/{cardId}")
     public ResponseEntity<ApiResponse<CardDetailResponse>> getCardDetail(
-            @PathVariable Long cardId,
+    		@PathVariable("cardId") Long cardId,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         return ApiResponse.toOk(adminCardService.getAdminCardDetail(cardId));
     }
@@ -75,7 +75,7 @@ public class AdminCardController {
      */
     @PutMapping("/{cardId}")
     public ResponseEntity<ApiResponse<Map<String, Long>>> updateCard(
-            @PathVariable Long cardId,
+    		@PathVariable("cardId") Long cardId,
             @RequestBody @Valid CardUpdateRequest request,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         return ApiResponse.toOk(adminCardService.updateCard(cardId, request, ad.getAdminId()));
@@ -84,7 +84,7 @@ public class AdminCardController {
     // 혜택 등록/수정
     @PutMapping("/{cardId}/benefits")
     public ResponseEntity<ApiResponse<Map<String, Long>>> saveCardBenefits(
-            @PathVariable Long cardId,
+    		@PathVariable("cardId") Long cardId,
             @RequestBody @Valid BenefitUpdateRequest request,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         return ApiResponse.toOk(adminCardService.saveCardBenefits(cardId, request, ad.getAdminId()));
@@ -93,7 +93,7 @@ public class AdminCardController {
     // 이미지 등록/수정
     @PutMapping("/{cardId}/images")
     public ResponseEntity<ApiResponse<Map<String, Long>>> saveCardImages(
-            @PathVariable Long cardId,
+    		@PathVariable("cardId") Long cardId,
             @RequestBody @Valid ImageUpdateRequest request,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         return ApiResponse.toOk(adminCardService.saveCardImages(cardId, request, ad.getAdminId()));
@@ -102,7 +102,7 @@ public class AdminCardController {
     // 콘텐츠 등록/수정
     @PutMapping("/{cardId}/contents")
     public ResponseEntity<ApiResponse<Void>> saveCardContents(
-            @PathVariable Long cardId,
+    		@PathVariable("cardId") Long cardId,
             @RequestBody @Valid ContentUpdateRequest request,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         adminCardService.saveCardContents(cardId, request, ad.getAdminId());
@@ -116,7 +116,7 @@ public class AdminCardController {
      */
     @PatchMapping("/{cardId}/status")
     public ResponseEntity<ApiResponse<Void>> changeCardStatus(
-            @PathVariable Long cardId,
+    		@PathVariable("cardId") Long cardId,
             @RequestBody @Valid CardStatusRequest request,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         adminCardService.changeCardStatus(cardId, request, ad.getAdminId());

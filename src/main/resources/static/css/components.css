@@ -479,7 +479,7 @@ to {
    ══════════════════════════════════════════════════════ */
 
 /* 로그인 / 회원가입 링크 → 필 버튼형 */
-.header-nav a[href="/auth/login.html"], .header-nav a[href="/auth/signup.html"]
+.header-nav .nav-login, .header-nav .nav-signup
 	{
 	padding: 5px 14px !important;
 	border-radius: 20px !important;
@@ -489,24 +489,24 @@ to {
 	transition: background .2s, color .2s !important;
 }
 
-.header-nav a[href="/auth/login.html"] {
+.header-nav .nav-login {
 	background: transparent;
 	border: 1.5px solid var(--primary) !important;
 	color: var(--primary) !important;
 }
 
-.header-nav a[href="/auth/login.html"]:hover {
+.header-nav .nav-login:hover {
 	background: var(--primary) !important;
 	color: #fff !important;
 }
 
-.header-nav a[href="/auth/signup.html"] {
+.header-nav .nav-signup {
 	background: var(--primary);
 	color: #fff !important;
 	border: 1.5px solid var(--primary) !important;
 }
 
-.header-nav a[href="/auth/signup.html"]:hover {
+.header-nav .nav-signup:hover {
 	background: var(--primary-dark) !important;
 	border-color: var(--primary-dark) !important;
 }

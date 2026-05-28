@@ -104,7 +104,7 @@ async function loadPopularKeywords() {
 // ── TOP3 포디움 ──
 async function loadTop3() {
     const container = document.getElementById('top3-podium');
-    const data = await api('/api/cards/top3?surveyResult=');
+    const data = await api('/api/cards/top3');
     if (!data?.length) {
         container.innerHTML = '<div class="empty-wrap">추천 카드를 불러올 수 없습니다.</div>';
         return;
