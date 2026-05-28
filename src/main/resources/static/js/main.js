@@ -67,7 +67,7 @@ async function loadCategories() {
     </button>`).join('');
 }
 
-function toggleCategory(btn, catId, catName) {
+function toggleCategory(btn, catId, _catName) {
     const idx = state.currentCategoryIds.indexOf(catId);
     if (idx === -1) { state.currentCategoryIds.push(catId); btn.classList.add('active'); }
     else { state.currentCategoryIds.splice(idx, 1); btn.classList.remove('active'); }
@@ -346,7 +346,7 @@ function renderCompareModal(cards) {
         `<tr><td>국내 연회비</td>${cards.map((c, i) => `<td style="${fees[i] === minFee ? 'color:#00875a;font-weight:700;' : ''}">${fmtFee(c.annualFeeDomestic)}</td>`).join('')}</tr>`,
         `<tr><td>해외 연회비</td>${cards.map((c, i) => `<td style="${oFees[i] === minO ? 'color:#00875a;font-weight:700;' : ''}">${fmtFee(c.annualFeeOverseas)}</td>`).join('')}</tr>`,
         `<tr><td>카드 유형</td>${cards.map(c => `<td>${{ CREDIT: '신용카드', CHECK: '체크카드', PREPAID: '선불카드' }[c.cardType] ?? c.cardType ?? '-'}</td>`).join('')}</tr>`,
-        `<tr><td>혜택 수</td>${cards.map((c, i) => `<td style="${bCnts[i] === maxB && maxB > 0 ? 'color:#003087;font-weight:700;' : ''}">${bCnts[i]}개 ${bCnts[i] === maxB && maxB > 0 ? '★' : ''}</td>`).join('')}</tr>`,
+        `<tr><td>혜택 수</td>${cards.map((_c, i) => `<td style="${bCnts[i] === maxB && maxB > 0 ? 'color:#003087;font-weight:700;' : ''}">${bCnts[i]}개 ${bCnts[i] === maxB && maxB > 0 ? '★' : ''}</td>`).join('')}</tr>`,
         `<tr><td>주요 혜택</td>${cards.map((c, i) => `<td style="${bCnts[i] === maxB && maxB > 0 ? 'background:#fffde7;' : ''}text-align:left;">${(c.benefits ?? []).slice(0, 3).map(b => `• ${b.displayText ?? b.benefitTitle ?? ''}`).join('<br>') || '-'}</td>`).join('')}</tr>`,
     ].join('');
 
@@ -403,7 +403,7 @@ function modalSetKeyword(kw) {
     document.getElementById('modal-search-input').value = kw;
     runModalSearch();
 }
-function toggleModalCategory(btn, catId, catName) {
+function toggleModalCategory(btn, catId, _catName) {
     const idx = state.modalCategoryIds.indexOf(catId);
     if (idx === -1) { state.modalCategoryIds.push(catId); btn.classList.add('active'); }
     else { state.modalCategoryIds.splice(idx, 1); btn.classList.remove('active'); }
