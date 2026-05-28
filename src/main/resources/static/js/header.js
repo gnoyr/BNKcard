@@ -40,7 +40,11 @@
 
   const IS_ADMIN_LOGIN = path === '/admin/login';
   const IS_ADMIN       = path.startsWith('/admin') && !IS_ADMIN_LOGIN;
-  const IS_AUTH        = ['/login', '/signup', '/find-id', '/reset-password', '/admin/login'].includes(path);
+  const IS_AUTH = [
+      '/login', '/signup', '/find-id', '/reset-password', '/admin/login',
+      '/auth/login.html', '/auth/signup.html',           // 직접 접근 방어
+      '/auth/find-id.html', '/auth/reset-password.html'
+  ].includes(path);
   const IS_MYPAGE      = path.startsWith('/mypage');
   const NEED_AUTH      = IS_ADMIN || IS_MYPAGE;
 
@@ -247,9 +251,9 @@
       // 타이머 시작
       startTokenTimer();
     } else {
-      nav.innerHTML = `
-		  <a href="/login">로그인</a>
-		  <a href="/signup">회원가입</a>`;
+		nav.innerHTML = `
+		  <a href="/login" class="nav-login">로그인</a>
+		  <a href="/signup" class="nav-signup">회원가입</a>`;
     }
 
         markActiveLink(nav);
@@ -278,19 +282,25 @@
      *   - trailing slash 있어도 (/mypage/) active 정상 처리
      *   - 하위 경로 포함 (/admin/cardManage.html → /admin/ active 처리)
      */
-    function markActiveLink(nav) {
-        const currentPath = location.pathname;
+	function markActiveLink(nav) {
+	    const currentPath = location.pathname;
 
-        nav.querySelectorAll('a[href]').forEach(a => {
-            const href = a.getAttribute('href');
-            if (!href || href === '#') return;
+	    nav.querySelectorAll('a[href]').forEach(a => {
+	        const href = a.getAttribute('href');
+	        if (!href || href === '#') return;
 
-            const isExact = currentPath === href;
-            const isParent = href !== '/' && currentPath.startsWith(href.replace(/\/[^/]+\.html$/, '/'));
+	        const isExact = currentPath === href;
+	        // 기존: .html 제거 후 디렉토리 비교
+	        const isParent = href !== '/' && currentPath.startsWith(
+	            href.replace(/\/[^/]+\.html$/, '/')
+	        );
+	        // 추가: /mypage (clean URL) ↔ /mypage/index.html 매칭
+	        const isCleanMatch = href.endsWith('/index.html') &&
+	            currentPath === href.replace('/index.html', '');
 
-            a.classList.toggle('active', isExact || isParent);
-        });
-    }
+	        a.classList.toggle('active', isExact || isParent || isCleanMatch);
+	    });
+	}
 
     /* ─────────────────────────────────────────────────────────────
        5. Access Token 유효 시간 타이머
