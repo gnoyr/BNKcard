@@ -89,7 +89,7 @@ public class CardController {
      */
     @GetMapping("/cards/{cardId}")
     public ResponseEntity<ApiResponse<CardDetailResponse>> getCardDetail(
-            @PathVariable Long cardId) {
+    		@PathVariable("cardId") Long cardId) {
         return ApiResponse.toOk(cardService.getCardDetail(cardId));
     }
 
@@ -120,7 +120,7 @@ public class CardController {
      */
     @PatchMapping("/{cardId}/status")
     public ResponseEntity<ApiResponse<Void>> changeCardStatus(
-            @PathVariable Long cardId,
+    		@PathVariable("cardId") Long cardId,
             @RequestBody @Valid CardStatusRequest request,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         adminCardService.changeCardStatus(cardId, request, ad.getAdminId());

@@ -160,8 +160,29 @@ const login = {
         });
 
 		if (res.ok) {
+		    sessionStorage.setItem('bnk_login_at', String(Date.now()));
+
+		    try {
+		        const me = await API.get('/api/users/me');
+
+		        if (me.ok) {
+		            const name =
+		                me.data?.data?.name ||
+		                me.data?.data?.userName ||
+		                me.data?.data?.email ||
+		                '회원';
+
+		            sessionStorage.setItem('bnk_user_name', name);
+		        } else {
+		            sessionStorage.setItem('bnk_user_name', '회원');
+		        }
+		    } catch (e) {
+		        sessionStorage.setItem('bnk_user_name', '회원');
+		    }
+
 		    const next = new URLSearchParams(location.search).get('next');
 		    const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
+
 		    window.location.href = safeNext;
 		} else if (res.status === 0) {
             // 네트워크 단절 — 토스트로 표시 (인라인 에러보다 위치상 적절)
