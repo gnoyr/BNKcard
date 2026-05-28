@@ -215,4 +215,28 @@
 	      AND  terms_id        != #{currentTermsId}
 	</update>
 	
+	<insert id="insertTermsMaster">
+	    <selectKey keyProperty="termsMasterId" resultType="long" order="AFTER">
+	        SELECT SEQ_TERMS_MASTERS.CURRVAL FROM DUAL
+	    </selectKey>
+	    INSERT INTO TERMS_MASTERS (
+	        terms_type, title, description,
+	        display_order, required_yn, created_at
+	    ) VALUES (
+	        #{termsType}, #{title},
+	        #{description, jdbcType=VARCHAR},
+	        #{displayOrder, jdbcType=NUMERIC},
+	        #{requiredYn},
+	        SYSTIMESTAMP
+	    )
+	</insert>
+
+	<select id="findLatestVersionByMasterId" resultType="string">
+	    SELECT version FROM TERMS
+	    WHERE  terms_master_id = #{termsMasterId}
+	      AND  status != 'EXPIRED'
+	    ORDER  BY created_at DESC
+	    FETCH  FIRST 1 ROWS ONLY
+	</select>
+	
 </mapper>
