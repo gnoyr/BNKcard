@@ -244,7 +244,8 @@ const signup = (() => {
                 });
             });
 
-            document.getElementById('btnStep1Next')?.addEventListener('click', () => {
+            document.getElementById('btnStep1Next')?.addEventListener('click', (e) => {
+				e.preventDefault();
                 const requiredCbs = document.querySelectorAll('[data-required="Y"]');
                 const allAgreed   = [...requiredCbs].every(cb => cb.checked);
                 if (!allAgreed) {
