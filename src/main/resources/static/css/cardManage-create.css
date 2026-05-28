@@ -590,7 +590,7 @@
 }
 
 /* 결재요청 / 취소 버튼 */
-#page-create-terms > button:nth-child(5) {
+#page-create-terms > button:nth-child(6) {
   padding: 9px 22px;
   background: var(--teal-600);
   color: var(--white);
@@ -603,7 +603,7 @@
   margin-right: 10px;
   transition: background var(--ease), transform var(--ease);
 }
-#page-create-terms > button:nth-child(5):hover {
+#page-create-terms > button:nth-child(6):hover {
   background: var(--teal-800);
   transform: translateY(-1px);
 }
