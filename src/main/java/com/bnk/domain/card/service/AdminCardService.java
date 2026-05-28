@@ -136,6 +136,7 @@ public class AdminCardService {
                 .build();
         String snapshotJson = toSnapshotJson(snapshot);
 
+        // 5. CARD_VERSION INSERT
         CardVersion version = CardVersion.builder()
                 .cardId(card.getCardId())
                 .versionNo("v1.0")
@@ -144,8 +145,9 @@ public class AdminCardService {
                 .changeSummary(request.getChangeSummary())
                 .createdBy(adminId)
                 .build();
-        cardVersionMapper.insertCardVersion(version);   // ← CardVersionMapper2 → CardVersionMapper
+        cardVersionMapper.insertCardVersion(version);
 
+        // 6. APPROVAL_REQUEST INSERT
         ApprovalRequest approval = ApprovalRequest.builder()
                 .requestTypeCode("CARD_PUBLISH")
                 .requesterAdminId(adminId)
@@ -154,6 +156,7 @@ public class AdminCardService {
                 .build();
         approvalMapper.insertApprovalRequest(approval);
 
+        // 7. APPROVAL_LINE INSERT
         ApprovalLine line = ApprovalLine.builder()
                 .approvalId(approval.getApprovalId())
                 .approverAdminId(1L)
@@ -252,7 +255,7 @@ public class AdminCardService {
                 .build();
         String snapshotJson = toSnapshotJson(snapshot);
 
-        int nextNo = cardVersionMapper.getLatestVersionSeq(cardId) + 1;   // ← CardVersionMapper
+        int nextNo = cardVersionMapper.getLatestVersionSeq(cardId) + 1;  
         CardVersion version = CardVersion.builder()
                 .cardId(cardId)
                 .versionNo("v" + nextNo + ".0")
