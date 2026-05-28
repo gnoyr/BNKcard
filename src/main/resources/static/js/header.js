@@ -33,42 +33,44 @@
  * =====================================================================
  */
 (() => {
-    /* ─────────────────────────────────────────────────────────────
-       페이지 타입 판별
-    ──────────────────────────────────────────────────────────────── */
-    const path = location.pathname;
-    const IS_ADMIN = path.startsWith('/admin');
-    const IS_AUTH = path.startsWith('/auth/');
-    const IS_MYPAGE = path.startsWith('/mypage/');
-    const NEED_AUTH = IS_ADMIN || IS_MYPAGE;
+  /* ─────────────────────────────────────────────────────────────
+     페이지 타입 판별
+  ──────────────────────────────────────────────────────────────── */
+  const path = location.pathname.replace(/\/$/, '') || '/';
 
-    const REDIRECT_IF_LOGGED_IN = ['/auth/login.html', '/auth/signup.html'];
+  const IS_ADMIN_LOGIN = path === '/admin/login';
+  const IS_ADMIN       = path.startsWith('/admin') && !IS_ADMIN_LOGIN;
+  const IS_AUTH        = ['/login', '/signup', '/find-id', '/reset-password', '/admin/login'].includes(path);
+  const IS_MYPAGE      = path.startsWith('/mypage');
+  const NEED_AUTH      = IS_ADMIN || IS_MYPAGE;
 
-    const LOGIN_URL = '/auth/login.html';
-    const ADMIN_LOGIN_URL = '/auth/admin-login.html';
-    const HOME_URL = '/';
+  const REDIRECT_IF_LOGGED_IN = ['/login', '/signup'];
 
-    // sessionStorage 캐시 키
-    const CACHE_KEY_NAME = 'bnk_user_name';
-    const CACHE_KEY_LOGIN_AT = 'bnk_login_at';
+  const LOGIN_URL       = '/login';
+  const ADMIN_LOGIN_URL = '/admin/login';
+  const HOME_URL        = '/';
 
-    // Access Token 만료 시간 — application.properties jwt.access-expiration=7200000 (2h)
-    const ACCESS_TOKEN_TTL_MS = 2 * 60 * 60 * 1000;
-    // 만료 5분 전부터 경고색 표시
-    const WARN_THRESHOLD_MS = 5 * 60 * 1000;
+  // sessionStorage 캐시 키
+  const CACHE_KEY_NAME     = 'bnk_user_name';
+  const CACHE_KEY_LOGIN_AT = 'bnk_login_at';
 
-    // 타이머 인터벌 참조 (stopTokenTimer 용)
-    let _tokenTimerInterval = null;
+  // Access Token 만료 시간 — application.properties jwt.access-expiration=7200000 (2h)
+  const ACCESS_TOKEN_TTL_MS = 2 * 60 * 60 * 1000;
+  // 만료 5분 전부터 경고색 표시
+  const WARN_THRESHOLD_MS   = 5 * 60 * 1000;
 
-    /* ─────────────────────────────────────────────────────────────
-       1. 헤더 HTML 주입  (#app-header 가 있는 페이지만)
-    ──────────────────────────────────────────────────────────────── */
-    function injectHeader() {
-        const mount = document.getElementById('app-header');
-        if (!mount) return;   // auth 페이지는 static header 사용
+  // 타이머 인터벌 참조 (stopTokenTimer 용)
+  let _tokenTimerInterval = null;
 
-        if (IS_ADMIN) {
-            mount.innerHTML = `
+  /* ─────────────────────────────────────────────────────────────
+     1. 헤더 HTML 주입  (#app-header 가 있는 페이지만)
+  ──────────────────────────────────────────────────────────────── */
+  function injectHeader() {
+    const mount = document.getElementById('app-header');
+    if (!mount) return;   // auth 페이지는 static header 사용
+
+    if (IS_ADMIN) {
+      mount.innerHTML = `
         <header class="site-header site-header--admin">
           <div class="logo">
             <span class="logo-badge logo-badge--admin">ADMIN</span>
@@ -242,13 +244,13 @@
             document.getElementById('hdrRefresh').addEventListener('click', manualRefresh);
             document.getElementById('hdrLogout').addEventListener('click', logout);
 
-            // 타이머 시작
-            startTokenTimer();
-        } else {
-            nav.innerHTML = `
-        <a href="/auth/login.html">로그인</a>
-        <a href="/auth/signup.html">회원가입</a>`;
-        }
+      // 타이머 시작
+      startTokenTimer();
+    } else {
+      nav.innerHTML = `
+		  <a href="/login">로그인</a>
+		  <a href="/signup">회원가입</a>`;
+    }
 
         markActiveLink(nav);
     }
