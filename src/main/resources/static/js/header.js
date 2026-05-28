@@ -37,16 +37,18 @@
   /* ─────────────────────────────────────────────────────────────
      페이지 타입 판별
   ──────────────────────────────────────────────────────────────── */
-  const path        = location.pathname;
-  const IS_ADMIN    = path.startsWith('/admin');
-  const IS_AUTH     = path.startsWith('/auth/');
-  const IS_MYPAGE   = path.startsWith('/mypage/');
-  const NEED_AUTH   = IS_ADMIN || IS_MYPAGE;
+  const path = location.pathname.replace(/\/$/, '') || '/';
 
-  const REDIRECT_IF_LOGGED_IN = ['/auth/login.html', '/auth/signup.html'];
+  const IS_ADMIN_LOGIN = path === '/admin/login';
+  const IS_ADMIN       = path.startsWith('/admin') && !IS_ADMIN_LOGIN;
+  const IS_AUTH        = ['/login', '/signup', '/find-id', '/reset-password', '/admin/login'].includes(path);
+  const IS_MYPAGE      = path.startsWith('/mypage');
+  const NEED_AUTH      = IS_ADMIN || IS_MYPAGE;
 
-  const LOGIN_URL       = '/auth/login.html';
-  const ADMIN_LOGIN_URL = '/auth/admin-login.html';
+  const REDIRECT_IF_LOGGED_IN = ['/login', '/signup'];
+
+  const LOGIN_URL       = '/login';
+  const ADMIN_LOGIN_URL = '/admin/login';
   const HOME_URL        = '/';
 
   // sessionStorage 캐시 키
@@ -222,8 +224,8 @@
       startTokenTimer();
     } else {
       nav.innerHTML = `
-        <a href="/auth/login.html">로그인</a>
-        <a href="/auth/signup.html">회원가입</a>`;
+		  <a href="/login">로그인</a>
+		  <a href="/signup">회원가입</a>`;
     }
 
     markActiveLink(nav);

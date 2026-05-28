@@ -1,8 +1,16 @@
-const cardId = new URLSearchParams(location.search).get('cardId');
+function getCardId() {
+  const match = location.pathname.match(/^\/card\/(\d+)$/);
+  if (match) return match[1];
+
+  // 기존 URL 임시 호환: /card/index.html?cardId=...
+  return new URLSearchParams(location.search).get('cardId');
+}
+
+const cardId = getCardId();
 
 if (!cardId) {
   document.getElementById('main-wrap').innerHTML =
-    '<div class="loading-wrap"><p>잘못된 접근입니다. cardId가 없습니다.</p><br><a href="/card-main.html">카드 목록으로</a></div>';
+    '<div class="loading-wrap"><p>잘못된 접근입니다. cardId가 없습니다.</p><br><a href="/">메인으로</a></div>';
   throw new Error('no cardId');
 }
 
@@ -37,7 +45,7 @@ async function loadCard() {
 
   if (!card) {
     document.getElementById('main-wrap').innerHTML =
-      '<div class="loading-wrap"><p>카드 정보를 불러올 수 없습니다.</p><br><a href="/card-main.html">카드 목록으로</a></div>';
+      '<div class="loading-wrap"><p>카드 정보를 불러올 수 없습니다.</p><br><a href="/">메인으로</a></div>';
     return;
   }
 
@@ -336,7 +344,7 @@ function closeImgModal() {
 
 function applyCard(cardId) {
   const ok = confirm('카드 발급을 신청하시겠습니까?\n로그인이 필요합니다.');
-  if (ok) location.href = `/auth-test.html?redirect=/apply?cardId=${cardId}`;
+  if (ok) location.href = `/login?next=${encodeURIComponent(`/card/${cardId}`)}`;
 }
 
 loadCard();
