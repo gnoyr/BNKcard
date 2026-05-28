@@ -245,7 +245,26 @@
 
         <h3>기본 정보 <button onclick="openEditBasic()">수정</button></h3>
         <table border="1"><tbody id="detail-info"></tbody></table>
-
+		
+		<h3>버전 히스토리
+		  <button onclick="loadCardVersions(currentCardId)"
+		    style="font-size:11px;padding:3px 10px;background:#f0f4fb;color:#003087;
+		           border:1px solid #dde3ef;border-radius:4px;cursor:pointer;font-weight:500;">
+		    새로고침
+		  </button>
+		</h3>
+		<table border="1">
+		  <thead>
+		    <tr>
+		      <th>버전</th><th>상태</th><th>변경 사유</th>
+		      <th>등록자</th><th>등록일시</th><th>승인일시</th>
+		    </tr>
+		  </thead>
+		  <tbody id="version-history-tbody">
+		    <tr><td colspan="6">-</td></tr>
+		  </tbody>
+		</table>
+		
         <h3>혜택</h3>
         <table border="1">
           <thead>
@@ -996,6 +1015,8 @@
     renderDetailBenefits(card.benefits);
     renderDetailImages(card.images);
     renderDetailContents(card.contents);
+ 	// 카드 상세 로드 완료 후 버전 히스토리도 함께 로드
+    loadCardVersions(cardId);
   }
 
   function renderDetailInfo(card) {
@@ -2401,6 +2422,39 @@ function createAddImageRow(img) {
     loadCardCategories();
   });
 
+	//카드 버전 히스토리 로드
+  async function loadCardVersions(cardId) {
+    const tbody = document.getElementById('version-history-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="6">불러오는 중...</td></tr>';
+
+    const r = await adminApi('GET', `/api/admin/cards/${cardId}/versions`);
+    if (!r.ok || !r.json?.data?.length) {
+      tbody.innerHTML = '<tr><td colspan="6">버전 이력 없음</td></tr>';
+      return;
+    }
+
+    const STATUS_LABEL = {
+      DRAFT:'초안', REVIEW:'반려', APPROVED:'승인',
+      PUBLISHED:'게시중', ARCHIVED:'보관', EXPIRED:'만료'
+    };
+    const STATUS_COLOR = {
+      DRAFT:'#888', REVIEW:'#e65100', APPROVED:'#2e7d32',
+      PUBLISHED:'#003087', ARCHIVED:'#999', EXPIRED:'#bbb'
+    };
+
+    tbody.innerHTML = r.json.data.map(v => `
+      <tr>
+        <td><b>${v.versionNo ?? '-'}</b></td>
+        <td><span style="color:${STATUS_COLOR[v.versionStatus]??'#333'};font-weight:600;">
+          ${STATUS_LABEL[v.versionStatus] ?? v.versionStatus ?? '-'}
+        </span></td>
+        <td>${v.changeSummary ?? '-'}</td>
+        <td>${v.createdBy ?? '-'}</td>
+        <td>${v.createdAt ? new Date(v.createdAt).toLocaleString('ko-KR') : '-'}</td>
+        <td>${v.approvedAt ? new Date(v.approvedAt).toLocaleString('ko-KR') : '-'}</td>
+      </tr>`).join('');
+  }
 </script>
 
 <div id="toast-container"></div>
