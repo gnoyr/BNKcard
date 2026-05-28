@@ -62,7 +62,6 @@ dependencies {
 	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:4.0.1'
 
 	// ── JWT ───────────────────────────────────────────────
-	// [FIX] 이전에 dependencies 블록 내 두 곳에 동일 선언이 중복되어 있었음.
 	// Gradle은 중복을 자동 처리하지만 버전이 달라질 경우 예상치 못한 충돌 위험이 있으므로 단일 선언으로 정리.
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
 	runtimeOnly    'io.jsonwebtoken:jjwt-impl:0.12.6'

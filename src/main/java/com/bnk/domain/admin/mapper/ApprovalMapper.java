@@ -1,16 +1,16 @@
 package com.bnk.domain.admin.mapper;
 
-import com.bnk.domain.admin.dto.request.ApprovalSearchRequest;
-import com.bnk.domain.admin.model.ApprovalLine;
-import com.bnk.domain.admin.model.ApprovalRequest;
-import com.bnk.domain.card.model2.CardVersion;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
+import com.bnk.domain.admin.dto.request.ApprovalSearchRequest;
+import com.bnk.domain.admin.model.ApprovalLine;
+import com.bnk.domain.admin.model.ApprovalRequest;
+import com.bnk.domain.card.model.CardVersion;
 
 @Mapper
 public interface ApprovalMapper {

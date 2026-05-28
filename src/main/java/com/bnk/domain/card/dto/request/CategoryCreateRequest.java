@@ -1,26 +1,20 @@
-package com.bnk.domain.card.model;
+package com.bnk.domain.card.dto.request;
 
 import jakarta.validation.constraints.*;
-import lombok.*;
-import java.time.LocalDateTime;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 /**
- * CARD_CATEGORIES 테이블 단일 모델
+ * 카드 카테고리 등록 요청 DTO
  *
  * 변경 이력:
- *  - model2.CardCategory Bean Validation 흡수
- *  - createdAt 타입: java.util.Date → java.time.LocalDateTime 통일
- *  - 삭제 대상: com.bnk.domain.card.model2.CardCategory
- *              com.bnk.domain.card.model.CardCategory2
- *  - CardCategoryMapper, CardCategoryMapper.xml은 이미 이 클래스를 참조 → 변경 불필요
+ *  - 패키지 이동: dto.request2 → dto.request
+ *  - Bean Validation 추가 (model.CardCategory와 일치)
+ *  - 삭제 대상: com.bnk.domain.card.dto.request2.CategoryCreateRequest
  */
 @Getter
-@Builder
 @NoArgsConstructor
-@AllArgsConstructor
-public class CardCategory {
-
-    private Long categoryId;
+public class CategoryCreateRequest {
 
     @NotBlank(message = "카테고리 코드는 필수입니다.")
     @Size(max = 50, message = "카테고리 코드는 50자 이하여야 합니다.")
@@ -33,12 +27,9 @@ public class CardCategory {
     @Size(max = 100, message = "아이콘 코드는 100자 이하여야 합니다.")
     private String iconCode;
 
+    @Min(value = 1, message = "노출 순서는 1 이상이어야 합니다.")
     private Integer displayOrder;
 
-    @NotBlank(message = "사용 여부는 필수입니다.")
     @Pattern(regexp = "Y|N", message = "사용 여부는 Y 또는 N이어야 합니다.")
-    @Builder.Default
     private String useYn = "Y";
-
-    private LocalDateTime createdAt;
 }

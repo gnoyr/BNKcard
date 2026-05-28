@@ -618,7 +618,6 @@ public class NoiseSensitivityMetric extends AbstractMultiModelMetric<NoiseSensit
         return result;
     }
 
-    @SuppressWarnings("DuplicatedCode")
     private Double calculateNoiseSensitivity(final FaithfulnessResults results, final NoiseSensitivityMode mode) {
         final boolean[][] groundTruthToAnswer = results.groundTruthToAnswer();
         final boolean[][] retrievedToGroundTruth = results.retrievedToGroundTruth();
