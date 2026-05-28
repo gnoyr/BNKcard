@@ -194,9 +194,9 @@ function buildFlipCard(card, rank = null) {
               <div class="back-benefit">${lines || backText}</div>
               ${benefitTags ? `<div style="margin:6px 0 2px;">${benefitTags}</div>` : ''}
               <div class="back-actions">
-                <button class="btn-detail"  onclick="event.stopPropagation();location.href='/card/index.html?cardId=${card.cardId}'">자세히</button>
+                <button class="btn-detail"  onclick="event.stopPropagation();location.href='/card/${cardId}'">자세히</button>
                 <button class="btn-compare" onclick="event.stopPropagation();addToCart(${card.cardId},'${ne}','${ce}')">비교</button>
-                <button class="btn-apply"   onclick="event.stopPropagation();location.href='/card/index.html?cardId=${card.cardId}'">신청</button>
+                <button class="btn-apply"   onclick="event.stopPropagation();location.href='/card/${card.cardId}'">신청</button>
               </div>
             </div>
           </div>
@@ -231,9 +231,9 @@ function buildFlipCard(card, rank = null) {
           <div class="back-card-name">${card.cardName ?? ''}</div>
           <div class="back-benefit">${lines || backText}</div>
           <div class="back-actions">
-            <button class="btn-detail"  onclick="event.stopPropagation();location.href='/card/index.html?cardId=${card.cardId}'">자세히</button>
+            <button class="btn-detail"  onclick="event.stopPropagation();location.href='/card/${card.cardId}'">자세히</button>
             <button class="btn-compare" onclick="event.stopPropagation();addToCart(${card.cardId},'${ne}','${ce}')">비교</button>
-            <button class="btn-apply"   onclick="event.stopPropagation();location.href='/card/index.html?cardId=${card.cardId}'">신청</button>
+            <button class="btn-apply"   onclick="event.stopPropagation();location.href='/card/${card.cardId}'">신청</button>
           </div>
         </div>
       </div>
@@ -457,7 +457,10 @@ async function runModalSearch() {
 }
 
 // ★ 상세 이동: /card-detail.html → /card/
-function goDetail(cardId) { closeSearchModal(); location.href = `/card/index.html?cardId=${cardId}`; }
+function goDetail(cardId) {
+  closeSearchModal();
+  location.href = `/card/${cardId}`;
+}
 
 // ── 설문 기반 추천 ──
 const SURVEY = [
