@@ -455,7 +455,7 @@ async function doApprove() {
 
   if (r.ok) {
 	  alert('승인 처리 완료');
-    loadDetail(approvalId);
+	  location.href = '/admin/approvalManage.html';
   } else {
 	  alert('승인 처리 실패');
   }
@@ -477,7 +477,7 @@ async function doReject() {
 
   if (r.ok) {
 	  alert('반려 처리 완료');
-    loadDetail(approvalId);
+	  location.href = '/admin/approvalManage.html';
   } else {
 	  alert('반려 처리 실패');
   }
