@@ -194,7 +194,7 @@ function buildFlipCard(card, rank = null) {
               <div class="back-benefit">${lines || backText}</div>
               ${benefitTags ? `<div style="margin:6px 0 2px;">${benefitTags}</div>` : ''}
               <div class="back-actions">
-                <button class="btn-detail"  onclick="event.stopPropagation();location.href='/card/${cardId}'">자세히</button>
+                <button class="btn-detail"  onclick="event.stopPropagation();location.href='/card/${card.cardId}'">자세히</button>
                 <button class="btn-compare" onclick="event.stopPropagation();addToCart(${card.cardId},'${ne}','${ce}')">비교</button>
                 <button class="btn-apply"   onclick="event.stopPropagation();location.href='/card/${card.cardId}'">신청</button>
               </div>
