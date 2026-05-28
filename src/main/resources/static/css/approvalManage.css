@@ -54,16 +54,16 @@
 /* ============================================================
    페이지 래퍼
    ============================================================ */
+
+body {
+  background: var(--gray-100);
+  margin: 0;
+}
+
 .page-wrap {
   max-width: 1120px;
   margin: 0 auto;
-  padding: 28px 32px 80px;
-  background: var(--gray-100);
   min-height: calc(100vh - 60px);
-  font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
-  font-size: 14px;
-  color: var(--gray-800);
-  line-height: 1.6;
 }
 
 /* ── 페이지 헤더 ── */
