@@ -46,7 +46,6 @@ public class ScoreExplanationFactory {
         }
     }
 
-    @SuppressWarnings("ChainedIfElse")
     private ScoreExplanation createExplanation(final MetricEvaluationResult result, final String language) {
         final Double score = result.getAggregatedScore();
         final var metadata = result.getMetadata();
