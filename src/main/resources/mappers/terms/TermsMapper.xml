@@ -208,7 +208,7 @@
 	
 	<update id="supersedePreviousPublished">
 	    UPDATE TERMS
-	    SET    status     = 'SUPERSEDED',
+	    SET    status     = 'EXPIRED',
 	           updated_at = SYSTIMESTAMP
 	    WHERE  terms_master_id = #{termsMasterId}
 	      AND  status          = 'PUBLISHED'

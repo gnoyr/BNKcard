@@ -172,7 +172,7 @@ public class AdminTermsService {
         if ("PUBLISHED".equals(newStatus)) {
             // 같은 terms_master_id의 기존 PUBLISHED → SUPERSEDED 처리
             termsMapper.supersedePreviousPublished(terms.getTermsMasterId(), termsId);
-            log.info("[약관상태변경] 기존 PUBLISHED → SUPERSEDED 처리: termsMasterId={}",
+            log.info("[약관상태변경] 기존 PUBLISHED → EXPIRED 처리: termsMasterId={}",
                     terms.getTermsMasterId());
 
             if ("Y".equals(terms.getReconsentRequiredYn())) {
