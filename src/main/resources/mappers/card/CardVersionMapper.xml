@@ -62,5 +62,14 @@
         FROM   CARD_VERSIONS
         WHERE  card_id = #{cardId}
     </select>
+    
+	<select id="findByCardId" resultType="com.bnk.domain.card.model.CardVersion">
+	    SELECT version_id, card_id, version_no, version_status,
+	           change_summary, created_by, created_at,
+	           approved_by, approved_at, published_at
+	    FROM   CARD_VERSIONS
+	    WHERE  card_id = #{cardId}
+	    ORDER  BY created_at DESC
+	</select>    
 
 </mapper>
