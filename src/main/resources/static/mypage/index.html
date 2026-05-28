@@ -6,8 +6,7 @@
 <title>마이페이지 | 부산은행</title>
 <link rel="stylesheet" href="/css/mypage.css" />
 <link rel="stylesheet" href="/css/components.css" />
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js" defer></script>
-<link rel=stylesheet" href="/css/teal-theme.css">
+<link rel="stylesheet" href="/css/teal-theme.css">
 </head>
 <body>
 
@@ -39,6 +38,10 @@
   <!-- 보유 카드 및 신청 현황 -->
   <div class="card">
     <div class="card__head">보유 카드 및 신청 현황</div>
+    <div class="card-tabs">
+	    <button class="card-tab active" id="tab-owned">보유 카드</button>
+	    <button class="card-tab" id="tab-applied">신청 현황</button>
+	</div>
     <div id="cardSection">
       <div class="skeleton-item">
         <span class="skeleton skeleton-chip"></span>
@@ -84,6 +87,7 @@
 
 <div id="toast-container"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <script src="/js/header.js"></script>
 <script src="/js/mypage.js"></script>
 </body>
