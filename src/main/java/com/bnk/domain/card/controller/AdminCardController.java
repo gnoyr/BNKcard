@@ -1,5 +1,6 @@
 package com.bnk.domain.card.controller;
 
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,8 @@ import com.bnk.domain.card.dto.request.CardUpdateRequest;
 import com.bnk.domain.card.dto.request.ContentUpdateRequest;
 import com.bnk.domain.card.dto.request.ImageUpdateRequest;
 import com.bnk.domain.card.dto.response.CardDetailResponse;
+import com.bnk.domain.card.mapper.CardVersionMapper;
+import com.bnk.domain.card.model.CardVersion;
 import com.bnk.domain.card.service.AdminCardService;
 import com.bnk.global.auth.CustomAdminDetails;
 import com.bnk.global.response.ApiResponse;
@@ -36,7 +39,7 @@ import lombok.RequiredArgsConstructor;
 public class AdminCardController {
 
     private final AdminCardService adminCardService;
-
+    private final CardVersionMapper cardVersionMapper;
     /**
      * 관리자 카드 목록 다중조건 검색 (RQ-B13).
      * MyBatis <if> 동적 SQL. 페이지네이션 + 정렬.
@@ -121,5 +124,14 @@ public class AdminCardController {
             @AuthenticationPrincipal CustomAdminDetails ad) {
         adminCardService.changeCardStatus(cardId, request, ad.getAdminId());
         return ApiResponse.toOk(null);
+    }
+    
+    /** 카드 버전 히스토리 조회 */
+    @GetMapping("/{cardId}/versions")
+    public ResponseEntity<ApiResponse<List<CardVersion>>> getCardVersions(
+            @PathVariable Long cardId,
+            @AuthenticationPrincipal CustomAdminDetails ad) {
+        List<CardVersion> versions = cardVersionMapper.findByCardId(cardId);
+        return ApiResponse.toOk(versions);
     }
 }
