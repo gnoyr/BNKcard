@@ -17,6 +17,7 @@ import com.bnk.domain.admin.dto.response.ApprovalListResponse;
 import com.bnk.domain.admin.mapper.ApprovalMapper;
 import com.bnk.domain.admin.model.ApprovalLine;
 import com.bnk.domain.admin.model.ApprovalRequest;
+import com.bnk.domain.card.dto.request.CardSnapshot;
 import com.bnk.domain.card.mapper.CardMapper;
 import com.bnk.domain.card.mapper.CardStatusHistoryMapper;
 import com.bnk.domain.card.mapper.CardVersionMapper;
@@ -62,13 +63,13 @@ public class ApprovalService {
     public PageResponse<ApprovalListResponse> getApprovals(
             @Valid ApprovalSearchRequest request, Long adminId) {
 
+    	// 현재 로그인 관리자 ID를 필터로 주입 (내 할당 건만 조회)
+        request.setApproverAdminId(adminId);
+        
         long totalCount = approvalMapper.countApprovals(request);
         if (totalCount == 0) {
             return PageResponse.of(Collections.emptyList(), 0L, request.getPage(), request.getSize());
         }
-
-        // 현재 로그인 관리자 ID를 필터로 주입 (내 할당 건만 조회)
-        request.setApproverAdminId(adminId);
 
         List<ApprovalRequest> approvals = approvalMapper.findApprovals(request);
         List<ApprovalListResponse> content = approvals.stream()
@@ -216,16 +217,15 @@ public class ApprovalService {
         String snapshot = cardVersion.getSnapshotJson();
 
         try {
-            // ── 핵심 변경: buildCard2FromSnapshot() 완전 제거 ───────
             // objectMapper.readValue → model.Card 직접 역직렬화
             // Card에 선언된 @JsonAlias("updateBy")가 구 스냅샷 JSON 호환 보장
-            Card snapshotCard = objectMapper.readValue(snapshot, Card.class);
+        	CardSnapshot snap = objectMapper.readValue(snapshot, CardSnapshot.class);
+        	Card snapshotCard = snap.getCard();
 
             String previousStatus = Optional.ofNullable(cardMapper.findById(cardId))
                     .map(Card::getCardStatus)
                     .orElse("DRAFT");
 
-            // model.Card를 cardMapper.updateCard()에 직접 전달 (Card2 변환 불필요)
             Card approvedCard = Card.builder()
                     .cardId(snapshotCard.getCardId())
                     .cardCode(snapshotCard.getCardCode())
@@ -253,10 +253,10 @@ public class ApprovalService {
                     .updatedBy(adminId)
                     .build();
 
-            cardMapper.updateCard(approvedCard);          // ← cardMapper2.updateCard() 대체
-            cardMapper.updateCardStatus(cardId, "APPROVED"); // ← cardMapper2.updateCardStatus() 대체
+            cardMapper.updateCard(approvedCard);          
+            cardMapper.updateCardStatus(cardId, "APPROVED");
 
-            cardVersionMapper.updateVersionStatus(        // ← cardVersionMapper2 → cardVersionMapper
+            cardVersionMapper.updateVersionStatus(       
                     cardVersion.getVersionId(), "APPROVED", adminId);
 
             cardStatusHistoryMapper.insertCardStatusHistory(
