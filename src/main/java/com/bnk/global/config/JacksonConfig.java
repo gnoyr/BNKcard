@@ -3,6 +3,9 @@ package com.bnk.global.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
+import java.util.TimeZone;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -24,8 +27,11 @@ public class JacksonConfig {
         // ① Java 8+ 날짜/시간 타입(LocalDateTime, LocalDate 등) 직렬화 지원
         objectMapper.registerModule(new JavaTimeModule());
 
-        // ② [1234567890123] 타임스탬프 숫자 대신 "2025-01-15 14:30:00" 문자열로 출력
+        // ② [1234567890123] 타임스탬프 숫자 대신 "2025-01-15 1ㄴ4:30:00" 문자열로 출력
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        
+       // KST(+09:00) 오프셋 포함해서 직렬화 → 브라우저가 정확하게 파싱
+        objectMapper.setTimeZone(TimeZone.getTimeZone("Asia/Seoul"));
 
         return objectMapper;
     }

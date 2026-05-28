@@ -438,6 +438,12 @@ button {
 	border-bottom: 2px solid #e0e7f5;
 	margin-bottom: 20px;
 	overflow-x: auto;
+	scrollbar-width: none;
+  	-ms-overflow-style: none;
+}
+
+.type-tab-bar::-webkit-scrollbar {
+  display: none;
 }
 
 .type-tab {
@@ -593,7 +599,7 @@ button {
 .compare-cart {
 	position: fixed;
 	right: 0;
-	bottom: 80px;
+	bottom: 108px;
 	width: 220px;
 	background: #fff;
 	border-radius: 16px 0 0 16px;
@@ -611,7 +617,7 @@ button {
 .cart-toggle {
 	position: fixed;
 	right: 0;
-	bottom: 80px;
+	bottom: 108px;
 	background: #003087;
 	color: #fff;
 	padding: 10px 12px;
@@ -1111,4 +1117,60 @@ to {
 .toast.show {
 	transform: translateX(-50%) translateY(0);
 	opacity: 1;
+}
+.flip-front.top3-front {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.top3-img-wrap {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+}
+
+.top3-name-bar {
+    flex-shrink: 0;
+    padding: 10px 14px 14px;
+    background: #fff;
+    text-align: center;
+}
+
+.top3-card-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a1a2e;
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 뒷면 추가 요소 */
+.back-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.back-type-badge {
+    background: rgba(255, 255, 255, .2);
+    color: #fff;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.back-company {
+    font-size: 11px;
+    color: rgba(255, 255, 255, .7);
+}
+
+.back-fee {
+    font-size: 12px;
+    color: rgba(255, 255, 255, .85);
+    margin-bottom: 8px;
 }

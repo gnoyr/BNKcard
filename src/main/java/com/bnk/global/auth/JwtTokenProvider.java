@@ -1,7 +1,9 @@
 package com.bnk.global.auth;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 
 import javax.crypto.SecretKey;
 
@@ -100,8 +102,36 @@ public class JwtTokenProvider {
         return Long.valueOf(parseClaims(token).getSubject());
     }
 
+    /**
+     * 단일 역할 반환.
+     * 일반 사용자 토큰: "role" 클레임(단수) → "ROLE_USER"
+     * 관리자 토큰:     "role" 없으면 "roles" 클레임(복수) fallback
+     *                 → "SUPER_ADMIN,CARD_MANAGER" (콤마 구분 문자열)
+     */
     public String getRole(String token) {
-        return parseClaims(token).get("role", String.class);
+        Claims claims = parseClaims(token);
+        // 일반 사용자 토큰: "role" 클레임
+        String role = claims.get("role", String.class);
+        if (role != null) return role;
+        // 관리자 토큰 fallback: "roles" 클레임
+        return claims.get("roles", String.class);
+    }
+
+    /**
+     *  관리자 토큰 전용 — 다중 역할 목록 반환.
+     * "SUPER_ADMIN,CARD_MANAGER" → List.of("SUPER_ADMIN", "CARD_MANAGER")
+     *
+     * 일반 사용자 토큰이 잘못 호출된 경우 "role" 클레임을 단일 원소 리스트로 반환.
+     */
+    public List<String> getRoleList(String token) {
+        Claims claims = parseClaims(token);
+        String roles = claims.get("roles", String.class);
+        if (roles != null && !roles.isBlank()) {
+            return Arrays.asList(roles.split(","));
+        }
+        // 일반 사용자 토큰 fallback
+        String role = claims.get("role", String.class);
+        return role != null ? List.of(role) : List.of();
     }
 
     public String getTokenType(String token) {

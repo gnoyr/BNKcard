@@ -196,7 +196,7 @@
     </select>
 
     <!-- ── version_id 기준 CardVersion 조회 ────────────────── -->
-    <select id="findVersionByApprovalId" resultType="com.bnk.domain.card.model2.CardVersion">
+    <select id="findVersionByApprovalId" resultType="com.bnk.domain.card.model.CardVersion">
         SELECT cv.version_id, cv.card_id, cv.version_no,
                cv.version_status, cv.snapshot_json
         FROM   CARD_VERSIONS cv

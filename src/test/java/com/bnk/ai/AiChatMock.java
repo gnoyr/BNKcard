@@ -1,23 +1,13 @@
 package com.bnk.ai;
 import static org.assertj.core.api.Assertions.assertThat;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.lenient;
 
-import com.bnk.BnKcardApplication;
-import com.bnk.ai.config.RagasEvaluationConfig;
-import com.bnk.ai.qa.solutions.execution.ModelResult;
-import com.bnk.ai.qa.solutions.execution.MultiModelExecutor;
-import com.bnk.ai.qa.solutions.metrics.retrieval.ContextPrecisionMetric;
-import com.bnk.ai.qa.solutions.metrics.retrieval.ContextRecallMetric;
-import com.bnk.ai.qa.solutions.metrics.retrieval.FaithfulnessMetric;
-import com.bnk.ai.qa.solutions.metrics.retrieval.ResponseRelevancyMetric;
-import com.bnk.ai.qa.solutions.metrics.retrieval.ContextPrecisionMetric.RelevanceResponse;
-import com.bnk.ai.qa.solutions.sample.Sample;
+import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -30,9 +20,16 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import java.time.Duration;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
+import com.bnk.BnKcardApplication;
+import com.bnk.ai.config.RagasEvaluationConfig;
+import com.bnk.ai.qa.solutions.execution.ModelResult;
+import com.bnk.ai.qa.solutions.execution.MultiModelExecutor;
+import com.bnk.ai.qa.solutions.metrics.retrieval.ContextPrecisionMetric;
+import com.bnk.ai.qa.solutions.metrics.retrieval.ContextPrecisionMetric.RelevanceResponse;
+import com.bnk.ai.qa.solutions.metrics.retrieval.ContextRecallMetric;
+import com.bnk.ai.qa.solutions.metrics.retrieval.FaithfulnessMetric;
+import com.bnk.ai.qa.solutions.metrics.retrieval.ResponseRelevancyMetric;
+import com.bnk.ai.qa.solutions.sample.Sample;
 
 @SpringBootTest(classes = {BnKcardApplication.class, RagasEvaluationConfig.class})
 @ActiveProfiles("test")
@@ -158,7 +155,7 @@ public class AiChatMock {
         // 3. executeLlmOnModelAsync - doAnswer로 변경
         doAnswer(invocation -> {
             String modelId = invocation.getArgument(0, String.class);
-            String prompt = invocation.getArgument(1, String.class);
+            invocation.getArgument(1, String.class);
             Class<?> responseClass = invocation.getArgument(2);
             
             System.out.println(">>> [executeLlmOnModelAsync 호출됨!!!]");

@@ -4,68 +4,59 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>카드 상세 | BNK 부산은행</title>
-<link rel="stylesheet" href="/css/card.css" />
+<link rel="stylesheet" href="/css/components.css">
 <link rel="stylesheet" href="/css/chatbot.css">
+<link rel="stylesheet" href="/css/card.css" />
+<link rel="stylesheet" href="/css/teal-theme.css">
 </head>
 <body>
 
-	<header class="header">
-		<div class="header-logo">
-			BNK <span>부산은행</span> 카드
-		</div>
-		<nav class="header-nav">
-			<a href="/card-main.html">← 카드 목록</a> <a href="/auth-test.html">로그인</a>
-		</nav>
-	</header>
+  <div id="app-header"></div>
 
-	<div id="main-wrap">
-		<div class="loading-wrap">
-			<div class="loading-spinner"></div>
-			<p>카드 정보를 불러오는 중...</p>
-		</div>
-	</div>
+  <div id="main-wrap">
+    <div class="loading-wrap">
+      <div class="loading-spinner"></div>
+      <p>카드 정보를 불러오는 중...</p>
+    </div>
+  </div>
 
-	<div class="sticky-bar" id="sticky-apply-bar">
-		<div class="sticky-info">
-			<div class="sticky-title" id="sticky-card-name">-</div>
-			<div class="sticky-fee" id="sticky-card-fee">-</div>
-		</div>
-		<button class="btn-sticky-apply" id="btn-sticky-trigger">발급
-			신청</button>
-	</div>
+  <div class="sticky-bar" id="sticky-apply-bar">
+    <div class="sticky-info">
+      <div class="sticky-title" id="sticky-card-name">-</div>
+      <div class="sticky-fee"   id="sticky-card-fee">-</div>
+    </div>
+    <button class="btn-sticky-apply" id="btn-sticky-trigger">발급 신청</button>
+  </div>
 
-	<div class="img-modal" id="img-modal" onclick="closeImgModal()">
-		<span class="img-modal-close">✕</span> <img id="img-modal-src" src=""
-			alt="">
-	</div>
+  <div class="img-modal" id="img-modal" onclick="closeImgModal()">
+    <span class="img-modal-close">✕</span>
+    <img id="img-modal-src" src="" alt="">
+  </div>
 
-	<!-- 챗봇 위젯 -->
-	<div id="bnk-ai-chatbot" data-api-url="/api/chat"
-		data-bot-image="/images/ai-chatbot.png">
+  <!-- AI 챗봇 위젯 -->
+  <div id="bnk-ai-chatbot"
+       data-api-url="/api/chat"
+       data-bot-image="https://objectstorage.ap-chuncheon-1.oraclecloud.com/n/axa1llzzkj5q/b/terms/o/images%2Fimageshachi-fotor-2026052617514.png">
+    <button class="chat-toggle" type="button" aria-label="AI 챗봇 열기">
+      <img src="" alt="AI 챗봇">
+    </button>
+    <div class="chat-window">
+      <div class="chat-header">
+        <span>BNK AI 챗봇</span>
+        <button class="chat-close" type="button">✕</button>
+      </div>
+      <div class="chat-messages"></div>
+      <form class="chat-input-area">
+        <input class="chat-input" type="text" placeholder="무엇이든 물어보세요..." autocomplete="off">
+        <button class="chat-send" type="button">전송</button>
+      </form>
+    </div>
+  </div>
 
-		<button class="chat-toggle" type="button" aria-label="AI 챗봇 열기">
-			<img src="" alt="AI 챗봇">
-		</button>
 
-		<div class="chat-window">
-			<div class="chat-header">
-				<span>BNK AI 챗봇</span>
-				<button class="chat-close" type="button">✕</button>
-			</div>
-			<div class="chat-messages"></div>
-
-			<form class="chat-input-area">
-				<input class="chat-input" type="text" placeholder="무엇이든 물어보세요..."
-					autocomplete="off">
-				<button class="chat-send" type="submit">전송</button>
-			</form>
-		</div>
-	</div>
-
-	<script src="/js/card.js"></script>
-	<script src="/js/chatbot.js"></script>
-
-	<script src="/js/card.js"></script>
-	<script type="/js/chatbot.js"></script>
+  <script src="/js/header.js"></script>
+  <script src="/js/card.js"></script>
+  <script src="/js/chatbot.js"></script>
+  <script src="/js/widget-toggle.js"></script>
 </body>
 </html>

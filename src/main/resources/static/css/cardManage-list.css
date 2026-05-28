@@ -1,0 +1,469 @@
+@charset "UTF-8";
+
+/* ============================================================
+   cardManage-list.css  |  BNK 카드 관리 — 목록 스타일
+   palette: Deep Teal (#00677F 계열)
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap');
+
+/* ── CSS 변수 ── */
+:root {
+  --teal-50:  #E0F4F7;
+  --teal-100: #B3E3EC;
+  --teal-200: #7ECFDD;
+  --teal-400: #3AAFC4;
+  --teal-600: #00677F;
+  --teal-800: #004D61;
+  --teal-900: #003040;
+
+  --white:    #FFFFFF;
+  --gray-50:  #F8FAFB;
+  --gray-100: #F0F4F5;
+  --gray-200: #DDE6E9;
+  --gray-400: #9BB4BB;
+  --gray-600: #5C7A83;
+  --gray-800: #2C3E42;
+
+  --success-bg:   #E6F4F1;
+  --success-text: #0A6B55;
+  --warning-bg:   #FFF8E6;
+  --warning-text: #8A6200;
+  --danger-bg:    #FEF0F0;
+  --danger-text:  #C0392B;
+  --info-bg:      #EAF4FB;
+  --info-text:    #1A6FA0;
+  --draft-bg:     #F3F4F6;
+  --draft-text:   #4B5563;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --shadow-sm: 0 1px 3px rgba(0,103,127,.08);
+  --shadow-md: 0 4px 16px rgba(0,103,127,.12);
+  --ease: .18s cubic-bezier(.4,0,.2,1);
+}
+
+/* ── 리셋 ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  background: var(--gray-100);
+  color: var(--gray-800);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ============================================================
+   레이아웃 — 사이드바 + 콘텐츠
+   ============================================================ */
+table { border-collapse: collapse; }
+
+/* 전체 래퍼 테이블 */
+table[style*="width:100%"] {
+  display: flex;
+  min-height: 100vh;
+}
+table[style*="width:100%"] > tbody > tr {
+  display: flex;
+  width: 100%;
+}
+
+/* ============================================================
+   사이드바
+   ============================================================ */
+.nav-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 10px;
+  margin-bottom: 2px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  font-size: 13.5px;
+  color: #555;
+}
+.nav-btn:hover { background: #ececec; color: #111; }
+.nav-btn.active { background: #fff; color: #111; font-weight: 600; border: 1px solid #ddd; }
+
+td[style*="width:200px"] {
+  width: 220px !important;
+  flex-shrink: 0;
+  background: #004F63 !important;
+  border-right: none !important;
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 사이드바 타이틀 */
+td[style*="width:200px"] > div:first-child {
+  background: #005A72;
+  padding: 20px 20px 16px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--white);
+  border-bottom: 1px solid rgba(255,255,255,.08) !important;
+  letter-spacing: -.3px;
+}
+
+/* 사이드바 내부 패딩 */
+td[style*="width:200px"] > div:last-child {
+  padding: 12px 12px 20px;
+  flex: 1;
+}
+
+/* 섹션 라벨 */
+td[style*="width:200px"] div[style*="font-size:10.5px"] {
+  font-size: 10px !important;
+  font-weight: 700;
+  color: var(--teal-400) !important;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 10px 8px 4px !important;
+}
+
+/* 내비 버튼 */
+.nav-btn {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px !important;
+  margin-bottom: 2px !important;
+  border: none !important;
+  border-radius: var(--radius-sm) !important;
+  background: transparent !important;
+  cursor: pointer;
+  font-size: 13px !important;
+  color: rgba(255,255,255,.65) !important;
+  transition: background var(--ease), color var(--ease);
+  text-align: left !important;
+  font-family: inherit;
+}
+.nav-btn:hover {
+  background: rgba(255,255,255,.08) !important;
+  color: var(--white) !important;
+}
+.nav-btn.active {
+  background: var(--teal-600) !important;
+  color: var(--white) !important;
+  font-weight: 600 !important;
+  border: none !important;
+}
+
+/* ============================================================
+   메인 콘텐츠 영역
+   ============================================================ */
+table[style*="width:100%"] > tbody > tr > td:last-child {
+  flex: 1;
+  padding: 28px 32px !important;
+  vertical-align: top !important;
+  overflow-x: auto;
+  background: var(--gray-100);
+}
+
+/* ============================================================
+   목록 페이지 공통 헤더 (전체 X개 + 버튼)
+   ============================================================ */
+[id^="page-list"] > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+[id^="page-list"] > div:first-child span {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--teal-800);
+  letter-spacing: -.3px;
+}
+
+[id^="page-list"] > div:first-child strong {
+  color: var(--teal-600);
+}
+
+/* ── 등록 버튼 ── */
+[id^="page-list"] > div:first-child button,
+[id^="page-list"] > div:first-child > button {
+  padding: 8px 18px;
+  background: var(--teal-600);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--ease), transform var(--ease);
+  font-family: inherit;
+}
+[id^="page-list"] > div:first-child button:hover {
+  background: var(--teal-800);
+  transform: translateY(-1px);
+}
+
+/* ============================================================
+   검색 필터 바
+   ============================================================ */
+[id^="page-list"] > div:nth-child(3),
+[id^="page-list"] > div:nth-child(2):not(:first-child) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  background: var(--white);
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 18px;
+}
+
+/* 인풋 공통 */
+[id^="page-list"] input[type="text"],
+[id^="page-list"] input[type="date"],
+[id^="page-list"] select {
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--gray-800);
+  background: var(--gray-50);
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--ease), box-shadow var(--ease);
+}
+[id^="page-list"] input[type="text"]:focus,
+[id^="page-list"] input[type="date"]:focus,
+[id^="page-list"] select:focus {
+  border-color: var(--teal-400);
+  box-shadow: 0 0 0 3px rgba(58,175,196,.15);
+  background: var(--white);
+}
+
+/* 키워드 인풋 넓게 */
+[id^="page-list"] input[id$="Keyword"],
+[id^="page-list"] input[id$="SearchKeyword"] {
+  width: 220px;
+}
+
+/* select */
+[id^="page-list"] select {
+  padding-right: 28px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239BB4BB' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  cursor: pointer;
+}
+
+/* 날짜 범위 구분 물결 */
+[id="page-list"] > div:nth-child(3) > span {
+  color: var(--gray-400);
+  font-size: 14px;
+}
+
+/* 검색 / 초기화 버튼 */
+[id^="page-list"] > div:nth-child(3) > button,
+[id^="page-list"] > div:nth-child(2):not(:first-child) > button {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--ease), transform var(--ease);
+}
+
+/* 검색 버튼 (첫 번째) */
+[id^="page-list"] > div:nth-child(3) > button:nth-last-child(2),
+[id^="page-list"] > div:nth-child(2):not(:first-child) > button:nth-last-child(2) {
+  background: var(--teal-600);
+  color: var(--white);
+  border: none;
+}
+[id^="page-list"] > div:nth-child(3) > button:nth-last-child(2):hover {
+  background: var(--teal-800);
+}
+
+/* 초기화 버튼 (마지막) */
+[id^="page-list"] > div:nth-child(3) > button:last-child,
+[id^="page-list"] > div:nth-child(2):not(:first-child) > button:last-child {
+  background: var(--white);
+  color: var(--gray-600);
+  border: 1px solid var(--gray-200);
+}
+[id^="page-list"] > div:nth-child(3) > button:last-child:hover {
+  background: var(--gray-100);
+  border-color: var(--gray-400);
+}
+
+/* ============================================================
+   테이블
+   ============================================================ */
+[id^="page-list"] > table,
+[id^="page-list"] table[border] {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--white);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: none !important;
+  box-shadow: var(--shadow-sm);
+}
+
+/* 헤더 */
+[id^="page-list"] table thead tr {
+  background: var(--teal-800);
+}
+[id^="page-list"] table thead th {
+  padding: 12px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: .04em;
+  text-align: left;
+  border: none !important;
+  white-space: nowrap;
+}
+
+/* tbody 행 */
+[id^="page-list"] table tbody tr {
+  border-bottom: 1px solid var(--gray-100);
+  transition: background var(--ease);
+}
+[id^="page-list"] table tbody tr:last-child {
+  border-bottom: none;
+}
+[id^="page-list"] table tbody tr:hover {
+  background: var(--teal-50);
+}
+[id^="page-list"] table tbody td {
+  padding: 11px 16px;
+  font-size: 13px;
+  color: var(--gray-800);
+  border: none !important;
+  vertical-align: middle;
+}
+
+/* 카드 ID — 모노 */
+[id^="page-list"] table tbody td:first-child {
+  font-family: 'SF Mono', 'Fira Mono', monospace;
+  font-size: 12px;
+  color: var(--teal-600);
+  font-weight: 600;
+}
+
+/* 카드명 굵게 */
+[id^="page-list"] table tbody td:nth-child(2) {
+  font-weight: 600;
+  color: var(--gray-800);
+}
+
+/* 클릭 가능 행 커서 */
+[id^="page-list"] table tbody tr[onclick],
+[id^="page-list"] table tbody tr[style*="cursor:pointer"] {
+  cursor: pointer;
+}
+
+/* 빈 데이터 / 로딩 */
+[id^="page-list"] table tbody td[colspan] {
+  text-align: center;
+  color: var(--gray-400);
+  padding: 40px 0;
+  font-size: 13px;
+}
+
+/* ============================================================
+   상태 뱃지
+   ============================================================ */
+.status-badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+
+/* JS로 뱃지 클래스를 못 쓸 경우 — 텍스트 기반 */
+[id^="page-list"] table tbody td:nth-child(5) {
+  white-space: nowrap;
+}
+
+/* ============================================================
+   페이지네이션
+   ============================================================ */
+[id$="pagination"],
+#pagination,
+#benefitPagination,
+#imagePagination,
+#contentPagination,
+#termsPagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+[id$="pagination"] button,
+#pagination button,
+#benefitPagination button,
+#imagePagination button,
+#contentPagination button,
+#termsPagination button {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  color: var(--gray-600);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--ease), border-color var(--ease), color var(--ease);
+}
+[id$="pagination"] button:hover:not([disabled]),
+#pagination button:hover:not([disabled]) {
+  background: var(--teal-50);
+  border-color: var(--teal-400);
+  color: var(--teal-800);
+}
+[id$="pagination"] button[style*="font-weight:bold"],
+#pagination button[style*="font-weight:bold"] {
+  background: var(--teal-600);
+  border-color: var(--teal-600);
+  color: var(--white);
+  font-weight: 700;
+}
+[id$="pagination"] button[disabled],
+#pagination button[disabled] {
+  opacity: .35;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   이미지 목록 미리보기
+   ============================================================ */
+#imageTableBody img {
+  height: 44px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-200);
+  object-fit: cover;
+}
+
+/* ============================================================
+   br 태그 간격 제거 (기존 HTML 레이아웃 보조용)
+   ============================================================ */
+[id^="page-list"] > br {
+  display: none;
+}

@@ -351,6 +351,7 @@ to {
 
 .btn-primary {
 	background: var(--red);
+	margin-bottom : 15px;
 	color: var(--white);
 }
 
@@ -1071,3 +1072,13 @@ select.form-input {
 #extra-terms-wrap:empty {
 	display: none;
 }
+
+.alert.show {
+    display: block;
+}
+
+.toAdminLogin {
+	cursor : default;
+	color: inherit; opacity: 0.15; font-size: 10px; text-decoration: none; letter-spacing: 0.05em; user-select: none;
+}
+ 

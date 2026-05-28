@@ -4,10 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BNK 부산은행 카드</title>
-  <!-- 공통 컴포넌트 스타일 (헤더·세션바·토스트) -->
+  <!-- 원본 CSS (순서 유지) -->
   <link rel="stylesheet" href="/css/components.css">
-  <!-- 카드 메인 페이지 전용 스타일 -->
   <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/chatbot.css">
+  <!-- ★ Teal 테마 오버라이드 (마지막에 로드하여 색상만 덮어씀) -->
+  <link rel="stylesheet" href="/css/teal-theme.css">
 </head>
 <body>
 
@@ -53,8 +55,6 @@
   <div class="category-bar" id="category-bar">
     <div class="loading-spinner" style="width:20px;height:20px;border-width:2px;margin:8px 0;"></div>
   </div>
-  <div class="cat-hint">💡 여러 카테고리를 선택하면 모든 혜택을 가진 카드만 표시됩니다</div>
-  <div class="cat-selected-info" id="cat-selected-info"></div>
 
   <div class="filter-row">
     <input type="text" id="filter-q" placeholder="카드명 검색..."
@@ -85,7 +85,7 @@
     <div class="modal-section-title">추천 검색어</div>
     <div class="suggest-list" id="suggest-list"></div>
     <div class="modal-section-title">혜택 카테고리
-      <span style="font-size:11px;color:#aaa;font-weight:400;"> (중복 선택 = AND 교집합)</span>
+      <span style="font-size:11px;color:#aaa;font-weight:400;"></span>
     </div>
     <div class="modal-cat-grid" id="modal-cat-grid">
       <div class="loading-spinner" style="width:20px;height:20px;border-width:2px;grid-column:1/-1;margin:8px auto;"></div>
@@ -128,18 +128,65 @@
   </div>
 </div>
 
-<!-- ── 비교 카트 ── -->
+<!-- ── 비교 카트 FAB ── -->
 <div class="cart-toggle" onclick="toggleCart()">비교<br>카트</div>
 <div class="compare-cart" id="compare-cart">
-  <div class="cart-title">비교 카트 <span id="cart-count" style="color:#0066cc">(0/3)</span></div>
+  <div class="cart-title">비교 카트 <span id="cart-count">(0/3)</span></div>
   <div id="cart-items"><div class="cart-empty">카드를 추가하세요</div></div>
   <button class="btn-cart-compare" id="btn-do-compare" onclick="doCompare()" disabled>비교하기</button>
 </div>
 <div class="toast" id="toast"></div>
 
-<!-- ── 공통 헤더 스크립트 ── -->
+<!-- ── AI 챗봇 위젯 ── -->
+<div id="bnk-ai-chatbot"
+     data-api-url="/api/chat"
+     data-bot-image="https://objectstorage.ap-chuncheon-1.oraclecloud.com/n/axa1llzzkj5q/b/terms/o/images%2Fimageshachi-fotor-2026052617514.png">
+  <button class="chat-toggle" type="button" aria-label="AI 챗봇 열기">
+    <img src="" alt="AI 챗봇">
+  </button>
+  <div class="chat-window">
+    <div class="chat-header">
+      <span>BNK AI 챗봇</span>
+      <button class="chat-close" type="button">✕</button>
+    </div>
+    <div class="chat-messages"></div>
+    <form class="chat-input-area">
+      <input class="chat-input" type="text" placeholder="무엇이든 물어보세요..." autocomplete="off">
+      <button class="chat-send" type="button">전송</button>
+    </form>
+  </div>
+</div>
+
+<!-- ── 공통 푸터 ── -->
+<footer class="site-footer">
+  <div class="site-footer__inner">
+    <a href="/" class="site-footer__logo">
+      <span class="site-footer__badge">BNK</span>
+      <span class="site-footer__name">부산은행</span>
+    </a>
+    <nav class="site-footer__nav">
+      <a href="/">카드 홈</a>
+      <a href="/auth/login.html">로그인</a>
+      <a href="/auth/signup.html">회원가입</a>
+      <a href="/mypage/index.html">마이페이지</a>
+    </nav>
+    <p class="site-footer__info">
+      <strong>BNK부산은행</strong><br>
+      부산광역시 부산진구 부전동 830-38 &nbsp;|&nbsp; 대표전화 1588-6200<br>
+      금융거래는 BNK부산은행 공식 채널을 이용해 주세요.
+    </p>
+    <p class="site-footer__copy">
+      © 2025 BNK Busan Bank. All rights reserved.
+      <a href="/auth/admin-login.html" class="site-footer__admin-link" tabindex="-1" aria-hidden="true">관리자</a>
+    </p>
+  </div>
+</footer>
+
+<!-- ── 스크립트 ── -->
 <script src="/js/header.js"></script>
-<!-- ── 카드 메인 페이지 전용 스크립트 ── -->
 <script src="/js/main.js"></script>
+<script src="/js/chatbot.js"></script>
+<script src="/js/widget-toggle.js"></script>
+
 </body>
 </html>
