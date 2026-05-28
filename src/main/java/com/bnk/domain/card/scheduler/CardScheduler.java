@@ -1,7 +1,10 @@
 package com.bnk.domain.card.scheduler;
 
-import com.bnk.domain.card.mapper.CardMapper;   // ← CardMapper2 → CardMapper
-import com.bnk.domain.card.model.Card;          // ← model2.Card → model.Card
+import com.bnk.domain.card.mapper.CardMapper; 
+import com.bnk.domain.card.mapper.CardStatusHistoryMapper;
+import com.bnk.domain.card.model.Card;
+import com.bnk.domain.card.model.CardStatusHistory;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -30,21 +33,14 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CardScheduler {
 
-    private final CardMapper cardMapper;   // ← CardMapper2 대체
+    private final CardMapper              cardMapper;
+    private final CardStatusHistoryMapper cardStatusHistoryMapper;
 
-    /**
-     * APPROVED → PUBLISHED 자동 전환
-     * publish_start_at <= SYSTIMESTAMP && APPROVED 상태 카드를 PUBLISHED로 전환
-     * 매 5분마다 실행
-     */
     @Scheduled(fixedDelay = 300_000)
     @Transactional
     public void publishApprovedCards() {
-        List<Card> readyCards = cardMapper.findApprovedReadyCards();   // ← getApprovedReadyCards()
-
-        if (readyCards.isEmpty()) {
-            return;
-        }
+        List<Card> readyCards = cardMapper.findApprovedReadyCards();
+        if (readyCards.isEmpty()) return;
 
         List<Long> cardIds = readyCards.stream()
                 .map(Card::getCardId)
@@ -53,32 +49,46 @@ public class CardScheduler {
         cardMapper.publishCards(cardIds);
         cardMapper.publishCardVersions(cardIds);
 
-        log.info("[스케줄러] APPROVED → PUBLISHED 전환 완료: {}건, cardIds={}",
-                cardIds.size(), cardIds);
+        // 상태 이력 insert
+        readyCards.forEach(card ->
+            cardStatusHistoryMapper.insertCardStatusHistory(
+                CardStatusHistory.builder()
+                    .cardId(card.getCardId())
+                    .previousStatus("APPROVED")
+                    .changedStatus("PUBLISHED")
+                    .changedReason("스케줄러 자동 전환")
+                    .build()
+            )
+        );
+
+        log.info("[스케줄러] APPROVED → PUBLISHED 전환 완료: {}건", cardIds.size());
     }
 
-    /**
-     * PUBLISHED → EXPIRED 자동 만료
-     * publish_end_at < SYSTIMESTAMP && PUBLISHED 상태 카드를 EXPIRED로 전환
-     * 매 10분마다 실행
-     */
     @Scheduled(fixedDelay = 600_000)
     @Transactional
     public void expirePublishedCards() {
-        List<Card> expiredCards = cardMapper.findExpiredCards();       // ← getExpiredCards()
-
-        if (expiredCards.isEmpty()) {
-            return;
-        }
+        List<Card> expiredCards = cardMapper.findExpiredCards();
+        if (expiredCards.isEmpty()) return;
 
         List<Long> cardIds = expiredCards.stream()
                 .map(Card::getCardId)
                 .collect(Collectors.toList());
 
         cardMapper.expireCards(cardIds);
-        cardMapper.expireCardVersions(cardIds);                        // ← expireCardVersion() (복수형)
+        cardMapper.expireCardVersions(cardIds);
 
-        log.info("[스케줄러] PUBLISHED → EXPIRED 전환 완료: {}건, cardIds={}",
-                cardIds.size(), cardIds);
+        // 상태 이력 insert
+        expiredCards.forEach(card ->
+            cardStatusHistoryMapper.insertCardStatusHistory(
+                CardStatusHistory.builder()
+                    .cardId(card.getCardId())
+                    .previousStatus("PUBLISHED")
+                    .changedStatus("EXPIRED")
+                    .changedReason("스케줄러 자동 만료")
+                    .build()
+            )
+        );
+
+        log.info("[스케줄러] PUBLISHED → EXPIRED 전환 완료: {}건", cardIds.size());
     }
 }

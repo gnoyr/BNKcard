@@ -50,15 +50,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * 관리자 카드 서비스 (리팩토링)
- *
- * 변경 이력:
- *  - CardMapper2 의존성 제거 → CardMapper 단일 사용
- *  - CardVersionMapper2 → CardVersionMapper (이름 통일)
- *  - changeCardStatus(): cardMapper2.getCardDetail() → cardMapper.findById()
- *  - createVersionAndApproval(): cardVersionMapper2 → cardVersionMapper
- */
 @Slf4j
 @Service
 @Validated
@@ -110,13 +101,11 @@ public class AdminCardService {
         cardMapper.insertCard(card);
 
         // 2. CARD_BENEFITS INSERT
-        List<CardBenefit> benefits = new ArrayList<>();
         if (request.getBenefits() != null && !request.getBenefits().isEmpty()) {
-            benefits = request.getBenefits().stream()
+        	List<CardBenefit> benefits = request.getBenefits().stream()
                     .map(b -> toBenefitEntity(b, card.getCardId()))
                     .collect(Collectors.toList());
             cardBenefitMapper.insertBenefits(benefits);
-            benefits = cardBenefitMapper.findByCardId(card.getCardId());
         }
 
         // 3. CARD_IMAGES INSERT
@@ -127,7 +116,8 @@ public class AdminCardService {
             cardImageMapper.insertImages(images);
         }
 
-        // 4. 스냅샷 + 버전 + 결재 생성
+        // 4. 스냅샷
+        List<CardBenefit> benefits = cardBenefitMapper.findByCardId(card.getCardId());
         List<CardImage> images = cardImageMapper.findByCardId(card.getCardId());
         CardSnapshot snapshot = CardSnapshot.builder()
                 .card(card)

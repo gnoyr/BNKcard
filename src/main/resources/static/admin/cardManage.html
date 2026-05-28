@@ -2245,6 +2245,7 @@ function createAddImageRow(img) {
       결재 완료 후 게시됩니다.`;
     showToast('카드 등록이 신청되었습니다.', 'success');
     btn.textContent = '등록 완료';
+    setTimeout(() => switchMenu('list', null), 1500);
   }
 
   // ================================================================
