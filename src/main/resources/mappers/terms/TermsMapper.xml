@@ -206,4 +206,13 @@
 	    WHERE  t.terms_id = #{termsId}
 	</select>
 	
+	<update id="supersedePreviousPublished">
+	    UPDATE TERMS
+	    SET    status     = 'SUPERSEDED',
+	           updated_at = SYSTIMESTAMP
+	    WHERE  terms_master_id = #{termsMasterId}
+	      AND  status          = 'PUBLISHED'
+	      AND  terms_id        != #{currentTermsId}
+	</update>
+	
 </mapper>

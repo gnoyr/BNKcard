@@ -16,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/terms")
@@ -25,24 +26,23 @@ public class AdminTermsController {
     private final AdminTermsService adminTermsService;
 
     /**
-     * B-11 약관 신규 버전 등록 + PDF 변환 (RQ-B11, B-13).
-     * TERMS INSERT(DRAFT) + TERMS_FILES INSERT(PDF 원본 + JPG 변환본).
-     * multipart/form-data: JSON 파트(request) + PDF 파트(pdfFile).
+     * 약관 신규 등록 + 결재 신청 (수정 후)
+     * POST /api/admin/terms
+     * 반환: { termsId, approvalId }
      */
     @PostMapping(consumes = "multipart/form-data")
-    public ResponseEntity<ApiResponse<Void>> registerTermsWithPdf(
+    public ResponseEntity<ApiResponse<Map<String, Long>>> registerTerms(
             @RequestPart("request") @Valid TermsCreateRequest request,
             @RequestPart("pdfFile") MultipartFile pdfFile,
             @AuthenticationPrincipal CustomAdminDetails ad) throws IOException {
-        adminTermsService.registerTermsWithPdf(request, pdfFile);
-        return ApiResponse.toOk(null);
+        Map<String, Long> result =
+            adminTermsService.registerTermsWithApproval(request, pdfFile, ad.getAdminId());
+        return ApiResponse.toCreated(result);
     }
 
     /**
-     * B-12 약관 상태 변경 (RQ-B12).
-     * DRAFT → REVIEW → APPROVED → PUBLISHED 순서로 전환.
-     * PUBLISHED 전환 시 reconsent_required_yn='Y' 이면 알림 발송.
-     * TERMS_STATUS_HISTORY INSERT 필수.
+     * 약관 상태 직접 변경 (긴급용 — 정상 흐름은 Approval)
+     * PATCH /api/admin/terms/{termsId}/status
      */
     @PatchMapping("/{termsId}/status")
     public ResponseEntity<ApiResponse<Void>> changeTermsStatus(
@@ -52,33 +52,7 @@ public class AdminTermsController {
         adminTermsService.changeTermsStatus(termsId, request, ad.getAdminId());
         return ApiResponse.toOk(null);
     }
-    
-    /** 관리자 약관 목록 조회 (TERMS + TERMS_MASTERS JOIN) */
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<TermsAdminResponse>>> getTermsList(
-            @RequestParam(required = false) String status,
-            @AuthenticationPrincipal CustomAdminDetails ad) {
-        return ApiResponse.toOk(adminTermsService.getTermsList(status));
-    }
 
-    /** 관리자 약관 상세 조회 (TERMS + FILES) */
-    @GetMapping("/{termsId}")
-    public ResponseEntity<ApiResponse<TermsAdminResponse>> getTermsDetail(
-            @PathVariable Long termsId,
-            @AuthenticationPrincipal CustomAdminDetails ad) {
-        return ApiResponse.toOk(adminTermsService.getTermsDetail(termsId));
-    }
-
-    /** TERMS_MASTERS 목록 조회 (약관 등록 시 선택용) */
-    @GetMapping("/masters")
-    public ResponseEntity<ApiResponse<List<TermsMasterResponse>>> getTermsMasters(
-            @AuthenticationPrincipal CustomAdminDetails ad) {
-        return ApiResponse.toOk(adminTermsService.getTermsMasters());
-    }
-    
-    /**
-     * 기존 약관에 PDF 파일 추가 (TERMS 새 생성 없이 기존 terms_id에 파일만 붙임)
-     */
     @PostMapping(value = "/{termsId}/files", consumes = "multipart/form-data")
     public ResponseEntity<ApiResponse<Void>> addTermsFile(
             @PathVariable Long termsId,
@@ -86,5 +60,25 @@ public class AdminTermsController {
             @AuthenticationPrincipal CustomAdminDetails ad) throws IOException {
         adminTermsService.addFileToExistingTerms(termsId, pdfFile);
         return ApiResponse.toOk(null);
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<TermsAdminResponse>>> getTermsList(
+            @RequestParam(required = false) String status,
+            @AuthenticationPrincipal CustomAdminDetails ad) {
+        return ApiResponse.toOk(adminTermsService.getTermsList(status));
+    }
+
+    @GetMapping("/{termsId}")
+    public ResponseEntity<ApiResponse<TermsAdminResponse>> getTermsDetail(
+            @PathVariable Long termsId,
+            @AuthenticationPrincipal CustomAdminDetails ad) {
+        return ApiResponse.toOk(adminTermsService.getTermsDetail(termsId));
+    }
+
+    @GetMapping("/masters")
+    public ResponseEntity<ApiResponse<List<TermsMasterResponse>>> getTermsMasters(
+            @AuthenticationPrincipal CustomAdminDetails ad) {
+        return ApiResponse.toOk(adminTermsService.getTermsMasters());
     }
 }
