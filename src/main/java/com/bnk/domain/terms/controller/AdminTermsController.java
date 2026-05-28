@@ -2,6 +2,7 @@ package com.bnk.domain.terms.controller;
 
 import com.bnk.domain.admin.service.AdminTermsService;
 import com.bnk.domain.terms.dto.request.TermsCreateRequest;
+import com.bnk.domain.terms.dto.request.TermsMasterCreateRequest;
 import com.bnk.domain.terms.dto.request.TermsStatusRequest;
 import com.bnk.domain.terms.dto.response.TermsAdminResponse;
 import com.bnk.domain.terms.dto.response.TermsMasterResponse;
@@ -81,4 +82,22 @@ public class AdminTermsController {
             @AuthenticationPrincipal CustomAdminDetails ad) {
         return ApiResponse.toOk(adminTermsService.getTermsMasters());
     }
+    
+    /** 마스터 등록 */
+    @PostMapping("/masters")
+    public ResponseEntity<ApiResponse<Void>> createTermsMaster(
+            @RequestBody @Valid TermsMasterCreateRequest request,
+            @AuthenticationPrincipal CustomAdminDetails ad) {
+        adminTermsService.createTermsMaster(request, ad.getAdminId());
+        return ApiResponse.toCreated(null);
+    }
+
+    /** 마스터의 다음 버전 제안 */
+    @GetMapping("/masters/{termsMasterId}/next-version")
+    public ResponseEntity<ApiResponse<String>> getNextVersion(
+            @PathVariable Long termsMasterId,
+            @AuthenticationPrincipal CustomAdminDetails ad) {
+        return ApiResponse.toOk(adminTermsService.suggestNextVersion(termsMasterId));
+    }
+    
 }

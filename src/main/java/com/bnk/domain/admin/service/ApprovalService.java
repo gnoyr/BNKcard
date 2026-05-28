@@ -351,22 +351,18 @@ public class ApprovalService {
         if (termsId == null) return;
 
         Terms terms = termsMapper.findById(termsId).orElse(null);
-        if (terms == null) {
-            log.warn("[결재반려-약관] terms 없음: termsId={}", termsId);
-            return;
-        }
+        if (terms == null) return;
 
         String previousStatus = terms.getStatus();
 
-        // TERMS status → REJECTED
-        termsMapper.updateTermsStatus(termsId, "REJECTED", adminId);
+        // REJECTED → DRAFT (반려 시 재검토 상태로)
+        termsMapper.updateTermsStatus(termsId, "DRAFT", adminId);
 
-        // TERMS_STATUS_HISTORY INSERT
         termsMapper.insertStatusHistory(
-                termsId, previousStatus, "REJECTED", adminId,
+                termsId, previousStatus, "DRAFT", adminId,
                 "결재 반려: approvalId=" + approval.getApprovalId());
 
-        log.info("[결재반려-약관] 완료: termsId={}, {} → REJECTED", termsId, previousStatus);
+        log.info("[결재반려-약관] 완료: termsId={}, {} → DRAFT", termsId, previousStatus);
     }
 
     // ── 카드 반려 처리 ──────────────────────────────────────────────
