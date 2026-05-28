@@ -1,10 +1,10 @@
-package com.bnk.domain.card.dto.response2;
+package com.bnk.domain.card.dto.response;
 
 import java.util.List;
 
+import com.bnk.domain.card.model.Card;
+import com.bnk.domain.card.model.CardBenefit;
 import com.bnk.domain.card.model.CardImage;
-import com.bnk.domain.card.model2.Card;
-import com.bnk.domain.card.model2.CardBenefit;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

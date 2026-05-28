@@ -30,8 +30,16 @@ public class AiConfig {
     }
 	
 	@Bean
-    @Primary
-    EmbeddingModel primaryEmbeddingModel(@Qualifier("ollamaEmbeddingModel") EmbeddingModel embeddingModel) {
+	@Primary
+	EmbeddingModel primaryEmbeddingModelgenai(
+	        @Qualifier("googleGenAiTextEmbedding") EmbeddingModel embeddingModel
+	) {
+	    return embeddingModel;
+	}
+	
+	//@Bean
+    //@Primary	
+    public EmbeddingModel primaryEmbeddingModel(@Qualifier("ollamaEmbeddingModel") EmbeddingModel embeddingModel) {
         return embeddingModel;
     }
 }

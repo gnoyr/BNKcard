@@ -181,6 +181,14 @@
         WHERE  user_id    = #{userId}
           AND  deleted_yn = 'N'
     </update>
+    
+    <update id="updateUserStatus">
+	    UPDATE USERS
+	    SET    status_code = #{statusCode},
+	           updated_at  = SYSTIMESTAMP
+	    WHERE  user_id    = #{userId}
+	      AND  deleted_yn = 'N'
+	</update>
 
     <insert id="insertAuditLog">
         INSERT INTO AUDIT_LOGS (

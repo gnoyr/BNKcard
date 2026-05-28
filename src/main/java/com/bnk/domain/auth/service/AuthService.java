@@ -2,6 +2,7 @@ package com.bnk.domain.auth.service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
@@ -137,7 +138,7 @@ public class AuthService {
 				.filter(t -> request.getAgreedTermsIds().contains(t.getTermsId()))
 				.map(t -> UserTermsAgreement.builder().userId(user.getUserId()).termsId(t.getTermsId()).agreedYn("Y")
 						.agreementAction("AGREE").agreedVersion(t.getVersion()).agreementChannel("WEB")
-						.agreementSource("SIGNUP").agreedAt(LocalDateTime.now()).build())
+						.agreementSource("SIGNUP").agreedAt(LocalDateTime.now(ZoneId.of("Asia/Seoul"))).build())
 				.collect(Collectors.toList());
 
 		if (!agreements.isEmpty()) {
@@ -182,8 +183,8 @@ public class AuthService {
 		adminUserMapper.insertLoginHistory("USER", user.getUserId(), "SUCCESS", null, ipAddress,
 				request.getDeviceInfo(), userAgent);
 
-		// ← 마지막 로그인 시각 갱신 (누락돼 있던 부분 추가)
-		userMapper.updateLastLoginAt(user.getUserId(), LocalDateTime.now());
+		// 로그인 이력
+		userMapper.updateLastLoginAt(user.getUserId(), LocalDateTime.now(ZoneId.of("Asia/Seoul")));
 
 		String accessToken = jwtTokenProvider.generateAccessToken(user.getUserId(), "ROLE_USER");
 		return buildAuthCookies(accessToken, user.getUserId(), request.getDeviceInfo(), ipAddress, userAgent);

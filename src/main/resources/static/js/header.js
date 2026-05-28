@@ -71,10 +71,10 @@
     if (IS_ADMIN) {
       mount.innerHTML = `
         <header class="site-header site-header--admin">
-          <a href="/admin/index.html" class="logo">
+          <div class="logo">
             <span class="logo-badge logo-badge--admin">ADMIN</span>
             <span class="logo-text logo-text--admin">부산은행 관리자</span>
-          </a>
+          </div>
           <nav class="header-nav" id="headerNav"></nav>
         </header>`;
     } else {
@@ -102,56 +102,61 @@
 
   /* 일반 사용자 인증 확인 */
   async function checkUserAuth() {
-    let name = null;
+      let name = null;
 
-    // sessionStorage 캐시 우선 사용 → 유효한 캐시면 API 호출 생략
-    const cachedName    = sessionStorage.getItem(CACHE_KEY_NAME);
-    const cachedLoginAt = sessionStorage.getItem(CACHE_KEY_LOGIN_AT);
-    const cacheValid    = cachedName && cachedLoginAt &&
-                          (Date.now() - Number(cachedLoginAt)) < 10 * 60 * 1000; // 10분
+      const cachedName    = sessionStorage.getItem(CACHE_KEY_NAME);
+      const cachedLoginAt = sessionStorage.getItem(CACHE_KEY_LOGIN_AT);
+      const cacheValid    = cachedName && cachedLoginAt &&
+                            (Date.now() - Number(cachedLoginAt)) < 10 * 60 * 1000;
 
-    if (cacheValid) {
-      name = cachedName;
-    } else {
-      try {
-        let res = await fetch('/api/users/me', { credentials: 'include' });
+      if (cacheValid) {
+          name = cachedName;
+      } else {
+          try {
+              const res = await fetch('/api/users/me', { credentials: 'include' });
 
-        if (res.status === 401) {
-          const refreshed = await tryRefresh();
-          if (refreshed) {
-            res = await fetch('/api/users/me', { credentials: 'include' });
-          }
-        }
-
-        if (res.ok) {
-          const json = await res.json().catch(() => ({}));
-          name = json.data?.name ?? '회원';
-
-          // 인증 성공 시 캐시 저장
-          sessionStorage.setItem(CACHE_KEY_NAME,     name);
-          sessionStorage.setItem(CACHE_KEY_LOGIN_AT, String(Date.now()));
-        }
-      } catch {
-        /* 네트워크 오류는 비로그인으로 처리 */
+              if (res.status === 401) {
+                  // → 비로그인 사용자의 불필요한 /api/auth/refresh 호출 제거
+                  const hadSession = !!sessionStorage.getItem(CACHE_KEY_LOGIN_AT);
+                  if (hadSession) {
+                      const refreshed = await tryRefresh();
+                      if (refreshed) {
+                          const retryRes = await fetch('/api/users/me', { credentials: 'include' });
+                          if (retryRes.ok) {
+                              const json = await retryRes.json().catch(() => ({}));
+                              name = json.data?.name ?? '회원';
+                              sessionStorage.setItem(CACHE_KEY_NAME, name);
+                              sessionStorage.setItem(CACHE_KEY_LOGIN_AT, String(Date.now()));
+                          }
+                      } else {
+                          // refresh도 실패 → 세션 캐시 정리
+                          sessionStorage.removeItem(CACHE_KEY_NAME);
+                          sessionStorage.removeItem(CACHE_KEY_LOGIN_AT);
+                      }
+                  }
+                  // hadSession이 false면 → 순수 비로그인, refresh 시도 안 함
+              } else if (res.ok) {
+                  const json = await res.json().catch(() => ({}));
+                  name = json.data?.name ?? '회원';
+                  sessionStorage.setItem(CACHE_KEY_NAME, name);
+                  sessionStorage.setItem(CACHE_KEY_LOGIN_AT, String(Date.now()));
+              }
+          } catch { /* 네트워크 오류 → 비로그인 처리 */ }
       }
-    }
 
-    const loggedIn = name !== null;
+      const loggedIn = name !== null;
 
-    if (IS_AUTH && loggedIn && REDIRECT_IF_LOGGED_IN.includes(path)) {
-      location.replace(HOME_URL);
-      return;
-    }
-
-    if (NEED_AUTH && !loggedIn) {
-      const next = encodeURIComponent(location.pathname + location.search);
-      location.replace(`${LOGIN_URL}?next=${next}`);
-      return;
-    }
-
-    renderNav(loggedIn, name);
+      if (IS_AUTH && loggedIn && REDIRECT_IF_LOGGED_IN.includes(path)) {
+          location.replace(HOME_URL);
+          return;
+      }
+      if (NEED_AUTH && !loggedIn) {
+          const next = encodeURIComponent(location.pathname + location.search);
+          location.replace(`${LOGIN_URL}?next=${next}`);
+          return;
+      }
+      renderNav(loggedIn, name);
   }
-
   /* 관리자 인증 확인
    * /api/admin/auth/me 전용 엔드포인트 사용
    * → 대시보드 API 변경·지연의 영향 차단
@@ -231,10 +236,6 @@
 
     nav.innerHTML = `
       <span class="header-nav__username">${esc(name)}님</span>
-      <a href="/admin/index.html">대시보드</a>
-      <a href="/admin/cardManage.html">카드 관리</a>
-      <a href="/admin/userManage.html">회원 관리</a>
-      <a href="/admin/requestApproval.html">결재 처리</a>
       <span class="header-nav__timer" id="hdrTokenTimer" title="Access Token 남은 시간">--:--:--</span>
       <button class="header-nav__btn" id="hdrLogout">로그아웃</button>`;
 
@@ -417,4 +418,5 @@
   ──────────────────────────────────────────────────────────────── */
   injectHeader();   // 헤더 뼈대 즉시 삽입 (FOUC 방지)
   checkAuth();      // 인증 확인 (비동기)
+  window.showToast = showToast;
 })();

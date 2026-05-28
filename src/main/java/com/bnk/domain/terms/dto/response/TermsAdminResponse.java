@@ -14,11 +14,16 @@ public class TermsAdminResponse {
     private String        title;           // TERMS_MASTERS.title JOIN
     private String        termsType;       // TERMS_MASTERS.terms_type JOIN
     private String        version;
+    private String        contentHtml;
     private String        status;          // DRAFT/REVIEW/APPROVED/PUBLISHED/EXPIRED
     private String        requiredYn;
     private String        reconsentRequiredYn;
     private LocalDate     effectiveFrom;
-    private LocalDate     effectiveTo;
+    private LocalDate     effectiveTo;        
+    private String        documentHash;        
+    private String        internalNote;       
+    private Long          approvedBy;         
+    private LocalDateTime approvedAt;     
     private LocalDateTime createdAt;
     private List<TermsFileResponse> files; // 상세 조회 시만 포함
 }

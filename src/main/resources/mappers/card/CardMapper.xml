@@ -2,22 +2,33 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
+<!--
+    통합 CardMapper.xml
+    - 구 CardMapper.xml + CardMapper2.xml 병합
+    - resultMap: 단일 cardMap (model.Card)
+    - updateBy/updateAt → updatedBy/updatedAt 오타 수정 반영
+    - 삭제 대상: src/main/resources/mappers/card/CardMapper2.xml
+-->
 <mapper namespace="com.bnk.domain.card.mapper.CardMapper">
 
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- resultMap (단일 — model.Card)                                  -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
     <resultMap id="cardMap" type="com.bnk.domain.card.model.Card">
         <id     property="cardId"             column="card_id"/>
         <result property="cardCode"           column="card_code"/>
         <result property="cardType"           column="card_type"/>
         <result property="cardName"           column="card_name"/>
         <result property="companyName"        column="company_name"/>
+        <result property="companyCode"        column="company_code"/>
         <result property="brandName"          column="brand_name"/>
         <result property="annualFeeDomestic"  column="annual_fee_domestic"/>
         <result property="annualFeeOverseas"  column="annual_fee_overseas"/>
         <result property="previousMonthSpend" column="previous_month_spend"/>
         <result property="minimumAge"         column="minimum_age"/>
         <result property="maximumAge"         column="maximum_age"/>
-	    <result property="creditLimitMin" column="credit_limit_min"/>
-	    <result property="creditLimitMax" column="credit_limit_max"/>
+        <result property="creditLimitMin"     column="credit_limit_min"/>
+        <result property="creditLimitMax"     column="credit_limit_max"/>
         <result property="targetUser"         column="target_user"/>
         <result property="summaryDescription" column="summary_description"/>
         <result property="searchableYn"       column="searchable_yn"/>
@@ -30,153 +41,133 @@
         <result property="viewCount"          column="view_count"/>
         <result property="createdBy"          column="created_by"/>
         <result property="createdAt"          column="created_at"/>
+        <result property="updatedBy"          column="updated_by"/>
         <result property="updatedAt"          column="updated_at"/>
         <result property="deletedYn"          column="deleted_yn"/>
+        <result property="deletedAt"          column="deleted_at"/>
     </resultMap>
 
-    <!-- ── 사용자 카드 목록 동적 검색 ─────────────────────── -->
-	<!-- ── 사용자 카드 목록 동적 검색 ─────────────────────── -->
-	<select id="findAll" resultMap="cardMap">
-	    SELECT DISTINCT c.*
-	    FROM CARDS c
-	    <if test="q != null and q != ''">
-	        LEFT JOIN CARD_KEYWORDS   ck ON c.card_id    = ck.card_id
-	                                    AND ck.deleted_yn = 'N'
-	        LEFT JOIN SEARCH_KEYWORDS sk ON ck.keyword_id = sk.keyword_id
-	                                    AND sk.deleted_yn  = 'N'
-	    </if>
-	    WHERE c.card_status   = 'PUBLISHED'
-	      AND c.visible_yn    = 'Y'
-	      AND c.searchable_yn = 'Y'
-	      AND c.deleted_yn    = 'N'
-	      AND c.publish_start_at &lt;= SYSTIMESTAMP
-	      AND (c.publish_end_at IS NULL OR c.publish_end_at &gt;= SYSTIMESTAMP)
-	    <if test="q != null and q != ''">
-	      AND (
-	            c.card_name           LIKE '%' || #{q} || '%'
-	         OR c.summary_description LIKE '%' || #{q} || '%'
-	         OR c.company_name        LIKE '%' || #{q} || '%'
-	         OR sk.keyword            LIKE '%' || #{q} || '%'
-	          )
-	    </if>
-	    <if test="cardType != null and cardType != ''">
-	      AND c.card_type = #{cardType}
-	    </if>
-	    <if test="companyName != null and companyName != ''">
-	      AND c.company_name LIKE '%' || #{companyName} || '%'
-	    </if>
-	    <if test="categoryId != null">
-	      AND EXISTS (
-	          SELECT 1 FROM CARD_BENEFITS cb
-	          WHERE  cb.card_id    = c.card_id
-	            AND  cb.category_id = #{categoryId}
-	            AND  cb.visible_yn  = 'Y'
-	      )
-	    </if>
-		<if test="categoryIds != null and categoryIds.size() &gt; 1">
-		  AND (
-		      SELECT COUNT(DISTINCT cb2.category_id)
-		      FROM   CARD_BENEFITS cb2
-		      WHERE  cb2.card_id    = c.card_id
-		        AND  cb2.visible_yn = 'Y'
-		        AND  cb2.category_id IN
-		      <foreach collection="categoryIds" item="cid" open="(" separator="," close=")">
-		          #{cid}
-		      </foreach>
-		  ) &gt;= #{categoryCount}
-		</if>
-	    <if test="minFee != null">
-	      AND c.annual_fee_domestic &gt;= #{minFee}
-	    </if>
-	    <if test="maxFee != null">
-	      AND c.annual_fee_domestic &lt;= #{maxFee}
-	    </if>
-	    ORDER BY c.created_at DESC
-	    OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
-	</select>
-	
-	<select id="countAll" resultType="long">
-	    SELECT COUNT(DISTINCT c.card_id)
-	    FROM CARDS c
-	    <if test="q != null and q != ''">
-	        LEFT JOIN CARD_KEYWORDS   ck ON c.card_id    = ck.card_id
-	                                    AND ck.deleted_yn = 'N'
-	        LEFT JOIN SEARCH_KEYWORDS sk ON ck.keyword_id = sk.keyword_id
-	                                    AND sk.deleted_yn  = 'N'
-	    </if>
-	    WHERE c.card_status   = 'PUBLISHED'
-	      AND c.visible_yn    = 'Y'
-	      AND c.searchable_yn = 'Y'
-	      AND c.deleted_yn    = 'N'
-	      AND c.publish_start_at &lt;= SYSTIMESTAMP
-	      AND (c.publish_end_at IS NULL OR c.publish_end_at &gt;= SYSTIMESTAMP)
-	    <if test="q != null and q != ''">
-	      AND (
-	            c.card_name           LIKE '%' || #{q} || '%'
-	         OR c.summary_description LIKE '%' || #{q} || '%'
-	         OR c.company_name        LIKE '%' || #{q} || '%'
-	         OR sk.keyword            LIKE '%' || #{q} || '%'
-	          )
-	    </if>
-	    <if test="cardType != null and cardType != ''">
-	      AND c.card_type = #{cardType}
-	    </if>
-	    <if test="categoryId != null">
-	      AND EXISTS (
-	          SELECT 1 FROM CARD_BENEFITS cb
-	          WHERE  cb.card_id    = c.card_id
-	            AND  cb.category_id = #{categoryId}
-	            AND  cb.visible_yn  = 'Y'
-	      )
-	    </if>
-	    <if test="categoryIds != null and categoryIds.size() &gt; 1">
-		  AND (
-		      SELECT COUNT(DISTINCT cb2.category_id)
-		      FROM   CARD_BENEFITS cb2
-		      WHERE  cb2.card_id    = c.card_id
-		        AND  cb2.visible_yn = 'Y'
-		        AND  cb2.category_id IN
-		      <foreach collection="categoryIds" item="cid" open="(" separator="," close=")">
-		          #{cid}
-		      </foreach>
-		  ) &gt;= #{categoryCount}
-		</if>
-	    <if test="minFee != null">
-	      AND c.annual_fee_domestic &gt;= #{minFee}
-	    </if>
-	    <if test="maxFee != null">
-	      AND c.annual_fee_domestic &lt;= #{maxFee}
-	    </if>
-	</select>
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- 사용자 카드 목록 동적 검색 (기존 CardMapper 영역)              -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <select id="findAll" resultMap="cardMap">
+        SELECT DISTINCT c.*
+        FROM CARDS c
+        <if test="q != null and q != ''">
+            LEFT JOIN CARD_KEYWORDS   ck ON c.card_id    = ck.card_id
+                                        AND ck.deleted_yn = 'N'
+            LEFT JOIN SEARCH_KEYWORDS sk ON ck.keyword_id = sk.keyword_id
+                                        AND sk.deleted_yn  = 'N'
+        </if>
+        WHERE c.card_status   = 'PUBLISHED'
+          AND c.visible_yn    = 'Y'
+          AND c.searchable_yn = 'Y'
+          AND c.deleted_yn    = 'N'
+          AND c.publish_start_at &lt;= SYSTIMESTAMP
+          AND (c.publish_end_at IS NULL OR c.publish_end_at &gt;= SYSTIMESTAMP)
+        <if test="q != null and q != ''">
+          AND (
+                c.card_name           LIKE '%' || #{q} || '%'
+             OR c.summary_description LIKE '%' || #{q} || '%'
+             OR c.company_name        LIKE '%' || #{q} || '%'
+             OR sk.keyword            LIKE '%' || #{q} || '%'
+              )
+        </if>
+        <if test="cardType != null and cardType != ''">
+          AND c.card_type = #{cardType}
+        </if>
+        <if test="companyName != null and companyName != ''">
+          AND c.company_name LIKE '%' || #{companyName} || '%'
+        </if>
+        <if test="categoryId != null">
+          AND EXISTS (
+              SELECT 1 FROM CARD_BENEFITS cb
+              WHERE  cb.card_id     = c.card_id
+                AND  cb.category_id = #{categoryId}
+                AND  cb.visible_yn  = 'Y'
+          )
+        </if>
+        <if test="categoryIds != null and categoryIds.size() &gt; 1">
+          AND (
+              SELECT COUNT(DISTINCT cb2.category_id)
+              FROM   CARD_BENEFITS cb2
+              WHERE  cb2.card_id = c.card_id
+                AND  cb2.visible_yn = 'Y'
+                AND  cb2.category_id IN
+              <foreach collection="categoryIds" item="cid" open="(" separator="," close=")">
+                  #{cid}
+              </foreach>
+          ) &gt;= #{categoryCount}
+        </if>
+        <if test="minFee != null">
+          AND c.annual_fee_domestic &gt;= #{minFee}
+        </if>
+        <if test="maxFee != null">
+          AND c.annual_fee_domestic &lt;= #{maxFee}
+        </if>
+        <choose>
+            <when test="sort == 'cardName'">        ORDER BY c.card_name           ASC</when>
+            <when test="sort == 'annualFee'">       ORDER BY c.annual_fee_domestic  ASC</when>
+            <when test="sort == 'applicationCount'">ORDER BY c.application_count   DESC</when>
+            <otherwise>                             ORDER BY c.view_count           DESC</otherwise>
+        </choose>
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(DISTINCT c.card_id)
+        FROM CARDS c
+        <if test="q != null and q != ''">
+            LEFT JOIN CARD_KEYWORDS   ck ON c.card_id    = ck.card_id
+                                        AND ck.deleted_yn = 'N'
+            LEFT JOIN SEARCH_KEYWORDS sk ON ck.keyword_id = sk.keyword_id
+                                        AND sk.deleted_yn  = 'N'
+        </if>
+        WHERE c.card_status   = 'PUBLISHED'
+          AND c.visible_yn    = 'Y'
+          AND c.searchable_yn = 'Y'
+          AND c.deleted_yn    = 'N'
+          AND c.publish_start_at &lt;= SYSTIMESTAMP
+          AND (c.publish_end_at IS NULL OR c.publish_end_at &gt;= SYSTIMESTAMP)
+        <if test="q != null and q != ''">
+          AND (
+                c.card_name           LIKE '%' || #{q} || '%'
+             OR c.summary_description LIKE '%' || #{q} || '%'
+             OR c.company_name        LIKE '%' || #{q} || '%'
+             OR sk.keyword            LIKE '%' || #{q} || '%'
+              )
+        </if>
+    </select>
 
     <select id="findById" resultMap="cardMap">
         SELECT * FROM CARDS
-        WHERE  card_id    = #{cardId}
+        WHERE  card_id   = #{cardId}
           AND  deleted_yn = 'N'
     </select>
 
     <select id="findTop3ByViewCount" resultMap="cardMap">
         SELECT * FROM CARDS
-        WHERE  card_status = 'PUBLISHED'
-          AND  visible_yn  = 'Y'
-          AND  deleted_yn  = 'N'
+        WHERE  card_status   = 'PUBLISHED'
+          AND  visible_yn    = 'Y'
+          AND  deleted_yn    = 'N'
         ORDER  BY view_count DESC
         FETCH FIRST 3 ROWS ONLY
     </select>
 
     <select id="findTop3ByCategoryId" resultMap="cardMap">
-        SELECT c.* FROM CARDS c
-        INNER JOIN CARD_BENEFITS cb ON c.card_id = cb.card_id
-        WHERE c.card_status  = 'PUBLISHED'
-          AND c.visible_yn   = 'Y'
-          AND c.deleted_yn   = 'N'
-          AND cb.category_id = #{categoryId}
-        ORDER BY cb.discount_rate DESC NULLS LAST,
-                 cb.cashback_rate  DESC NULLS LAST
+        SELECT DISTINCT c.*
+        FROM   CARDS c
+        JOIN   CARD_BENEFITS cb ON c.card_id = cb.card_id
+        WHERE  cb.category_id = #{categoryId}
+          AND  c.card_status  = 'PUBLISHED'
+          AND  c.visible_yn   = 'Y'
+          AND  c.deleted_yn   = 'N'
+          AND  cb.visible_yn  = 'Y'
+        ORDER  BY c.view_count DESC
         FETCH FIRST 3 ROWS ONLY
     </select>
 
-    <!-- ── 관리자 다중 조건 동적 검색 (RQ-B13) ──────────── -->
+    <!-- ── 관리자 동적 검색 ──────────────────────────────────────── -->
     <select id="findAdminCards" resultMap="cardMap">
         SELECT DISTINCT c.*
         FROM CARDS c
@@ -209,16 +200,16 @@
         </if>
         <if test="keyword != null and keyword != ''">
           AND (
-		    c.card_name    LIKE '%' || #{keyword} || '%'
-		    OR c.company_name LIKE '%' || #{keyword} || '%'
-		    OR sk.keyword     LIKE '%' || #{keyword} || '%'
-		  )
+                c.card_name    LIKE '%' || #{keyword} || '%'
+             OR c.company_name LIKE '%' || #{keyword} || '%'
+             OR sk.keyword     LIKE '%' || #{keyword} || '%'
+              )
         </if>
         <choose>
-            <when test="sort == 'cardName'">       ORDER BY c.card_name          ASC</when>
-            <when test="sort == 'annualFee'">      ORDER BY c.annual_fee_domestic ASC</when>
-            <when test="sort == 'applicationCount'">ORDER BY c.application_count DESC</when>
-            <otherwise>                             ORDER BY c.created_at          DESC</otherwise>
+            <when test="sort == 'cardName'">        ORDER BY c.card_name           ASC</when>
+            <when test="sort == 'annualFee'">       ORDER BY c.annual_fee_domestic  ASC</when>
+            <when test="sort == 'applicationCount'">ORDER BY c.application_count   DESC</when>
+            <otherwise>                             ORDER BY c.created_at           DESC</otherwise>
         </choose>
         OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
     </select>
@@ -244,62 +235,92 @@
         <if test="cardStatus != null and cardStatus != ''">
           AND c.card_status  = #{cardStatus}
         </if>
-        <if test="brandName != null and brandName != ''">
-          AND c.brand_name   = #{brandName}
-        </if>
-        <if test="publishStartFrom != null">
-          AND c.publish_start_at &gt;= #{publishStartFrom}
-        </if>
-        <if test="publishStartTo != null">
-          AND c.publish_start_at &lt;= #{publishStartTo}
-        </if>
         <if test="keyword != null and keyword != ''">
           AND (
-		    c.card_name    LIKE '%' || #{keyword} || '%'
-		    OR c.company_name LIKE '%' || #{keyword} || '%'
-		    OR sk.keyword     LIKE '%' || #{keyword} || '%'
-		  )
+                c.card_name    LIKE '%' || #{keyword} || '%'
+             OR c.company_name LIKE '%' || #{keyword} || '%'
+             OR sk.keyword     LIKE '%' || #{keyword} || '%'
+              )
         </if>
     </select>
 
-	<insert id="insertCard">
-	    <selectKey keyProperty="cardId" resultType="long" order="AFTER">
-	        SELECT card_id FROM CARDS
-	        WHERE  card_code = #{cardCode}
-	        FETCH FIRST 1 ROWS ONLY
-	    </selectKey>
-	    INSERT INTO CARDS (
-	        card_code, card_type, card_name, company_name, company_code, brand_name,
-	        annual_fee_domestic, annual_fee_overseas, previous_month_spend,
-	        minimum_age, maximum_age, credit_limit_min, credit_limit_max,
-	        target_user, summary_description,
-	        searchable_yn, visible_yn, approval_required_yn,
-	        card_status, publish_start_at, publish_end_at,
-	        application_count, view_count,
-	        created_by, created_at, deleted_yn
-	    ) VALUES (
-	        #{cardCode}, #{cardType}, #{cardName}, #{companyName},
-	        #{companyCode,        jdbcType=VARCHAR},
-	        #{brandName,          jdbcType=VARCHAR},
-	        #{annualFeeDomestic},
-	        #{annualFeeOverseas,  jdbcType=NUMERIC},
-	        #{previousMonthSpend, jdbcType=NUMERIC},
-	        #{minimumAge,         jdbcType=NUMERIC},
-	        #{maximumAge,         jdbcType=NUMERIC},
-	        #{creditLimitMin,     jdbcType=NUMERIC},
-	        #{creditLimitMax,     jdbcType=NUMERIC},
-	        #{targetUser,         jdbcType=VARCHAR},
-	        #{summaryDescription, jdbcType=VARCHAR},
-	        NVL(#{searchableYn, jdbcType=CHAR}, 'Y'),
-	        NVL(#{visibleYn,    jdbcType=CHAR}, 'Y'),
-	        'Y', 'DRAFT',
-	        #{publishStartAt, jdbcType=TIMESTAMP},
-	        #{publishEndAt,   jdbcType=TIMESTAMP},
-	        0, 0,
-	        #{createdBy, jdbcType=NUMERIC},
-	        SYSTIMESTAMP, 'N'
-	    )
-	</insert>
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- INSERT / UPDATE / DELETE                                       -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <insert id="insertCard">
+        <selectKey keyProperty="cardId" resultType="long" order="AFTER">
+            SELECT card_id FROM CARDS
+            WHERE  card_code = #{cardCode}
+            FETCH FIRST 1 ROWS ONLY
+        </selectKey>
+        INSERT INTO CARDS (
+            card_code, card_type, card_name, company_name, company_code, brand_name,
+            annual_fee_domestic, annual_fee_overseas, previous_month_spend,
+            minimum_age, maximum_age, credit_limit_min, credit_limit_max,
+            target_user, summary_description,
+            searchable_yn, visible_yn, approval_required_yn,
+            card_status, publish_start_at, publish_end_at,
+            application_count, view_count,
+            created_by, created_at, deleted_yn
+        ) VALUES (
+            #{cardCode}, #{cardType}, #{cardName}, #{companyName},
+            NVL(#{companyCode,        jdbcType=VARCHAR}, '01'),
+            #{brandName,          jdbcType=VARCHAR},
+            #{annualFeeDomestic},
+            #{annualFeeOverseas,  jdbcType=NUMERIC},
+            #{previousMonthSpend, jdbcType=NUMERIC},
+            #{minimumAge,         jdbcType=NUMERIC},
+            #{maximumAge,         jdbcType=NUMERIC},
+            #{creditLimitMin,     jdbcType=NUMERIC},
+            #{creditLimitMax,     jdbcType=NUMERIC},
+            #{targetUser,         jdbcType=VARCHAR},
+            #{summaryDescription, jdbcType=VARCHAR},
+            NVL(#{searchableYn,       jdbcType=CHAR}, 'Y'),
+            NVL(#{visibleYn,          jdbcType=CHAR}, 'Y'),
+            NVL(#{approvalRequiredYn, jdbcType=CHAR}, 'Y'),
+            NVL(#{cardStatus,         jdbcType=VARCHAR}, 'DRAFT'),
+            #{publishStartAt, jdbcType=TIMESTAMP},
+            #{publishEndAt,   jdbcType=TIMESTAMP},
+            0, 0,
+            #{createdBy, jdbcType=NUMERIC},
+            SYSTIMESTAMP, 'N'
+        )
+    </insert>
+
+    <update id="updateCard">
+        UPDATE CARDS
+        SET    card_type            = #{cardType},
+               card_name            = #{cardName},
+               company_name         = #{companyName},
+               company_code         = #{companyCode,        jdbcType=VARCHAR},
+               brand_name           = #{brandName,          jdbcType=VARCHAR},
+               annual_fee_domestic  = #{annualFeeDomestic},
+               annual_fee_overseas  = #{annualFeeOverseas,  jdbcType=NUMERIC},
+               previous_month_spend = #{previousMonthSpend, jdbcType=NUMERIC},
+               minimum_age          = #{minimumAge,         jdbcType=NUMERIC},
+               maximum_age          = #{maximumAge,         jdbcType=NUMERIC},
+               credit_limit_min     = #{creditLimitMin,     jdbcType=NUMERIC},
+               credit_limit_max     = #{creditLimitMax,     jdbcType=NUMERIC},
+               target_user          = #{targetUser,         jdbcType=VARCHAR},
+               summary_description  = #{summaryDescription, jdbcType=VARCHAR},
+               searchable_yn        = #{searchableYn},
+               visible_yn           = #{visibleYn},
+               approval_required_yn = #{approvalRequiredYn, jdbcType=CHAR},
+               card_status          = #{cardStatus,         jdbcType=VARCHAR},
+               publish_start_at     = #{publishStartAt,     jdbcType=TIMESTAMP},
+               publish_end_at       = #{publishEndAt,       jdbcType=TIMESTAMP},
+               updated_by           = #{updatedBy,          jdbcType=NUMERIC},
+               updated_at           = SYSTIMESTAMP
+        WHERE  card_id = #{cardId}
+    </update>
+
+    <!-- 결재 승인 후 스냅샷 → 카드 상태만 APPROVED로 전환 (실제 필드 복원은 서비스단) -->
+    <update id="updateCardFromSnapshot">
+        UPDATE CARDS
+        SET    card_status = 'APPROVED',
+               updated_at  = SYSTIMESTAMP
+        WHERE  card_id = #{cardId}
+    </update>
 
     <update id="updateCardStatus">
         UPDATE CARDS
@@ -320,12 +341,84 @@
         WHERE  card_id = #{cardId}
     </update>
 
-    <!-- 결재 승인 후 스냅샷 → CARDS 반영: 실제 필드 복원은 서비스단에서 처리 -->
-    <update id="updateCardFromSnapshot">
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- 영역 — 스케줄러 / 관리자 상태 관리             -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+
+    <select id="findAllCards" resultMap="cardMap">
+        SELECT * FROM CARDS
+        WHERE  deleted_yn = 'N'
+        ORDER  BY created_at DESC
+    </select>
+
+    <!-- 논리 삭제: STOPPED + deleted_yn='Y' -->
+    <update id="deleteCard">
+        UPDATE CARDS
+        SET    card_status = 'STOPPED',
+               deleted_yn  = 'Y',
+               deleted_at  = SYSTIMESTAMP
+        WHERE  card_id = #{cardId}
+    </update>
+
+    <!-- 스케줄러: PUBLISHED → EXPIRED 대상 조회 -->
+    <select id="findExpiredCards" resultMap="cardMap">
+        SELECT * FROM CARDS
+        WHERE  publish_end_at &lt; SYSTIMESTAMP
+          AND  card_status     = 'PUBLISHED'
+          AND  deleted_yn      = 'N'
+    </select>
+
+    <!-- 스케줄러: APPROVED → PUBLISHED 전환 대상 조회 -->
+    <select id="findApprovedReadyCards" resultMap="cardMap">
+        SELECT * FROM CARDS
+        WHERE  card_status      = 'APPROVED'
+          AND  publish_start_at &lt;= SYSTIMESTAMP
+          AND  deleted_yn       = 'N'
+    </select>
+
+    <!-- 스케줄러: APPROVED → PUBLISHED 일괄 -->
+    <update id="publishCards">
         UPDATE CARDS
         SET    card_status = 'PUBLISHED',
                updated_at  = SYSTIMESTAMP
-        WHERE  card_id = #{cardId}
+        WHERE  card_id IN
+        <foreach collection="cardIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <!-- 스케줄러: CARD_VERSIONS PUBLISHED 전환 -->
+    <update id="publishCardVersions">
+        UPDATE CARD_VERSIONS
+        SET    version_status = 'PUBLISHED',
+               published_at   = SYSTIMESTAMP
+        WHERE  card_id IN
+        <foreach collection="cardIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+          AND  version_status = 'APPROVED'
+    </update>
+
+    <!-- 스케줄러: PUBLISHED → EXPIRED 일괄 -->
+    <update id="expireCards">
+        UPDATE CARDS
+        SET    card_status = 'EXPIRED',
+               updated_at  = SYSTIMESTAMP
+        WHERE  card_id IN
+        <foreach collection="cardIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <!-- 스케줄러: CARD_VERSIONS ARCHIVED 전환 -->
+    <update id="expireCardVersions">
+        UPDATE CARD_VERSIONS
+        SET    version_status = 'ARCHIVED'
+        WHERE  card_id IN
+        <foreach collection="cardIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+          AND  version_status = 'PUBLISHED'
     </update>
 
 </mapper>
