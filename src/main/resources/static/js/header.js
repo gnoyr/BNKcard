@@ -252,8 +252,8 @@
       startTokenTimer();
     } else {
 		nav.innerHTML = `
-		  <a href="/login" class="nav-login">로그인</a>
-		  <a href="/signup" class="nav-signup">회원가입</a>`;
+		  <a href="/auth/login.html" class="nav-login">로그인</a>
+		  <a href="/auth/signup.html" class="nav-signup">회원가입</a>`;
     }
 
         markActiveLink(nav);
