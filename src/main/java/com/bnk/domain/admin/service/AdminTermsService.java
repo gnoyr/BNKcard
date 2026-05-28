@@ -12,6 +12,7 @@ import com.bnk.domain.admin.mapper.ApprovalMapper;
 import com.bnk.domain.admin.model.ApprovalLine;
 import com.bnk.domain.admin.model.ApprovalRequest;
 import com.bnk.domain.terms.dto.request.TermsCreateRequest;
+import com.bnk.domain.terms.dto.request.TermsMasterCreateRequest;
 import com.bnk.domain.terms.dto.request.TermsStatusRequest;
 import com.bnk.domain.terms.dto.response.TermsAdminResponse;
 import com.bnk.domain.terms.dto.response.TermsFileResponse;
@@ -19,6 +20,7 @@ import com.bnk.domain.terms.dto.response.TermsMasterResponse;
 import com.bnk.domain.terms.mapper.TermsMapper;
 import com.bnk.domain.terms.model.Terms;
 import com.bnk.domain.terms.model.TermsFile;
+import com.bnk.domain.terms.model.TermsMaster;
 import com.bnk.domain.terms.service.PdfConvertService;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
@@ -255,4 +257,32 @@ public class AdminTermsService {
                         .build())
                 .collect(Collectors.toList());
     }
+    
+    @Transactional
+    public void createTermsMaster(TermsMasterCreateRequest request, Long adminId) {
+        TermsMaster master = TermsMaster.builder()
+                .termsType(request.getTermsType())
+                .title(request.getTitle())
+                .description(request.getDescription())
+                .displayOrder(request.getDisplayOrder() != null ? request.getDisplayOrder() : 99)
+                .requiredYn(request.getRequiredYn() != null ? request.getRequiredYn() : "N")
+                .build();
+        termsMapper.insertTermsMaster(master);
+        log.info("[마스터등록] termsMasterId={}, title={}", master.getTermsMasterId(), master.getTitle());
+    }
+
+    @Transactional(readOnly = true)
+    public String suggestNextVersion(Long termsMasterId) {
+        String latest = termsMapper.findLatestVersionByMasterId(termsMasterId);
+        if (latest == null) return "v1.0";
+        // v1.0 → v2.0, v2.3 → v3.0 형태로 메이저 버전만 올림
+        try {
+            String numeric = latest.replaceAll("[^0-9.]", "");
+            int major = Integer.parseInt(numeric.split("\\.")[0]);
+            return "v" + (major + 1) + ".0";
+        } catch (Exception e) {
+            return latest + "_new";
+        }
+    }
+    
 }
