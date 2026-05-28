@@ -2077,9 +2077,8 @@
           'success'
       );
       document.getElementById('ct-msg').innerHTML =
-          `<b style="color:green">등록 완료 — 결재 ID: ${data.approvalId ?? '-'}</b><br>
-           <a href="#" onclick="showApprovalList()">결재 목록 바로가기 →</a>`;
-
+          `<b style="color:green">등록 완료</b><br>`;
+	  //<a href="#" onclick="showApprovalList()">결재 목록 바로가기 →</a>
       // 약관 목록으로 이동
       setTimeout(() => showTermsList(), 2000);
   }
