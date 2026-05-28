@@ -64,8 +64,6 @@ public class AnswerAccuracyExplanation extends AbstractScoreExplanation {
     }
 
     private void buildSteps() {
-        final int totalSteps = usedDualJudge ? 2 : 1;
-
         // Step 1: Initial Judgment
         steps.add(StepExplanation.builder()
                 .stepName("InitialJudgment")

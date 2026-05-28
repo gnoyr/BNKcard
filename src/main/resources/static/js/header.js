@@ -71,10 +71,10 @@
     if (IS_ADMIN) {
       mount.innerHTML = `
         <header class="site-header site-header--admin">
-          <a href="/admin/index.html" class="logo">
+          <div class="logo">
             <span class="logo-badge logo-badge--admin">ADMIN</span>
             <span class="logo-text logo-text--admin">부산은행 관리자</span>
-          </a>
+          </div>
           <nav class="header-nav" id="headerNav"></nav>
         </header>`;
     } else {

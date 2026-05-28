@@ -31,7 +31,7 @@ public class AiConfig {
 	
 	@Bean
 	@Primary
-	public EmbeddingModel primaryEmbeddingModelgenai(
+	EmbeddingModel primaryEmbeddingModelgenai(
 	        @Qualifier("googleGenAiTextEmbedding") EmbeddingModel embeddingModel
 	) {
 	    return embeddingModel;

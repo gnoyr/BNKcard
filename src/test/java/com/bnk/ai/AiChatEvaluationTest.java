@@ -1,14 +1,5 @@
 package com.bnk.ai;
 
-import com.bnk.BnKcardApplication;
-import com.bnk.ai.config.RagasEvaluationConfig;
-import com.bnk.ai.qa.solutions.execution.MultiModelExecutor;
-import com.bnk.ai.qa.solutions.metrics.retrieval.ContextPrecisionMetric;
-import com.bnk.ai.qa.solutions.metrics.retrieval.ContextRecallMetric;
-import com.bnk.ai.qa.solutions.metrics.retrieval.FaithfulnessMetric;
-import com.bnk.ai.qa.solutions.metrics.retrieval.ResponseRelevancyMetric;
-import com.bnk.ai.qa.solutions.sample.Sample;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
@@ -22,6 +13,14 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+import com.bnk.BnKcardApplication;
+import com.bnk.ai.config.RagasEvaluationConfig;
+import com.bnk.ai.qa.solutions.metrics.retrieval.ContextPrecisionMetric;
+import com.bnk.ai.qa.solutions.metrics.retrieval.ContextRecallMetric;
+import com.bnk.ai.qa.solutions.metrics.retrieval.FaithfulnessMetric;
+import com.bnk.ai.qa.solutions.metrics.retrieval.ResponseRelevancyMetric;
+import com.bnk.ai.qa.solutions.sample.Sample;
 
 @SpringBootTest(classes = {BnKcardApplication.class, RagasEvaluationConfig.class})
 @ActiveProfiles("test")
@@ -42,8 +41,6 @@ class AiChatEvaluationTest {
     @Autowired private FaithfulnessMetric faithfulness;
     @Autowired private ContextRecallMetric contextRecall;
     @Autowired private ContextPrecisionMetric contextPrecision;
-    @Autowired private MultiModelExecutor executor;
-
     private Sample sample;
 
     @BeforeEach
