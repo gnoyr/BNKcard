@@ -52,7 +52,7 @@ public class CleanUrlController {
         return "forward:/mypage/spending.html";
     }
 
-    @GetMapping("/card/{cardId}")
+    @GetMapping("/card/{cardId:\\d+}")
     public String cardDetail(@PathVariable String cardId) {
         return "forward:/card/index.html";
     }
