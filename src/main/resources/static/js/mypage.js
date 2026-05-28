@@ -2,7 +2,7 @@
  * mypage.js  |  BNK 마이페이지 통합 스크립트
  *
  * 구성:
- *   §1. 공통 유틸  — API, Toast, V, Fmt, btnLoading, initPwToggles, renderDonut, initMoneyInputs
+ *   §1. 공통 유틸  — ApiError, API, Toast, V, Fmt, btnLoading, initPwToggles, renderDonut, initMoneyInputs
  *   §2. 페이지 감지 — DOM 요소 존재 여부로 현재 페이지 판별
  *   §3. 메인 대시보드 (index.html)
  *   §4. 내 정보 수정 (edit.html)
@@ -10,15 +10,12 @@
  *   §6. 소비 패턴 관리 (spending.html)
  *
  * [변경 이력]
- *   - initMain  : 카드 이미지(cardImageUrl) 렌더링 추가
- *   - initMain  : infoList 이메일·전화번호 원본(user.email / user.phone) 표시
- *   - initMain  : [변경] 이메일 인증 여부 항목 제거
- *   - initMain  : [변경] 카드 섹션을 보유카드 / 신청카드 탭으로 분리
- *   - initMain  : [변경] 신청카드에도 카드 이미지 렌더링 적용
- *   - initEdit  : currentPhone 원본(user.phone) 표시
- *   - initEdit  : 제출 시 항상 비밀번호 확인 모달 표시
- *   - initSpending : GET /api/cards/categories 로 전체 카테고리 로드 후 기존 패턴 merge
- *   - MemoryTokenStore → RedisTokenStore 전환 (백엔드 반영, JS 영향 없음)
+ *   - §1 ApiError  : GlobalExceptionHandler 응답 구조를 전달하는 전용 에러 클래스 추가
+ *   - §1 API.req() : detail > fieldErrors > message 우선순위로 throw ApiError
+ *   - §1 API.req() : 403/500 상태코드 Toast로 즉시 표시 (caller까지 전파하지 않음)
+ *   - §4 initEdit  : fieldErrors 수신 시 V.setErr()로 해당 필드에 직접 표시
+ *   - §5 initPassword : fieldErrors 수신 시 V.setErr()로 해당 필드에 직접 표시
+ *   - §6 initSpending : catch 블록 Toast.error() 유지 (개선된 메시지)
  *
  * 인증: HttpOnly 쿠키 (access_token / refresh_token)
  *       credentials:'include' 만 사용 — JS 쿠키 직접 읽기 없음
@@ -29,6 +26,44 @@
 /* ================================================================
    §1. 공통 유틸
    ================================================================ */
+
+/* ── ApiError — GlobalExceptionHandler 응답 구조를 그대로 전달 ── */
+class ApiError extends Error {
+    /**
+     * @param {object} json  GlobalExceptionHandler ErrorResponse
+     *   { code, message, detail, fieldErrors: [{field, value, message}] }
+     * @param {number} status HTTP 상태코드
+     */
+    constructor(json = {}, status = 0) {
+        // 사용자에게 표시할 메시지 우선순위: detail > fieldErrors[0] > message > fallback
+        const display =
+            json.detail
+            ?? (json.fieldErrors?.[0]
+                ? (json.fieldErrors[0].field
+                    ? `${json.fieldErrors[0].field}: ${json.fieldErrors[0].message}`
+                    : json.fieldErrors[0].message)
+                : null)
+            ?? json.message
+            ?? '오류가 발생했습니다.';
+
+        super(display);
+        this.name = 'ApiError';
+        this.code = json.code ?? null;
+        this.status = status;
+        this.detail = json.detail ?? null;
+        this.fieldErrors = json.fieldErrors ?? [];      // [{ field, value, message }]
+        this.serverMessage = json.message ?? null;
+    }
+
+    /** V.setErr()를 통해 각 fieldError를 해당 DOM 요소에 표시한다. */
+    applyFieldErrors(setErrFn) {
+        if (!this.fieldErrors.length) return false;
+        this.fieldErrors.forEach(fe => {
+            if (fe.field) setErrFn(fe.field, fe.message);
+        });
+        return true;
+    }
+}
 
 /* ── API ── */
 const API = (() => {
@@ -42,19 +77,46 @@ const API = (() => {
         };
         if (body) opts.body = JSON.stringify(body);
 
-        let res = await fetch(url, opts);
+        let res;
+        try {
+            res = await fetch(url, opts);
+        } catch {
+            // 네트워크 단절
+            Toast.error('서버에 연결할 수 없습니다. 네트워크를 확인해 주세요.');
+            throw new ApiError({}, 0);
+        }
 
+        // 401 — refresh 시도 후 재요청
         if (res.status === 401) {
             if (await _refresh()) {
-                res = await fetch(url, opts);
+                try { res = await fetch(url, opts); }
+                catch { Toast.error('서버에 연결할 수 없습니다.'); throw new ApiError({}, 0); }
             } else {
                 window.location.href = LOGIN;
-                throw new Error('인증이 만료되었습니다.');
+                throw new ApiError({ message: '인증이 만료되었습니다.' }, 401);
             }
         }
 
         const json = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(json.message || `HTTP ${res.status}`);
+
+        // 403 — 권한 없음: Toast 표시 후 throw
+        if (res.status === 403) {
+            const msg = json.message ?? '접근 권한이 없습니다.';
+            Toast.error(msg);
+            throw new ApiError(json, 403);
+        }
+
+        // 5xx — 서버 오류: Toast 표시 후 throw
+        if (res.status >= 500) {
+            Toast.error('서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+            throw new ApiError(json, res.status);
+        }
+
+        // 기타 4xx — caller가 처리하도록 ApiError throw
+        if (!res.ok) {
+            throw new ApiError(json, res.status);
+        }
+
         return json.data;
     }
 
@@ -165,84 +227,33 @@ function initPwToggles() {
 }
 
 /* ── 도넛 차트 (Chart.js) ── */
-function renderDonut(canvasId, items, totalAmount) {
+const CHART_COLORS = [
+    '#C8102E', '#E8593C', '#F2A623', '#639922', '#1D9E75',
+    '#378ADD', '#534AB7', '#D4537E', '#888780',
+];
+
+function renderDonut(canvasId, items, _totalAmount) {
     const canvas = document.getElementById(canvasId);
     if (!canvas || !window.Chart) return;
-
     const colors = items.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]);
-
     new Chart(canvas.getContext('2d'), {
         type: 'doughnut',
         data: {
             labels: items.map(i => i.categoryName),
-            datasets: [{
-                data: items.map(i => Number(i.monthlyAmount ?? 0)),
-                backgroundColor: colors,
-                borderWidth: 0,
-            }],
+            datasets: [{ data: items.map(i => Number(i.monthlyAmount ?? 0)), backgroundColor: colors, borderWidth: 2 }],
         },
         options: {
-            cutout: '72%',
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: ctx => {
-                            const pct = items[ctx.dataIndex]?.percentage
-                                ?? items[ctx.dataIndex]?.ratio
-                                ?? Math.round(ctx.parsed / totalAmount * 100);
-                            return ` ${ctx.label}: ${Fmt.money(ctx.parsed)} (${pct}%)`;
-                        },
-                    },
-                },
-            },
+            cutout: '68%',
+            plugins: { legend: { display: false }, tooltip: { enabled: true } },
         },
     });
 }
 
-/* ── 차트 팔레트 ── */
-const CHART_COLORS = [
-    '#C8102E', '#E8374F', '#F28B82', '#FF9800',
-    '#4CAF50', '#2196F3', '#9C27B0', '#00BCD4',
-    '#FF5722', '#795548', '#607D8B', '#E91E63',
-];
-
-function chartColor(categoryId) {
-    return CHART_COLORS[(Number(categoryId) - 1) % CHART_COLORS.length];
-}
-
-/* ── 카테고리 이모지 ── */
-const CAT_EMOJI = {
-    FOOD: '🍽️',
-    TRANSPORT: '🚌',
-    SHOPPING: '🛍️',
-    CULTURE: '🎭',
-    TRAVEL: '✈️',
-    HEALTH: '💊',
-    EDUCATION: '📚',
-    CAFE: '☕',
-    CONVENIENCE: '🏪',
-    BEAUTY: '💄',
-    SPORTS: '⚽',
-    PET: '🐾',
-    HOUSING: '🏠',
-    COMMUNICATION: '📱',
-    INSURANCE: '🛡️',
-    GAS: '⛽',
-    PARKING: '🅿️',
-    MART: '🛒',
-    OTT: '📺',
-    GAME: '🎮',
-    DONATION: '💝',
-    TAX: '🏛️',
-    ETC: '💳',
-};
-
-/* ── 금액 입력 콤마 포맷 ── */
-function initMoneyInputs(selector) {
-    document.querySelectorAll(selector).forEach(inp => {
+/* ── 금액 입력 포매팅 ── */
+function initMoneyInputs() {
+    document.querySelectorAll('input[data-money]').forEach(inp => {
         inp.addEventListener('input', () => {
-            const raw = inp.value.replace(/\D/g, '');
+            const raw = inp.value.replace(/[^0-9]/g, '');
             inp.value = raw ? Number(raw).toLocaleString('ko-KR') : '';
             inp.dataset.raw = raw || '0';
         });
@@ -250,10 +261,7 @@ function initMoneyInputs(selector) {
 }
 
 /* ── 날짜 포맷 ── */
-function fmtDate(str) {
-    if (!str) return '—';
-    return str.slice(0, 10);
-}
+function fmtDate(str) { return str ? str.slice(0, 10) : '—'; }
 
 /* ── 금액 포맷 (만원 단위) ── */
 function fmtMoney(n) {
@@ -264,41 +272,24 @@ function fmtMoney(n) {
 }
 
 /* ── 이름 이니셜 ── */
-function nameInitial(name) {
-    if (!name) return '?';
-    return name.charAt(0);
-}
+function nameInitial(name) { return name ? name.charAt(0) : '?'; }
 
 /* ── 한글 라벨 맵 ── */
 const JOB_LABEL = {
-    EMPLOYED: '직장인',
-    SELF_EMPLOYED: '자영업자',
-    STUDENT: '학생',
-    UNEMPLOYED: '무직',
-    OTHER: '기타',
+    EMPLOYED: '직장인', SELF_EMPLOYED: '자영업자',
+    STUDENT: '학생', UNEMPLOYED: '무직', OTHER: '기타',
 };
-
 const INCOME_LABEL = {
-    LV1: 'LV1 (3천만 미만)',
-    LV2: 'LV2 (3천~5천만)',
-    LV3: 'LV3 (5천만~1억)',
-    LV4: 'LV4 (1억 이상)',
+    LV1: 'LV1 (3천만 미만)', LV2: 'LV2 (3천~5천만)',
+    LV3: 'LV3 (5천만~1억)', LV4: 'LV4 (1억 이상)',
 };
-
 const APP_STATUS_LABEL = {
-    REQUESTED: '신청 접수',
-    REVIEWING: '심사 중',
-    APPROVED: '승인 완료',
-    REJECTED: '신청 거절',
-    ISSUED: '발급 완료',
+    REQUESTED: '신청 접수', REVIEWING: '심사 중',
+    APPROVED: '승인 완료', REJECTED: '신청 거절', ISSUED: '발급 완료',
 };
-
 const APP_STATUS_CLASS = {
-    REQUESTED: 'badge--requested',
-    REVIEWING: 'badge--reviewing',
-    APPROVED: 'badge--approved',
-    REJECTED: 'badge--rejected',
-    ISSUED: 'badge--issued',
+    REQUESTED: 'badge--requested', REVIEWING: 'badge--reviewing',
+    APPROVED: 'badge--approved', REJECTED: 'badge--rejected', ISSUED: 'badge--issued',
 };
 
 
@@ -308,7 +299,6 @@ const APP_STATUS_CLASS = {
 
 document.addEventListener('DOMContentLoaded', () => {
     initPwToggles();
-
     if (document.getElementById('donutChart')) initMain();
     if (document.getElementById('editForm')) initEdit();
     if (document.getElementById('pwForm')) initPassword();
@@ -322,22 +312,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function initMain() {
 
-    /* ──────────────────────────────────────────
-       [1] 내 정보 — GET /api/users/me
-       ✅ 이메일 인증 여부 항목 제거
-    ────────────────────────────────────────── */
+    /* [1] 내 정보 — GET /api/users/me */
     try {
         const user = await API.get('/api/users/me');
 
-        /* 프로필 이니셜 */
         const initialEl = document.getElementById('profileInitial');
         if (initialEl) initialEl.textContent = nameInitial(user.name);
 
-        /* 프로필 이름 */
         const nameEl = document.getElementById('profileName');
         if (nameEl) nameEl.textContent = (user.name ?? '사용자') + ' 님';
 
-        /* 마지막 로그인 */
         const metaEl = document.getElementById('profileMeta');
         if (metaEl) {
             const loginStr = user.lastLoginAt
@@ -346,223 +330,81 @@ async function initMain() {
             metaEl.textContent = '마지막 로그인 ' + loginStr;
         }
 
-        /* 신용점수 */
         const scoreEl = document.getElementById('profileScore');
         if (scoreEl) scoreEl.textContent = user.creditScore ?? '—';
 
-        /* 내 정보 목록 */
         const infoList = document.getElementById('infoList');
         if (infoList) {
-            const rows = [
-                { label: '이메일', value: user.email },
-                { label: '휴대폰', value: user.phone },
-                { label: '생년월일', value: user.birthDate },
-                { label: '직업', value: JOB_LABEL[user.job] ?? user.job },
-                { label: '소득 등급', value: INCOME_LABEL[user.incomeLevelCode] ?? user.incomeLevelCode },
-                // ✅ 이메일 인증 여부 제거 (이전: { label: '이메일 인증', value: user.isEmailVerified })
-                { label: '푸시 알림', value: user.pushEnabled },
-                { label: '마케팅 동의', value: user.marketingAgree },
-            ];
-
-            infoList.innerHTML = rows.map(({ label, value }) => {
-                const isBool = value === 'Y' || value === 'N' || typeof value === 'boolean';
-                const on = value === 'Y' || value === true;
-
-                let display;
-                if (isBool) {
-                    display = `<span class="dot ${on ? 'dot-on' : 'dot-off'}"></span> ${on ? '동의 / 수신' : '미동의 / 미수신'}`;
-                } else {
-                    display = value ?? '미입력';
-                }
-
-                return `<li>
-          <span class="info-label">${label}</span>
-          <span class="info-value">${display}</span>
-        </li>`;
-            }).join('');
+            infoList.innerHTML = `
+                <li><span class="info-label">이메일</span><span class="info-value">${user.email ?? '—'}</span></li>
+                <li><span class="info-label">휴대전화</span><span class="info-value">${user.phone ?? '—'}</span></li>
+                <li><span class="info-label">직업</span><span class="info-value">${JOB_LABEL[user.job] ?? '—'}</span></li>
+                <li><span class="info-label">소득수준</span><span class="info-value">${INCOME_LABEL[user.incomeLevelCode] ?? '—'}</span></li>
+            `;
         }
-
     } catch (err) {
-        Toast.error('프로필 정보를 불러오지 못했습니다.');
+        // ApiError: 403/500은 이미 Toast 처리됨. 나머지 오류만 표시.
+        if (err.status !== 403 && err.status < 500) {
+            Toast.error(err.message || '내 정보를 불러오지 못했습니다.');
+        }
     }
 
-
-    /* ──────────────────────────────────────────
-       [2] 카드 섹션 — GET /api/users/me/cards
-       ✅ 보유카드 / 신청카드 탭 분리
-       ✅ 신청카드에도 카드 이미지 렌더링
-    ────────────────────────────────────────── */
+    /* [2] 카드 탭 — GET /api/users/me/cards */
+    const ownedTab = document.getElementById('tab-owned');
+    const appliedTab = document.getElementById('tab-applied');
     const cardSection = document.getElementById('cardSection');
 
-    try {
-        const data = await API.get('/api/users/me/cards');
-
-        const owned = (data.ownedCards ?? []).map(c => ({
-            type: 'owned',
-            name: c.cardName,
-            imageUrl: c.cardImageUrl,
-            sub: '발급일 ' + fmtDate(c.issuedAt),
-            status: 'ISSUED',
-        }));
-
-        const applied = (data.applications ?? []).map(a => ({
-            type: 'applied',
-            name: a.cardName,
-            imageUrl: a.cardImageUrl,   // ✅ 신청카드도 이미지 사용
-            sub: '신청일 ' + fmtDate(a.appliedAt),
-            status: a.applicationStatus,
-        }));
-
-        /* ── 카드 아이템 HTML 생성 (owned/applied 공통 렌더러) ── */
-        function renderCardItem(item) {
-            const badgeClass = APP_STATUS_CLASS[item.status] ?? 'badge--requested';
-            const badgeLabel = APP_STATUS_LABEL[item.status] ?? item.status;
-
-            /* 이미지 — URL 있으면 img, 없으면 첫 글자 placeholder */
-            const imgHtml = item.imageUrl
-                ? `<img src="${item.imageUrl}" alt="${item.name ?? ''}" class="card-item__img"
-                onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
-                : '';
-            const placeholderStyle = item.imageUrl ? 'display:none' : '';
-
-            return `<div class="card-item">
-        <div class="card-item__img-wrap">
-          ${imgHtml}
-          <div class="card-item__img-placeholder" style="${placeholderStyle}">
-            ${(item.name ?? '카').charAt(0)}
-          </div>
-        </div>
-        <div class="card-info">
-          <div class="card-info__name">${item.name ?? '—'}</div>
-          <div class="card-info__sub">${item.sub}</div>
-        </div>
-        <span class="badge ${badgeClass}">${badgeLabel}</span>
-      </div>`;
+    async function loadCards(type = 'owned') {
+        if (!cardSection) return;
+        cardSection.innerHTML = '<p class="loading-text">불러오는 중...</p>';
+        try {
+            const cards = await API.get(`/api/users/me/cards?type=${type}`);
+            const list = Array.isArray(cards) ? cards : (cards?.items ?? []);
+            if (!list.length) {
+                cardSection.innerHTML = `<p class="empty-text">${type === 'owned' ? '보유 카드가 없습니다.' : '신청 중인 카드가 없습니다.'}</p>`;
+                return;
+            }
+            cardSection.innerHTML = list.map(c => `
+                <div class="card-item">
+                    ${c.cardImageUrl ? `<img class="card-img" src="${c.cardImageUrl}" alt="${c.cardName}">` : ''}
+                    <div class="card-info">
+                        <div class="card-name">${c.cardName ?? '—'}</div>
+                        ${type === 'applied'
+                    ? `<span class="badge ${APP_STATUS_CLASS[c.applicationStatus] ?? ''}">${APP_STATUS_LABEL[c.applicationStatus] ?? c.applicationStatus}</span>`
+                    : `<div class="card-date">발급일: ${fmtDate(c.issuedAt)}</div>`}
+                    </div>
+                </div>`).join('');
+        } catch (err) {
+            if (err.status !== 403 && err.status < 500) {
+                cardSection.innerHTML = `<p class="error-text">${err.message}</p>`;
+            }
         }
-
-        /* ── 탭 전환 함수 ── */
-        function switchCardTab(tab) {
-            /* 탭 버튼 active 처리 */
-            cardSection.querySelectorAll('.card-tab-btn').forEach(btn => {
-                btn.classList.toggle('card-tab-btn--active', btn.dataset.tab === tab);
-            });
-
-            /* 패널 렌더링 */
-            const list = tab === 'owned' ? owned : applied;
-            const emptyMsg = tab === 'owned' ? '보유 카드가 없습니다.' : '신청 내역이 없습니다.';
-            const panelEl = document.getElementById('cardTabPanel');
-
-            panelEl.innerHTML = list.length
-                ? list.map(renderCardItem).join('')
-                : `<div class="empty-state">${emptyMsg}</div>`;
-        }
-
-        /* ── 탭 헤더 + 패널 마운트 ── */
-        cardSection.innerHTML = `
-      <div class="card-tab-bar">
-        <button class="card-tab-btn card-tab-btn--active" data-tab="owned">
-          보유카드 <span class="card-tab-count">${owned.length}</span>
-        </button>
-        <button class="card-tab-btn" data-tab="applied">
-          신청카드 <span class="card-tab-count">${applied.length}</span>
-        </button>
-      </div>
-      <div id="cardTabPanel"></div>`;
-
-        /* ── 탭 클릭 이벤트 바인딩 ── */
-        cardSection.querySelectorAll('.card-tab-btn').forEach(btn => {
-            btn.addEventListener('click', () => switchCardTab(btn.dataset.tab));
-        });
-
-        /* ── 초기 렌더: 보유카드 탭 ── */
-        switchCardTab('owned');
-
-    } catch {
-        cardSection.innerHTML = `<div class="empty-state">카드 정보를 불러오지 못했습니다.</div>`;
     }
 
+    ownedTab?.addEventListener('click', () => {
+        ownedTab.classList.add('active');
+        appliedTab?.classList.remove('active');
+        loadCards('owned');
+    });
+    appliedTab?.addEventListener('click', () => {
+        appliedTab.classList.add('active');
+        ownedTab?.classList.remove('active');
+        loadCards('applied');
+    });
+    loadCards('owned');
 
-    /* ──────────────────────────────────────────
-       [3] 소비 패턴 도넛 차트 — GET /api/users/me/spending
-    ────────────────────────────────────────── */
-    const spendingSection = document.getElementById('spendingSection');
-
+    /* [3] 소비 패턴 도넛 — GET /api/users/me/spending */
     try {
-        const data = await API.get('/api/users/me/spending');
-        const items = Array.isArray(data) ? data : (data.items ?? []);
-        const active = items.filter(i => Number(i.monthlyAmount ?? 0) > 0);
-
-        if (active.length === 0) {
-            spendingSection.innerHTML = `
-        <div class="empty-state">
-          등록된 소비 패턴이 없습니다.<br>
-          <a href="/mypage/spending.html">등록하러 가기</a>
-        </div>`;
-            return;
+        const spending = await API.get('/api/users/me/spending');
+        const items = Array.isArray(spending) ? spending : (spending?.items ?? []);
+        const total = items.reduce((s, i) => s + Number(i.monthlyAmount ?? 0), 0);
+        const totalEl = document.getElementById('totalSpending');
+        if (totalEl) totalEl.textContent = fmtMoney(total);
+        renderDonut('donutChart', items, total);
+    } catch (err) {
+        if (err.status !== 403 && err.status < 500) {
+            Toast.warning('소비 패턴 데이터를 불러오지 못했습니다.');
         }
-
-        const total = active.reduce((s, i) => s + Number(i.monthlyAmount), 0);
-
-        spendingSection.innerHTML = `
-      <div class="chart-wrap">
-        <div class="chart-canvas-box">
-          <canvas id="donutChart" width="170" height="170"></canvas>
-          <div class="chart-center">
-            <div class="chart-center__amount" id="chart-amount">${fmtMoney(total)}</div>
-            <div class="chart-center__label">총 지출</div>
-          </div>
-        </div>
-        <div class="legend" id="chart-legend"></div>
-      </div>`;
-
-        const ctx = document.getElementById('donutChart').getContext('2d');
-        const colors = active.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]);
-
-        new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: active.map(i => i.categoryName),
-                datasets: [{
-                    data: active.map(i => Number(i.monthlyAmount)),
-                    backgroundColor: colors,
-                    borderWidth: 0,
-                }],
-            },
-            options: {
-                cutout: '72%',
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: ctx => {
-                                const pct = active[ctx.dataIndex]?.percentage
-                                    ?? active[ctx.dataIndex]?.ratio
-                                    ?? Math.round(ctx.parsed / total * 100);
-                                return ` ${ctx.label}: ${fmtMoney(ctx.parsed)} (${pct}%)`;
-                            },
-                        },
-                    },
-                },
-            },
-        });
-
-        /* 범례 */
-        const legendEl = document.getElementById('chart-legend');
-        if (legendEl) {
-            legendEl.innerHTML = active.map((item, i) => {
-                const pct = item.percentage ?? item.ratio
-                    ?? Math.round(Number(item.monthlyAmount) / total * 100);
-                return `<div class="legend-item">
-          <span class="legend-dot" style="background:${colors[i]}"></span>
-          <span class="legend-name">${item.categoryName}</span>
-          <span class="legend-pct">${pct}%</span>
-          <span class="legend-amt">${fmtMoney(item.monthlyAmount)}</span>
-        </div>`;
-            }).join('');
-        }
-
-    } catch {
-        spendingSection.innerHTML = `<div class="empty-state">소비 패턴을 불러오지 못했습니다.</div>`;
     }
 }
 
@@ -576,14 +418,15 @@ async function initEdit() {
     try {
         const user = await API.get('/api/users/me');
         document.getElementById('name').value = user.name ?? '';
-        /* 원본 phone 사용 (마스킹 제거) */
         document.getElementById('currentPhone').textContent = user.phone ?? '미등록';
         document.getElementById('job').value = user.job ?? '';
         document.getElementById('incomeLevelCode').value = user.incomeLevelCode ?? '';
         document.getElementById('pushEnabled').checked = user.pushEnabled === 'Y' || user.pushEnabled === true;
         document.getElementById('marketingAgree').checked = user.marketingAgree === 'Y' || user.marketingAgree === true;
-    } catch {
-        Toast.error('정보를 불러오지 못했습니다.');
+    } catch (err) {
+        if (err.status !== 403 && err.status < 500) {
+            Toast.error('정보를 불러오지 못했습니다.');
+        }
     }
 
     const form = document.getElementById('editForm');
@@ -613,10 +456,15 @@ async function initEdit() {
             Toast.success('정보가 수정되었습니다.');
             setTimeout(() => { window.location.href = '/mypage/index.html'; }, 1000);
         } catch (err) {
-            if (err.message?.includes('비밀번호')) {
-                pwErr.textContent = err.message;
-                pwErr.classList.add('show');
-            } else {
+            // ✅ fieldErrors → 각 필드에 직접 표시
+            if (err instanceof ApiError && err.applyFieldErrors(V.setErr)) {
+                // 필드 수준 오류는 이미 V.setErr로 표시됨
+            } else if (err.message?.includes('비밀번호')) {
+                if (pwErr) {
+                    pwErr.textContent = err.message;
+                    pwErr.classList.add('show');
+                }
+            } else if (err.status !== 403 && err.status < 500) {
                 Toast.error(err.message || '수정 중 오류가 발생했습니다.');
             }
         } finally {
@@ -624,38 +472,34 @@ async function initEdit() {
         }
     }
 
-    /* 제출 시 항상 비밀번호 확인 모달 표시 */
     form.addEventListener('submit', async e => {
         e.preventDefault();
-
         const phoneVal = document.getElementById('phone').value.trim();
         if (phoneVal && !V.setErr('phone', V.phone(phoneVal))) return;
 
-        pwInput.value = '';
-        pwErr.textContent = '';
-        pwErr.classList.remove('show');
-        modal.classList.add('open');
-        setTimeout(() => pwInput.focus(), 150);
+        if (pwInput) pwInput.value = '';
+        if (pwErr) { pwErr.textContent = ''; pwErr.classList.remove('show'); }
+        modal?.classList.add('open');
+        setTimeout(() => pwInput?.focus(), 150);
     });
 
-    document.getElementById('modalCancelBtn').addEventListener('click', () => {
-        modal.classList.remove('open');
-        pwInput.value = '';
+    document.getElementById('modalCancelBtn')?.addEventListener('click', () => {
+        modal?.classList.remove('open');
+        if (pwInput) pwInput.value = '';
     });
 
-    confirmBtn.addEventListener('click', async () => {
-        const pw = pwInput.value;
+    confirmBtn?.addEventListener('click', async () => {
+        const pw = pwInput?.value ?? '';
         if (!pw) {
-            pwErr.textContent = '비밀번호를 입력해주세요.';
-            pwErr.classList.add('show');
+            if (pwErr) { pwErr.textContent = '비밀번호를 입력해주세요.'; pwErr.classList.add('show'); }
             return;
         }
-        pwErr.classList.remove('show');
-        modal.classList.remove('open');
+        pwErr?.classList.remove('show');
+        modal?.classList.remove('open');
         await doUpdate(collectBody(pw));
     });
 
-    pwInput.addEventListener('keydown', e => { if (e.key === 'Enter') confirmBtn.click(); });
+    pwInput?.addEventListener('keydown', e => { if (e.key === 'Enter') confirmBtn?.click(); });
     document.getElementById('phone')?.addEventListener('input', () => V.setErr('phone', ''));
 }
 
@@ -704,7 +548,6 @@ function initPassword() {
             else if (score <= 3) { fill.classList.add('fill-medium'); if (label) label.textContent = '보안 강도: 보통'; }
             else { fill.classList.add('fill-strong'); if (label) label.textContent = '보안 강도: 강함'; }
         }
-
         V.setErr('newPw', '');
     });
 
@@ -733,15 +576,22 @@ function initPassword() {
                 if (doneModal) doneModal.classList.add('open');
             }, 500);
         } catch (err) {
-            if (err.message?.includes('비밀번호')) V.setErr('currentPw', err.message);
-            else Toast.error(err.message || '변경 중 오류가 발생했습니다.');
+            // ✅ fieldErrors → 각 필드에 직접 표시
+            if (err instanceof ApiError && err.applyFieldErrors(V.setErr)) {
+                // 이미 처리됨
+            } else if (err.message?.includes('비밀번호') || err.message?.includes('password')) {
+                V.setErr('currentPw', err.message);
+            } else if (err.status !== 403 && err.status < 500) {
+                Toast.error(err.message || '변경 중 오류가 발생했습니다.');
+            }
         } finally {
             btnLoading(submitBtn, false);
         }
     });
 
-    document.getElementById('doneOk')
-        ?.addEventListener('click', () => { window.location.href = '/mypage/index.html'; });
+    document.getElementById('doneOk')?.addEventListener('click', () => {
+        window.location.href = '/mypage/index.html';
+    });
 }
 
 
@@ -760,80 +610,74 @@ async function initSpending() {
     try {
         const cats = await API.get('/api/cards/categories');
         allCategories = Array.isArray(cats) ? cats : [];
-    } catch {
-        Toast.error('카테고리를 불러오지 못했습니다.');
+    } catch (err) {
+        if (err.status !== 403 && err.status < 500) {
+            Toast.error('카테고리를 불러오지 못했습니다.');
+        }
     }
 
     /* ② 기존 소비패턴 로드 → categoryId → monthlyAmount 맵 */
     const existingAmounts = {};
     try {
         const data = await API.get('/api/users/me/spending');
-        const items = Array.isArray(data) ? data : (data.items ?? []);
-        items.forEach(i => {
-            existingAmounts[String(i.categoryId)] = Number(i.monthlyAmount || 0);
+        const items = Array.isArray(data) ? data : (data?.items ?? []);
+        items.forEach(i => { existingAmounts[i.categoryId] = i.monthlyAmount ?? 0; });
+    } catch (err) {
+        if (err.status !== 403 && err.status < 500) {
+            Toast.warning('기존 소비 패턴을 불러오지 못했습니다. 새로 입력해주세요.');
+        }
+    }
+
+    /* ③ 행 렌더링 */
+    function updateTotal() {
+        if (!totalEl) return;
+        const total = [...document.querySelectorAll('input[data-money]')]
+            .reduce((s, inp) => s + Number(inp.dataset.raw ?? 0), 0);
+        totalEl.textContent = fmtMoney(total);
+    }
+
+    if (container) {
+        container.innerHTML = allCategories.map(cat => {
+            const existing = existingAmounts[cat.categoryId] ?? 0;
+            const display = existing ? Number(existing).toLocaleString('ko-KR') : '';
+            return `
+                <div class="spending-row">
+                    <label class="category-label">${cat.categoryName}</label>
+                    <input class="form-input money-input"
+                           type="text" inputmode="numeric"
+                           data-money data-raw="${existing}"
+                           data-category-id="${cat.categoryId}"
+                           value="${display}"
+                           placeholder="월 소비금액 (원)">
+                </div>`;
+        }).join('');
+        initMoneyInputs();
+        container.querySelectorAll('input[data-money]').forEach(inp => {
+            inp.addEventListener('input', updateTotal);
         });
-    } catch {
-        /* 패턴 없어도 카테고리는 표시 */
-    }
-
-    if (allCategories.length === 0) {
-        container.innerHTML = '<div class="empty-state">등록된 카테고리가 없습니다.</div>';
-        return;
-    }
-
-    /* ③ 전체 카테고리 렌더링 (기존 금액 있으면 채움, 없으면 0) */
-    container.innerHTML = allCategories.map(cat => {
-        const color = chartColor(cat.categoryId);
-        const amt = existingAmounts[String(cat.categoryId)] ?? 0;
-        const display = amt > 0 ? amt.toLocaleString('ko-KR') : '';
-        const emoji = CAT_EMOJI[cat.categoryCode] ?? '💳';
-
-        return `
-      <div class="spending-row" data-category-id="${cat.categoryId}">
-        <span class="spending-dot" style="background:${color}"></span>
-        <span class="spending-emoji" aria-hidden="true">${emoji}</span>
-        <span class="spending-label">${cat.categoryName}</span>
-        <input class="form-control spending-input money-input"
-               type="text" inputmode="numeric"
-               placeholder="0" value="${display}"
-               data-raw="${amt}"
-               aria-label="${cat.categoryName} 월 지출액"/>
-        <span class="spending-unit">원</span>
-      </div>`;
-    }).join('');
-
-    initMoneyInputs('.money-input');
-    recalcTotal();
-    container.addEventListener('input', recalcTotal);
-
-    function recalcTotal() {
-        const sum = [...document.querySelectorAll('.money-input')]
-            .reduce((acc, inp) => acc + Number(inp.dataset.raw || 0), 0);
-        if (totalEl) totalEl.textContent = Fmt.money(sum);
+        updateTotal();
     }
 
     /* ④ 저장 */
-    document.getElementById('spendingForm').addEventListener('submit', async e => {
+    document.getElementById('spendingForm')?.addEventListener('submit', async e => {
         e.preventDefault();
-        const btn = document.getElementById('submitBtn');
-
-        const patterns = [...document.querySelectorAll('#rowContainer .spending-row')]
-            .map(row => ({
-                categoryId: Number(row.dataset.categoryId),
-                monthlyAmount: Number(row.querySelector('.money-input')?.dataset.raw || 0),
-            }));
-
-        if (!patterns.length) { Toast.warning('저장할 항목이 없습니다.'); return; }
-
-        btnLoading(btn, true);
+        const submitBtn = document.getElementById('spendingSubmitBtn');
+        btnLoading(submitBtn, true);
         try {
-            await API.put('/api/users/me/spending', { patterns });
+            const items = [...document.querySelectorAll('input[data-money]')].map(inp => ({
+                categoryId: Number(inp.dataset.categoryId),
+                monthlyAmount: Number(inp.dataset.raw ?? 0),
+            }));
+            await API.put('/api/users/me/spending', { items });
             Toast.success('소비 패턴이 저장되었습니다.');
-            setTimeout(() => { window.location.href = '/mypage/index.html'; }, 1100);
         } catch (err) {
-            Toast.error(err.message || '저장 중 오류가 발생했습니다.');
+            if (err instanceof ApiError && err.applyFieldErrors(V.setErr)) {
+                // 필드 오류 처리됨
+            } else if (err.status !== 403 && err.status < 500) {
+                Toast.error(err.message || '저장 중 오류가 발생했습니다.');
+            }
         } finally {
-            btnLoading(btn, false);
+            btnLoading(submitBtn, false);
         }
     });
 }

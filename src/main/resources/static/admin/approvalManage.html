@@ -180,558 +180,337 @@
 </div>
 
 <script>
-
+ 
   // =====================================================
-  // 공통
+  // 공통 상수
   // =====================================================
-
-  const params =
-    new URLSearchParams(location.search);
-
-  const approvalId =
-    params.get('approvalId');
-
-  let currentPage = 0;
-
-  const PAGE_SIZE = 20;
-
+ 
+  const params     = new URLSearchParams(location.search);
+  const approvalId = params.get('approvalId');
+  let   currentPage = 0;
+  const PAGE_SIZE   = 20;
+ 
   const TYPE_LABEL = {
     CARD_PUBLISH:  '카드 등록',
     CARD_UPDATE:   '카드 수정',
     TERMS_PUBLISH: '약관 등록',
   };
-
   const TYPE_CLASS = {
     CARD_PUBLISH:  'type-card-publish',
     CARD_UPDATE:   'type-card-update',
     TERMS_PUBLISH: 'type-terms-publish',
   };
-
   const STATUS_CLASS = {
     PENDING:  'badge-pending',
     APPROVED: 'badge-approved',
     REJECTED: 'badge-rejected',
   };
-
   const LINE_CLASS = {
     PENDING:  'line-node-pending',
     APPROVED: 'line-node-approved',
     REJECTED: 'line-node-rejected',
   };
-
+ 
   // =====================================================
-  // API 공통 함수
+  // API 공통 함수 (업그레이드)
   // =====================================================
-
+ 
   async function api(method, url, body) {
-
     const opts = {
       method,
       credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      headers: { 'Content-Type': 'application/json' },
     };
-
-    if (body) {
-      opts.body = JSON.stringify(body);
+    if (body) opts.body = JSON.stringify(body);
+ 
+    let res;
+    try {
+      res = await fetch(url, opts);
+    } catch {
+      showToast('서버에 연결할 수 없습니다. 네트워크를 확인해 주세요.', 'error');
+      return { ok: false, data: null };
     }
-
-    const res = await fetch(url, opts);
-
-    return {
-      ok: res.ok,
-      data: await res.json().catch(() => null)
-    };
+ 
+    // 401 — 로그인 페이지로 이동
+    if (res.status === 401) {
+      location.href = '/auth/admin-login.html';
+      return { ok: false, data: null };
+    }
+ 
+    // 403 — 권한 없음 즉시 Toast
+    if (res.status === 403) {
+      const json = await res.json().catch(() => ({}));
+      showToast(json.message ?? '접근 권한이 없습니다.', 'error');
+      return { ok: false, data: json };
+    }
+ 
+    // 5xx — 서버 오류 즉시 Toast
+    if (res.status >= 500) {
+      showToast('서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.', 'error');
+      return { ok: false, data: null };
+    }
+ 
+    const data = await res.json().catch(() => null);
+    return { ok: res.ok, status: res.status, data };
   }
-
+ 
+  /**
+   * GlobalExceptionHandler 응답에서 사용자 메시지 추출
+   * 우선순위: fieldErrors[0] > detail > message > fallback
+   */
+  function extractApiMsg(data, fallback = '처리 중 오류가 발생했습니다.') {
+    if (data?.fieldErrors?.length) {
+      const fe = data.fieldErrors[0];
+      return fe.field ? `${fe.field}: ${fe.message}` : fe.message;
+    }
+    return data?.detail ?? data?.message ?? data?.data?.message ?? fallback;
+  }
+ 
   // =====================================================
   // 목록 조회
   // =====================================================
-	  
-  function searchApprovals() {
-	  loadApprovals(0);
-  }
-  
+ 
+  function searchApprovals() { loadApprovals(0); }
+ 
   function resetFilters() {
-	  document.getElementById('statusFilter').value = '';	
-	  document.getElementById('typeFilter').value = '';	
-	  loadApprovals(0);
-	}
-
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('typeFilter').value   = '';
+    loadApprovals(0);
+  }
+ 
   async function loadApprovals(page = 0) {
-
     currentPage = page;
-
-    const status =
-      document.getElementById('statusFilter').value;
-
-    const type =
-      document.getElementById('typeFilter').value;
-
-    let url =
-      `/api/admin/approvals?page=${page}&size=${PAGE_SIZE}`;
-
-    if (status) {
-      url += '&statusCode=' + status;
-    }
-
-    if (type) {
-      url += '&requestTypeCode=' + type;
-    }
-
-    const tbody =
-      document.getElementById('approvalTbody');
-
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="7"
-            class="empty-cell">
-          로딩 중...
-        </td>
-      </tr>
-    `;
-
-    try {
-
-      const res =
-        await fetch(url, {
-          credentials: 'include'
-        });
-
-      if (res.status === 401) {
-
-        location.href =
-          '/auth/admin-login.html';
-
-        return;
+ 
+    const status = document.getElementById('statusFilter').value;
+    const type   = document.getElementById('typeFilter').value;
+ 
+    let url = `/api/admin/approvals?page=${page}&size=${PAGE_SIZE}`;
+    if (status) url += '&statusCode='       + status;
+    if (type)   url += '&requestTypeCode='  + type;
+ 
+    const tbody = document.getElementById('approvalTbody');
+    tbody.innerHTML = `<tr><td colspan="7" class="empty-cell">로딩 중...</td></tr>`;
+ 
+    const r = await api('GET', url);
+ 
+    if (!r.ok || !r.data?.data) {
+      const msg = r.data ? extractApiMsg(r.data, '목록 조회에 실패했습니다.') : '목록 조회에 실패했습니다.';
+      tbody.innerHTML = `<tr><td colspan="7" class="empty-cell">${msg}</td></tr>`;
+      // 403/500은 api() 내부에서 이미 toast 처리됨. 나머지만 toast.
+      if (r.status && r.status !== 403 && r.status < 500) {
+        showToast(msg, 'error');
       }
-
-      const json =
-        await res.json().catch(() => null);
-
-      if (!res.ok || !json?.data) {
-
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="7"
-                class="empty-cell">
-              조회 실패
-            </td>
-          </tr>
-        `;
-
-        return;
-      }
-
-      const { content, totalCount } =
-        json.data;
-
-      document.getElementById('totalCount')
-        .textContent = totalCount ?? 0;
-
-      if (!content || content.length === 0) {
-
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="7"
-                class="empty-cell">
-              결재 건이 없습니다.
-            </td>
-          </tr>
-        `;
-
-        renderPagination(0);
-
-        return;
-      }
-
-      tbody.innerHTML = content.map(a => {
-
-        const typeLabel =
-          TYPE_LABEL[a.requestTypeCode]
-            ?? a.requestTypeCode;
-
-        const typeCls =
-          TYPE_CLASS[a.requestTypeCode]
-            ?? '';
-
-        const statusCls =
-          STATUS_CLASS[a.statusCode]
-            ?? '';
-
-        const lineSummary = a.lines?.length
-
-          ? a.lines.map((l, i) => {
-
-              const cls =
-                LINE_CLASS[l.statusCode]
-                  ?? '';
-
-              const arrow =
-                i < a.lines.length - 1
-                  ? '<span class="line-arrow">›</span>'
-                  : '';
-
-              return `
-                <span class="line-node ${cls}">
-                  ${l.approvalOrder}.
-                  ${l.approverName ?? '?'}
-                </span>
-
-                ${arrow}
-              `;
-            }).join('')
-
-          : '<span class="line-none">-</span>';
-
-        const requestedAt =
-          a.requestedAt
-            ? a.requestedAt
-                .substring(0,16)
-                .replace('T',' ')
-            : '-';
-
-        return `
-          <tr onclick="goDetail(${a.approvalId})"
-              style="cursor:pointer">
-
-            <td class="cell-id">
-              ${a.approvalId}
-            </td>
-
-            <td>
-              <span class="type-badge ${typeCls}">
-                ${typeLabel}
-              </span>
-            </td>
-
-            <td class="cell-name">
-              ${a.targetName ?? '-'}
-            </td>
-
-            <td>
-              ${a.requesterName ?? '-'}
-            </td>
-
-            <td>
-              <span class="badge ${statusCls}">
-                ${a.statusCode}
-              </span>
-            </td>
-
-            <td class="cell-date">
-              ${requestedAt}
-            </td>
-          </tr>
-        `;
-      }).join('');
-
-      renderPagination(totalCount);
-
-    } catch (e) {
-
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="6"
-              class="empty-cell">
-            네트워크 오류
-          </td>
-        </tr>
-      `;
+      return;
     }
+ 
+    const { content, totalCount } = r.data.data;
+    document.getElementById('totalCount').textContent = totalCount ?? 0;
+ 
+    if (!content?.length) {
+      tbody.innerHTML = `<tr><td colspan="7" class="empty-cell">결재 건이 없습니다.</td></tr>`;
+      renderPagination(0);
+      return;
+    }
+ 
+    tbody.innerHTML = content.map(a => {
+      const typeLabel  = TYPE_LABEL[a.requestTypeCode]  ?? a.requestTypeCode;
+      const typeCls    = TYPE_CLASS[a.requestTypeCode]   ?? '';
+      const statusCls  = STATUS_CLASS[a.statusCode]      ?? '';
+ 
+      const lineSummary = a.lines?.length
+        ? a.lines.map((l, i) => {
+            const cls   = LINE_CLASS[l.statusCode] ?? '';
+            const arrow = i < a.lines.length - 1 ? '<span class="line-arrow">›</span>' : '';
+            return `<span class="line-node ${cls}">${l.approvalOrder}. ${l.approverName ?? '?'}</span>${arrow}`;
+          }).join('')
+        : '-';
+ 
+      return `
+        <tr class="clickable-row" onclick="loadDetail(${a.approvalId})">
+          <td>${a.approvalId}</td>
+          <td><span class="badge ${typeCls}">${typeLabel}</span></td>
+          <td>${a.requesterName ?? '-'}</td>
+          <td>${a.targetName ?? '-'}</td>
+          <td><span class="badge ${statusCls}">${a.statusCode}</span></td>
+          <td><div class="line-summary">${lineSummary}</div></td>
+          <td>${a.requestedAt ? a.requestedAt.substring(0, 16) : '-'}</td>
+        </tr>`;
+    }).join('');
+ 
+    renderPagination(totalCount);
   }
-
-  // =====================================================
-  // 상세 이동
-  // =====================================================
-
-  function goDetail(approvalId) {
-
-    location.href =
-      `/admin/approvalManage.html?approvalId=${approvalId}`;
-  }
-
+ 
   // =====================================================
   // 상세 조회
   // =====================================================
-
-  async function loadDetail(approvalId) {
-
-    const r = await api('GET', `/api/admin/approvals/${approvalId}`);
-
-    const infoTable  = document.getElementById('infoTable');
+ 
+  async function loadDetail(id) {
+    const aid = id ?? approvalId;
+    if (!aid) return;
+ 
+    document.getElementById('listPage').style.display   = 'none';
+    document.getElementById('detailPage').style.display = 'block';
+ 
+    const infoTbody  = document.getElementById('infoTbody');
+    const lineTbody  = document.getElementById('lineTbody');
     const actionArea = document.getElementById('actionArea');
-
+ 
+    if (infoTbody)  infoTbody.innerHTML  = `<tr><td colspan="2">불러오는 중...</td></tr>`;
+    if (lineTbody)  lineTbody.innerHTML  = `<tr><td colspan="5">불러오는 중...</td></tr>`;
+    if (actionArea) actionArea.style.display = 'none';
+ 
+    const r = await api('GET', `/api/admin/approvals/${aid}`);
+ 
     if (!r.ok || !r.data?.data) {
-        infoTable.innerHTML = '<tr><td>조회 실패</td></tr>';
-        return;
+      const msg = r.data ? extractApiMsg(r.data, '상세 조회에 실패했습니다.') : '상세 조회에 실패했습니다.';
+      if (infoTbody) infoTbody.innerHTML = `<tr><td colspan="2">${msg}</td></tr>`;
+      if (r.status && r.status !== 403 && r.status < 500) {
+        showToast(msg, 'error');
+      }
+      return;
     }
-
+ 
     const a = r.data.data;
-
-    // 기본 정보
-    infoTable.innerHTML = `
-        <tr><th>결재 ID</th>   <td>${a.approvalId}</td></tr>
-        <tr><th>유형</th>      <td>${a.requestTypeCode}</td></tr>
-        <tr><th>대상</th>      <td>${a.targetName ?? '-'}</td></tr>
-        <tr><th>요청자</th>    <td>${a.requesterName ?? '-'}</td></tr>
-        <tr><th>요청 의견</th> <td>${a.requestComment ?? '-'}</td></tr>
-        <tr><th>상태</th>      <td><b>${a.statusCode}</b></td></tr>
-        <tr><th>요청일시</th>  <td>${a.requestedAt?.substring(0, 16) ?? '-'}</td></tr>
-        <tr><th>완료일시</th>  <td>${a.completedAt?.substring(0, 16) ?? '-'}</td></tr>
-    `;
-
-    // 결재 라인
-    document.getElementById('linesTable').innerHTML = a.lines?.length
-        ? a.lines.map(l => `
-            <tr>
-                <td>${l.approvalOrder}</td>
-                <td>${l.approverName ?? '-'}</td>
-                <td><b>${l.statusCode}</b></td>
-                <td>${l.commentText ?? '-'}</td>
-                <td>${l.approvedAt?.substring(0, 16) ?? '-'}</td>
-            </tr>`).join('')
-        : '<tr><td colspan="5">결재라인 없음</td></tr>';
-
-    // 카드 스냅샷
-    const snapshotSection = document.getElementById('snapshotSection');
-    const s = a.snapshot;
-
-    if (s) {
-        snapshotSection.style.display = 'block';
-
-        const card = s.card;
-
-        document.getElementById('snapshotTable').innerHTML = `
-            <tr><th>카드코드</th>    <td>${card.cardCode ?? '-'}</td></tr>
-            <tr><th>카드유형</th>    <td>${card.cardType ?? '-'}</td></tr>
-            <tr><th>카드명</th>      <td>${card.cardName ?? '-'}</td></tr>
-            <tr><th>카드사</th>      <td>${card.companyName ?? '-'}</td></tr>
-            <tr><th>브랜드</th>      <td>${card.brandName ?? '-'}</td></tr>
-            <tr><th>국내 연회비</th> <td>${card.annualFeeDomestic?.toLocaleString() ?? '-'} 원</td></tr>
-            <tr><th>해외 연회비</th> <td>${card.annualFeeOverseas?.toLocaleString() ?? '-'} 원</td></tr>
-            <tr><th>전월실적</th>    <td>${card.previousMonthSpend?.toLocaleString() ?? '-'} 원</td></tr>
-            <tr><th>가입연령</th>    <td>${card.minimumAge ?? '-'} ~ ${card.maximumAge ?? '-'} 세</td></tr>
-            <tr><th>타겟 고객</th>   <td>${card.targetUser ?? '-'}</td></tr>
-            <tr><th>요약 설명</th>   <td>${card.summaryDescription ?? '-'}</td></tr>
-            <tr><th>검색 노출</th>   <td>${card.searchableYn ?? '-'}</td></tr>
-            <tr><th>화면 노출</th>   <td>${card.visibleYn ?? '-'}</td></tr>
-            <tr><th>결재 필요</th>   <td>${card.approvalRequiredYn ?? '-'}</td></tr>
-            <tr><th>게시 시작일</th> <td>${card.publishStartAt?.substring(0, 16) ?? '-'}</td></tr>
-            <tr><th>게시 종료일</th> <td>${card.publishEndAt?.substring(0, 16) ?? '-'}</td></tr>
-        `;
-        
-
-        document.getElementById('benefitTbody').innerHTML = s.benefits?.length
-      	    ? s.benefits.map(b => {
-      	        const rate = b.discountRate != null ? (b.discountRate * 100).toFixed(1) + '%'
-      	                   : b.cashbackRate != null ? (b.cashbackRate * 100).toFixed(1) + '%'
-      	                   : b.pointRate    != null ? (b.pointRate    * 100).toFixed(1) + '%'
-      	                   : '-';
-      	        const limit = b.monthlyLimitAmount != null ? b.monthlyLimitAmount.toLocaleString() + '원'
-      	                    : b.dailyLimitAmount   != null ? b.dailyLimitAmount.toLocaleString()   + '원'
-      	                    : '-';
-      	        return `
-      	        <tr>
-      	            <td>${b.categoryName ?? '-'}</td>
-      	            <td>${b.benefitTitle ?? '-'}</td>
-      	            <td>${b.displayText ?? '-'}</td>
-      	            <td>${rate}</td>
-      	            <td>${limit}</td>
-      	        </tr>`;
-      	    }).join('')
-      	    : '<tr><td colspan="5">혜택 없음</td></tr>';
-
-    	document.getElementById('imageTbody').innerHTML = s.images?.length
-    	    ? s.images.map(i => `
-    	        <tr>
-    	            <td>${i.imageType ?? '-'}</td>
-    	            <td>
-    	                <img src="${i.imageUrl}"
-    	                     alt="${i.imageType ?? '카드이미지'}"
-    	                     style="height:80px; object-fit:contain; display:block; margin-bottom:4px">
-    	                <a href="${i.imageUrl}" target="_blank" style="font-size:12px">URL 열기</a>
-    	            </td>
-    	        </tr>`).join('')
-    	    : '<tr><td colspan="3">이미지 없음</td></tr>';
-
-    } else {
-        snapshotSection.style.display = 'none';
+ 
+    if (infoTbody) {
+      infoTbody.innerHTML = `
+        <tr><th>결재 ID</th>  <td>${a.approvalId}</td></tr>
+        <tr><th>유형</th>     <td>${TYPE_LABEL[a.requestTypeCode] ?? a.requestTypeCode}</td></tr>
+        <tr><th>대상</th>     <td>${a.targetName ?? '-'}</td></tr>
+        <tr><th>요청자</th>   <td>${a.requesterName ?? '-'}</td></tr>
+        <tr><th>요청 의견</th><td>${a.requestComment ?? '-'}</td></tr>
+        <tr><th>상태</th>     <td><span class="badge ${STATUS_CLASS[a.statusCode] ?? ''}">${a.statusCode}</span></td></tr>
+        <tr><th>요청일시</th> <td>${a.requestedAt ? a.requestedAt.substring(0, 16) : '-'}</td></tr>
+        <tr><th>완료일시</th> <td>${a.completedAt  ? a.completedAt.substring(0, 16)  : '-'}</td></tr>
+      `;
     }
-
-    // 본인 차례인 PENDING 라인이 있을 때만 처리 버튼 노출
-    if (a.lines?.some(l => l.currentUser)) {
-        actionArea.style.display = 'block';
+ 
+    let canProcess = false;
+    if (lineTbody) {
+      lineTbody.innerHTML = a.lines?.length
+        ? a.lines.map(l => {
+            if (l.currentUser && l.statusCode === 'PENDING') canProcess = true;
+            const highlight = l.currentUser ? 'style="background:#fffde7"' : '';
+            const statusColor = l.statusCode === 'APPROVED' ? 'color:green'
+                              : l.statusCode === 'REJECTED'  ? 'color:red' : 'color:orange';
+            return `
+              <tr ${highlight}>
+                <td>${l.approvalOrder}</td>
+                <td>${l.approverName ?? '-'}${l.currentUser ? ' ★ (내 차례)' : ''}</td>
+                <td><b style="${statusColor}">${l.statusCode}</b></td>
+                <td>${l.commentText ?? '-'}</td>
+                <td>${l.approvedAt ? l.approvedAt.substring(0, 16) : '-'}</td>
+              </tr>`;
+          }).join('')
+        : `<tr><td colspan="5">결재 라인 없음</td></tr>`;
+    }
+ 
+    if (actionArea && canProcess && a.statusCode === 'PENDING') {
+      actionArea.style.display = 'block';
+      document.getElementById('commentInput').value = '';
     }
   }
-
+ 
   // =====================================================
   // 승인
   // =====================================================
-
+ 
   async function doApprove() {
-
-    const comment =
-      document.getElementById('commentInput')
-        .value.trim();
-
-    const r = await api(
-      'POST',
-      `/api/admin/approvals/${approvalId}/approve`,
-      { comment }
-    );
-
-    const msg =
-      document.getElementById('msg');
-
+    const comment = document.getElementById('commentInput').value.trim();
+    const btn     = document.querySelector('[onclick="doApprove()"]');
+    if (btn) btn.disabled = true;
+ 
+    const r = await api('POST', `/api/admin/approvals/${approvalId}/approve`, { comment });
+ 
     if (r.ok) {
-
-      msg.textContent =
-        '승인 처리 완료';
-
+      showToast('승인 처리가 완료되었습니다.', 'success');
+      document.getElementById('actionArea').style.display = 'none';
       loadDetail(approvalId);
-
-    } else {
-
-      msg.textContent =
-        '승인 실패';
+    } else if (r.data && r.status !== 403 && r.status < 500) {
+      // 403/500은 api()에서 처리됨. 4xx 비즈니스 오류만 여기서 표시.
+      showToast(extractApiMsg(r.data, '승인 처리에 실패했습니다.'), 'error');
     }
+ 
+    if (btn) btn.disabled = false;
   }
-
+ 
   // =====================================================
   // 반려
   // =====================================================
-
+ 
   async function doReject() {
-
-    const comment =
-      document.getElementById('commentInput')
-        .value.trim();
-
+    const comment = document.getElementById('commentInput').value.trim();
+ 
+    // ✅ alert() 제거 → showToast() 교체
     if (!comment) {
-
-      alert('반려 시 의견은 필수입니다.');
-
+      showToast('반려 시 의견은 필수입니다.', 'error');
+      document.getElementById('commentInput').focus();
       return;
     }
-
-    const r = await api(
-      'POST',
-      `/api/admin/approvals/${approvalId}/reject`,
-      { comment }
-    );
-
-    const msg =
-      document.getElementById('msg');
-
+ 
+    const btn = document.querySelector('[onclick="doReject()"]');
+    if (btn) btn.disabled = true;
+ 
+    const r = await api('POST', `/api/admin/approvals/${approvalId}/reject`, { comment });
+ 
     if (r.ok) {
-
-      msg.textContent =
-        '반려 처리 완료';
-
+      showToast('반려 처리가 완료되었습니다.', 'success');
+      document.getElementById('actionArea').style.display = 'none';
       loadDetail(approvalId);
-
-    } else {
-
-      msg.textContent =
-        '반려 실패';
+    } else if (r.data && r.status !== 403 && r.status < 500) {
+      showToast(extractApiMsg(r.data, '반려 처리에 실패했습니다.'), 'error');
     }
+ 
+    if (btn) btn.disabled = false;
   }
-
+ 
+  // =====================================================
+  // 목록으로 돌아가기
+  // =====================================================
+ 
+  function goList() {
+    document.getElementById('listPage').style.display   = 'block';
+    document.getElementById('detailPage').style.display = 'none';
+    loadApprovals(currentPage);
+  }
+ 
   // =====================================================
   // 페이지네이션
   // =====================================================
-
+ 
   function renderPagination(totalCount) {
-
-    const totalPages =
-      Math.ceil(totalCount / PAGE_SIZE);
-
-    const el =
-      document.getElementById('pagination');
-
-    if (totalPages <= 1) {
-
-      el.innerHTML = '';
-
-      return;
+    const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+    const el = document.getElementById('pagination');
+    if (totalPages <= 1) { el.innerHTML = ''; return; }
+ 
+    const startPage = Math.max(0, currentPage - 2);
+    const endPage   = Math.min(totalPages - 1, startPage + 4);
+ 
+    let html = `<button class="page-btn" onclick="loadApprovals(${currentPage - 1})"
+                        ${currentPage === 0 ? 'disabled' : ''}>이전</button>`;
+    for (let i = startPage; i <= endPage; i++) {
+      html += `<button class="page-btn ${i === currentPage ? 'active' : ''}"
+                       onclick="loadApprovals(${i})">${i + 1}</button>`;
     }
-
-    const startPage =
-      Math.max(0, currentPage - 2);
-
-    const endPage =
-      Math.min(totalPages - 1,
-               startPage + 4);
-
-    let html = `
-      <button class="page-btn"
-              onclick="loadApprovals(${currentPage - 1})"
-              ${currentPage === 0 ? 'disabled' : ''}>
-        이전
-      </button>
-    `;
-
-    for (let i = startPage;
-         i <= endPage;
-         i++) {
-
-      html += `
-        <button class="page-btn
-                       ${i === currentPage
-                         ? 'active'
-                         : ''}"
-                onclick="loadApprovals(${i})">
-
-          ${i + 1}
-
-        </button>
-      `;
-    }
-
-    html += `
-      <button class="page-btn"
-              onclick="loadApprovals(${currentPage + 1})"
-              ${currentPage === totalPages - 1
-                ? 'disabled'
-                : ''}>
-        다음
-      </button>
-    `;
-
+    html += `<button class="page-btn" onclick="loadApprovals(${currentPage + 1})"
+                     ${currentPage === totalPages - 1 ? 'disabled' : ''}>다음</button>`;
     el.innerHTML = html;
   }
-
+ 
   // =====================================================
   // 초기 진입 분기
   // =====================================================
-
+ 
   if (approvalId) {
-
-    // 상세 모드
-
-    document.getElementById('listPage')
-      .style.display = 'none';
-
-    document.getElementById('detailPage')
-      .style.display = 'block';
-
+    document.getElementById('listPage').style.display   = 'none';
+    document.getElementById('detailPage').style.display = 'block';
     loadDetail(approvalId);
-
   } else {
-
-    // 목록 모드
-
-    document.getElementById('listPage')
-      .style.display = 'block';
-
-    document.getElementById('detailPage')
-      .style.display = 'none';
-
+    document.getElementById('listPage').style.display   = 'block';
+    document.getElementById('detailPage').style.display = 'none';
     loadApprovals();
   }
-
+ 
 </script>
 
 <div id="toast-container"></div>
