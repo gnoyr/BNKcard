@@ -23,8 +23,6 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import com.bnk.domain.admin.mapper.ApprovalMapper;
 import com.bnk.domain.admin.model.ApprovalRequest;
 import com.bnk.domain.card.dto.request.AdminCardSearchRequest;
@@ -42,19 +40,16 @@ import com.bnk.domain.card.mapper.CardBenefitMapper;
 import com.bnk.domain.card.mapper.CardContentMapper;
 import com.bnk.domain.card.mapper.CardImageMapper;
 import com.bnk.domain.card.mapper.CardMapper;
-import com.bnk.domain.card.mapper.CardMapper2;
 import com.bnk.domain.card.mapper.CardStatusHistoryMapper;
-import com.bnk.domain.card.mapper.CardVersionMapper2;
+import com.bnk.domain.card.mapper.CardVersionMapper;
 import com.bnk.domain.card.model.Card;
-import com.bnk.domain.card.model.CardBenefit;
-import com.bnk.domain.card.model.CardContent;
-import com.bnk.domain.card.model.CardImage;
-import com.bnk.domain.card.model2.CardVersion;
+import com.bnk.domain.card.model.CardVersion;
 import com.bnk.domain.card.service.AdminCardService;
 import com.bnk.domain.terms.mapper.TermsMapper;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.response.PageResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AdminCardService 단위 테스트")
@@ -62,14 +57,13 @@ class AdminCardServiceTest {
 
     // ── Mocks ────────────────────────────────────────────────────────
     @Mock private CardMapper              cardMapper;
-    @Mock private CardMapper2             cardMapper2;
     @Mock private CardBenefitMapper       cardBenefitMapper;
     @Mock private CardImageMapper         cardImageMapper;
     @Mock private CardContentMapper       cardContentMapper;
     @Mock private TermsMapper             termsMapper;
     @Mock private ApprovalMapper          approvalMapper;
-    @Mock private CardVersionMapper2      cardVersionMapper2;
     @Mock private CardStatusHistoryMapper cardStatusHistoryMapper;
+    @Mock private CardVersionMapper cardVersionMapper;
 
     // ObjectMapper는 실제 인스턴스 사용 (JSON 직렬화 실제 동작 필요)
     @Spy
@@ -109,18 +103,6 @@ class AdminCardServiceTest {
                 .createdBy(ADMIN_ID)
                 .build();
         ReflectionTestUtils.setField(card, "cardId", CARD_ID);
-        return card;
-    }
-
-    /** 정상 Card2 픽스처 (model2 — CardMapper2 반환용) */
-    private com.bnk.domain.card.model2.Card activeCard2() {
-        com.bnk.domain.card.model2.Card card = new com.bnk.domain.card.model2.Card();
-        ReflectionTestUtils.setField(card, "cardId",     CARD_ID);
-        ReflectionTestUtils.setField(card, "cardStatus", "DRAFT");
-        ReflectionTestUtils.setField(card, "cardCode",   "TEST_CARD");
-        ReflectionTestUtils.setField(card, "cardName",   "테스트카드");
-        ReflectionTestUtils.setField(card, "companyName","테스트카드사");
-        ReflectionTestUtils.setField(card, "cardType",   "CREDIT");
         return card;
     }
 
@@ -171,7 +153,7 @@ class AdminCardServiceTest {
             CardVersion cv = inv.getArgument(0);
             ReflectionTestUtils.setField(cv, "versionId", 50L);
             return null;
-        }).when(cardVersionMapper2).insertCardVersion(any());
+        }).when(cardVersionMapper).insertCardVersion(any());
     }
 
     // cardMapper.insertCard → cardId = CARD_ID 주입
@@ -205,7 +187,7 @@ class AdminCardServiceTest {
 
             // insertCard, insertCardVersion, insertApprovalRequest, insertApprovalLine 호출 검증
             then(cardMapper).should().insertCard(any());
-            then(cardVersionMapper2).should().insertCardVersion(any());
+            then(cardVersionMapper).should().insertCardVersion(any());
             then(approvalMapper).should().insertApprovalRequest(any());
             then(approvalMapper).should().insertApprovalLine(any());
             then(cardStatusHistoryMapper).should().insertCardStatusHistory(any());
@@ -298,13 +280,13 @@ class AdminCardServiceTest {
             given(cardMapper.findById(CARD_ID)).willReturn(activeCard());
             given(cardBenefitMapper.findByCardId(CARD_ID)).willReturn(Collections.emptyList());
             given(cardImageMapper.findByCardId(CARD_ID)).willReturn(Collections.emptyList());
-            given(cardVersionMapper2.getLatestVersionSeq(CARD_ID)).willReturn(1);
+            given(cardVersionMapper.getLatestVersionSeq(CARD_ID)).willReturn(1);
             stubApprovalAndVersion();
 
             Map<String, Long> result = adminCardService.updateCard(CARD_ID, updateReq(), ADMIN_ID);
 
             assertThat(result).containsKeys("cardId", "versionId", "approvalId");
-            then(cardVersionMapper2).should().insertCardVersion(any());
+            then(cardVersionMapper).should().insertCardVersion(any());
             then(approvalMapper).should().insertApprovalRequest(any());
         }
 
@@ -318,7 +300,7 @@ class AdminCardServiceTest {
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ErrorCode.CARD_NOT_FOUND));
 
-            then(cardVersionMapper2).should(never()).insertCardVersion(any());
+            then(cardVersionMapper).should(never()).insertCardVersion(any());
         }
 
         @Test
@@ -327,7 +309,7 @@ class AdminCardServiceTest {
             given(cardMapper.findById(CARD_ID)).willReturn(activeCard()); // DRAFT
             given(cardBenefitMapper.findByCardId(CARD_ID)).willReturn(Collections.emptyList());
             given(cardImageMapper.findByCardId(CARD_ID)).willReturn(Collections.emptyList());
-            given(cardVersionMapper2.getLatestVersionSeq(CARD_ID)).willReturn(1);
+            given(cardVersionMapper.getLatestVersionSeq(CARD_ID)).willReturn(1);
             stubApprovalAndVersion();
 
             CardUpdateRequest req = updateReq();
@@ -344,7 +326,7 @@ class AdminCardServiceTest {
             given(cardMapper.findById(CARD_ID)).willReturn(activeCard()); // DRAFT
             given(cardBenefitMapper.findByCardId(CARD_ID)).willReturn(Collections.emptyList());
             given(cardImageMapper.findByCardId(CARD_ID)).willReturn(Collections.emptyList());
-            given(cardVersionMapper2.getLatestVersionSeq(CARD_ID)).willReturn(1);
+            given(cardVersionMapper.getLatestVersionSeq(CARD_ID)).willReturn(1);
             stubApprovalAndVersion();
 
             // cardStatus 미설정 (null) → 기존 상태 유지
@@ -359,14 +341,14 @@ class AdminCardServiceTest {
             given(cardMapper.findById(CARD_ID)).willReturn(activeCard());
             given(cardBenefitMapper.findByCardId(CARD_ID)).willReturn(Collections.emptyList());
             given(cardImageMapper.findByCardId(CARD_ID)).willReturn(Collections.emptyList());
-            given(cardVersionMapper2.getLatestVersionSeq(CARD_ID)).willReturn(2); // 기존 2개
+            given(cardVersionMapper.getLatestVersionSeq(CARD_ID)).willReturn(2); // 기존 2개
             stubApprovalAndVersion();
 
             adminCardService.updateCard(CARD_ID, updateReq(), ADMIN_ID);
 
             org.mockito.ArgumentCaptor<CardVersion> captor =
                     org.mockito.ArgumentCaptor.forClass(CardVersion.class);
-            then(cardVersionMapper2).should().insertCardVersion(captor.capture());
+            then(cardVersionMapper).should().insertCardVersion(captor.capture());
             assertThat(captor.getValue().getVersionNo()).isEqualTo("v3.0");
         }
     }
@@ -386,7 +368,7 @@ class AdminCardServiceTest {
             given(cardMapper.findById(CARD_ID)).willReturn(activeCard());
             given(cardBenefitMapper.findByCardId(CARD_ID)).willReturn(Collections.emptyList());
             given(cardImageMapper.findByCardId(CARD_ID)).willReturn(Collections.emptyList());
-            given(cardVersionMapper2.getLatestVersionSeq(CARD_ID)).willReturn(1);
+            given(cardVersionMapper.getLatestVersionSeq(CARD_ID)).willReturn(1);
             stubApprovalAndVersion();
 
             BenefitCreateRequest b = new BenefitCreateRequest();
@@ -410,7 +392,7 @@ class AdminCardServiceTest {
             given(cardMapper.findById(CARD_ID)).willReturn(activeCard());
             given(cardBenefitMapper.findByCardId(CARD_ID)).willReturn(Collections.emptyList());
             given(cardImageMapper.findByCardId(CARD_ID)).willReturn(Collections.emptyList());
-            given(cardVersionMapper2.getLatestVersionSeq(CARD_ID)).willReturn(1);
+            given(cardVersionMapper.getLatestVersionSeq(CARD_ID)).willReturn(1);
             stubApprovalAndVersion();
 
             BenefitUpdateRequest req = new BenefitUpdateRequest();
@@ -439,7 +421,7 @@ class AdminCardServiceTest {
             given(cardMapper.findById(CARD_ID)).willReturn(activeCard());
             given(cardBenefitMapper.findByCardId(CARD_ID)).willReturn(Collections.emptyList());
             given(cardImageMapper.findByCardId(CARD_ID)).willReturn(Collections.emptyList());
-            given(cardVersionMapper2.getLatestVersionSeq(CARD_ID)).willReturn(1);
+            given(cardVersionMapper.getLatestVersionSeq(CARD_ID)).willReturn(1);
             stubApprovalAndVersion();
 
             ImageCreateRequest img = new ImageCreateRequest();
@@ -463,7 +445,7 @@ class AdminCardServiceTest {
             given(cardMapper.findById(CARD_ID)).willReturn(activeCard());
             given(cardBenefitMapper.findByCardId(CARD_ID)).willReturn(Collections.emptyList());
             given(cardImageMapper.findByCardId(CARD_ID)).willReturn(Collections.emptyList());
-            given(cardVersionMapper2.getLatestVersionSeq(CARD_ID)).willReturn(1);
+            given(cardVersionMapper.getLatestVersionSeq(CARD_ID)).willReturn(1);
             stubApprovalAndVersion();
 
             ImageUpdateRequest req = new ImageUpdateRequest();
@@ -529,29 +511,29 @@ class AdminCardServiceTest {
         @Test
         @DisplayName("[정상] DRAFT → PUBLISHED 변경 → updateCardStatus + 이력 INSERT")
         void 정상_상태변경() {
-            given(cardMapper2.getCardDetail(CARD_ID)).willReturn(activeCard2()); // DRAFT
+            given(cardMapper.findById(CARD_ID)).willReturn(activeCard()); // DRAFT
 
             adminCardService.changeCardStatus(CARD_ID, statusReq("PUBLISHED"), ADMIN_ID);
 
-            then(cardMapper2).should().updateCardStatus(CARD_ID, "PUBLISHED");
+            then(cardMapper).should().updateCardStatus(CARD_ID, "PUBLISHED");
             then(cardStatusHistoryMapper).should().insertCardStatusHistory(any());
         }
 
         @Test
         @DisplayName("[정상] 동일 상태 요청 → updateCardStatus·이력 미호출 (no-op)")
         void 정상_동일상태_noOp() {
-            given(cardMapper2.getCardDetail(CARD_ID)).willReturn(activeCard2()); // DRAFT
+            given(cardMapper.findById(CARD_ID)).willReturn(activeCard()); // DRAFT
 
             adminCardService.changeCardStatus(CARD_ID, statusReq("DRAFT"), ADMIN_ID);
 
-            then(cardMapper2).should(never()).updateCardStatus(anyLong(), anyString());
+            then(cardMapper).should(never()).updateCardStatus(anyLong(), anyString());
             then(cardStatusHistoryMapper).should(never()).insertCardStatusHistory(any());
         }
 
         @Test
         @DisplayName("[실패] 존재하지 않는 cardId → CARD_NOT_FOUND")
         void 실패_카드없음() {
-            given(cardMapper2.getCardDetail(CARD_ID)).willReturn(null);
+            given(cardMapper.findById(CARD_ID)).willReturn(null);
 
             assertThatThrownBy(() ->
                     adminCardService.changeCardStatus(CARD_ID, statusReq("PUBLISHED"), ADMIN_ID))
@@ -614,7 +596,7 @@ class AdminCardServiceTest {
         @Test
         @DisplayName("[정상] 존재하는 카드 → CardDetailResponse 반환")
         void 정상_상세조회() {
-            given(cardMapper2.getCardDetail(CARD_ID)).willReturn(activeCard2());
+            given(cardMapper.findById(CARD_ID)).willReturn(activeCard());
             given(cardBenefitMapper.findByCardId(CARD_ID)).willReturn(Collections.emptyList());
             given(cardImageMapper.findByCardId(CARD_ID)).willReturn(Collections.emptyList());
             given(cardContentMapper.findByCardId(CARD_ID)).willReturn(Collections.emptyList());
@@ -630,7 +612,7 @@ class AdminCardServiceTest {
         @Test
         @DisplayName("[실패] 존재하지 않는 cardId → IllegalArgumentException")
         void 실패_카드없음() {
-            given(cardMapper2.getCardDetail(CARD_ID)).willReturn(null);
+            given(cardMapper.findById(CARD_ID)).willReturn(null);
 
             assertThatThrownBy(() -> adminCardService.getAdminCardDetail(CARD_ID))
                     .isInstanceOf(IllegalArgumentException.class)

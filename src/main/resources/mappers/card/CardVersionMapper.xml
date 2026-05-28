@@ -2,9 +2,9 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.bnk.domain.card.mapper.CardVersionMapper2">
+<mapper namespace="com.bnk.domain.card.mapper.CardVersionMapper">
 
-    <resultMap id="versionMap" type="com.bnk.domain.card.model2.CardVersion">
+    <resultMap id="versionMap" type="com.bnk.domain.card.model.CardVersion">
         <id     property="versionId"     column="version_id"/>
         <result property="cardId"        column="card_id"/>
         <result property="versionNo"     column="version_no"/>
@@ -18,7 +18,7 @@
         <result property="publishedAt"   column="published_at"/>
     </resultMap>
 
-    <!-- CARD_VERSIONS INSERT — Oracle trigger(TRG_CARD_VERSIONS_BI) + SEQ_CARD_VERSIONS -->
+    <!-- CARD_VERSIONS INSERT — Oracle 트리거(TRG_CARD_VERSIONS_BI) + SEQ_CARD_VERSIONS -->
     <insert id="insertCardVersion">
         <selectKey keyProperty="versionId" resultType="long" order="AFTER">
             SELECT SEQ_CARD_VERSIONS.CURRVAL FROM DUAL
@@ -38,7 +38,7 @@
         )
     </insert>
 
-    <!-- 결재 완료 시 APPROVED로 UPDATE -->
+    <!-- 결재 완료 시 version_status UPDATE -->
     <update id="updateVersionStatus">
         UPDATE CARD_VERSIONS
         SET    version_status = #{versionStatus},
@@ -53,13 +53,14 @@
         FROM   CARD_VERSIONS
         WHERE  version_id = #{versionId}
     </select>
-    
+
+    <!-- 카드별 최신 버전 순번 (다음 버전번호 계산용) -->
     <select id="getLatestVersionSeq" resultType="int">
-	    SELECT NVL(MAX(
-	        TO_NUMBER(REGEXP_SUBSTR(version_no, '\d+', 1, 1))
-	    ), 0)
-	    FROM   CARD_VERSIONS
-	    WHERE  card_id = #{cardId}
-	</select>
+        SELECT NVL(MAX(
+            TO_NUMBER(REGEXP_SUBSTR(version_no, '\d+', 1, 1))
+        ), 0)
+        FROM   CARD_VERSIONS
+        WHERE  card_id = #{cardId}
+    </select>
 
 </mapper>

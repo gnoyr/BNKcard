@@ -53,7 +53,7 @@ public class AdminCardController {
      */
     @GetMapping("/{cardId}")
     public ResponseEntity<ApiResponse<CardDetailResponse>> getCardDetail(
-            @PathVariable("cardId") Long cardId,
+            @PathVariable Long cardId,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         return ApiResponse.toOk(adminCardService.getAdminCardDetail(cardId));
     }
