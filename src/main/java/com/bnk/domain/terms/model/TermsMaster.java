@@ -10,4 +10,6 @@ public class TermsMaster {
     private String title;
     private String description;
     private LocalDateTime createdAt;
+    private Integer displayOrder;  
+    private String requiredYn;     
 }

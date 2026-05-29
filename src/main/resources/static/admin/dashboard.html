@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>관리자 대시보드 | BNK 부산은행</title>
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/teal-theme.css">
+  <style>
+    .dash-wrap { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+    .dash-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+    .dash-title { font-size: 22px; font-weight: 800; color: #003087; }
+    .dash-role-badge { padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+    .role-super   { background: #fff3e0; color: #e65100; }
+    .role-manager { background: #e8f0fe; color: #003087; }
+    .role-operator{ background: #e8f5e9; color: #2e7d32; }
+    .refresh-btn { padding: 7px 16px; background: #f0f4fb; color: #003087; border: 1px solid #c8d8f0; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .refresh-btn:hover { background: #dce8fa; }
+    .section-block { margin-bottom: 36px; }
+    .section-title { font-size: 15px; font-weight: 700; color: #003087; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #003087; display: flex; align-items: center; gap: 8px; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+    .stat-card { background: #fff; border-radius: 12px; padding: 20px 18px; box-shadow: 0 2px 10px rgba(0,48,135,.07); border-left: 4px solid #003087; }
+    .stat-card.orange { border-left-color: #e65100; }
+    .stat-card.green  { border-left-color: #2e7d32; }
+    .stat-card.red    { border-left-color: #c62828; }
+    .stat-card.gray   { border-left-color: #888; }
+    .stat-label { font-size: 12px; color: #888; font-weight: 500; margin-bottom: 8px; }
+    .stat-value { font-size: 28px; font-weight: 800; color: #003087; }
+    .stat-card.orange .stat-value { color: #e65100; }
+    .stat-card.green  .stat-value { color: #2e7d32; }
+    .stat-card.red    .stat-value { color: #c62828; }
+    .stat-card.gray   .stat-value { color: #666; }
+    .stat-sub { font-size: 11px; color: #bbb; margin-top: 4px; }
+    .dash-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,48,135,.06); }
+    .dash-table th { background: #f0f4fb; color: #555; font-size: 12px; font-weight: 600; padding: 10px 14px; text-align: left; border-bottom: 1px solid #e8eef6; }
+    .dash-table td { padding: 10px 14px; font-size: 13px; color: #333; border-bottom: 1px solid #f4f6fa; }
+    .dash-table tr:last-child td { border-bottom: none; }
+    .dash-table tr:hover td { background: #f8faff; cursor: pointer; }
+    .empty-row td { text-align: center; color: #bbb; padding: 28px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .b-pending  { background: #fff3e0; color: #e65100; }
+    .b-approved { background: #e8f5e9; color: #2e7d32; }
+    .b-rejected { background: #fce4ec; color: #c62828; }
+    .b-published{ background: #e8f0fe; color: #003087; }
+    .b-draft    { background: #f5f5f5; color: #888; }
+    .b-active   { background: #e8f5e9; color: #2e7d32; }
+    .b-locked   { background: #fce4ec; color: #c62828; }
+    .act-btn { padding: 4px 12px; background: #003087; color: #fff; border: none; border-radius: 4px; font-size: 11px; cursor: pointer; }
+    .act-btn:hover { background: #002060; }
+    .loading-row td { text-align: center; color: #aaa; padding: 24px; }
+    @media (max-width: 768px) {
+      .stat-grid { grid-template-columns: 1fr 1fr; }
+      .dash-wrap { padding: 20px 16px; }
+    }
+  </style>
+</head>
+<body>
+<div id="app-header"></div>
+
+<div class="dash-wrap">
+
+  <div class="dash-top">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <span class="dash-title">대시보드</span>
+      <span class="dash-role-badge" id="role-badge"></span>
+    </div>
+    <button class="refresh-btn" onclick="loadDashboard()">🔄 새로고침</button>
+  </div>
+  
+  <div style="display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap;">
+    <a href="/admin/cards"
+       style="padding:8px 18px; background:#fff; border:1px solid #dde3ef;
+              border-radius:8px; font-size:13px; font-weight:600; color:#333;
+              text-decoration:none;">
+      💳 카드/약관 관리
+    </a>
+    <!--
+    <a href="/admin/approvals"
+       style="padding:8px 18px; background:#fff; border:1px solid #dde3ef;
+              border-radius:8px; font-size:13px; font-weight:600; color:#333;
+              text-decoration:none;">
+      📋 결재 관리
+    </a>
+    <a href="/admin/users"
+       style="padding:8px 18px; background:#fff; border:1px solid #dde3ef;
+              border-radius:8px; font-size:13px; font-weight:600; color:#333;
+              text-decoration:none;">
+      👥 회원 관리
+    </a>
+    -->
+  </div>
+
+  <!-- SUPER_ADMIN -->
+  <div id="section-super" style="display:none;">
+    <div class="section-block">
+      <div class="section-title">👑 전체 현황 요약</div>
+      <div class="stat-grid" id="stats-super"></div>
+    </div>
+    <div class="section-block">
+      <div class="section-title">⏳ 결재 대기</div>
+      <table class="dash-table">
+        <thead><tr><th>ID</th><th>유형</th><th>대상</th><th>신청자</th><th>신청일시</th><th>처리</th></tr></thead>
+        <tbody id="tbody-pending-super"></tbody>
+      </table>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+      <div class="section-block">
+        <div class="section-title">💳 인기 카드 TOP3</div>
+        <table class="dash-table">
+          <thead><tr><th>순위</th><th>카드명</th><th>조회수</th><th>신청수</th></tr></thead>
+          <tbody id="tbody-top-cards"></tbody>
+        </table>
+      </div>
+      <div class="section-block">
+        <div class="section-title">👥 최근 가입 회원</div>
+        <table class="dash-table">
+          <thead><tr><th>이름</th><th>이메일</th><th>상태</th><th>가입일</th></tr></thead>
+          <tbody id="tbody-users-super"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="section-block">
+      <div class="section-title">🔐 최근 관리자 로그인 이력</div>
+      <table class="dash-table">
+        <thead><tr><th>관리자명</th><th>로그인 일시</th><th>IP</th></tr></thead>
+        <tbody id="tbody-logins"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- MANAGER -->
+  <div id="section-manager" style="display:none;">
+    <div class="section-block">
+      <div class="section-title">💳 카드/약관 관리 현황</div>
+      <div class="stat-grid" id="stats-manager"></div>
+    </div>
+    <div class="section-block">
+      <div class="section-title">⏳ 내 결재 대기 목록</div>
+      <table class="dash-table">
+        <thead><tr><th>ID</th><th>유형</th><th>대상</th><th>신청자</th><th>신청일시</th><th>처리</th></tr></thead>
+        <tbody id="tbody-pending-manager"></tbody>
+      </table>
+    </div>
+    <div class="section-block">
+      <div class="section-title">💳 인기 카드 TOP3</div>
+      <table class="dash-table">
+        <thead><tr><th>순위</th><th>카드명</th><th>조회수</th><th>신청수</th></tr></thead>
+        <tbody id="tbody-top-cards-manager"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- OPERATOR -->
+  <div id="section-operator" style="display:none;">
+    <div class="section-block">
+      <div class="section-title">👥 회원 관리 현황</div>
+      <div class="stat-grid" id="stats-operator"></div>
+    </div>
+    <div class="section-block">
+      <div class="section-title">🔴 잠금 계정 목록</div>
+      <table class="dash-table">
+        <thead><tr><th>이름</th><th>이메일</th><th>잠금 사유</th><th>실패 횟수</th><th>잠금 해제일시</th><th>처리</th></tr></thead>
+        <tbody id="tbody-locked"></tbody>
+      </table>
+    </div>
+    <div class="section-block">
+      <div class="section-title">📈 인기 검색어</div>
+      <table class="dash-table">
+        <thead><tr><th>검색어</th><th>검색 횟수</th></tr></thead>
+        <tbody id="tbody-keywords"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script src="/js/header.js"></script>
+<script>
+const ADMIN_LOGIN = '/admin/login';
+let currentRole = null;
+
+async function adminApi(method, url) {
+  const res = await fetch(url, { method, credentials: 'include',
+    headers: { 'Content-Type': 'application/json' } });
+  if (res.status === 401) { location.href = ADMIN_LOGIN; return null; }
+  const json = await res.json().catch(() => null);
+  return res.ok ? (json?.data ?? json) : null;
+}
+
+function fmt(n) { return (n ?? 0).toLocaleString(); }
+function fmtDate(v) {
+  if (!v) return '-';
+  return new Date(v).toLocaleString('ko-KR', {
+    year:'numeric', month:'2-digit', day:'2-digit',
+    hour:'2-digit', minute:'2-digit'
+  });
+}
+function fmtDateOnly(v) {
+  if (!v) return '-';
+  return new Date(v).toLocaleDateString('ko-KR');
+}
+
+const TYPE_LABEL = {
+  CARD_PUBLISH:'카드 등록', CARD_UPDATE:'카드 수정', TERMS_PUBLISH:'약관 등록'
+};
+const CARD_STATUS = {
+  DRAFT:'초안', REVIEW:'반려', APPROVED:'승인',
+  PUBLISHED:'게시중', EXPIRED:'만료', STOPPED:'중지'
+};
+const CARD_STATUS_CLASS = {
+  PUBLISHED:'b-published', APPROVED:'b-approved',
+  DRAFT:'b-draft', REVIEW:'b-rejected', EXPIRED:'b-draft'
+};
+
+// ── Role 확인 ──────────────────────────────────────────────────
+async function initDashboard() {
+  const me = await adminApi('GET', '/api/admin/auth/me');
+  if (!me) return;
+
+  const roles = me.roles ?? [];
+  const badge = document.getElementById('role-badge');
+
+  function hasRole(r) {
+    return roles.some(x => x.replace(/^ROLE_/, '') === r);
+  }
+
+  if (hasRole('SUPER_ADMIN')) {
+    currentRole = 'SUPER_ADMIN';
+    badge.textContent = '최상위 관리자';
+    badge.className = 'dash-role-badge role-super';
+    document.getElementById('section-super').style.display = '';
+  } else if (hasRole('MANAGER')) {
+    currentRole = 'MANAGER';
+    badge.textContent = '중간 관리자';
+    badge.className = 'dash-role-badge role-manager';
+    document.getElementById('section-manager').style.display = '';
+  } else if (hasRole('OPERATOR')) {
+    currentRole = 'OPERATOR';
+    badge.textContent = '하위 운영자';
+    badge.className = 'dash-role-badge role-operator';
+    document.getElementById('section-operator').style.display = '';
+  }
+
+  loadDashboard();
+}
+
+// ── 전체 로드 ──────────────────────────────────────────────────
+async function loadDashboard() {
+  const data = await adminApi('GET', '/api/admin/dashboard');
+  if (!data) return;
+
+  if (currentRole === 'SUPER_ADMIN') {
+    renderSuperStats(data);
+    renderTopCards(data.topCards ?? [], 'tbody-top-cards');
+    renderRecentLogins(data.recentAdminLogins ?? []);
+    loadPendingApprovals('tbody-pending-super');
+    loadRecentUsers('tbody-users-super');
+  } else if (currentRole === 'MANAGER') {
+    renderManagerStats(data);
+    renderTopCards(data.topCards ?? [], 'tbody-top-cards-manager');
+    loadPendingApprovals('tbody-pending-manager');
+  } else if (currentRole === 'OPERATOR') {
+    renderOperatorStats(data);
+    loadLockedUsers();
+    loadPopularKeywords();
+  }
+}
+
+// ── SUPER_ADMIN 통계 ───────────────────────────────────────────
+function renderSuperStats(d) {
+  document.getElementById('stats-super').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">전체 카드</div>
+      <div class="stat-value">${fmt(d.totalCards)}</div>
+      <div class="stat-sub">게시중 ${fmt(d.publishedCards)}개</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="stat-label">결재 대기</div>
+      <div class="stat-value">${fmt(d.pendingApprovalCount)}</div>
+      <div class="stat-sub">즉시 처리 필요</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">전체 회원</div>
+      <div class="stat-value">${fmt(d.totalUsers)}</div>
+      <div class="stat-sub">오늘 신규 ${fmt(d.todaySignups)}명</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">잠금 계정</div>
+      <div class="stat-value">${fmt(d.lockedUsers)}</div>
+      <div class="stat-sub">관리 필요</div>
+    </div>
+    <div class="stat-card gray">
+      <div class="stat-label">게시중 약관</div>
+      <div class="stat-value">${fmt(d.publishedTerms)}</div>
+      <div class="stat-sub">전체 ${fmt(d.totalTerms)}건</div>
+    </div>`;
+}
+
+// ── MANAGER 통계 ───────────────────────────────────────────────
+function renderManagerStats(d) {
+  document.getElementById('stats-manager').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">전체 카드</div>
+      <div class="stat-value">${fmt(d.totalCards)}</div>
+      <div class="stat-sub">게시중 ${fmt(d.publishedCards)}개</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="stat-label">결재 대기</div>
+      <div class="stat-value">${fmt(d.pendingApprovalCount)}</div>
+      <div class="stat-sub">즉시 처리 필요</div>
+    </div>
+    <div class="stat-card gray">
+      <div class="stat-label">초안 카드</div>
+      <div class="stat-value">${fmt(d.draftCards)}</div>
+      <div class="stat-sub">결재 신청 전</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">게시중 약관</div>
+      <div class="stat-value">${fmt(d.publishedTerms)}</div>
+      <div class="stat-sub">전체 ${fmt(d.totalTerms)}건</div>
+    </div>`;
+}
+
+// ── OPERATOR 통계 ──────────────────────────────────────────────
+function renderOperatorStats(d) {
+  document.getElementById('stats-operator').innerHTML = `
+    <div class="stat-card green">
+      <div class="stat-label">전체 회원</div>
+      <div class="stat-value">${fmt(d.totalUsers)}</div>
+      <div class="stat-sub">오늘 신규 ${fmt(d.todaySignups)}명</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">잠금 계정</div>
+      <div class="stat-value">${fmt(d.lockedUsers)}</div>
+      <div class="stat-sub">즉시 확인 필요</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="stat-label">결재 대기</div>
+      <div class="stat-value">${fmt(d.pendingApprovalCount)}</div>
+      <div class="stat-sub">처리 필요</div>
+    </div>`;
+}
+
+// ── TOP 카드 (SUPER_ADMIN + MANAGER 공용) ──────────────────────
+function renderTopCards(list, tbodyId) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  if (!list.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="4">데이터 없음</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map((c, i) => `
+    <tr onclick="location.href='/admin/cards'">
+      <td>${i + 1}</td>
+      <td><strong>${c.cardName ?? '-'}</strong></td>
+      <td>${fmt(c.viewCount)}</td>
+      <td>${fmt(c.applicationCount)}</td>
+    </tr>`).join('');
+}
+
+// ── 관리자 로그인 이력 (SUPER_ADMIN 전용) ──────────────────────
+function renderRecentLogins(list) {
+  const tbody = document.getElementById('tbody-logins');
+  if (!tbody) return;
+  if (!list.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="3">이력 없음</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(l => `
+    <tr>
+      <td>${l.adminName ?? '-'}</td>
+      <td>${fmtDate(l.loginAt)}</td>
+      <td>${l.ipAddress ?? '-'}</td>
+    </tr>`).join('');
+}
+
+// ── 결재 대기 목록 ─────────────────────────────────────────────
+async function loadPendingApprovals(tbodyId) {
+  const tbody = document.getElementById(tbodyId);
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="6">불러오는 중...</td></tr>';
+
+  const data = await adminApi('GET',
+    '/api/admin/approvals?page=0&size=8&statusCode=PENDING');
+  const list = data?.content ?? [];
+
+  if (!list.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">대기 중인 결재가 없습니다. ✅</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(a => `
+    <tr onclick="location.href='/admin/approvals/${a.approvalId}'">
+      <td>#${a.approvalId}</td>
+      <td><span class="badge b-pending">${TYPE_LABEL[a.requestTypeCode] ?? a.requestTypeCode}</span></td>
+      <td>${a.targetName ?? '-'}</td>
+      <td>${a.requesterName ?? '-'}</td>
+      <td>${fmtDate(a.requestedAt)}</td>
+      <td>
+        <button class="act-btn"
+          onclick="event.stopPropagation();location.href='/admin/approvals/${a.approvalId}'">
+          처리하기
+        </button>
+      </td>
+    </tr>`).join('');
+}
+
+// ── 최근 가입 회원 (SUPER_ADMIN 전용) ─────────────────────────
+async function loadRecentUsers(tbodyId) {
+  const tbody = document.getElementById(tbodyId);
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="4">불러오는 중...</td></tr>';
+
+  const data = await adminApi('GET', '/api/admin/users?page=0&size=6');
+  const list = data?.content ?? [];
+
+  if (!list.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="4">회원 없음</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(u => `
+    <tr>
+      <td>${u.name ?? '-'}</td>
+      <td>${u.email ?? '-'}</td>
+      <td><span class="badge ${u.statusCode === 'ACTIVE' ? 'b-active' : 'b-locked'}">
+        ${u.statusCode === 'ACTIVE' ? '활성' : u.statusCode}
+      </span></td>
+      <td>${fmtDateOnly(u.createdAt)}</td>
+    </tr>`).join('');
+}
+
+// ── 잠금 계정 (OPERATOR 전용) ──────────────────────────────────
+async function loadLockedUsers() {
+  const tbody = document.getElementById('tbody-locked');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="6">불러오는 중...</td></tr>';
+
+  const data = await adminApi('GET',
+    '/api/admin/users?page=0&size=8&statusCode=LOCKED');
+  const list = data?.content ?? [];
+
+  if (!list.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">잠금 계정 없음 ✅</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(u => `
+    <tr>
+      <td>${u.name ?? '-'}</td>
+      <td>${u.email ?? '-'}</td>
+      <td>로그인 실패 반복</td>
+      <td>${u.loginFailCount ?? 0}회</td>
+      <td>${fmtDate(u.lockedUntil)}</td>
+      <td>
+        <button class="act-btn"
+          onclick="event.stopPropagation();unlockUser(${u.userId})">
+          잠금 해제
+        </button>
+      </td>
+    </tr>`).join('');
+}
+
+// ── 잠금 해제 ──────────────────────────────────────────────────
+async function unlockUser(userId) {
+  if (!confirm('계정 잠금을 해제하시겠습니까?')) return;
+  const res = await fetch(`/api/admin/users/${userId}/unlock`, {
+    method: 'PATCH', credentials: 'include',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  if (res.ok) {
+    alert('잠금이 해제되었습니다.');
+    loadLockedUsers();
+  } else {
+    alert('처리 실패. 다시 시도해주세요.');
+  }
+}
+
+// ── 인기 검색어 (OPERATOR 전용) ────────────────────────────────
+async function loadPopularKeywords() {
+  const tbody = document.getElementById('tbody-keywords');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="2">불러오는 중...</td></tr>';
+
+  const data = await adminApi('GET', '/api/search/keywords/popular');
+  const list = Array.isArray(data) ? data : [];
+
+  if (!list.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="2">데이터 없음</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.slice(0, 8).map((kw, i) => `
+    <tr>
+      <td>${i + 1}. ${kw.keyword ?? kw.keywordRaw ?? '-'}</td>
+      <td>${fmt(kw.searchCount ?? kw.count ?? 0)}회</td>
+    </tr>`).join('');
+}
+
+// ── 초기화 ─────────────────────────────────────────────────────
+initDashboard();
+</script>
+</body>
+</html>
