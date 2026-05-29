@@ -3,7 +3,7 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.bnk.domain.terms.mapper.UserTermsAgreementMapper">
-
+ 
     <resultMap id="agreementMap" type="com.bnk.domain.terms.model.UserTermsAgreement">
         <id     property="agreementId"           column="agreement_id"/>
         <result property="userId"                column="user_id"/>
@@ -18,8 +18,8 @@
         <result property="ipAddress"             column="ip_address"/>
         <result property="userAgent"             column="user_agent"/>
     </resultMap>
-
-    <!-- 단건 INSERT -->
+ 
+    <!-- 단건 INSERT — agreement_id 생략 → TRG_USER_TERMS_AGMT_BI 자동 채번 -->
     <insert id="insertAgreement">
         <selectKey keyProperty="agreementId" resultType="long" order="AFTER">
             SELECT SEQ_USER_TERMS_AGREEMENTS.CURRVAL FROM DUAL
@@ -40,41 +40,32 @@
             #{userAgent,             jdbcType=VARCHAR}
         )
     </insert>
-
-    <!--
-        배치 INSERT — Oracle INSERT ALL 방식
-        Oracle은 JDBC 단일 execute()에서 ;로 구분된 다중 SQL을 지원하지 않으므로
-        INSERT ALL ... SELECT 1 FROM DUAL 구조를 사용한다.
-        트리거(TRG_USER_TERMS_AGMT_BI)가 WHEN (NEW.agreement_id IS NULL) 조건으로
-        각 행의 agreement_id를 SEQ_USER_TERMS_AGREEMENTS.NEXTVAL로 자동 채번한다.
-    -->
+ 
     <insert id="insertAgreements">
-	    INSERT ALL
-	    <foreach collection="agreements" item="a">
-	        INTO USER_TERMS_AGREEMENTS (
-	            agreement_id,
-	            user_id, terms_id, agreed_yn, agreement_action,
-	            agreed_version, agreement_channel, agreement_source,
-	            agreed_content_snapshot, agreed_at
-	        ) VALUES (
-	            SEQ_USER_TERMS_AGREEMENTS.NEXTVAL,
-	            #{a.userId}, #{a.termsId}, #{a.agreedYn}, #{a.agreementAction},
-	            #{a.agreedVersion},
-	            #{a.agreementChannel,      jdbcType=VARCHAR},
-	            #{a.agreementSource,       jdbcType=VARCHAR},
-	            #{a.agreedContentSnapshot, jdbcType=CLOB},
-	            SYSTIMESTAMP
-	        )
-	    </foreach>
-	    SELECT 1 FROM DUAL
-	</insert>
-
+        INSERT ALL
+        <foreach collection="agreements" item="a">
+            INTO USER_TERMS_AGREEMENTS (
+                user_id, terms_id, agreed_yn, agreement_action,
+                agreed_version, agreement_channel, agreement_source,
+                agreed_content_snapshot, agreed_at
+            ) VALUES (
+                #{a.userId}, #{a.termsId}, #{a.agreedYn}, #{a.agreementAction},
+                #{a.agreedVersion},
+                #{a.agreementChannel,      jdbcType=VARCHAR},
+                #{a.agreementSource,       jdbcType=VARCHAR},
+                #{a.agreedContentSnapshot, jdbcType=CLOB},
+                SYSTIMESTAMP
+            )
+        </foreach>
+        SELECT 1 FROM DUAL
+    </insert>
+ 
     <select id="findByUserId" resultMap="agreementMap">
         SELECT * FROM USER_TERMS_AGREEMENTS
         WHERE  user_id = #{userId}
         ORDER  BY agreed_at DESC
     </select>
-
+ 
     <select id="existsAgreement" resultType="boolean">
         SELECT CASE WHEN COUNT(1) > 0 THEN 1 ELSE 0 END
         FROM   USER_TERMS_AGREEMENTS
@@ -82,5 +73,5 @@
           AND  terms_id  = #{termsId}
           AND  agreed_yn = 'Y'
     </select>
-
+ 
 </mapper>
