@@ -317,5 +317,37 @@
             lh.login_at DESC
         FETCH FIRST #{limit} ROWS ONLY
     </select>
+    
+    <select id="countCardsByStatus" resultType="long">
+	    SELECT COUNT(1) FROM CARDS
+	    WHERE deleted_yn = 'N'
+	    <if test="cardStatus != null and cardStatus != ''">
+	        AND card_status = #{cardStatus}
+	    </if>
+	</select>
+	
+	<select id="countUsersByStatus" resultType="long">
+	    SELECT COUNT(1) FROM USERS
+	    WHERE deleted_yn = 'N'
+	    <if test="statusCode != null and statusCode != ''">
+	        AND status_code = #{statusCode}
+	    </if>
+	</select>
+	
+	<select id="countTodaySignups" resultType="long">
+	    SELECT COUNT(1) FROM USERS
+	    WHERE deleted_yn = 'N'
+	      AND TRUNC(created_at) = TRUNC(SYSTIMESTAMP)
+	</select>
+	
+	<select id="countTermsByStatus" resultType="long">
+	    SELECT COUNT(1) FROM TERMS
+	    <if test="status != null and status != ''">
+	        WHERE status = #{status}
+	    </if>
+	    <if test="status == null or status == ''">
+	        WHERE 1=1
+	    </if>
+	</select>
 
 </mapper>

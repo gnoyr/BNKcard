@@ -348,4 +348,85 @@ function applyCard(cardId) {
   if (ok) location.href = `/login?next=${encodeURIComponent(`/card/${cardId}`)}`;
 }
 
+// ══════════════════════════════════════════════
+//  혜택 시뮬레이션
+// ══════════════════════════════════════════════
+async function simulate() {
+  const amountInput = document.getElementById('sim-amount');
+  const resultDiv   = document.getElementById('sim-result');
+  const amount      = Number(amountInput?.value ?? 0);
+
+  if (!amount || amount <= 0) {
+    resultDiv.innerHTML = '<p style="color:#e65100;">월 소비금액을 입력해주세요.</p>';
+    return;
+  }
+
+  resultDiv.innerHTML = '<p style="color:#888;">계산 중...</p>';
+
+  // POST /api/cards/simulate
+  // categoryAmounts: 모든 카테고리에 동일 금액 입력
+  // (카테고리별 입력 UI 없으므로 전체 동일 금액으로 계산)
+  const res = await fetch('/api/cards/simulate', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      cardIds: [Number(cardId)],
+      categoryAmounts: buildCategoryAmounts(amount)
+    })
+  });
+
+  const json = await res.json().catch(() => null);
+  const data = json?.data?.[0];
+
+  if (!data) {
+    resultDiv.innerHTML = '<p style="color:#e65100;">시뮬레이션 데이터를 불러올 수 없습니다.</p>';
+    return;
+  }
+
+  const total      = data.totalBenefitAmount ?? 0;
+  const breakdowns = data.benefitBreakdown ?? [];
+
+  resultDiv.innerHTML = `
+    <div class="sim-total">
+      월 예상 혜택금액
+      <span class="sim-amount-big">
+        ${total.toLocaleString()}원
+      </span>
+    </div>
+    ${breakdowns.length ? `
+      <div class="sim-breakdown">
+        ${breakdowns.map(b => `
+          <div class="sim-item">
+            <span class="sim-cat">${b.categoryName ?? '-'}</span>
+            <span class="sim-val">${(b.benefitAmount ?? 0).toLocaleString()}원</span>
+          </div>`).join('')}
+      </div>` : ''}
+    <p class="sim-note">
+      ※ 월 소비금액 ${amount.toLocaleString()}원 기준 예상치이며,
+         실제 혜택은 가맹점·이용조건에 따라 다를 수 있습니다.
+    </p>`;
+}
+
+// 카테고리별 소비금액 Map 생성
+// 카테고리 ID 1~23 전체에 동일 금액 배분
+function buildCategoryAmounts(totalAmount) {
+  const map = {};
+  // state.categories가 있으면 실제 카테고리 ID 사용
+  const cats = window._simCategoryIds ?? [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23];
+  cats.forEach(id => { map[id] = totalAmount; });
+  return map;
+}
+
+// 카테고리 ID 미리 로드 (카드 상세 진입 시 한 번만)
+async function preloadCategoryIds() {
+  try {
+    const res  = await fetch('/api/cards/categories', { credentials: 'include' });
+    const json = await res.json();
+    if (json?.data?.length) {
+      window._simCategoryIds = json.data.map(c => c.categoryId);
+    }
+  } catch { /* 실패 시 기본값 사용 */ }
+}
+
 loadCard();
