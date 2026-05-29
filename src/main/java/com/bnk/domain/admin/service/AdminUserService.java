@@ -12,7 +12,6 @@ import com.bnk.domain.admin.dto.response.AdminUserResponse;
 import com.bnk.domain.admin.dto.response.DashboardResponse;
 import com.bnk.domain.admin.mapper.AdminUserMapper;
 import com.bnk.domain.admin.mapper.ApprovalMapper;
-import com.bnk.domain.card.dto.request.AdminCardSearchRequest;
 import com.bnk.domain.card.mapper.CardMapper;
 import com.bnk.domain.card.model.Card;
 import com.bnk.domain.user.model.User;
