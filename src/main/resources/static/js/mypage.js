@@ -67,7 +67,7 @@ class ApiError extends Error {
 
 /* ── API ── */
 const API = (() => {
-    const LOGIN = '/auth/login.html';
+    const LOGIN = '/login';
 
     async function req(method, url, body) {
         const opts = {
@@ -454,7 +454,7 @@ async function initEdit() {
         try {
             await API.put('/api/users/me', body);
             Toast.success('정보가 수정되었습니다.');
-            setTimeout(() => { window.location.href = '/mypage/index.html'; }, 1000);
+			setTimeout(() => { window.location.href = '/mypage'; }, 1000);
         } catch (err) {
             // ✅ fieldErrors → 각 필드에 직접 표시
             if (err instanceof ApiError && err.applyFieldErrors(V.setErr)) {
@@ -590,7 +590,7 @@ function initPassword() {
     });
 
     document.getElementById('doneOk')?.addEventListener('click', () => {
-        window.location.href = '/mypage/index.html';
+        window.location.href = '/mypage';
     });
 }
 

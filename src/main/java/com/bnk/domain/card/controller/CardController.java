@@ -77,7 +77,8 @@ public class CardController {
     @GetMapping("/cards/top3")
     public ResponseEntity<ApiResponse<List<CardListResponse>>> getTop3Cards(
             @AuthenticationPrincipal(errorOnInvalidType = false) CustomUserDetails ud,
-            @RequestParam String surveyResult) {
+            @RequestParam(name = "surveyResult", required = false, defaultValue = "") String surveyResult) {
+
         Long userId = ud != null ? ud.getUserId() : null;
         return ApiResponse.toOk(cardService.getTop3Cards(userId, surveyResult));
     }

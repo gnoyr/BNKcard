@@ -166,13 +166,13 @@ button {
 
 .podium-flip {
 	perspective: 900px;
-	height: 320px;
-	width: 260px;
+	height: 380px;
+	width: 290px;
 }
 
 .podium-item.center .podium-flip {
-	height: 340px;
-	width: 280px;
+	height: 430px;
+	width: 320px;
 }
 
 @media ( max-width : 700px) {
@@ -188,6 +188,10 @@ button {
 	.podium-flip {
 		width: 100% !important;
 		max-width: 300px;
+		height: 360px;
+	}
+	.podium-item.center .podium-flip {
+		height: 360px;
 	}
 }
 
@@ -213,7 +217,7 @@ button {
 /* ── 플립 카드 ── */
 .flip-wrapper {
 	perspective: 1000px;
-	height: 360px;
+	height: 370px;
 }
 
 .flip-inner {
@@ -247,7 +251,7 @@ button {
 
 .card-img-wrap {
 	flex: 1;
-	min-height: 140px;
+	min-height: 0;
 	background: linear-gradient(145deg, #e8eef6, #d0ddf0);
 	display: flex;
 	align-items: center;
@@ -256,8 +260,8 @@ button {
 }
 
 .card-img-wrap img {
-	max-height: 155px;
-	max-width: 85%;
+	max-height: 175px;
+	max-width: 84%;
 	width: auto;
 	height: auto;
 	object-fit: contain;
@@ -1125,13 +1129,24 @@ to {
     overflow: hidden;
 }
 
+/* TOP3 이미지 배경 — 이름바 제외 나머지 전체 채움 */
 .top3-img-wrap {
     flex: 1 1 auto !important;
     min-height: 0 !important;
 }
 
+/* TOP3 이미지 — 컨테이너(약 320~375px) 기준 */
+.top3-img-wrap img {
+    max-height: 230px !important;
+    max-width: 82% !important;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+}
+
+/* TOP3 이름바 — 콘텐츠 높이만 차지 */
 .top3-name-bar {
-    flex-shrink: 0;
+    flex: 0 0 auto;
     padding: 10px 14px 14px;
     background: #fff;
     text-align: center;
