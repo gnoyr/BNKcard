@@ -1186,7 +1186,7 @@
         cards.map(card => adminApi('GET', `/api/admin/cards/${card.cardId}`).then(r => r.ok ? r.json.data : null))
       );
       allBenefits = detailResults.filter(Boolean).flatMap(card =>
-        (card.benefits ?? []).map(b => ({ ...b, cardId: card.cardId, cardName: card.cardName }))
+        (card.benefits ?? []).map(b => ({...b, cardId: card.cardId, cardName: card.cardName }))
       );
       const cardSelect = document.getElementById('benefitCardFilter');
       const seen = new Set();
