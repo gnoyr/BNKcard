@@ -83,7 +83,7 @@ public class UserService {
                 .phone(formattedPhone)
                 .job(request.getJob())
                 .incomeLevelCode(request.getIncomeLevelCode())
-                .creditScore(request.getCreditScore())                          // ✅ 추가
+                .creditScore(request.getCreditScore())                       
                 .pushEnabled(request.getPushEnabled() != null
                         ? (request.getPushEnabled() ? "Y" : "N") : null)
                 .marketingAgree(request.getMarketingAgree() != null
