@@ -203,6 +203,7 @@ button {
         overflow-y: visible;
         scroll-snap-type: x mandatory;
         -webkit-overflow-scrolling: touch;
+        touch-action: pan-x;          /* ← 추가: 가로 스와이프만 허용 */
         padding: 16px 24px 28px;
         margin: 0;
         scrollbar-width: none;
@@ -1246,4 +1247,22 @@ to {
     .search-overlay  { padding-top: 0; align-items: flex-end; }
     .search-modal    { border-radius: 16px 16px 0 0; max-height: 90vh; overflow-y: auto; }
     .modal-cat-grid  { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ── 비교 모달 모바일 반응형 ── */
+@media (max-width: 480px) {
+    .compare-modal-body { padding: 12px 8px; }
+    .compare-modal-header { padding: 16px 14px 12px; }
+    .compare-modal-title { font-size: 15px; }
+
+    /* 테이블 가로 스크롤 */
+    .compare-modal-body > div:last-child { overflow-x: auto; }
+    .compare-table { min-width: 480px; }
+    .compare-table th { padding: 10px 10px; font-size: 11px; min-width: 120px; }
+    .compare-table td { padding: 10px 10px; font-size: 11px; }
+    .compare-table th:first-child { width: 72px; }
+    .compare-table td:first-child { font-size: 11px; }
+
+    .compare-card-img { width: 60px; height: 38px; }
+    .compare-remove-btn { font-size: 10px; padding: 3px 8px; }
 }
