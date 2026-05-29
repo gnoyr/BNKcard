@@ -245,12 +245,6 @@ public class EmailService {
             "</a>" +
             "</td></tr></table>" +
 
-            // URL 직접 입력 안내
-            "<p style='margin:0 0 20px;color:" + MUTED + ";font-size:12px;line-height:1.7;'>" +
-            "\ubc84\ud2bc\uc774 \uc791\ub3d9\ud558\uc9c0 \uc54a\uc73c\uba74 \uc544\ub798 \uc8fc\uc18c\ub97c " +
-            "\ube0c\ub77c\uc6b0\uc800\uc5d0 \uc9c1\uc811 \uc785\ub825\ud574 \uc8fc\uc138\uc694.<br>" +
-            "<span style='color:" + TEAL_600 + ";word-break:break-all;'>" + resetUrl + "</span></p>" +
-
             // 경고 안내문
             "<p style='margin:0;color:" + MUTED + ";font-size:12px;line-height:1.8;" +
             "border-left:3px solid " + TEAL_400 + ";padding-left:12px;'>" +
