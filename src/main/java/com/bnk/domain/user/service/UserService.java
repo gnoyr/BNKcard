@@ -49,54 +49,76 @@ public class UserService {
 
     /**
      * 어떤 필드를 변경하든 currentPassword BCrypt 검증 필수.
-     * phone 변경 시 → 포맷 변환(010-XXXX-XXXX) + is_phone_verified='N' 자동 처리.
+     * phone 변경 시 → 포맷 변환(010-XXXX-XXXX) + is_phone_verified='N' 자동 처리(UserMapper.xml).
      */
     @Transactional
     public void updateMyInfo(Long userId, @Valid UserUpdateRequest request) {
         User user = userMapper.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        // 정보 수정 시 항상 현재 비밀번호 확인
+        // ── 변경할 필드가 하나도 없으면 early return ────────────────
+        if (!hasAnyField(request)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT,
+                    "변경된 내용이 없습니다.");
+        }
+
+        // ── 비밀번호 재확인 (모든 수정에 필수) ──────────────────────
         if (request.getCurrentPassword() == null
                 || request.getCurrentPassword().isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT,
                     "정보 수정 시 현재 비밀번호 확인이 필요합니다.");
         }
-        if (!passwordEncoder.matches(
-                request.getCurrentPassword(), user.getPasswordHash())) {
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
             throw new BusinessException(ErrorCode.INVALID_PASSWORD);
         }
 
-        // 전화번호 포맷 변환 (01012345678 → 010-1234-5678)
+        // ── 전화번호 포맷 변환 (01012345678 → 010-1234-5678) ────────
         String formattedPhone = request.getPhone() != null
                 ? MaskingUtil.formatPhone(request.getPhone())
                 : null;
 
-        User updateTarget = User.builder()
+        userMapper.updateUser(User.builder()
                 .userId(userId)
                 .name(request.getName())
                 .phone(formattedPhone)
                 .job(request.getJob())
                 .incomeLevelCode(request.getIncomeLevelCode())
-                .pushEnabled(boolToYN(request.getPushEnabled()))
-                .marketingAgree(boolToYN(request.getMarketingAgree()))
-                .build();
+                .creditScore(request.getCreditScore())                          // ✅ 추가
+                .pushEnabled(request.getPushEnabled() != null
+                        ? (request.getPushEnabled() ? "Y" : "N") : null)
+                .marketingAgree(request.getMarketingAgree() != null
+                        ? (request.getMarketingAgree() ? "Y" : "N") : null)
+                .build());
+    }
 
-        userMapper.updateUser(updateTarget);
+    // ================================================================
+    // F-25 헬퍼 | 수정 가능한 필드 중 하나라도 있는지 확인
+    // ================================================================
 
-        userMapper.insertAuditLog(
-                "USER", userId, "USER_UPDATE",
-                "USER", userId, buildUpdateDesc(request), null
-        );
-        log.info("[내정보수정] userId={} phoneChanged={}", userId, formattedPhone != null);
+    private boolean hasAnyField(UserUpdateRequest request) {
+        return request.getName()            != null
+            || request.getPhone()           != null
+            || request.getJob()             != null
+            || request.getIncomeLevelCode() != null
+            || request.getCreditScore()     != null
+            || request.getPushEnabled()     != null
+            || request.getMarketingAgree()  != null;
     }
 
     // ================================================================
     // F-26 | 비밀번호 변경
     // ================================================================
 
+    /**
+     * 검증 순서:
+     * ① newPassword == newPasswordConfirm
+     * ② findById (USER_NOT_FOUND)
+     * ③ currentPassword BCrypt 검증
+     * ④ updatePassword + revokeAllSessions (전 기기 로그아웃)
+     */
     @Transactional
     public void changePassword(Long userId, @Valid PasswordChangeRequest request) {
+        // ① 새 비밀번호 확인 불일치 — DB 조회 전에 차단
         if (!request.getNewPassword().equals(request.getNewPasswordConfirm())) {
             throw new BusinessException(ErrorCode.PASSWORD_CONFIRM_MISMATCH);
         }
@@ -104,19 +126,15 @@ public class UserService {
         User user = userMapper.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
+        // ③ 현재 비밀번호 검증
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
             throw new BusinessException(ErrorCode.INVALID_PASSWORD);
         }
 
-        userMapper.updatePassword(userId,
-                passwordEncoder.encode(request.getNewPassword()), LocalDateTime.now());
+        // ④ 비밀번호 업데이트 + 전 기기 세션 파기
+        String newHash = passwordEncoder.encode(request.getNewPassword());
+        userMapper.updatePassword(userId, newHash, LocalDateTime.now());
         userMapper.revokeAllSessions(userId);
-
-        userMapper.insertAuditLog(
-                "USER", userId, "PASSWORD_CHANGE",
-                "USER", userId, "비밀번호 변경", null
-        );
-        log.info("[비밀번호변경] userId={}", userId);
     }
 
     // ================================================================
@@ -125,6 +143,9 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public CardStatusResponse getMyCards(Long userId) {
+        userMapper.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
         List<CardStatusResponse.OwnedCardDto> ownedCards =
                 userMapper.selectOwnedCards(userId).stream()
                         .map(r -> CardStatusResponse.OwnedCardDto.builder()
@@ -152,26 +173,5 @@ public class UserService {
                 .ownedCards(ownedCards)
                 .applications(applications)
                 .build();
-    }
-
-    // ================================================================
-    // private 헬퍼
-    // ================================================================
-
-    private String boolToYN(Boolean value) {
-        if (value == null) return null;
-        return value ? "Y" : "N";
-    }
-
-    private String buildUpdateDesc(UserUpdateRequest req) {
-        StringBuilder sb = new StringBuilder("변경 필드: ");
-        if (req.getName()            != null) sb.append("name, ");
-        if (req.getPhone()           != null) sb.append("phone(비밀번호확인완료), ");
-        if (req.getJob()             != null) sb.append("job, ");
-        if (req.getIncomeLevelCode() != null) sb.append("income_level_code, ");
-        if (req.getPushEnabled()     != null) sb.append("push_enabled, ");
-        if (req.getMarketingAgree()  != null) sb.append("marketing_agree, ");
-        String result = sb.toString().replaceAll(", $", "");
-        return result.equals("변경 필드: ") ? "변경 없음" : result;
     }
 }

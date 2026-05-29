@@ -1,5 +1,7 @@
 package com.bnk.domain.card.mapper;
 
+import java.util.List;
+
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -29,4 +31,7 @@ public interface CardVersionMapper {
 
     /** 카드별 최신 버전 순번 조회 (다음 버전번호 계산용) */
     int getLatestVersionSeq(@Param("cardId") Long cardId);
+ // 카드의 전체 버전 목록 조회
+    List<CardVersion> findByCardId(@Param("cardId") Long cardId);
+    
 }

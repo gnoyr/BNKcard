@@ -779,6 +779,152 @@ footer strong {
 	}
 }
 
+@media (max-width: 480px) {
+    .card-hero-inner { padding: 20px 14px; gap: 16px; }
+    .card-title      { font-size: 20px; }
+    .card-fee-row    { gap: 12px; padding: 12px 14px; }
+    .fee-value       { font-size: 14px; }
+    .btn-apply       { width: 100%; padding: 13px; font-size: 14px; }
+    .benefit-grid    { grid-template-columns: 1fr; }
+    .tab-btn         { padding: 10px 14px; font-size: 13px; }
+    .tab-content     { padding: 16px 14px; }
+    .sticky-apply-panel { padding: 10px 16px; }
+    .sticky-btn-apply   { padding: 10px 20px; font-size: 13px; }
+}
+
 #bnk-ai-chatbot {
     bottom: 108px; /* sticky-bar 높이(~80px) + 여유 24px */
+}
+
+/* ── 혜택 시뮬레이션 ── */
+.simulate-section {
+  max-width: 1000px;
+  margin: 0 auto 32px;
+  padding: 0 32px;
+}
+.simulate-inner {
+  background: linear-gradient(135deg, #f0f7ff 0%, #e8f4ff 100%);
+  border: 1px solid #c8dff5;
+  border-radius: 16px;
+  padding: 28px 32px;
+}
+.simulate-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.simulate-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+.simulate-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #003087;
+  margin-bottom: 4px;
+}
+.simulate-desc {
+  font-size: 13px;
+  color: #666;
+}
+.simulate-form {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.simulate-input-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+  max-width: 360px;
+}
+.simulate-input-wrap input {
+  width: 100%;
+  padding: 12px 48px 12px 16px;
+  border: 1.5px solid #b8d4f0;
+  border-radius: 10px;
+  font-size: 15px;
+  outline: none;
+  background: #fff;
+  color: #222;
+}
+.simulate-input-wrap input:focus {
+  border-color: #003087;
+  box-shadow: 0 0 0 3px rgba(0,48,135,.08);
+}
+.simulate-unit {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: #888;
+  pointer-events: none;
+}
+.simulate-btn {
+  padding: 12px 28px;
+  background: #003087;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .2s;
+  white-space: nowrap;
+}
+.simulate-btn:hover { background: #002060; }
+
+/* 결과 */
+.sim-total {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 16px 20px;
+  background: #fff;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #555;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0,48,135,.08);
+}
+.sim-amount-big {
+  font-size: 24px;
+  font-weight: 800;
+  color: #003087;
+  margin-left: auto;
+}
+.sim-breakdown {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.sim-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  box-shadow: 0 1px 4px rgba(0,48,135,.06);
+}
+.sim-cat { color: #555; font-weight: 500; }
+.sim-val { color: #003087; font-weight: 700; }
+.sim-note {
+  margin-top: 12px;
+  font-size: 11px;
+  color: #999;
+  line-height: 1.6;
+}
+@media (max-width: 768px) {
+  .simulate-section { padding: 0 16px; }
+  .simulate-inner   { padding: 20px 16px; }
+  .simulate-form    { flex-direction: column; align-items: stretch; }
+  .simulate-input-wrap { max-width: 100%; }
+  .simulate-btn     { width: 100%; text-align: center; }
 }

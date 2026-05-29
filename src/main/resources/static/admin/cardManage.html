@@ -24,13 +24,25 @@
       </div>
       <div style="padding:8px;">
         <div style="padding:10px 10px 4px; font-size:10.5px; font-weight:700; color: #ccc;">카드</div>
-        <button class="nav-btn" onclick="switchMenu('list', event)">📋 카드 목록</button>
-        <button class="nav-btn" onclick="switchMenu('benefit', event)">🎁 혜택 목록</button>
-        <button class="nav-btn" onclick="switchMenu('image', event)">🖼️ 이미지 목록</button>
-        <button class="nav-btn" onclick="switchMenu('content', event)">📝 콘텐츠 목록</button>
+        <button class="nav-btn" onclick="switchMenu('list', event)">카드 목록</button>
+        <button class="nav-btn" onclick="switchMenu('benefit', event)">혜택 목록</button>
+        <button class="nav-btn" onclick="switchMenu('image', event)">이미지 목록</button>
+        <button class="nav-btn" onclick="switchMenu('content', event)">콘텐츠 목록</button>
         <div style="padding:10px 10px 4px; font-size:10.5px; font-weight:700; color: #ccc; margin-top:6px;">약관</div>
-        <button class="nav-btn" onclick="switchMenu('terms', event)">📄 약관 목록</button>
+        <button class="nav-btn" onclick="switchMenu('terms', event)">약관 목록</button>
       </div>
+
+      <div style="padding:10px 10px 4px; font-size:10.5px; font-weight:700; color:#ccc; margin-top:6px;">바로가기</div>
+       <a href="/admin/dashboard.html"
+          style="display:flex; align-items:center; gap:8px; width:100%; padding:9px 12px;
+                 border-radius:6px; font-size:13px; color:rgba(255,255,255,.65);
+                 text-decoration:none; transition:background .18s;"
+          onmouseover="this.style.background='rgba(255,255,255,.08)';this.style.color='#fff'"
+          onmouseout="this.style.background='transparent';this.style.color='rgba(255,255,255,.65)'">
+         대시보드
+       </a>
+      </div>
+    
     </td>
 
     <!-- =============== 우측 콘텐츠 =============== -->
@@ -245,7 +257,26 @@
 
         <h3>기본 정보 <button onclick="openEditBasic()">수정</button></h3>
         <table border="1"><tbody id="detail-info"></tbody></table>
-
+		
+		<h3>버전 히스토리
+		  <button onclick="loadCardVersions(currentCardId)"
+		    style="font-size:11px;padding:3px 10px;background:#f0f4fb;color:#003087;
+		           border:1px solid #dde3ef;border-radius:4px;cursor:pointer;font-weight:500;">
+		    새로고침
+		  </button>
+		</h3>
+		<table border="1">
+		  <thead>
+		    <tr>
+		      <th>버전</th><th>상태</th><th>변경 사유</th>
+		      <th>등록자</th><th>등록일시</th><th>승인일시</th>
+		    </tr>
+		  </thead>
+		  <tbody id="version-history-tbody">
+		    <tr><td colspan="6">-</td></tr>
+		  </tbody>
+		</table>
+		
         <h3>혜택</h3>
         <table border="1">
           <thead>
@@ -654,62 +685,123 @@
       </div>
 
       <!-- ======================== 약관 등록 화면 ======================== -->
-      <div id="page-create-terms" style="display:none;">
-        <button onclick="switchMenu('terms', null)">← 목록으로</button>
-        <h3>약관 등록 신청</h3>
-        <table border="1"><tbody>
-          <tr>
-            <th>약관 마스터 선택 <span style="color:red">*</span></th>
-            <td><select id="ct-termsMasterId"><option value="">-- 로딩 중 --</option></select></td>
-          </tr>
-          <tr>
-            <th>버전 <span style="color:red">*</span></th>
-            <td><input type="text" id="ct-version" placeholder="예: v1.0" value="v1.0" style="width:120px;"></td>
-          </tr>
-          <tr>
-            <th>시행일 <span style="color:red">*</span></th>
-            <td><input type="date" id="ct-effectiveFrom"></td>
-          </tr>
-          <tr>
-            <th>필수 여부 <span style="color:red">*</span></th>
-            <td>
-              <select id="ct-requiredYn">
-                <option value="Y">필수 (Y)</option>
-                <option value="N">선택 (N)</option>
-              </select>
-            </td>
-          </tr>
-          <tr>
-            <th>재동의 필요 여부</th>
-            <td>
-              <select id="ct-reconsentRequiredYn">
-                <option value="N">N (기본)</option>
-                <option value="Y">Y (재동의 알림 발송)</option>
-              </select>
-            </td>
-          </tr>
-          <tr>
-            <th>약관 본문 (HTML)</th>
-            <td><textarea id="ct-contentHtml" rows="6" style="width:400px;" placeholder="약관 본문 HTML..."></textarea></td>
-          </tr>
-          <tr>
-            <th>변경 사유</th>
-            <td><input type="text" id="ct-changeSummary" placeholder="신규 등록 사유" style="width:300px;"></td>
-          </tr>
-          <tr>
-            <th>PDF 업로드 <span style="color:red">*</span></th>
-            <td>
-              <input type="file" id="ct-pdfFile" accept=".pdf">
-              <br><small>최대 20MB, PDF 파일만 허용</small>
-            </td>
-          </tr>
-        </tbody></table>
-        <br>
-        <button onclick="submitTermsCreate()">결재 요청 (등록 신청)</button>
-        <button onclick="switchMenu('terms', null)">취소</button>
-        <br><br>
-        <div id="ct-msg"></div>
-      </div>
+	<div id="page-create-terms" style="display:none;">
+	  <button onclick="switchMenu('terms', null)">← 목록으로</button>
+	  <h3>약관 등록 신청</h3>
+	
+	  <table><tbody>
+	    <tr>
+	      <th>약관 마스터 <span style="color:red">*</span></th>
+	      <td>
+	        <select id="ct-termsMasterId" onchange="onMasterChange(this.value)" style="width:300px;">
+	          <option value="">-- 선택하세요 --</option>
+	        </select>
+	        &nbsp;
+	        <button onclick="toggleNewMaster()" id="btn-new-master"
+	          style="padding:5px 12px;font-size:12px;background:#f0f4fb;color:#003087;border:1px solid #dde3ef;border-radius:6px;cursor:pointer;">
+	          ＋ 새 마스터 등록
+	        </button>
+	      </td>
+	    </tr>
+	  </tbody></table>
+	
+	  <!-- 새 마스터 등록 인라인 패널 -->
+	  <div id="new-master-panel" style="display:none;background:#f8faff;border:1px solid #d0ddf0;border-radius:8px;padding:16px;margin:8px 0 16px;">
+	    <strong style="font-size:13px;color:#003087;">새 약관 마스터 등록</strong>
+	    <table style="margin-top:10px;"><tbody>
+	      <tr>
+	        <th>유형 *</th>
+	        <td>
+	          <select id="nm-termsType" style="width:200px;">
+	            <option value="COMMON">공통 약관</option>
+	            <option value="PRIVACY">개인정보처리방침</option>
+	            <option value="CARD_SERVICE">카드 서비스 약관</option>
+	          </select>
+	        </td>
+	      </tr>
+	      <tr>
+	        <th>제목 *</th>
+	        <td><input type="text" id="nm-title" placeholder="예: BNK 개인정보처리방침" style="width:300px;"></td>
+	      </tr>
+	      <tr>
+	        <th>설명</th>
+	        <td><input type="text" id="nm-description" placeholder="간단한 설명 (선택)" style="width:300px;"></td>
+	      </tr>
+	      <tr>
+	        <th>필수 여부</th>
+	        <td>
+	          <select id="nm-requiredYn">
+	            <option value="Y">필수</option>
+	            <option value="N">선택</option>
+	          </select>
+	        </td>
+	      </tr>
+	    </tbody></table>
+	    <div style="margin-top:10px;">
+	      <button onclick="submitNewMaster()"
+	        style="padding:7px 16px;background:#003087;color:#fff;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">
+	        마스터 저장
+	      </button>
+	      &nbsp;
+	      <button onclick="toggleNewMaster()"
+	        style="padding:7px 14px;background:#f0f2f6;color:#666;border-radius:6px;font-size:13px;cursor:pointer;">
+	        취소
+	      </button>
+	    </div>
+	    <div id="nm-msg" style="margin-top:8px;font-size:12px;"></div>
+	  </div>
+	
+	  <table><tbody>
+	    <tr>
+	      <th>버전 <span style="color:red">*</span></th>
+	      <td>
+	        <input type="text" id="ct-version" placeholder="마스터 선택 시 자동 제안" style="width:120px;">
+	        <span id="ct-version-hint" style="font-size:12px;color:#888;margin-left:8px;"></span>
+	      </td>
+	    </tr>
+	    <tr>
+	      <th>시행일 <span style="color:red">*</span></th>
+	      <td><input type="date" id="ct-effectiveFrom"></td>
+	    </tr>
+	    <tr>
+	      <th>필수 여부 <span style="color:red">*</span></th>
+	      <td>
+	        <select id="ct-requiredYn">
+	          <option value="Y">필수 (Y)</option>
+	          <option value="N">선택 (N)</option>
+	        </select>
+	      </td>
+	    </tr>
+	    <tr>
+	      <th>재동의 필요 여부</th>
+	      <td>
+	        <select id="ct-reconsentRequiredYn">
+	          <option value="N">N (기본)</option>
+	          <option value="Y">Y (재동의 알림 발송)</option>
+	        </select>
+	      </td>
+	    </tr>
+	    <tr>
+	      <th>약관 본문 (HTML)</th>
+	      <td><textarea id="ct-contentHtml" rows="6" style="width:400px;" placeholder="약관 본문 HTML..."></textarea></td>
+	    </tr>
+	    <tr>
+	      <th>변경 사유</th>
+	      <td><input type="text" id="ct-changeSummary" placeholder="신규 등록 사유" style="width:300px;"></td>
+	    </tr>
+	    <tr>
+	      <th>PDF 업로드 <span style="color:red">*</span></th>
+	      <td>
+	        <input type="file" id="ct-pdfFile" accept=".pdf">
+	        <br><small>최대 20MB, PDF 파일만 허용</small>
+	      </td>
+	    </tr>
+	  </tbody></table>
+	
+	  <button onclick="submitTermsCreate()">결재 요청 (등록 신청)</button>
+	  <button onclick="switchMenu('terms', null)">취소</button>
+	  <div id="ct-msg"></div>
+	</div>
 
     </td>
   </tr>
@@ -935,6 +1027,8 @@
     renderDetailBenefits(card.benefits);
     renderDetailImages(card.images);
     renderDetailContents(card.contents);
+ 	// 카드 상세 로드 완료 후 버전 히스토리도 함께 로드
+    loadCardVersions(cardId);
   }
 
   function renderDetailInfo(card) {
@@ -1891,6 +1985,66 @@
     sel.innerHTML = '<option value="">-- 선택하세요 --</option>' +
       r.json.data.map(m => `<option value="${m.termsMasterId}">[${m.termsType}] ${m.title}</option>`).join('');
   }
+  
+	//마스터 선택 시 다음 버전 자동 제안
+  async function onMasterChange(masterId) {
+    const hint = document.getElementById('ct-version-hint');
+    const versionInput = document.getElementById('ct-version');
+    if (!masterId) {
+      versionInput.value = '';
+      hint.textContent = '';
+      return;
+    }
+    hint.textContent = '버전 조회 중...';
+    const r = await adminApi('GET', `/api/admin/terms/masters/${masterId}/next-version`);
+    if (r.ok && r.json?.data) {
+      versionInput.value = r.json.data;
+      hint.textContent = `제안 버전: ${r.json.data} (직접 수정 가능)`;
+    } else {
+      versionInput.value = 'v1.0';
+      hint.textContent = '첫 번째 버전으로 시작합니다.';
+    }
+  }
+
+  // 새 마스터 패널 토글
+  function toggleNewMaster() {
+    const panel = document.getElementById('new-master-panel');
+    panel.style.display = panel.style.display === 'none' ? '' : 'none';
+  }
+
+  // 새 마스터 저장
+  async function submitNewMaster() {
+    const termsType   = document.getElementById('nm-termsType').value;
+    const title       = document.getElementById('nm-title').value.trim();
+    const description = document.getElementById('nm-description').value.trim();
+    const requiredYn  = document.getElementById('nm-requiredYn').value;
+    const msg         = document.getElementById('nm-msg');
+
+    if (!title) { msg.style.color='red'; msg.textContent='제목을 입력하세요.'; return; }
+
+    const r = await adminApi('POST', '/api/admin/terms/masters', {
+      termsType, title, description, requiredYn
+    });
+
+    if (!r.ok) {
+      msg.style.color='red';
+      msg.textContent='저장 실패: ' + extractMsg(r.json, '오류');
+      return;
+    }
+
+    msg.style.color='green';
+    msg.textContent='✅ 마스터 저장 완료. 목록을 갱신합니다...';
+    showToast('마스터 등록 완료', 'success');
+
+    // 마스터 목록 새로고침 후 패널 닫기
+    await loadTermsMasters();
+    setTimeout(() => {
+      toggleNewMaster();
+      msg.textContent = '';
+      document.getElementById('nm-title').value = '';
+      document.getElementById('nm-description').value = '';
+    }, 1200);
+  }
 
 //수정 후
   async function submitTermsCreate() {
@@ -1935,9 +2089,8 @@
           'success'
       );
       document.getElementById('ct-msg').innerHTML =
-          `<b style="color:green">등록 완료 — 결재 ID: ${data.approvalId ?? '-'}</b><br>
-           <a href="#" onclick="showApprovalList()">결재 목록 바로가기 →</a>`;
-
+          `<b style="color:green">등록 완료</b><br>`;
+	  //<a href="#" onclick="showApprovalList()">결재 목록 바로가기 →</a>
       // 약관 목록으로 이동
       setTimeout(() => showTermsList(), 2000);
   }
@@ -2281,6 +2434,39 @@ function createAddImageRow(img) {
     loadCardCategories();
   });
 
+	//카드 버전 히스토리 로드
+  async function loadCardVersions(cardId) {
+    const tbody = document.getElementById('version-history-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="6">불러오는 중...</td></tr>';
+
+    const r = await adminApi('GET', `/api/admin/cards/${cardId}/versions`);
+    if (!r.ok || !r.json?.data?.length) {
+      tbody.innerHTML = '<tr><td colspan="6">버전 이력 없음</td></tr>';
+      return;
+    }
+
+    const STATUS_LABEL = {
+      DRAFT:'초안', REVIEW:'반려', APPROVED:'승인',
+      PUBLISHED:'게시중', ARCHIVED:'보관', EXPIRED:'만료'
+    };
+    const STATUS_COLOR = {
+      DRAFT:'#888', REVIEW:'#e65100', APPROVED:'#2e7d32',
+      PUBLISHED:'#003087', ARCHIVED:'#999', EXPIRED:'#bbb'
+    };
+
+    tbody.innerHTML = r.json.data.map(v => `
+      <tr>
+        <td><b>${v.versionNo ?? '-'}</b></td>
+        <td><span style="color:${STATUS_COLOR[v.versionStatus]??'#333'};font-weight:600;">
+          ${STATUS_LABEL[v.versionStatus] ?? v.versionStatus ?? '-'}
+        </span></td>
+        <td>${v.changeSummary ?? '-'}</td>
+        <td>${v.createdBy ?? '-'}</td>
+        <td>${v.createdAt ? new Date(v.createdAt).toLocaleString('ko-KR') : '-'}</td>
+        <td>${v.approvedAt ? new Date(v.approvedAt).toLocaleString('ko-KR') : '-'}</td>
+      </tr>`).join('');
+  }
 </script>
 
 <div id="toast-container"></div>

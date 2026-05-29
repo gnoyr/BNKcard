@@ -479,7 +479,7 @@ to {
    ══════════════════════════════════════════════════════ */
 
 /* 로그인 / 회원가입 링크 → 필 버튼형 */
-.header-nav a[href="/auth/login.html"], .header-nav a[href="/auth/signup.html"]
+.header-nav .nav-login, .header-nav .nav-signup
 	{
 	padding: 5px 14px !important;
 	border-radius: 20px !important;
@@ -489,24 +489,24 @@ to {
 	transition: background .2s, color .2s !important;
 }
 
-.header-nav a[href="/auth/login.html"] {
+.header-nav .nav-login {
 	background: transparent;
 	border: 1.5px solid var(--primary) !important;
 	color: var(--primary) !important;
 }
 
-.header-nav a[href="/auth/login.html"]:hover {
+.header-nav .nav-login:hover {
 	background: var(--primary) !important;
 	color: #fff !important;
 }
 
-.header-nav a[href="/auth/signup.html"] {
+.header-nav .nav-signup {
 	background: var(--primary);
 	color: #fff !important;
 	border: 1.5px solid var(--primary) !important;
 }
 
-.header-nav a[href="/auth/signup.html"]:hover {
+.header-nav .nav-signup:hover {
 	background: var(--primary-dark) !important;
 	border-color: var(--primary-dark) !important;
 }
@@ -567,4 +567,32 @@ to {
 	border-color: var(--primary) !important;
 	color: var(--primary) !important;
 	border-bottom-color: var(--primary) !important;
+}
+
+/* ── 헤더 모바일 반응형 ── */
+@media (max-width: 480px) {
+    .site-header {
+        padding: 0 16px;
+        height: 54px;
+    }
+    .logo-text { display: none; }        /* 로고 텍스트 숨김 */
+    .header-nav { gap: 8px; }
+    .header-nav__username {
+        max-width: 60px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 11px;
+        padding: 4px 8px;
+    }
+    .header-nav__timer { display: none; }     /* 타이머 숨김 */
+    .header-nav a[href="/mypage/index.html"] { display: none; } /* 마이페이지 링크 숨김 */
+    .header-nav__btn {
+        font-size: 11px !important;
+        padding: 4px 8px !important;
+    }
+    .nav-login, .nav-signup {
+        padding: 4px 10px !important;
+        font-size: 11px !important;
+    }
 }
