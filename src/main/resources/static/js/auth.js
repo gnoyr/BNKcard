@@ -159,9 +159,11 @@ const login = {
             deviceInfo: navigator.userAgent.substring(0, 100),
         });
 
-        if (res.ok) {
-            window.location.href = '/';
-        } else if (res.status === 0) {
+		if (res.ok) {
+		    const next = new URLSearchParams(location.search).get('next');
+		    const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
+		    window.location.href = safeNext;
+		} else if (res.status === 0) {
             // 네트워크 단절 — 토스트로 표시 (인라인 에러보다 위치상 적절)
             authToast('서버에 연결할 수 없습니다. 네트워크를 확인해 주세요.', 'error');
         } else {
@@ -521,7 +523,7 @@ const resetPw = {
         if (res.ok) {
             // ✅ alert() 제거 → 토스트 표시 후 2초 뒤 자동 이동
             authToast('비밀번호가 변경되었습니다. 로그인 페이지로 이동합니다.', 'success');
-            setTimeout(() => { window.location.href = 'login.html'; }, 2000);
+            setTimeout(() => { window.location.href = '/login'; }, 2000);
         } else if (res.status === 400 || res.status === 401) {
             showView('view-token-error');
         } else if (res.status === 0) {
