@@ -183,41 +183,54 @@ button {
 }
 
 @media (max-width: 700px) {
+    /* section 패딩 상쇄 후 full-width 슬라이드 */
+    #top3 {
+        padding-left: 0;
+        padding-right: 0;
+    }
+    #top3 .section-title,
+    #top3 .section-sub {
+        padding-left: 24px;
+    }
+    
     .top3-podium {
+        display: flex !important;
         flex-direction: row !important;
-        align-items: center;
-        gap: 16px;
+        justify-content: flex-start !important; 
+        align-items: stretch !important;
+        gap: 12px;
         overflow-x: auto;
         overflow-y: visible;
         scroll-snap-type: x mandatory;
         -webkit-overflow-scrolling: touch;
-        padding: 20px 40px 28px 40px;  /* ← 수정 */
-        margin: 0;                       /* ← 수정 */
-        scroll-padding: 0 40px;          /* ← 추가 */
+        padding: 16px 24px 28px;
+        margin: 0;
         scrollbar-width: none;
         -ms-overflow-style: none;
     }
     .top3-podium::-webkit-scrollbar { display: none; }
-
+    
     .podium-item {
         flex-shrink: 0 !important;
-        scroll-snap-align: center;
+        scroll-snap-align: start;
         transform: none !important;
         opacity: 1 !important;
+        z-index: 1 !important; 
     }
+    
     .podium-item.center { order: 1 !important; }
     .podium-item.left   { order: 2 !important; }
     .podium-item.right  { order: 3 !important; }
-
+    
     .podium-flip {
-        width: 75vw !important;
-        max-width: 280px !important;
-        height: 340px !important;
+        width: 72vw !important;
+        max-width: 260px !important;
+        height: 330px !important;
     }
     .podium-item.center .podium-flip {
-        width: 75vw !important;
-        max-width: 280px !important;
-        height: 340px !important;
+        width: 72vw !important;
+        max-width: 260px !important;
+        height: 330px !important;
     }
 }
 
@@ -1214,4 +1227,23 @@ to {
     font-size: 12px;
     color: rgba(255, 255, 255, .85);
     margin-bottom: 8px;
+}
+
+@media (max-width: 480px) {
+    .hero { padding: 40px 20px 60px; }
+    .hero h1 { font-size: 22px; }
+    .hero p  { font-size: 14px; margin-bottom: 20px; }
+    .search-bar input { padding: 12px 16px; font-size: 14px; }
+    .search-bar button { padding: 12px 18px; font-size: 14px; }
+    .section { padding: 32px 16px; }
+    .section-title { font-size: 18px; }
+    .type-tab { padding: 10px 16px; font-size: 13px; }
+    .cat-btn  { padding: 6px 12px; font-size: 12px; }
+    .filter-row input { width: 100% !important; }
+}
+
+@media (max-width: 480px) {
+    .search-overlay  { padding-top: 0; align-items: flex-end; }
+    .search-modal    { border-radius: 16px 16px 0 0; max-height: 90vh; overflow-y: auto; }
+    .modal-cat-grid  { grid-template-columns: repeat(3, 1fr); }
 }
