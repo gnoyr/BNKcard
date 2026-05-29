@@ -491,15 +491,15 @@ async function initEdit() {
         const creditScoreEl = document.getElementById('creditScore');
         if (creditScoreEl) creditScoreEl.value = _user.creditScore ?? '';
 
-        // ✅ 초기값 스냅샷 저장 (변경감지 기준)
-        _original = {
-            name:            _user.name            ?? '',
-            phone:           '',                          // 새 번호 입력란은 항상 빈 상태로 시작
-            job:             _user.job             ?? '',
-            incomeLevelCode: _user.incomeLevelCode ?? '',
-            pushEnabled:     pushEl?.checked ?? false,
-            marketingAgree:  mktEl?.checked  ?? false,
-        };
+		_original = {
+		    name:            _user.name            ?? '',
+		    phone:           '',
+		    job:             _user.job             ?? '',
+		    incomeLevelCode: _user.incomeLevelCode ?? '',
+		    pushEnabled:     pushEl?.checked ?? false,
+		    marketingAgree:  mktEl?.checked  ?? false,
+		    creditScore:     _user.creditScore ?? '',
+		};
 
     } catch (err) {
         if (err.status !== 403 && err.status < 500) {
@@ -513,38 +513,44 @@ async function initEdit() {
     const pwInput   = document.getElementById('confirmPwInput');
     const pwErr     = document.getElementById('confirmPwErr');
     const confirmBtn = document.getElementById('modalConfirmBtn');
+	const creditScore = document.getElementById('creditScore');
 
     // pushEnabled/marketingAgree 타입 정확히 처리
-    function collectBody(password) {
-        const phoneVal = document.getElementById('phone').value.trim();
-        const pushEl   = document.getElementById('pushEnabled');
-        const mktEl    = document.getElementById('marketingAgree');
+	function collectBody(password) {
+	    const phoneVal = document.getElementById('phone').value.trim();
+	    const pushEl   = document.getElementById('pushEnabled');
+	    const mktEl    = document.getElementById('marketingAgree');
 
-        return {
-            name:            document.getElementById('name').value.trim() || undefined,
-            phone:           phoneVal || undefined,
-            job:             document.getElementById('job').value || undefined,
-            incomeLevelCode: document.getElementById('incomeLevelCode').value || undefined,
-            // ✅ checkbox는 checked 값(boolean)을 그대로 전송 (서버 Boolean 타입과 일치)
-            pushEnabled:     pushEl  ? pushEl.checked  : undefined,
-            marketingAgree:  mktEl   ? mktEl.checked   : undefined,
-            currentPassword: password,
-        };
-    }
+	    return {
+	        name:            document.getElementById('name').value.trim() || undefined,
+	        phone:           phoneVal || undefined,
+	        job:             document.getElementById('job').value || undefined,
+	        incomeLevelCode: document.getElementById('incomeLevelCode').value || undefined,
+
+	        creditScore:     document.getElementById('creditScore').value || undefined,
+
+	        pushEnabled:     pushEl ? pushEl.checked : undefined,
+	        marketingAgree:  mktEl  ? mktEl.checked  : undefined,
+	        currentPassword: password,
+	    };
+	}
 
     // 변경된 필드가 하나도 없으면 모달을 열지 않고 안내
-    function hasChanges() {
-        const pushEl = document.getElementById('pushEnabled');
-        const mktEl  = document.getElementById('marketingAgree');
-        return (
-            (document.getElementById('name').value.trim()            !== _original.name)           ||
-            (document.getElementById('phone').value.trim()           !== _original.phone)          ||
-            (document.getElementById('job').value                    !== _original.job)            ||
-            (document.getElementById('incomeLevelCode').value        !== _original.incomeLevelCode)||
-            ((pushEl?.checked ?? false)                              !== _original.pushEnabled)    ||
-            ((mktEl?.checked  ?? false)                              !== _original.marketingAgree)
-        );
-    }
+	function hasChanges() {
+	    const pushEl = document.getElementById('pushEnabled');
+	    const mktEl  = document.getElementById('marketingAgree');
+
+	    return (
+	        (document.getElementById('name').value.trim()     !== _original.name)            ||
+	        (document.getElementById('phone').value.trim()    !== _original.phone)           ||
+	        (document.getElementById('job').value             !== _original.job)             ||
+	        (document.getElementById('incomeLevelCode').value !== _original.incomeLevelCode) ||
+	        (document.getElementById('creditScore').value     !== _original.creditScore)     ||
+
+	        ((pushEl?.checked ?? false) !== _original.pushEnabled) ||
+	        ((mktEl?.checked  ?? false) !== _original.marketingAgree)
+	    );
+	}
 
     async function doUpdate(body) {
         btnLoading(submitBtn, true);
