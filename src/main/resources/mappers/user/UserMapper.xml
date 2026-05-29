@@ -124,24 +124,28 @@
 		'Y', 0, SYSTIMESTAMP, 'N'
 		)
 	</insert>
-
-	<!-- 내 정보 수정: phone 변경 시 is_phone_verified='N' 자동 처리 -->
+	<!--
+		updateUser: null 이 아닌 필드만 SET (동적 UPDATE).
+		변경할 필드가 하나도 없는 경우 → UserService 에서 hasAnyField() 로 early return.
+		XML 은 "전달된 것만 UPDATE" 에만 집중한다.
+	-->
 	<update id="updateUser">
 		UPDATE USERS
 		<set>
-			<if test="name != null">name = #{name},</if>
-			<if test="phone != null">
-				phone = #{phone},
+			<if test="name           != null">name              = #{name},</if>
+			<if test="phone          != null">
+				phone             = #{phone},
 				is_phone_verified = 'N',
 			</if>
-			<if test="job != null">job = #{job},</if>
+			<if test="job            != null">job               = #{job},</if>
 			<if test="incomeLevelCode != null">income_level_code = #{incomeLevelCode},</if>
-			<if test="pushEnabled != null">push_enabled = #{pushEnabled},</if>
-			<if test="marketingAgree != null">marketing_agree = #{marketingAgree},</if>
+			<if test="creditScore    != null">credit_score      = #{creditScore},</if>
+			<if test="pushEnabled    != null">push_enabled      = #{pushEnabled},</if>
+			<if test="marketingAgree != null">marketing_agree   = #{marketingAgree},</if>
 			updated_at = SYSTIMESTAMP
 		</set>
-		WHERE user_id = #{userId}
-		AND deleted_yn = 'N'
+		WHERE user_id    = #{userId}
+		  AND deleted_yn = 'N'
 	</update>
 
 	<update id="updateEmailVerified">
