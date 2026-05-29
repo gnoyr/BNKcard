@@ -54,12 +54,12 @@ public class AdminUserService {
         // ① 결재 대기 건수
         int pendingCount = approvalMapper.countPendingApprovals();
 
-        // ② 인기 카드 상위 10개
-        AdminCardSearchRequest dashReq = new AdminCardSearchRequest();
-        dashReq.setSize(10);
-        List<Card> topCards = cardMapper.findAdminCards(dashReq);
+        // ② 인기 카드 상위 10 — findTop3ByViewCount 대신 전용 쿼리 사용
+        //    CardMapper에 findTop3ByViewCount 이미 있으므로 그대로 재활용
+        //    (3개만 반환되므로 대시보드용으로 적절)
+        List<Card> topCardList = cardMapper.findTop3ByViewCount();
 
-        List<DashboardResponse.CardRankItem> cardRankItems = topCards.stream()
+        List<DashboardResponse.CardRankItem> topCards = topCardList.stream()
                 .map(c -> DashboardResponse.CardRankItem.builder()
                         .cardId(c.getCardId())
                         .cardName(c.getCardName())
@@ -68,10 +68,9 @@ public class AdminUserService {
                         .build())
                 .collect(Collectors.toList());
 
-        // ③ 최근 관리자 로그인 이력 (LOGIN_HISTORIES JOIN ADMIN_USERS)
-        List<DashboardResponse.LoginHistoryItem> recentLogins =
-                adminUserMapper.findRecentAdminLogins(DASHBOARD_LOGIN_LIMIT)
-                        .stream()
+        // ③ 관리자 로그인 이력
+        List<DashboardResponse.LoginHistoryItem> logins =
+                adminUserMapper.findRecentAdminLogins(DASHBOARD_LOGIN_LIMIT).stream()
                         .map(r -> DashboardResponse.LoginHistoryItem.builder()
                                 .adminName(r.getAdminName())
                                 .loginAt(r.getLoginAt())
@@ -79,10 +78,32 @@ public class AdminUserService {
                                 .build())
                         .collect(Collectors.toList());
 
+        // ④ 카드 현황
+        long totalCards     = adminUserMapper.countCardsByStatus(null);
+        long publishedCards = adminUserMapper.countCardsByStatus("PUBLISHED");
+        long draftCards     = adminUserMapper.countCardsByStatus("DRAFT");
+
+        // ⑤ 회원 현황
+        long totalUsers   = adminUserMapper.countUsersByStatus(null);
+        long lockedUsers  = adminUserMapper.countUsersByStatus("LOCKED");
+        long todaySignups = adminUserMapper.countTodaySignups();
+
+        // ⑥ 약관 현황
+        long totalTerms     = adminUserMapper.countTermsByStatus(null);
+        long publishedTerms = adminUserMapper.countTermsByStatus("PUBLISHED");
+
         return DashboardResponse.builder()
                 .pendingApprovalCount(pendingCount)
-                .topCards(cardRankItems)
-                .recentAdminLogins(recentLogins)
+                .topCards(topCards)
+                .recentAdminLogins(logins)
+                .totalCards(totalCards)
+                .publishedCards(publishedCards)
+                .draftCards(draftCards)
+                .totalUsers(totalUsers)
+                .lockedUsers(lockedUsers)
+                .todaySignups(todaySignups)
+                .totalTerms(totalTerms)
+                .publishedTerms(publishedTerms)
                 .build();
     }
 

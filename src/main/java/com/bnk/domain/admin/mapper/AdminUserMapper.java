@@ -136,4 +136,10 @@ public interface AdminUserMapper {
         private LocalDateTime loginAt;
         private String        ipAddress;
     }
+    
+
+    long countCardsByStatus(@Param("cardStatus") String cardStatus);
+    long countUsersByStatus(@Param("statusCode") String statusCode);
+    long countTodaySignups();
+    long countTermsByStatus(@Param("status") String status);
 }
