@@ -779,6 +779,19 @@ footer strong {
 	}
 }
 
+@media (max-width: 480px) {
+    .card-hero-inner { padding: 20px 14px; gap: 16px; }
+    .card-title      { font-size: 20px; }
+    .card-fee-row    { gap: 12px; padding: 12px 14px; }
+    .fee-value       { font-size: 14px; }
+    .btn-apply       { width: 100%; padding: 13px; font-size: 14px; }
+    .benefit-grid    { grid-template-columns: 1fr; }
+    .tab-btn         { padding: 10px 14px; font-size: 13px; }
+    .tab-content     { padding: 16px 14px; }
+    .sticky-apply-panel { padding: 10px 16px; }
+    .sticky-btn-apply   { padding: 10px 20px; font-size: 13px; }
+}
+
 #bnk-ai-chatbot {
     bottom: 108px; /* sticky-bar 높이(~80px) + 여유 24px */
 }
