@@ -107,27 +107,43 @@
     if (cacheValid) {
       name = cachedName;
     } else {
-      const hadSession = !!cachedName;
-      try {
-        let res = await fetch('/api/users/me', { credentials: 'include' });
+      // cachedLoginAt 기준으로 세션 존재 여부 판단
+      //   cachedName은 있어도 loginAt이 없으면 세션으로 보지 않음
+      const hadSession = !!cachedLoginAt;
 
-        if (res.status === 401 && hadSession) {
-          const refreshed = await tryRefresh();
-          if (refreshed) {
-            res = await fetch('/api/users/me', { credentials: 'include' });
+      //   불필요한 401 콘솔 에러 방지
+      //   NEED_AUTH 페이지면 아래 loggedIn 체크에서 리다이렉트 처리됨
+      if (!hadSession) {
+        // name = null 유지 → loggedIn = false → NEED_AUTH 리다이렉트로 연결
+      } else {
+        try {
+          let res = await fetch('/api/users/me', { credentials: 'include' });
+
+          // access_token 만료 → refresh 시도
+          if (res.status === 401) {
+            const refreshed = await tryRefresh();
+            if (refreshed) {
+              res = await fetch('/api/users/me', { credentials: 'include' });
+            }
           }
-        }
 
-        if (res.status === 401) {
-          sessionStorage.removeItem(CACHE_KEY_NAME);
-          sessionStorage.removeItem(CACHE_KEY_LOGIN_AT);
-        } else if (res.ok) {
-          const json = await res.json().catch(() => ({}));
-          name = json.data?.name ?? '회원';
-          sessionStorage.setItem(CACHE_KEY_NAME, name);
-          sessionStorage.setItem(CACHE_KEY_LOGIN_AT, String(Date.now()));
-        }
-      } catch { /* 네트워크 오류 → 비로그인 처리 */ }
+          if (res.status === 401) {
+            // refresh도 실패 → 세션 정리
+            sessionStorage.removeItem(CACHE_KEY_NAME);
+            sessionStorage.removeItem(CACHE_KEY_LOGIN_AT);
+            if (NEED_AUTH) {
+              const next = encodeURIComponent(location.pathname + location.search);
+              location.replace(`${LOGIN_URL}?next=${next}`);
+              return;
+            }
+          } else if (res.ok) {
+            const json = await res.json().catch(() => ({}));
+            name = json.data?.name ?? '회원';
+            sessionStorage.setItem(CACHE_KEY_NAME, name);
+            sessionStorage.setItem(CACHE_KEY_LOGIN_AT, String(Date.now()));
+          }
+        } catch { /* 네트워크 오류 → 비로그인 처리 */ }
+      }
     }
 
     const loggedIn = name !== null;
@@ -143,7 +159,7 @@
     }
 
     renderNav(loggedIn, name);
-    renderFooter(loggedIn);   // [추가] 푸터 nav 동적 렌더링
+    renderFooter(loggedIn);
   }
 
   /* 관리자 인증 확인 */
@@ -162,7 +178,7 @@
     const adminName = sessionStorage.getItem(CACHE_KEY_NAME) ?? '관리자';
     sessionStorage.setItem('bnk_is_admin', '1');
     renderAdminNav(adminName);
-    renderFooter(true);        // [추가] 관리자도 로그인 상태로 렌더링
+    renderFooter(true);
   }
 
   /* 인증 진입점 */

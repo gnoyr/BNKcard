@@ -16,10 +16,6 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * 전역 예외 처리.
- * jakarta.validation (@Valid) — spring-boot-starter-validation 의존성 필요.
- */
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -47,7 +43,9 @@ public class GlobalExceptionHandler {
                 ))
                 .collect(Collectors.toList());
 
-        log.warn("Validation 실패: {}", fieldErrors);
+        log.warn("Validation 실패: {}", fieldErrors.stream()
+                .map(fe -> fe.getField() + "=" + fe.getValue() + " (" + fe.getReason() + ")")
+                .collect(java.util.stream.Collectors.joining(", ")));
         return ResponseEntity.badRequest().body(ErrorResponse.ofValidation(fieldErrors));
     }
 
@@ -75,11 +73,28 @@ public class GlobalExceptionHandler {
                         String.format("필수 파라미터 '%s'가 없습니다.", ex.getParameterName())));
     }
 
-    // ── 정적 리소스 없음 (favicon.ico 등) — 404, ERROR 로그 제외 ──
+    // ── 정적 리소스 없음 ──────────────────────────────────
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<Void> handleNoResource(NoResourceFoundException ex) {
         log.debug("정적 리소스 없음: {}", ex.getMessage());
         return ResponseEntity.notFound().build();
+    }
+
+    // ── 파일 크기 초과 ─────────────────────────────────────
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
+        log.warn("파일 크기 초과: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(ErrorCode.INVALID_INPUT,
+                        "허용된 파일 크기를 초과했습니다. 최대 20MB까지 업로드 가능합니다."));
+    }
+
+    // ── 쿠키 누락 ──────────────────────────────────────────
+    @ExceptionHandler(MissingRequestCookieException.class)
+    public ResponseEntity<ErrorResponse> handleMissingCookie(MissingRequestCookieException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(ErrorCode.INVALID_INPUT,
+                        "쿠키가 누락되었습니다: " + ex.getCookieName()));
     }
 
     // ── 500 폴백 ──────────────────────────────────────────
@@ -88,18 +103,5 @@ public class GlobalExceptionHandler {
         log.error("예상치 못한 오류 발생", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ErrorResponse.of(ErrorCode.INTERNAL_ERROR));
-    }
-    // -----파일크기 exception
-    @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public ResponseEntity<ErrorResponse> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
-        log.warn("파일 크기 초과: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ErrorResponse.of(ErrorCode.INVALID_INPUT, "허용된 파일 크기를 초과했습니다. 최대 20MB까지 업로드 가능합니다."));
-    }
-    // -----쿠키누락 exception
-    @ExceptionHandler(MissingRequestCookieException.class)
-    public ResponseEntity<ErrorResponse> handleMissingCookie(MissingRequestCookieException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ErrorResponse.of(ErrorCode.INVALID_INPUT, "쿠키가 누락되었습니다: " + ex.getCookieName()));
     }
 }
