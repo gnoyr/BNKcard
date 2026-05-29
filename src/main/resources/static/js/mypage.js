@@ -471,49 +471,79 @@ async function initMain() {
 
 async function initEdit() {
 
-    // user를 try 밖에서도 참조할 수 있도록 블록 스코프 밖에 선언
+    // 초기 로드값 기억 (변경감지용)
+    let _original = {};
     let _user = null;
+
     try {
         _user = await API.get('/api/users/me');
-        document.getElementById('name').value = _user.name ?? '';
-        document.getElementById('currentPhone').textContent = _user.phone ?? '미등록';
-        document.getElementById('job').value = _user.job ?? '';
+
+        document.getElementById('name').value            = _user.name            ?? '';
+        document.getElementById('currentPhone').textContent = _user.phone        ?? '미등록';
+        document.getElementById('job').value             = _user.job             ?? '';
         document.getElementById('incomeLevelCode').value = _user.incomeLevelCode ?? '';
-        // edit.html에 없는 필드는 optional chaining으로 방어
+
         const pushEl = document.getElementById('pushEnabled');
         if (pushEl) pushEl.checked = _user.pushEnabled === 'Y' || _user.pushEnabled === true;
         const mktEl = document.getElementById('marketingAgree');
         if (mktEl) mktEl.checked = _user.marketingAgree === 'Y' || _user.marketingAgree === true;
-        // creditScore: edit.html 필드에 로드 (Bug #5 수정 — try 내부로 이동)
+
         const creditScoreEl = document.getElementById('creditScore');
         if (creditScoreEl) creditScoreEl.value = _user.creditScore ?? '';
+
+        // ✅ 초기값 스냅샷 저장 (변경감지 기준)
+        _original = {
+            name:            _user.name            ?? '',
+            phone:           '',                          // 새 번호 입력란은 항상 빈 상태로 시작
+            job:             _user.job             ?? '',
+            incomeLevelCode: _user.incomeLevelCode ?? '',
+            pushEnabled:     pushEl?.checked ?? false,
+            marketingAgree:  mktEl?.checked  ?? false,
+        };
+
     } catch (err) {
         if (err.status !== 403 && err.status < 500) {
             Toast.error('정보를 불러오지 못했습니다.');
         }
     }
 
-    const form = document.getElementById('editForm');
+    const form      = document.getElementById('editForm');
     const submitBtn = document.getElementById('submitBtn');
-    const modal = document.getElementById('pwConfirmModal');
-    const pwInput = document.getElementById('confirmPwInput');
-    const pwErr = document.getElementById('confirmPwErr');
+    const modal     = document.getElementById('pwConfirmModal');
+    const pwInput   = document.getElementById('confirmPwInput');
+    const pwErr     = document.getElementById('confirmPwErr');
     const confirmBtn = document.getElementById('modalConfirmBtn');
 
+    // pushEnabled/marketingAgree 타입 정확히 처리
     function collectBody(password) {
         const phoneVal = document.getElementById('phone').value.trim();
+        const pushEl   = document.getElementById('pushEnabled');
+        const mktEl    = document.getElementById('marketingAgree');
+
         return {
-            name: document.getElementById('name').value.trim() || undefined,
-            phone: phoneVal || undefined,
-            job: document.getElementById('job').value.trim() || undefined,
+            name:            document.getElementById('name').value.trim() || undefined,
+            phone:           phoneVal || undefined,
+            job:             document.getElementById('job').value || undefined,
             incomeLevelCode: document.getElementById('incomeLevelCode').value || undefined,
-			pushEnabled: document.getElementById('pushEnabled')?.checked ?? undefined,
-			marketingAgree: document.getElementById('marketingAgree')?.checked ?? undefined,
+            // ✅ checkbox는 checked 값(boolean)을 그대로 전송 (서버 Boolean 타입과 일치)
+            pushEnabled:     pushEl  ? pushEl.checked  : undefined,
+            marketingAgree:  mktEl   ? mktEl.checked   : undefined,
             currentPassword: password,
-			creditScore: document.getElementById('creditScore')?.value
-			    ? Number(document.getElementById('creditScore').value)
-			    : undefined,
         };
+    }
+
+    // 변경된 필드가 하나도 없으면 모달을 열지 않고 안내
+    function hasChanges() {
+        const pushEl = document.getElementById('pushEnabled');
+        const mktEl  = document.getElementById('marketingAgree');
+        return (
+            (document.getElementById('name').value.trim()            !== _original.name)           ||
+            (document.getElementById('phone').value.trim()           !== _original.phone)          ||
+            (document.getElementById('job').value                    !== _original.job)            ||
+            (document.getElementById('incomeLevelCode').value        !== _original.incomeLevelCode)||
+            ((pushEl?.checked ?? false)                              !== _original.pushEnabled)    ||
+            ((mktEl?.checked  ?? false)                              !== _original.marketingAgree)
+        );
     }
 
     async function doUpdate(body) {
@@ -521,16 +551,19 @@ async function initEdit() {
         try {
             await API.put('/api/users/me', body);
             Toast.success('정보가 수정되었습니다.');
-			setTimeout(() => { window.location.href = '/mypage'; }, 1000);
+            setTimeout(() => { window.location.href = '/mypage'; }, 1000);
         } catch (err) {
-            // ✅ fieldErrors → 각 필드에 직접 표시
             if (err instanceof ApiError && err.applyFieldErrors(V.setErr)) {
-                // 필드 수준 오류는 이미 V.setErr로 표시됨
-            } else if (err.message?.includes('비밀번호')) {
+                // 필드 수준 오류는 V.setErr로 표시됨
+            } else if (err.code === 'U003' || err.message?.includes('비밀번호')) {
+                // 비밀번호 틀렸을 때 모달을 다시 열어서 에러 표시
+                if (pwInput) pwInput.value = '';
                 if (pwErr) {
-                    pwErr.textContent = err.message;
+                    pwErr.textContent = '비밀번호가 올바르지 않습니다. 다시 입력해주세요.';
                     pwErr.classList.add('show');
                 }
+                modal?.classList.add('open');
+                setTimeout(() => pwInput?.focus(), 150);
             } else if (err.status !== 403 && err.status < 500) {
                 Toast.error(err.message || '수정 중 오류가 발생했습니다.');
             }
@@ -542,13 +575,19 @@ async function initEdit() {
     form.addEventListener('submit', async e => {
         e.preventDefault();
 
-        // 전화번호 입력 시 형식 검증
+        // 변경사항 없으면 안내 토스트만 표시
+        if (!hasChanges()) {
+            Toast.warning('변경된 내용이 없습니다.');
+            return;
+        }
+
+        // 전화번호 형식 검증
         const phoneVal = document.getElementById('phone').value.trim();
         if (phoneVal && !V.setErr('phone', V.phone(phoneVal))) return;
 
-        // 어떤 정보든 변경 시 반드시 비밀번호 확인
+        // 비밀번호 확인 모달 오픈
         if (pwInput) pwInput.value = '';
-        if (pwErr) { pwErr.textContent = ''; pwErr.classList.remove('show'); }
+        if (pwErr)   { pwErr.textContent = ''; pwErr.classList.remove('show'); }
         modal?.classList.add('open');
         setTimeout(() => pwInput?.focus(), 150);
     });
@@ -559,7 +598,7 @@ async function initEdit() {
     });
 
     confirmBtn?.addEventListener('click', async () => {
-        const pw = pwInput?.value ?? '';
+        const pw = pwInput?.value?.trim() ?? '';
         if (!pw) {
             if (pwErr) { pwErr.textContent = '비밀번호를 입력해주세요.'; pwErr.classList.add('show'); }
             return;
@@ -730,18 +769,38 @@ async function initSpending() {
         updateTotal();
     }
 
-    /* ④ 저장 */
+    /* ④ 저장 — 변경된 항목만 필터링해서 전송 */
     document.getElementById('spendingForm')?.addEventListener('submit', async e => {
         e.preventDefault();
-        const submitBtn = document.getElementById('submitBtn');  // spending.html 실제 ID
-        btnLoading(submitBtn, true);
-        try {
-            const items = [...document.querySelectorAll('input[data-money]')].map(inp => ({
-                categoryId: Number(inp.dataset.categoryId),
+        const submitBtn = document.getElementById('submitBtn');
+
+        // 현재 입력값 중 기존값과 달라진 것만 추출
+        const changedItems = [...document.querySelectorAll('input[data-money]')]
+            .filter(inp => {
+                const current  = Number(inp.dataset.raw ?? 0);
+                const original = existingAmounts[inp.dataset.categoryId] ?? 0;
+                return current !== original;
+            })
+            .map(inp => ({
+                categoryId:    Number(inp.dataset.categoryId),
                 monthlyAmount: Number(inp.dataset.raw ?? 0),
             }));
-            await API.put('/api/users/me/spending', { items });
-            Toast.success('소비 패턴이 저장되었습니다.');
+
+        // 변경된 항목이 없으면 요청 자체를 막음
+        if (changedItems.length === 0) {
+            Toast.warning('변경된 내용이 없습니다.');
+            return;
+        }
+
+        btnLoading(submitBtn, true);
+        try {
+            // 변경된 카테고리만 서버에 UPSERT (MERGE INTO 구조이므로 부분 전송 OK)
+            await API.put('/api/users/me/spending', { patterns: changedItems });
+            // 로컬 기준값 갱신 (다음 저장 시 비교 기준으로 사용)
+            changedItems.forEach(item => {
+                existingAmounts[item.categoryId] = item.monthlyAmount;
+            });
+            Toast.success(`${changedItems.length}개 항목이 저장되었습니다.`);
         } catch (err) {
             if (err instanceof ApiError && err.applyFieldErrors(V.setErr)) {
                 // 필드 오류 처리됨
