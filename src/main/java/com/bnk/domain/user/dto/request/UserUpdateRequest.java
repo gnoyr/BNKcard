@@ -1,5 +1,7 @@
 package com.bnk.domain.user.dto.request;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -21,13 +23,18 @@ public class UserUpdateRequest {
     @Size(max = 50)
     private String incomeLevelCode;
 
+    @Min(value = 300, message = "신용점수는 300 이상이어야 합니다.")
+    @Max(value = 900, message = "신용점수는 900 이하여야 합니다.")
+    private Integer creditScore;
+
     private Boolean pushEnabled;
 
     private Boolean marketingAgree;
 
     /**
-     * 비밀번호 재확인 (모든 정보 수정 시 필수)
-     * 서버에서 null 또는 빈 값이면 INVALID_INPUT 예외 발생
+     * 현재 비밀번호 재확인 — 어떤 필드든 하나 이상 변경 시 필수.
+     * null 또는 빈 값이면 서비스에서 INVALID_INPUT (C001) 예외 발생.
+     * BCrypt 불일치 시 INVALID_PASSWORD (U003) 예외 발생.
      */
     private String currentPassword;
 }
