@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseCookie;
@@ -110,77 +111,80 @@ public class AuthService {
 	// F-03 | 회원가입
 	// ──────────────────────────────────────────────────────────────────
 	@Transactional
-	public Long signup(SignupRequest request) {
-		if (userMapper.existsByEmail(request.getEmail()) > 0)
-			throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
-
-		String formattedPhone = MaskingUtil.formatPhone(request.getPhone());
-		if (userMapper.existsByPhone(formattedPhone) > 0)
-			throw new BusinessException(ErrorCode.DUPLICATE_PHONE);
-
-		// 이메일 인증 완료 확인 (KEY_VERIFIED 키에서 "Y" 조회)
-		String verified = tokenStore.get(KEY_VERIFIED + request.getEmail());
-		if (!"Y".equals(verified))
-			throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
-
-		// 필수 약관 동의 검증
-		List<Terms> required = termsMapper.findByPackageType("SIGNUP").stream()
-				.filter(t -> "Y".equals(t.getRequiredYn()))
-				.collect(Collectors.toList());
-		boolean allAgreed = required.stream()
-				.allMatch(t -> request.getAgreedTermsIds().contains(t.getTermsId()));
-		if (!allAgreed)
-			throw new BusinessException(ErrorCode.REQUIRED_TERMS_NOT_AGREED);
-
-		// 생년월일 변환 (yyyyMMdd → LocalDate)
-		LocalDate birthDate = null;
-		if (request.getBirthDate() != null && !request.getBirthDate().isBlank()) {
-			birthDate = LocalDate.parse(request.getBirthDate(), DateTimeFormatter.ofPattern("yyyyMMdd"));
-		}
-
-		
-		User user = User.builder()
-				.email(request.getEmail())
-				.passwordHash(passwordEncoder.encode(request.getPassword()))
-				.name(request.getName())
-				.phone(formattedPhone)
-				.birthDate(birthDate)
-				.job(request.getJob())
-				.incomeLevelCode(request.getIncomeLevelCode())
-				.creditScore(request.getCreditScore())
-				.marketingAgree(request.getMarketingAgree() != null ? request.getMarketingAgree() : "N")
-				.statusCode("ACTIVE")   // [수정] .status() → .statusCode()
-				.build();
-
-		
-		userMapper.insertUser(user);
-
-		// 이메일 인증 완료 플래그 DB 반영
-		userMapper.updateEmailVerified(user.getUserId(), "Y");
-
-		// 약관 동의 이력 배치 저장
-		
-		List<UserTermsAgreement> agreements = request.getAgreedTermsIds().stream()
-				.map(tid -> UserTermsAgreement.builder()
-						.userId(user.getUserId())
-						.termsId(tid)
-						.agreedYn("Y")
-						.agreementAction("AGREED")
-						.agreedVersion(required.stream()
-								.filter(t -> t.getTermsId().equals(tid))
-								.map(Terms::getVersion)
-								.findFirst()
-								.orElse("1.0"))
-						.build())
-				.collect(Collectors.toList());
-		userTermsAgreementMapper.insertAgreements(agreements);
-
-		// 인증 완료 플래그 제거 (회원가입 완료 후 재사용 방지)
-		tokenStore.delete(KEY_VERIFIED + request.getEmail());
-
-		log.info("[회원가입] userId={}, email={}", user.getUserId(), user.getEmail());
-		return user.getUserId();
-	}
+    public Long signup(SignupRequest request) {
+        if (userMapper.existsByEmail(request.getEmail()) > 0)
+            throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+ 
+        String formattedPhone = MaskingUtil.formatPhone(request.getPhone());
+ 
+        if (userMapper.existsByPhone(formattedPhone) > 0)
+            throw new BusinessException(ErrorCode.DUPLICATE_PHONE);
+ 
+        if (tokenStore.get(KEY_VERIFIED + request.getEmail()) == null)
+            throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
+ 
+        // 필수 약관 체크
+        List<Terms> signupTerms = termsMapper.findByPackageType("SIGNUP");
+        Set<Long> requiredIds = signupTerms.stream()
+                .filter(t -> "Y".equals(t.getRequiredYn()))
+                .map(Terms::getTermsId)
+                .collect(Collectors.toSet());
+ 
+        if (!request.getAgreedTermsIds().containsAll(requiredIds))
+            throw new BusinessException(ErrorCode.REQUIRED_TERMS_NOT_AGREED);
+ 
+        // birthDate "yyyy-MM-dd" · "yyyyMMdd" 두 포맷 모두 파싱
+        LocalDate birthDate = null;
+        if (request.getBirthDate() != null && !request.getBirthDate().isBlank()) {
+            String raw = request.getBirthDate().replace("-", ""); // "2000-01-01" → "20000101"
+            birthDate = LocalDate.parse(raw, DateTimeFormatter.BASIC_ISO_DATE);
+        }
+ 
+        // marketingAgree Boolean → "Y"/"N" 변환
+        String marketingAgreeYN = Boolean.TRUE.equals(request.getMarketingAgree()) ? "Y" : "N";
+ 
+        // ── User INSERT ──────────────────────────────────────────────
+        User user = User.builder()
+                .email(request.getEmail())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .name(request.getName())
+                .phone(formattedPhone)
+                .birthDate(birthDate)
+                .job(request.getJob())
+                .incomeLevelCode(request.getIncomeLevelCode())
+                .creditScore(request.getCreditScore())
+                .marketingAgree(marketingAgreeYN)   // ✅ "Y" / "N" 보장
+                .build();
+ 
+        userMapper.insertUser(user);
+ 
+        // is_email_verified = 'Y' 로 즉시 업데이트
+        userMapper.updateEmailVerified(user.getUserId(), "Y");
+ 
+        // 약관 동의 저장
+        List<UserTermsAgreement> agreements = signupTerms.stream()
+                .filter(t -> request.getAgreedTermsIds().contains(t.getTermsId()))
+                .map(t -> UserTermsAgreement.builder()
+                        .userId(user.getUserId())
+                        .termsId(t.getTermsId())
+                        .agreedYn("Y")
+                        .agreementAction("AGREE")
+                        .agreedVersion(t.getVersion())
+                        .agreementChannel("WEB")
+                        .agreementSource("SIGNUP")
+                        .agreedAt(LocalDateTime.now(ZoneId.of("Asia/Seoul")))
+                        .build())
+                .collect(Collectors.toList());
+ 
+        if (!agreements.isEmpty()) {
+            userTermsAgreementMapper.insertAgreements(agreements);
+        }
+ 
+        tokenStore.delete(KEY_VERIFIED + request.getEmail());
+ 
+        log.info("[회원가입] 완료: userId={}, email={}", user.getUserId(), request.getEmail());
+        return user.getUserId();
+    }
 
 	// ──────────────────────────────────────────────────────────────────
 	// F-04 | 로그인
