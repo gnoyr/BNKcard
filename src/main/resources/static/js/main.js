@@ -355,10 +355,12 @@ function renderCompareModal(cards) {
       💡 <span style="color:#00875a;font-weight:600;">초록색</span> = 연회비 최저 &nbsp;|&nbsp;
          <span style="color:#003087;font-weight:600;">★</span> = 혜택 최다
     </div>
-    <table class="compare-table">
-      <thead><tr><th>항목</th>${headerCells}</tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
+	<div style="overflow-x:auto;">
+	    <table class="compare-table">
+	      <thead><tr><th>항목</th>${headerCells}</tr></thead>
+	      <tbody>${rows}</tbody>
+	    </table>
+	</div>
     <p style="margin-top:16px;font-size:12px;color:#999;text-align:right;">카드를 제거하면 다시 비교하기 버튼을 눌러주세요.</p>`;
 }
 
