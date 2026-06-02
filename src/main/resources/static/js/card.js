@@ -1,17 +1,26 @@
-function getCardId() {
-  const match = location.pathname.match(/^\/card\/(\d+)$/);
-  if (match) return match[1];
+/**
+ * card.js  |  BNK 부산은행 카드 상세 페이지
+ *
+ * 원본 기준 복원 + 최소 수정:
+ *   1. 시뮬레이션 섹션 제거 (당장 불필요)
+ *   2. btn-sticky-trigger: .onclick → addEventListener
+ *   3. Escape 키로 img-modal 닫기 추가
+ *   나머지는 원본 그대로 유지 (switchTab, onclick 등)
+ */
 
-  // 기존 URL 임시 호환: /card/index.html?cardId=...
-  return new URLSearchParams(location.search).get('cardId');
+/* ── cardId 파싱 ── */
+function getCardId() {
+    const match = location.pathname.match(/^\/card\/(\d+)$/);
+    if (match) return match[1];
+    return new URLSearchParams(location.search).get('cardId');
 }
 
 const cardId = getCardId();
 
 if (!cardId) {
-  document.getElementById('main-wrap').innerHTML =
-    '<div class="loading-wrap"><p>잘못된 접근입니다. cardId가 없습니다.</p><br><a href="/">메인으로</a></div>';
-  throw new Error('no cardId');
+    document.getElementById('main-wrap').innerHTML =
+        '<div class="loading-wrap"><p>잘못된 접근입니다. cardId가 없습니다.</p><br><a href="/">메인으로</a></div>';
+    throw new Error('no cardId');
 }
 
 async function api(url) {
@@ -43,17 +52,16 @@ function benefitTypeLabel(t) {
 async function loadCard() {
     const card = await api(`/api/cards/${cardId}`);
 
-  if (!card) {
-    document.getElementById('main-wrap').innerHTML =
-      '<div class="loading-wrap"><p>카드 정보를 불러올 수 없습니다.</p><br><a href="/">메인으로</a></div>';
-    return;
-  }
+    if (!card) {
+        document.getElementById('main-wrap').innerHTML =
+            '<div class="loading-wrap"><p>카드 정보를 불러올 수 없습니다.</p><br><a href="/">메인으로</a></div>';
+        return;
+    }
 
-  const termsWithFiles = await loadTermsFiles(card.termsFiles ?? []);
-  renderPage(card, termsWithFiles);
-  
-  initStickyObserver(card);
-  initImageSlider();
+    const termsWithFiles = await loadTermsFiles(card.termsFiles ?? []);
+    renderPage(card, termsWithFiles);
+    initStickyObserver(card);
+    initImageSlider();
 }
 
 async function loadTermsFiles(termsList) {
@@ -87,8 +95,8 @@ function renderPage(card, termsWithFiles) {
                 `).join('')}
               </div>
               ${validImages.length > 1 ? `
-                <button class="slider-btn prev" onclick="moveSlider(-1)">‹</button>
-                <button class="slider-btn next" onclick="moveSlider(1)">›</button>
+                <button class="slider-btn prev" onclick="moveSlider(-1)">&#x2039;</button>
+                <button class="slider-btn next" onclick="moveSlider(1)">&#x203a;</button>
               ` : ''}
             ` : `<div class="card-image-placeholder">${card.cardName}</div>`}
           </div>
@@ -131,7 +139,7 @@ function renderPage(card, termsWithFiles) {
     </section>
 
     <section class="benefit-section">
-      <div class="section-heading">💳 상세 혜택 정보</div>
+      <div class="section-heading">&#x1F4B3; 상세 혜택 정보</div>
       ${renderBenefitsRaw(card.benefits ?? [])}
     </section>
 
@@ -155,12 +163,11 @@ function renderPage(card, termsWithFiles) {
   `;
 }
 
-// ── [복원] 원래 방식대로 전체 리스트를 그대로 격자 노출하는 함수 ──
+// ── 혜택 그리드 ──
 function renderBenefitsRaw(benefits) {
     if (!benefits.length) {
         return '<div class="no-benefit">등록된 혜택 정보가 없습니다.</div>';
     }
-
     return `
     <div class="benefit-grid">
       ${benefits.map(b => {
@@ -181,63 +188,12 @@ function renderBenefitsRaw(benefits) {
   `;
 }
 
-// ── 이미지 슬라이더 내부 구동 제어 엔진 ──
-let currentSlide = 0;
-function initImageSlider() {
-    currentSlide = 0;
-}
-
-function moveSlider(direction) {
-    const track = document.getElementById('slider-track');
-    const wrapper = document.querySelector('.card-image-wrap'); // 기준이 되는 부모 뷰포트
-    const slides = document.querySelectorAll('.slider-slide');
-    const dots = document.querySelectorAll('.slider-dot');
-
-    if (!track || !wrapper || slides.length === 0) return;
-
-    currentSlide += direction;
-    if (currentSlide < 0) currentSlide = slides.length - 1;
-    if (currentSlide >= slides.length) currentSlide = 0;
-
-    // 감싸고 있는 뷰포트 너비를 기준으로 정확하게 이동 거리를 계산합니다.
-    const slideWidth = wrapper.clientWidth;
-    track.style.transform = `translateX(${-currentSlide * slideWidth}px)`;
-
-    dots.forEach((dot, idx) => {
-        dot.classList.toggle('active', idx === currentSlide);
-    });
-}
-
-// ── 스티키 바 IntersectionObserver 핵심 엔진 설계 ──
-function initStickyObserver(card) {
-    const mainApplyBtn = document.getElementById('main-apply-btn');
-    const stickyBar = document.getElementById('sticky-apply-bar');
-
-    if (!mainApplyBtn || !stickyBar) return;
-
-    document.getElementById('sticky-card-name').innerText = card.cardName;
-    document.getElementById('sticky-card-fee').innerText = `국내 연회비: ${fmtFee(card.annualFeeDomestic)}`;
-    document.getElementById('btn-sticky-trigger').onclick = () => applyCard(card.cardId);
-
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (!entry.isIntersecting) {
-                stickyBar.classList.add('show');
-            } else {
-                stickyBar.classList.remove('show');
-            }
-        });
-    }, { threshold: 0 });
-
-    observer.observe(mainApplyBtn);
-}
-
-// ── 기존 탭 렌더러 함수군 ──
+// ── 탭 렌더러 (원본 그대로) ──
 function renderTabProduct(card) {
     const introContents = (card.contents ?? []).filter(c => ['INTRO', 'GUIDE'].includes(c.contentType));
     if (!introContents.length) {
         return `
-      <div class="tab-content-title">商品 개요</div>
+      <div class="tab-content-title">상품 개요</div>
       <table class="info-table">
         <tr><th>카드명</th><td>${card.cardName}</td></tr>
         <tr><th>카드사</th><td>${card.companyName ?? 'BNK부산은행'}</td></tr>
@@ -278,11 +234,8 @@ function renderTabTerms(termsWithFiles) {
     if (!termsWithFiles.length) return '<p style="color:#bbb;text-align:center;padding:40px">연결된 약관 정보가 없습니다.</p>';
 
     return termsWithFiles.map(t => {
-        // PDF 파일과 이미지 파일들을 각각 분류합니다.
         const pdfFile = t.files?.find(f => f.fileType === 'PDF');
         const imgFiles = t.files?.filter(f => f.fileType === 'IMAGE') ?? [];
-
-        // 대표로 노출할 썸네일 이미지 (이미지가 있다면 첫 번째 이미지를 사용, 없으면 기본 배경)
         const thumbSrc = imgFiles.length > 0 ? imgFiles[0].filePath : '';
 
         return `
@@ -327,6 +280,7 @@ function renderTabNotice(_card) {
     </table>
   `;
 }
+
 function switchTab(btn, tabId) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -343,90 +297,64 @@ function closeImgModal() {
 }
 
 function applyCard(cardId) {
-
-  const ok = confirm('카드 발급을 신청하시겠습니까?\n로그인이 필요합니다.');
-  if (ok) location.href = `/login?next=${encodeURIComponent(`/card/${cardId}`)}`;
+    const ok = confirm('카드 발급을 신청하시겠습니까?\n로그인이 필요합니다.');
+    if (ok) location.href = `/login?next=${encodeURIComponent(`/card/${cardId}`)}`;
 }
 
-// ══════════════════════════════════════════════
-//  혜택 시뮬레이션
-// ══════════════════════════════════════════════
-async function simulate() {
-  const amountInput = document.getElementById('sim-amount');
-  const resultDiv   = document.getElementById('sim-result');
-  const amount      = Number(amountInput?.value ?? 0);
-
-  if (!amount || amount <= 0) {
-    resultDiv.innerHTML = '<p style="color:#e65100;">월 소비금액을 입력해주세요.</p>';
-    return;
-  }
-
-  resultDiv.innerHTML = '<p style="color:#888;">계산 중...</p>';
-
-  // POST /api/cards/simulate
-  // categoryAmounts: 모든 카테고리에 동일 금액 입력
-  // (카테고리별 입력 UI 없으므로 전체 동일 금액으로 계산)
-  const res = await fetch('/api/cards/simulate', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      cardIds: [Number(cardId)],
-      categoryAmounts: buildCategoryAmounts(amount)
-    })
-  });
-
-  const json = await res.json().catch(() => null);
-  const data = json?.data?.[0];
-
-  if (!data) {
-    resultDiv.innerHTML = '<p style="color:#e65100;">시뮬레이션 데이터를 불러올 수 없습니다.</p>';
-    return;
-  }
-
-  const total      = data.totalBenefitAmount ?? 0;
-  const breakdowns = data.benefitBreakdown ?? [];
-
-  resultDiv.innerHTML = `
-    <div class="sim-total">
-      월 예상 혜택금액
-      <span class="sim-amount-big">
-        ${total.toLocaleString()}원
-      </span>
-    </div>
-    ${breakdowns.length ? `
-      <div class="sim-breakdown">
-        ${breakdowns.map(b => `
-          <div class="sim-item">
-            <span class="sim-cat">${b.categoryName ?? '-'}</span>
-            <span class="sim-val">${(b.benefitAmount ?? 0).toLocaleString()}원</span>
-          </div>`).join('')}
-      </div>` : ''}
-    <p class="sim-note">
-      ※ 월 소비금액 ${amount.toLocaleString()}원 기준 예상치이며,
-         실제 혜택은 가맹점·이용조건에 따라 다를 수 있습니다.
-    </p>`;
+// ── 이미지 슬라이더 ──
+let currentSlide = 0;
+function initImageSlider() {
+    currentSlide = 0;
 }
 
-// 카테고리별 소비금액 Map 생성
-// 카테고리 ID 1~23 전체에 동일 금액 배분
-function buildCategoryAmounts(totalAmount) {
-  const map = {};
-  // state.categories가 있으면 실제 카테고리 ID 사용
-  const cats = window._simCategoryIds ?? [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23];
-  cats.forEach(id => { map[id] = totalAmount; });
-  return map;
+function moveSlider(direction) {
+    const track = document.getElementById('slider-track');
+    const wrapper = document.querySelector('.card-image-wrap');
+    const slides = document.querySelectorAll('.slider-slide');
+    const dots = document.querySelectorAll('.slider-dot');
+
+    if (!track || !wrapper || slides.length === 0) return;
+
+    currentSlide += direction;
+    if (currentSlide < 0) currentSlide = slides.length - 1;
+    if (currentSlide >= slides.length) currentSlide = 0;
+
+    const slideWidth = wrapper.clientWidth;
+    track.style.transform = `translateX(${-currentSlide * slideWidth}px)`;
+
+    dots.forEach((dot, idx) => {
+        dot.classList.toggle('active', idx === currentSlide);
+    });
 }
 
-// 카테고리 ID 미리 로드 (카드 상세 진입 시 한 번만)
-async function preloadCategoryIds() {
-  try {
-    const res  = await fetch('/api/cards/categories', { credentials: 'include' });
-    const json = await res.json();
-    if (json?.data?.length) {
-      window._simCategoryIds = json.data.map(c => c.categoryId);
-    }
-  } catch { /* 실패 시 기본값 사용 */ }
+// ── 스티키 바 ──
+function initStickyObserver(card) {
+    const mainApplyBtn = document.getElementById('main-apply-btn');
+    const stickyBar = document.getElementById('sticky-apply-bar');
+
+    if (!mainApplyBtn || !stickyBar) return;
+
+    document.getElementById('sticky-card-name').innerText = card.cardName;
+    document.getElementById('sticky-card-fee').innerText = `국내 연회비: ${fmtFee(card.annualFeeDomestic)}`;
+    document.getElementById('btn-sticky-trigger')
+        ?.addEventListener('click', () => applyCard(card.cardId));
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (!entry.isIntersecting) {
+                stickyBar.classList.add('show');
+            } else {
+                stickyBar.classList.remove('show');
+            }
+        });
+    }, { threshold: 0 });
+
+    observer.observe(mainApplyBtn);
 }
+
+// ── Escape 키로 이미지 모달 닫기 ──
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeImgModal();
+});
 
 loadCard();

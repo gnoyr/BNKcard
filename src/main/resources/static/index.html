@@ -4,17 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BNK 부산은행 카드</title>
- 
   <link rel="stylesheet" href="/css/components.css">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/chatbot.css">
   <link rel="stylesheet" href="/css/teal-theme.css">
-  
   <link rel="icon" href="data:,">
 </head>
 <body>
 
-<!-- ── 공통 헤더 마운트 포인트 (header.js가 자동 주입) ── -->
 <div id="app-header"></div>
 
 <section class="hero">
@@ -22,15 +19,11 @@
   <p>BNK 부산은행의 다양한 카드 혜택을 비교하고 선택하세요</p>
   <div class="search-bar">
     <input type="text" id="hero-search" placeholder="카드명, 혜택 검색..." autocomplete="off">
-    <button onclick="openSearchModal()">검색</button>
+    <button id="btn-hero-search">검색</button>
   </div>
   <div class="popular-keywords" id="popular-keywords"><span>인기 :</span></div>
-  <div style="margin-top:20px;">
-    <button onclick="openSurvey()"
-      style="background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.4);
-             border-radius:50px;padding:10px 24px;font-size:14px;font-weight:600;cursor:pointer;">
-      🎯 내 소비 스타일로 카드 추천받기
-    </button>
+  <div class="hero-survey-wrap">
+    <button class="btn-survey" id="btn-open-survey">🎯 내 소비 스타일로 카드 추천받기</button>
   </div>
 </section>
 
@@ -45,66 +38,61 @@
 <section class="section" id="card-list">
   <div class="section-title">💳 전체 카드</div>
   <div class="section-sub">카드 유형과 혜택 카테고리로 필터링하세요</div>
-
   <div class="type-tab-bar">
-    <button class="type-tab active" data-type="" onclick="selectCardType(this,'')">전체 카드</button>
-    <button class="type-tab" data-type="CREDIT" onclick="selectCardType(this,'CREDIT')">신용카드</button>
-    <button class="type-tab" data-type="CHECK"  onclick="selectCardType(this,'CHECK')">체크카드</button>
-    <button class="type-tab" data-type="PREPAID" onclick="selectCardType(this,'PREPAID')">선불카드</button>
+    <button class="type-tab active" data-type="">전체 카드</button>
+    <button class="type-tab" data-type="CREDIT">신용카드</button>
+    <button class="type-tab" data-type="CHECK">체크카드</button>
+    <button class="type-tab" data-type="PREPAID">선불카드</button>
   </div>
-
   <div class="category-bar" id="category-bar">
-    <div class="loading-spinner" style="width:20px;height:20px;border-width:2px;margin:8px 0;"></div>
+    <div class="loading-spinner loading-spinner--sm"></div>
   </div>
-
   <div class="filter-row">
-    <input type="text" id="filter-q" placeholder="카드명 검색..."
-           onkeydown="if(event.key==='Enter') loadCards(0)" style="width:220px">
-    <button onclick="loadCards(0)" style="padding:8px 18px;background:#003087;color:#fff;border-radius:8px;font-size:13px;">검색</button>
-    <button onclick="resetFilter()" style="padding:8px 14px;background:#f0f2f6;color:#666;border-radius:8px;font-size:13px;">초기화</button>
+    <input type="text" id="filter-q" placeholder="카드명 검색...">
+    <button class="btn-filter-search" id="btn-filter-search">검색</button>
+    <button class="btn-filter-reset"  id="btn-filter-reset">초기화</button>
     <span class="filter-count" id="filter-count"></span>
   </div>
-
+  <div class="cat-selected-info" id="cat-selected-info"></div>
   <div class="card-grid" id="card-grid">
-    <div class="loading-wrap" style="grid-column:1/-1"><div class="loading-spinner"></div><p>카드를 불러오는 중...</p></div>
+    <div class="loading-wrap loading-wrap--grid">
+      <div class="loading-spinner"></div><p>카드를 불러오는 중...</p>
+    </div>
   </div>
   <div class="pagination" id="pagination"></div>
 </section>
 
-<!-- ── 검색 오버레이 ── -->
-<div class="search-overlay" id="search-overlay" onclick="handleOverlayClick(event)">
+<!-- 검색 오버레이 -->
+<div class="search-overlay" id="search-overlay">
   <div class="search-modal">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <strong style="font-size:16px;">카드 검색</strong>
-      <button onclick="closeSearchModal()" style="font-size:20px;color:#888;">✕</button>
+    <div class="search-modal__header">
+      <strong class="search-modal__title">카드 검색</strong>
+      <button class="search-modal__close" id="btn-close-search" aria-label="닫기">✕</button>
     </div>
     <div class="modal-search-bar">
-      <input type="text" id="modal-search-input" placeholder="카드명, 혜택 검색..."
-             onkeydown="if(event.key==='Enter') runModalSearch()">
-      <button onclick="runModalSearch()">검색</button>
+      <input type="text" id="modal-search-input" placeholder="카드명, 혜택 검색..." autocomplete="off">
+      <button id="btn-modal-search">검색</button>
     </div>
     <div class="modal-section-title">추천 검색어</div>
     <div class="suggest-list" id="suggest-list"></div>
-    <div class="modal-section-title">혜택 카테고리
-      <span style="font-size:11px;color:#aaa;font-weight:400;"></span>
-    </div>
+    <div class="modal-section-title">혜택 카테고리</div>
     <div class="modal-cat-grid" id="modal-cat-grid">
-      <div class="loading-spinner" style="width:20px;height:20px;border-width:2px;grid-column:1/-1;margin:8px auto;"></div>
+      <div class="loading-spinner loading-spinner--sm loading-spinner--center"></div>
     </div>
     <div class="modal-cat-selected" id="modal-cat-selected"></div>
-    <div id="modal-results-wrap" style="display:none">
+    <div class="modal-results-wrap" id="modal-results-wrap">
       <div class="modal-section-title" id="modal-result-title">검색 결과</div>
       <div id="modal-results"></div>
     </div>
   </div>
 </div>
 
-<!-- ── 비교 모달 ── -->
-<div class="compare-modal-overlay" id="compare-modal-overlay" onclick="handleCompareOverlayClick(event)">
+<!-- 비교 모달 -->
+<div class="compare-modal-overlay" id="compare-modal-overlay">
   <div class="compare-modal">
     <div class="compare-modal-header">
       <span class="compare-modal-title">📊 카드 비교</span>
-      <button class="compare-modal-close" onclick="closeCompareModal()">✕</button>
+      <button class="compare-modal-close" id="btn-close-compare" aria-label="닫기">✕</button>
     </div>
     <div class="compare-modal-body" id="compare-modal-body">
       <div class="compare-empty">비교할 카드를 선택하세요 (최대 3개)</div>
@@ -112,33 +100,33 @@
   </div>
 </div>
 
-<!-- ── 설문 모달 ── -->
-<div class="survey-overlay" id="survey-overlay" onclick="handleSurveyOverlay(event)">
-  <div class="survey-modal" onclick="event.stopPropagation()">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
-      <div>
-        <div style="font-size:12px;color:#888;margin-bottom:4px;" id="survey-step-label">1 / 3</div>
-        <div style="font-size:18px;font-weight:700;color:#003087;" id="survey-question"></div>
+<!-- 설문 모달 -->
+<div class="survey-overlay" id="survey-overlay">
+  <div class="survey-modal">
+    <div class="survey-modal__header">
+      <div class="survey-modal__meta">
+        <div class="survey-step-label" id="survey-step-label">1 / 3</div>
+        <div class="survey-question" id="survey-question"></div>
       </div>
-      <button onclick="closeSurvey()" style="font-size:22px;color:#aaa;padding:0 4px;">✕</button>
+      <button class="survey-close" id="btn-close-survey" aria-label="닫기">✕</button>
     </div>
-    <div style="height:4px;background:#f0f2f6;border-radius:4px;margin-bottom:24px;">
-      <div id="survey-progress" style="height:4px;background:#003087;border-radius:4px;width:33%;transition:width .3s;"></div>
+    <div class="survey-progress-bar">
+      <div class="survey-progress-fill" id="survey-progress"></div>
     </div>
-    <div id="survey-options" style="display:flex;flex-direction:column;gap:10px;"></div>
+    <div class="survey-options" id="survey-options"></div>
   </div>
 </div>
 
-<!-- ── 비교 카트 FAB ── -->
-<div class="cart-toggle" onclick="toggleCart()">비교<br>카트</div>
+<!-- 비교 카트 FAB -->
+<button class="cart-toggle" id="btn-cart-toggle" aria-label="비교 카트 열기">비교<br>카트</button>
 <div class="compare-cart" id="compare-cart">
   <div class="cart-title">비교 카트 <span id="cart-count">(0/3)</span></div>
   <div id="cart-items"><div class="cart-empty">카드를 추가하세요</div></div>
-  <button class="btn-cart-compare" id="btn-do-compare" onclick="doCompare()" disabled>비교하기</button>
+  <button class="btn-cart-compare" id="btn-do-compare" disabled>비교하기</button>
 </div>
 <div class="toast" id="toast"></div>
 
-<!-- ── AI 챗봇 위젯 ── -->
+<!-- AI 챗봇 위젯 -->
 <div id="bnk-ai-chatbot"
      data-api-url="/api/chat"
      data-bot-image="https://objectstorage.ap-chuncheon-1.oraclecloud.com/n/axa1llzzkj5q/b/terms/o/images%2Fimageshachi-fotor-2026052617514.png">
@@ -148,7 +136,7 @@
   <div class="chat-window">
     <div class="chat-header">
       <span>BNK AI 챗봇</span>
-      <button class="chat-close" type="button">✕</button>
+      <button class="chat-close" type="button" aria-label="챗봇 닫기">✕</button>
     </div>
     <div class="chat-messages"></div>
     <form class="chat-input-area">
@@ -158,7 +146,7 @@
   </div>
 </div>
 
-<!-- ── 공통 푸터 ── -->
+<!-- 공통 푸터 -->
 <footer class="site-footer">
   <div class="site-footer__inner">
     <a href="/" class="site-footer__logo">
@@ -183,11 +171,11 @@
   </div>
 </footer>
 
-<!-- ── 스크립트 ── -->
+<!-- 스크립트 로드 순서: utils → header → main → chatbot → widget-toggle -->
+<script src="/js/utils.js"></script>
 <script src="/js/header.js"></script>
 <script src="/js/main.js"></script>
 <script src="/js/chatbot.js"></script>
 <script src="/js/widget-toggle.js"></script>
-
 </body>
 </html>

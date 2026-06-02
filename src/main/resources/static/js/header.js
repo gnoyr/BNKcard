@@ -194,18 +194,12 @@
      3. Refresh Token 재발급 시도 (자동)
   ──────────────────────────────────────────────────────────────── */
   async function tryRefresh() {
-    try {
-      const res = await fetch('/api/auth/refresh', {
-        method: 'POST',
-        credentials: 'include',
-      });
-      if (res.ok) {
-        sessionStorage.setItem(CACHE_KEY_LOGIN_AT, String(Date.now()));
-      }
-      return res.ok;
-    } catch {
-      return false;
+    // BnkAPI: 네트워크·5xx 오류는 내부에서 Toast 처리 후 { ok:false, status:0 } 반환
+    const res = await BnkAPI.post('/api/auth/refresh');
+    if (res.ok) {
+      sessionStorage.setItem(CACHE_KEY_LOGIN_AT, String(Date.now()));
     }
+    return res.ok;
   }
 
   /* ─────────────────────────────────────────────────────────────
@@ -309,7 +303,7 @@
 
       if (remaining <= 0) {
         stopTokenTimer();
-        showToast('세션이 만료되었습니다. 다시 로그인해 주세요.', 'error');
+        BnkToast.error('세션이 만료되었습니다. 다시 로그인해 주세요.');
         setTimeout(() => {
           sessionStorage.removeItem(CACHE_KEY_NAME);
           sessionStorage.removeItem(CACHE_KEY_LOGIN_AT);
@@ -347,21 +341,18 @@
      6. 토큰 재발급 (수동)
   ──────────────────────────────────────────────────────────────── */
   async function manualRefresh() {
-    try {
-      const res = await fetch('/api/auth/refresh', {
-        method: 'POST',
-        credentials: 'include',
-      });
-      if (res.ok) {
-        sessionStorage.setItem(CACHE_KEY_LOGIN_AT, String(Date.now()));
-        startTokenTimer();
-        showToast('토큰이 재발급되었습니다.', 'success');
-      } else {
-        showToast('재발급 실패. 다시 로그인해 주세요.', 'error');
-        setTimeout(() => location.replace(LOGIN_URL), 1500);
-      }
-    } catch {
-      showToast('서버에 연결할 수 없습니다.', 'error');
+    // BnkAPI: 네트워크·5xx 오류는 내부에서 Toast 처리 후 { ok:false, status:0 } 반환
+    const res = await BnkAPI.post('/api/auth/refresh');
+    if (res.ok) {
+      sessionStorage.setItem(CACHE_KEY_LOGIN_AT, String(Date.now()));
+      startTokenTimer();
+      BnkToast.success('토큰이 재발급되었습니다.');
+    } else if (res.status !== 0) {
+      // status 0 은 BnkAPI가 이미 네트워크 오류 Toast를 표시함
+      // A005: Refresh Token이 유효하지 않거나 만료된 경우
+      const msg = BnkError.extract(res.data, '재발급 실패. 다시 로그인해 주세요.');
+      BnkToast.error(msg);
+      setTimeout(() => location.replace(LOGIN_URL), 1500);
     }
   }
 
@@ -392,26 +383,10 @@
   }
 
   /* ─────────────────────────────────────────────────────────────
-     8. 토스트 알림
+     8. 토스트 알림 — BnkToast(utils.js) 위임
   ──────────────────────────────────────────────────────────────── */
-  function showToast(msg, type = 'info') {
-    let container = document.getElementById('toast-container');
-    if (!container) {
-      container = document.createElement('div');
-      container.id = 'toast-container';
-      document.body.appendChild(container);
-    }
-    const toast = document.createElement('div');
-    toast.className = `toast toast--${type}`;
-    toast.textContent = msg;
-    container.appendChild(toast);
-    requestAnimationFrame(() => toast.classList.add('toast--show'));
-    setTimeout(() => {
-      toast.classList.remove('toast--show');
-      setTimeout(() => toast.remove(), 300);
-    }, 3000);
-  }
-
+  // BnkToast가 utils.js에서 전역으로 제공되므로 내부 구현 불필요.
+  // 하위 호환: 외부에서 window.showToast(msg, type) 사용 시 BnkToast로 위임.
   /* ─────────────────────────────────────────────────────────────
      9. XSS 방어용 이스케이프
   ──────────────────────────────────────────────────────────────── */
@@ -429,5 +404,6 @@
   ──────────────────────────────────────────────────────────────── */
   injectHeader();         // 헤더 뼈대 즉시 삽입 (FOUC 방지)
   checkAuth();            // 인증 확인 → renderNav + renderFooter 호출 (비동기)
-  window.showToast = showToast;
+  // 하위 호환: 외부 페이지에서 window.showToast(msg, type) 사용 가능하도록 위임
+  window.showToast = (msg, type = 'info') => BnkToast[type]?.(msg) ?? BnkToast.info(msg);
 })();
