@@ -15,10 +15,14 @@
 'use strict';
 
 /* ================================================================
-   §1. 공통 유틸
+   §1. 공통 유틸 — utils.js(BnkAPI·BnkError·BnkToast·BnkDOM) 브릿지
+   ================================================================
+   utils.js 가 먼저 로드된다는 전제 하에
+   mypage.js 내부에서 쓰던 이름(API·Toast·ApiError)을
+   utils.js 전역 객체로 위임한다.
    ================================================================ */
 
-/* ── ApiError — GlobalExceptionHandler 응답 구조를 그대로 전달 ── */
+/* ── ApiError ── utils.js BnkError 기반으로 재구현 ── */
 class ApiError extends Error {
     /**
      * @param {object} json  GlobalExceptionHandler ErrorResponse
@@ -56,113 +60,48 @@ class ApiError extends Error {
     }
 }
 
-/* ── API ── */
+/* ── API — BnkAPI 래퍼 (utils.js 위임)
+   BnkAPI는 { ok, status, data } 를 반환한다.
+   mypage.js 내부는 throw 기반 패턴을 쓰므로
+   아래 래퍼에서 !ok 일 때 ApiError로 변환해 준다.
+   ── */
 const API = (() => {
-    const LOGIN = '/login';
-
     async function req(method, url, body) {
-        const opts = {
-            method,
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-        };
-        if (body) opts.body = JSON.stringify(body);
-
         let res;
         try {
-            res = await fetch(url, opts);
+            res = await BnkAPI[method.toLowerCase()](url, body);
         } catch {
-            // 네트워크 단절
-            Toast.error('서버에 연결할 수 없습니다. 네트워크를 확인해 주세요.');
+            // BnkAPI 내부에서 이미 Toast 처리 후 { ok:false, status:0 } 반환
             throw new ApiError({}, 0);
         }
 
-        // 401 — refresh 시도 후 재요청
-        if (res.status === 401) {
-            if (await _refresh()) {
-                try { res = await fetch(url, opts); }
-                catch { Toast.error('서버에 연결할 수 없습니다.'); throw new ApiError({}, 0); }
-            } else {
-                window.location.href = LOGIN;
+        if (!res.ok) {
+            // 401: header.js 가 refresh 처리하므로 여기선 로그인 리다이렉트만
+            if (res.status === 401) {
+                window.location.href = '/login';
                 throw new ApiError({ message: '인증이 만료되었습니다.' }, 401);
             }
+            // 403/5xx: BnkAPI에서 이미 Toast 처리됨
+            // data 필드에 서버 ErrorResponse 가 들어 있음
+            const errJson = res.data ?? {};
+            throw new ApiError(errJson, res.status);
         }
 
-        const json = await res.json().catch(() => ({}));
-
-        // 403 — 권한 없음: Toast 표시 후 throw
-        if (res.status === 403) {
-            const msg = json.message ?? '접근 권한이 없습니다.';
-            Toast.error(msg);
-            throw new ApiError(json, 403);
-        }
-
-        // 5xx — 서버 오류: Toast 표시 후 throw
-        if (res.status >= 500) {
-            Toast.error('서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
-            throw new ApiError(json, res.status);
-        }
-
-        // 기타 4xx — caller가 처리하도록 ApiError throw
-        if (!res.ok) {
-            throw new ApiError(json, res.status);
-        }
-
-        return json.data;
-    }
-
-    async function _refresh() {
-        try {
-            const res = await fetch('/api/auth/refresh', {
-                method: 'POST', credentials: 'include',
-            });
-            if (res.ok) {
-                sessionStorage.setItem('bnk_login_at', String(Date.now()));
-                return true;
-            }
-            return false;
-        } catch { return false; }
+        // 성공: 서버 응답의 data 필드 반환 (ApiResponse.data)
+        return res.data?.data ?? res.data;
     }
 
     return {
-        get: url => req('GET', url),
-        post: (url, b) => req('POST', url, b),
-        put: (url, b) => req('PUT', url, b),
-        patch: (url, b) => req('PATCH', url, b),
-        del: url => req('DELETE', url),
+        get:   url        => req('get',   url),
+        post:  (url, b)   => req('post',  url, b),
+        put:   (url, b)   => req('put',   url, b),
+        patch: (url, b)   => req('patch', url, b),
+        del:   url        => req('del',   url),
     };
 })();
 
-/* ── Toast ── */
-const Toast = (() => {
-    function container() {
-        let el = document.getElementById('toast-container');
-        if (!el) {
-            el = document.createElement('div');
-            el.id = 'toast-container';
-            document.body.appendChild(el);
-        }
-        return el;
-    }
-    function show(msg, cls, ms = 3000) {
-        const c = container();
-        const el = document.createElement('div');
-        el.className = cls ? `toast toast--${cls}` : 'toast';
-        el.textContent = msg;
-        c.appendChild(el);
-        requestAnimationFrame(() => el.classList.add('show'));
-        setTimeout(() => {
-            el.classList.remove('show');
-            setTimeout(() => el.remove(), 300);
-        }, ms);
-    }
-    return {
-        success: msg => show(msg, 'success'),
-        error: msg => show(msg, 'error'),
-        warning: msg => show(msg, 'warning'),
-        info: msg => show(msg, 'info'),
-    };
-})();
+/* ── Toast — BnkToast 위임 (utils.js) ── */
+const Toast = BnkToast;
 
 /* ── Validator ── */
 const V = (() => {
@@ -196,12 +135,9 @@ const Fmt = {
     },
 };
 
-/* ── 버튼 로딩 상태 ── */
+/* ── 버튼 로딩 상태 — BnkDOM.btnLoading 위임 ── */
 function btnLoading(btn, on) {
-    if (!btn) return;
-    btn.disabled = on;
-    btn.dataset.origText = btn.dataset.origText || btn.textContent;
-    btn.textContent = on ? '처리 중…' : btn.dataset.origText;
+    BnkDOM.btnLoading(btn, on, '처리 중…');
 }
 
 /* ── 비밀번호 표시/숨김 토글 ── */
@@ -675,6 +611,10 @@ function initPassword() {
         let ok = true;
         if (!V.setErr('currentPw', V.required(document.getElementById('currentPw').value, '현재 비밀번호를 입력해주세요.'))) ok = false;
         if (!V.setErr('newPw', V.password(newPw.value))) ok = false;
+		if (ok && document.getElementById('currentPw').value === newPw.value) {
+		    V.setErr('newPw', '현재 비밀번호와 동일한 비밀번호는 사용할 수 없습니다.');
+		    ok = false;
+		}
         if (ok && !V.setErr('confirmPw', V.match(newPw.value, confirmPw.value))) ok = false;
         if (!ok) return;
 

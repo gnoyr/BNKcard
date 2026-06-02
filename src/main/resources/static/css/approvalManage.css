@@ -421,13 +421,14 @@ body {
 #snapshotTable tr:last-child td {
   border-bottom: none;
 }
-
-/* 결재 라인 테이블 (thead 있는 형태) */
+/*
+결재 라인 테이블 (thead 있는 형태)
 #linesTable,
 #benefitTbody,
 #imageTbody {
-  /* tbody 자체 스타일은 부모 table에 적용 */
+  tbody 자체 스타일은 부모 table에 적용 
 }
+*/
 
 #detailPage table thead tr {
   background: var(--teal-800);

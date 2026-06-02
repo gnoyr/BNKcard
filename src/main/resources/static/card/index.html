@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>카드 상세 | BNK 부산은행</title>
-<link rel="stylesheet" href="/css/components.css">
-<link rel="stylesheet" href="/css/chatbot.css">
-<link rel="stylesheet" href="/css/card.css" />
-<link rel="stylesheet" href="/css/teal-theme.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>카드 상세 | BNK 부산은행</title>
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/chatbot.css">
+  <link rel="stylesheet" href="/css/card.css">
+  <link rel="stylesheet" href="/css/teal-theme.css">
 </head>
 <body>
 
@@ -19,7 +19,8 @@
       <p>카드 정보를 불러오는 중...</p>
     </div>
   </div>
-  
+
+  <!-- 하단 고정 신청 바 (JS가 초기화) -->
   <div class="sticky-bar" id="sticky-apply-bar">
     <div class="sticky-info">
       <div class="sticky-title" id="sticky-card-name">-</div>
@@ -28,9 +29,10 @@
     <button class="btn-sticky-apply" id="btn-sticky-trigger">발급 신청</button>
   </div>
 
-  <div class="img-modal" id="img-modal" onclick="closeImgModal()">
-    <span class="img-modal-close">✕</span>
-    <img id="img-modal-src" src="" alt="">
+  <!-- 이미지 확대 모달 -->
+  <div class="img-modal" id="img-modal">
+    <button class="img-modal-close" id="btn-img-modal-close" aria-label="닫기">✕</button>
+    <img id="img-modal-src" src="" alt="카드 이미지 확대">
   </div>
 
   <!-- AI 챗봇 위젯 -->
@@ -43,7 +45,7 @@
     <div class="chat-window">
       <div class="chat-header">
         <span>BNK AI 챗봇</span>
-        <button class="chat-close" type="button">✕</button>
+        <button class="chat-close" type="button" aria-label="챗봇 닫기">✕</button>
       </div>
       <div class="chat-messages"></div>
       <form class="chat-input-area">
@@ -53,7 +55,8 @@
     </div>
   </div>
 
-
+  <!-- 스크립트 로드 순서: utils → header → card → chatbot → widget-toggle -->
+  <script src="/js/utils.js"></script>
   <script src="/js/header.js"></script>
   <script src="/js/card.js"></script>
   <script src="/js/chatbot.js"></script>

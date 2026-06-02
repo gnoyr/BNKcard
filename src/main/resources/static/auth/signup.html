@@ -149,7 +149,7 @@
 							051-661-4370 / 080-522-2200</div>
 						<div class="terms-section__footer">
 							<label class="terms-check-label"> <input type="checkbox"
-								id="chk-member-terms" data-id="2" data-required="Y" />
+								id="chk-privacy-terms" data-id="2" data-required="Y" />
 								개인정보처리취급방침에 동의합니다 <span class="terms-required-mark">(필수)</span>
 							</label>
 						</div>
@@ -189,6 +189,8 @@
 							<button class="btn btn-outline" type="button" id="btnSendCode">인증코드
 								발송</button>
 						</div>
+						<div id="email-err" class="alert alert-error"
+							style="display: none"></div>
 						<p class="helper email-helper">
 							⚠️ <strong>Gmail(@gmail.com) 수신함에는 이메일이 도착하지 않을 수 있습니다.</strong><br>
 							네이버(naver.com), 카카오(kakao.com), 다음(daum.net) 등 다른 이메일을 사용해 주세요.
@@ -209,6 +211,8 @@
 						</div>
 						<div id="verify-success" class="helper ok is-hidden">✓ 이메일
 							인증이 완료되었습니다.</div>
+						<div id="verifyCode-err" class="alert alert-error"
+							style="display: none"></div>
 						<div id="verify-error" class="alert alert-error"></div>
 					</div>
 
@@ -224,12 +228,24 @@
 							<button class="pw-toggle" type="button" id="btnPwToggle1"
 								data-target="password" title="비밀번호 표시/숨김"></button>
 						</div>
+
+						<!-- 강도 바 (입력 시 표시) -->
 						<div class="strength-wrap is-hidden" id="signup-pw-strength">
 							<div class="strength-track">
 								<div class="strength-fill" id="signup-strength-bar"></div>
 							</div>
 							<p class="helper" id="signup-strength-label"></p>
 						</div>
+
+						<!-- 규칙 체크리스트 (항상 표시, 충족 시 초록색으로 변경) -->
+						<ul class="pw-rules" id="signup-pw-rules">
+							<li data-rule="length">✗ 8자 이상 50자 이하</li>
+							<li data-rule="letter">✗ 영문 포함</li>
+							<li data-rule="number">✗ 숫자 포함</li>
+							<li data-rule="special">✗ 특수문자 포함 (@$!%*#?&amp;)</li>
+						</ul>
+						<div id="password-err" class="alert alert-error"
+							style="display: none"></div>
 					</div>
 
 					<div class="form-group">
@@ -237,11 +253,13 @@
 							class="required">*</span></label>
 						<div class="pw-wrap">
 							<input class="form-input" type="password" id="passwordConfirm"
-								placeholder="비밀번호를 다시 입력하세요" autocomplete="new-password" />
+								placeholder="비밀번호를 다시 입력하세요" autocomplete="off" />
 							<button class="pw-toggle" type="button" id="btnPwToggle2"
 								data-target="passwordConfirm" title="비밀번호 표시/숨김"></button>
 						</div>
 						<p class="helper" id="pw-match-msg"></p>
+						<div id="passwordConfirm-err" class="alert alert-error"
+							style="display: none"></div>
 					</div>
 
 					<!-- ── 기본 정보 ── -->
@@ -251,6 +269,7 @@
 						<label class="form-label" for="name">이름 <span
 							class="required">*</span></label> <input class="form-input" type="text"
 							id="name" placeholder="실명 입력" autocomplete="name" />
+						<div id="name-err" class="alert alert-error" style="display: none"></div>
 					</div>
 
 					<div class="form-group">
@@ -258,13 +277,16 @@
 							class="required">*</span></label> <input class="form-input" type="tel"
 							id="phone" placeholder="'-' 없이 숫자만 입력" inputmode="numeric"
 							autocomplete="tel" maxlength="11" />
-						<div id="phone-err" class="alert alert-error"></div>
+						<div id="phone-err" class="alert alert-error"
+							style="display: none"></div>
 					</div>
 
 					<div class="form-group">
 						<label class="form-label" for="birthDate">생년월일 <span
 							class="required">*</span></label> <input class="form-input" type="date"
 							id="birthDate" autocomplete="bday" />
+						<div id="birthDate-err" class="alert alert-error"
+							style="display: none"></div>
 					</div>
 
 					<!-- ── 추가 정보 ── -->
@@ -300,8 +322,12 @@
 							class="form-label-note">(300 ~ 900)</span>
 						</label> <input class="form-input" type="number" id="creditScore"
 							placeholder="신용점수 입력 (선택)" min="300" max="900" />
+						<div id="creditScore-err" class="alert alert-error"
+							style="display: none"></div>
 					</div>
 
+					<div id="signup-error" class="alert alert-error"
+						style="display: none"></div>
 					<div class="btn-row">
 						<button class="btn btn-secondary" type="button" id="btnStep2Back">이전</button>
 						<button class="btn btn-primary" type="submit" id="btnSignup">가입하기</button>
@@ -316,7 +342,10 @@
 				<div class="done-wrap">
 					<div class="done-icon">🎉</div>
 					<h2 class="done-title">회원가입이 완료되었습니다!</h2>
-					<p class="done-email" id="doneEmail"></p>
+					<p class="done-name">
+						<span id="done-name"></span>님, 환영합니다!
+					</p>
+					<p class="done-email" id="done-email-display"></p>
 					<p class="done-msg">BNK 부산은행 카드 서비스를 이용해 주세요.</p>
 				</div>
 				<div class="btn-row">
@@ -327,7 +356,8 @@
 
 		</div>
 	</main>
-
+	<script src="/js/utils.js"></script>
+	<script src="/js/header.js"></script>
 	<script src="/js/auth.js"></script>
 </body>
 </html>
