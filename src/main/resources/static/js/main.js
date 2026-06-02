@@ -118,6 +118,7 @@ async function loadTop3() {
     <div class="podium-item ${o.cls}">
       <div class="podium-flip">${buildFlipCard(o.card, o.rank)}</div>
     </div>`).join('');
+    container.addEventListener('click', handleCardClick);
 }
 
 // ── 카드 목록 ──
@@ -150,12 +151,34 @@ async function loadCards(page = 0) {
         `${typeLabel ? typeLabel + ' ' : ''}총 ${(data.totalCount ?? 0).toLocaleString()}개`;
     grid.innerHTML = data.content.map(c => buildFlipCard(c)).join('');
     renderPagination(data.totalCount ?? 0);
+    grid.addEventListener('click', handleCardClick);
+}
+
+// ── 카드 버튼 공통 클릭 핸들러 (이벤트 위임용) ──
+function handleCardClick(e) {
+    const detailBtn = e.target.closest('.btn-detail');
+    const compareBtn = e.target.closest('.btn-compare');
+    const applyBtn = e.target.closest('.btn-apply');
+    if (detailBtn || applyBtn) {
+        e.stopPropagation();
+        const id = (detailBtn ?? applyBtn).dataset.cardId;
+        if (id) location.href = `/card/${id}`;
+    }
+    if (compareBtn) {
+        e.stopPropagation();
+        addToCart(
+            Number(compareBtn.dataset.cardId),
+            compareBtn.dataset.cardName ?? '',
+            compareBtn.dataset.companyName ?? ''
+        );
+    }
 }
 
 // ── 카드 플립 빌더 ──
 function buildFlipCard(card, rank = null) {
-    const ne = (card.cardName ?? '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-    const ce = (card.companyName ?? '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    // data-* 속성용: 큰따옴표만 이스케이프 (작은따옴표 그대로 둬도 안전)
+    const ne = (card.cardName ?? '').replace(/"/g, '&quot;');
+    const ce = (card.companyName ?? '').replace(/"/g, '&quot;');
     const imgHtml = safeImgHtml(card.thumbnailUrl, card.cardName ?? '');
     const backText = card.topBenefit ?? card.summaryDescription ?? '다양한 혜택 제공';
     const lines = backText.split(/[,\.\n]\s*/).slice(0, 3).map(b => b.trim()).filter(Boolean)
@@ -194,9 +217,9 @@ function buildFlipCard(card, rank = null) {
               <div class="back-benefit">${lines || backText}</div>
               ${benefitTags ? `<div style="margin:6px 0 2px;">${benefitTags}</div>` : ''}
               <div class="back-actions">
-                <button class="btn-detail"  onclick="event.stopPropagation();location.href='/card/${card.cardId}'">자세히</button>
-                <button class="btn-compare" onclick="event.stopPropagation();addToCart(${card.cardId},'${ne}','${ce}')">비교</button>
-                <button class="btn-apply"   onclick="event.stopPropagation();location.href='/card/${card.cardId}'">신청</button>
+                <button class="btn-detail"  data-card-id="${card.cardId}">자세히</button>
+                <button class="btn-compare" data-card-id="${card.cardId}" data-card-name="${ne}" data-company-name="${ce}">비교</button>
+                <button class="btn-apply"   data-card-id="${card.cardId}">신청</button>
               </div>
             </div>
           </div>
@@ -231,9 +254,9 @@ function buildFlipCard(card, rank = null) {
           <div class="back-card-name">${card.cardName ?? ''}</div>
           <div class="back-benefit">${lines || backText}</div>
           <div class="back-actions">
-            <button class="btn-detail"  onclick="event.stopPropagation();location.href='/card/${card.cardId}'">자세히</button>
-            <button class="btn-compare" onclick="event.stopPropagation();addToCart(${card.cardId},'${ne}','${ce}')">비교</button>
-            <button class="btn-apply"   onclick="event.stopPropagation();location.href='/card/${card.cardId}'">신청</button>
+            <button class="btn-detail"  data-card-id="${card.cardId}">자세히</button>
+            <button class="btn-compare" data-card-id="${card.cardId}" data-card-name="${ne}" data-company-name="${ce}">비교</button>
+            <button class="btn-apply"   data-card-id="${card.cardId}">신청</button>
           </div>
         </div>
       </div>
@@ -306,72 +329,131 @@ function handleCompareOverlayClick(e) {
     if (e.target === document.getElementById('compare-modal-overlay')) closeCompareModal();
 }
 
-async function doCompare() {
+async function doCompare(skipOpen = false) {
     const cardIds = state.compareCart.map(c => c.cardId);
     if (cardIds.length < 2) { toast('2개 이상 선택하세요.'); return; }
-    openCompareModal();
-    document.getElementById('compare-modal-body').innerHTML =
-        '<div class="compare-empty"><div class="loading-spinner" style="margin:0 auto 12px"></div>불러오는 중...</div>';
-    const res = await fetch('/api/cards/compare', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', body: JSON.stringify({ cardIds })
-    });
-    const json = await res.json().catch(() => null);
-    if (!json?.data?.length) {
-        document.getElementById('compare-modal-body').innerHTML = '<div class="compare-empty">비교 데이터를 불러올 수 없습니다.</div>';
+
+    if (!skipOpen) openCompareModal();
+
+    const body = document.getElementById('compare-modal-body');
+    if (body) body.innerHTML =
+        '<div class="compare-empty"><div class="loading-spinner" style="margin:0 auto 16px"></div>카드 정보를 불러오는 중...</div>';
+
+    let json = null;
+    try {
+        const res = await fetch('/api/cards/compare', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ cardIds })
+        });
+        json = await res.json().catch(() => null);
+
+        if (!res.ok) {
+            toast(json?.message ?? '비교 요청에 실패했습니다.');
+            if (body) body.innerHTML = '<div class="compare-empty">비교 데이터를 불러올 수 없습니다.</div>';
+            return;
+        }
+    } catch (err) {
+        if (body) body.innerHTML = '<div class="compare-empty">서버에 연결할 수 없습니다.</div>';
         return;
     }
-    renderCompareModal(json.data);
+
+    // 서버 응답 구조: { data: [...] } 또는 배열 직접 반환 모두 대응
+    const cards = Array.isArray(json) ? json
+        : Array.isArray(json?.data) ? json.data
+            : null;
+
+    if (!cards?.length) {
+        if (body) body.innerHTML = '<div class="compare-empty">비교 데이터를 불러올 수 없습니다.</div>';
+        return;
+    }
+    renderCompareModal(cards);
     if (state.cartOpen) toggleCart();
 }
 
 function renderCompareModal(cards) {
-    const fees = cards.map(c => Number(c.annualFeeDomestic) || 0);
+    const fees  = cards.map(c => (c.annualFeeDomestic  === null ? Infinity : Number(c.annualFeeDomestic)  || 0));
+    const oFees = cards.map(c => (c.annualFeeOverseas   === null ? Infinity : Number(c.annualFeeOverseas)  || 0));
     const minFee = Math.min(...fees);
-    const oFees = cards.map(c => Number(c.annualFeeOverseas) || 0);
-    const minO = Math.min(...oFees);
-    const bCnts = cards.map(c => (c.benefits ?? []).length);
-    const maxB = Math.max(...bCnts);
+    const minO   = Math.min(...oFees);
+    const bCnts  = cards.map(c => (c.benefits ?? []).length);
+    const maxB   = Math.max(...bCnts);
 
-    const headerCells = cards.map((c, i) => `
-    <th style="position:relative;">
-      ${bCnts[i] === maxB && maxB > 0 ? '<div style="position:absolute;top:6px;right:8px;font-size:10px;color:#ffd700;">★ 혜택최다</div>' : ''}
-      ${c.thumbnailUrl ? `<img src="${c.thumbnailUrl}" class="compare-card-img" onerror="this.className='compare-card-img-placeholder'">` : '<div class="compare-card-img-placeholder"></div>'}
-      <div style="font-size:13px;font-weight:700;">${c.cardName ?? ''}</div>
-      <div style="font-size:11px;opacity:.8;margin-top:2px;">${c.companyName ?? ''}</div>
-      <button class="compare-remove-btn" onclick="removeFromCartAndRefresh(${c.cardId})">제거</button>
-    </th>`).join('');
+    const typeLabel = { CREDIT: '신용카드', CHECK: '체크카드', PREPAID: '선불카드', HYBRID: '하이브리드' };
 
-    const rows = [
-        `<tr><td>국내 연회비</td>${cards.map((c, i) => `<td style="${fees[i] === minFee ? 'color:#00875a;font-weight:700;' : ''}">${fmtFee(c.annualFeeDomestic)}</td>`).join('')}</tr>`,
-        `<tr><td>해외 연회비</td>${cards.map((c, i) => `<td style="${oFees[i] === minO ? 'color:#00875a;font-weight:700;' : ''}">${fmtFee(c.annualFeeOverseas)}</td>`).join('')}</tr>`,
-        `<tr><td>카드 유형</td>${cards.map(c => `<td>${{ CREDIT: '신용카드', CHECK: '체크카드', PREPAID: '선불카드' }[c.cardType] ?? c.cardType ?? '-'}</td>`).join('')}</tr>`,
-        `<tr><td>혜택 수</td>${cards.map((_c, i) => `<td style="${bCnts[i] === maxB && maxB > 0 ? 'color:#003087;font-weight:700;' : ''}">${bCnts[i]}개 ${bCnts[i] === maxB && maxB > 0 ? '★' : ''}</td>`).join('')}</tr>`,
-        `<tr><td>주요 혜택</td>${cards.map((c, i) => `<td style="${bCnts[i] === maxB && maxB > 0 ? 'background:#fffde7;' : ''}text-align:left;">${(c.benefits ?? []).slice(0, 3).map(b => `• ${b.displayText ?? b.benefitTitle ?? ''}`).join('<br>') || '-'}</td>`).join('')}</tr>`,
-    ].join('');
+    const headerCells = cards.map((c, i) => {
+        const isBest = bCnts[i] === maxB && maxB > 0;
+        const imgHtml = c.thumbnailUrl
+            ? `<img src="${c.thumbnailUrl}" class="compare-card-img" alt="${(c.cardName ?? '').replace(/"/g,'&quot;')}" onerror="this.style.display='none'">`
+            : '<div class="compare-card-img-placeholder">이미지 없음</div>';
+        return `<th>
+      <div class="compare-th-inner">
+        ${isBest ? '<span class="compare-best-badge">★ 혜택 최다</span>' : '<span style="display:block;height:24px;margin-bottom:10px;"></span>'}
+        <div class="compare-img-box">${imgHtml}</div>
+        <div class="compare-th-name">${c.cardName ?? ''}</div>
+        <div class="compare-th-company">${c.companyName ?? 'BNK부산은행'}</div>
+        <div class="compare-th-actions">
+          <button class="compare-apply-btn" onclick="location.href='/card/${c.cardId}'">신청하기</button>
+          <button class="compare-remove-btn" onclick="removeFromCartAndRefresh(${c.cardId})">제거</button>
+        </div>
+      </div>
+    </th>`;
+    }).join('');
+
+    const feeRow = `<tr>
+      <td>국내 연회비</td>
+      ${cards.map((c, i) => `<td class="${fees[i] === minFee ? 'compare-val--best-fee' : ''}">${fmtFee(c.annualFeeDomestic)}</td>`).join('')}
+    </tr>`;
+    const oFeeRow = `<tr>
+      <td>해외 연회비</td>
+      ${cards.map((c, i) => `<td class="${oFees[i] === minO ? 'compare-val--best-fee' : ''}">${fmtFee(c.annualFeeOverseas)}</td>`).join('')}
+    </tr>`;
+    const typeRow = `<tr>
+      <td>카드 유형</td>
+      ${cards.map(c => `<td>${typeLabel[c.cardType] ?? c.cardType ?? '-'}</td>`).join('')}
+    </tr>`;
+    const cntRow = `<tr>
+      <td>혜택 수</td>
+      ${cards.map((_, i) => `<td class="${bCnts[i] === maxB && maxB > 0 ? 'compare-val--best-benefit' : ''}">${bCnts[i]}개</td>`).join('')}
+    </tr>`;
+    const benefitRow = `<tr>
+      <td>주요 혜택</td>
+      ${cards.map((c, i) => {
+          const lines = (c.benefits ?? []).slice(0, 4)
+              .map(b => `<div>• ${b.displayText ?? b.benefitTitle ?? ''}</div>`).join('') || '-';
+          const isBest = bCnts[i] === maxB && maxB > 0;
+          return `<td class="compare-val--benefit-cell${isBest ? ' best' : ''}">${lines}</td>`;
+      }).join('')}
+    </tr>`;
 
     document.getElementById('compare-modal-body').innerHTML = `
-    <div style="margin-bottom:12px;font-size:12px;color:#888;">
-      💡 <span style="color:#00875a;font-weight:600;">초록색</span> = 연회비 최저 &nbsp;|&nbsp;
-         <span style="color:#003087;font-weight:600;">★</span> = 혜택 최다
+    <div class="compare-legend">
+      <span class="compare-legend-item">
+        <span class="compare-legend-dot compare-legend-dot--green"></span> 연회비 최저
+      </span>
+      <span class="compare-legend-item">
+        <span class="compare-legend-dot compare-legend-dot--gold"></span> 혜택 최다
+      </span>
     </div>
-	<div style="overflow-x:auto;">
-	    <table class="compare-table">
-	      <thead><tr><th>항목</th>${headerCells}</tr></thead>
-	      <tbody>${rows}</tbody>
-	    </table>
-	</div>
-    <p style="margin-top:16px;font-size:12px;color:#999;text-align:right;">카드를 제거하면 다시 비교하기 버튼을 눌러주세요.</p>`;
+    <div class="compare-scroll-wrap">
+      <table class="compare-table">
+        <thead><tr><th>항목</th>${headerCells}</tr></thead>
+        <tbody>${feeRow}${oFeeRow}${typeRow}${cntRow}${benefitRow}</tbody>
+      </table>
+    </div>
+    <p style="margin-top:14px;font-size:11px;color:#bbb;text-align:right;">카드를 제거한 뒤 비교하기를 다시 눌러주세요.</p>`;
 }
 
 function removeFromCartAndRefresh(cardId) {
     removeFromCart(cardId);
+    const body = document.getElementById('compare-modal-body');
     if (state.compareCart.length < 2) {
-        document.getElementById('compare-modal-body').innerHTML =
-            '<div class="compare-empty">비교할 카드가 2개 이상 필요합니다.<br>카드를 더 추가해주세요.</div>';
+        if (body) body.innerHTML =
+            '<div class="compare-empty"><div class="compare-empty-icon">📊</div>비교할 카드가 2개 이상 필요합니다.<br>카드를 추가해주세요.</div>';
         return;
     }
-    doCompare();
+    doCompare(true); // 모달이 이미 열려 있으므로 skipOpen=true
 }
 
 // ── 검색 모달 ──
@@ -383,9 +465,14 @@ async function openSearchModal(keyword = '') {
     const suggest = await api('/api/search/keywords/suggest');
     const suggestEl = document.getElementById('suggest-list');
     if (suggest?.length) {
-        suggestEl.innerHTML = suggest.slice(0, 12).map(kw => `
-      <button class="suggest-tag" onclick="modalSetKeyword('${(kw.keyword ?? kw).replace(/'/g, "\\'")}')">
-        ${kw.keyword ?? kw}</button>`).join('');
+        suggestEl.innerHTML = suggest.slice(0, 12).map(kw => {
+            const word = (kw.keyword ?? kw ?? '').replace(/"/g, '&quot;');
+            return `<button class="suggest-tag" data-keyword="${word}">${word}</button>`;
+        }).join('');
+        suggestEl.addEventListener('click', (e) => {
+            const btn = e.target.closest('.suggest-tag');
+            if (btn) modalSetKeyword(btn.dataset.keyword);
+        });
     } else {
         suggestEl.innerHTML = '<span style="color:#bbb;font-size:13px">추천 검색어가 없습니다.</span>';
     }
@@ -438,30 +525,51 @@ async function runModalSearch() {
         document.getElementById('modal-results').innerHTML = '<div style="text-align:center;color:#999;padding:20px">결과가 없습니다.</div>';
         return;
     }
-    document.getElementById('modal-results').innerHTML = results.map(card => {
-        const ne = (card.cardName ?? '').replace(/'/g, "\\'");
-        const ce = (card.companyName ?? '').replace(/'/g, "\\'");
+    const modalResultsEl = document.getElementById('modal-results');
+    modalResultsEl.innerHTML = results.map(card => {
+        const ne = (card.cardName ?? '').replace(/"/g, '&quot;');
+        const ce = (card.companyName ?? '').replace(/"/g, '&quot;');
         const th = card.thumbnailUrl ? `<img src="${card.thumbnailUrl}" alt="${card.cardName}" onerror="this.style.display='none'" style="width:100%;height:100%;object-fit:cover;">` : '';
         return `
-      <div class="modal-result-item" onclick="goDetail(${card.cardId})">
+      <div class="modal-result-item" data-card-id="${card.cardId}">
         <div class="modal-result-thumb">${th}</div>
         <div class="modal-result-info">
           <div class="modal-result-name">${card.cardName ?? ''}</div>
           <div class="modal-result-company">${card.companyName ?? ''} · ${cardTypeBadge(card.cardType)}</div>
           ${card.topBenefit ? `<div class="modal-result-benefit">${card.topBenefit}</div>` : ''}
         </div>
-        <div class="modal-result-actions" onclick="event.stopPropagation()">
-          <button class="btn-m-detail"  onclick="goDetail(${card.cardId})">상세</button>
-          <button class="btn-m-compare" onclick="addToCart(${card.cardId},'${ne}','${ce}');closeSearchModal()">비교</button>
+        <div class="modal-result-actions">
+          <button class="btn-m-detail"  data-card-id="${card.cardId}">상세</button>
+          <button class="btn-m-compare" data-card-id="${card.cardId}" data-card-name="${ne}" data-company-name="${ce}">비교</button>
         </div>
       </div>`;
     }).join('');
+    // 이벤트 위임
+    modalResultsEl.addEventListener('click', (e) => {
+        const detailBtn = e.target.closest('.btn-m-detail');
+        const compareBtn = e.target.closest('.btn-m-compare');
+        const row = e.target.closest('.modal-result-item');
+        if (compareBtn) {
+            e.stopPropagation();
+            addToCart(
+                Number(compareBtn.dataset.cardId),
+                compareBtn.dataset.cardName ?? '',
+                compareBtn.dataset.companyName ?? ''
+            );
+            closeSearchModal();
+            return;
+        }
+        if (detailBtn || row) {
+            const id = (detailBtn ?? row).dataset.cardId;
+            if (id) { closeSearchModal(); location.href = `/card/${id}`; }
+        }
+    });
 }
 
 // ★ 상세 이동: /card-detail.html → /card/
 function goDetail(cardId) {
-  closeSearchModal();
-  location.href = `/card/${cardId}`;
+    closeSearchModal();
+    location.href = `/card/${cardId}`;
 }
 
 // ── 설문 기반 추천 ──
@@ -566,4 +674,36 @@ document.getElementById('hero-search').addEventListener('keydown', e => {
     await loadPopularKeywords();
     await loadTop3();
     await loadCards(0);
+
+    // 비교 카트
+    document.getElementById('btn-do-compare').addEventListener('click', () => doCompare());
+    document.getElementById('btn-cart-toggle').addEventListener('click', toggleCart);
+    document.getElementById('btn-close-compare').addEventListener('click', closeCompareModal);
+    document.getElementById('compare-modal-overlay').addEventListener('click', handleCompareOverlayClick);
+
+    // 검색
+    document.getElementById('btn-hero-search').addEventListener('click', () =>
+        openSearchModal(document.getElementById('hero-search').value.trim()));
+    document.getElementById('btn-close-search').addEventListener('click', closeSearchModal);
+    document.getElementById('search-overlay').addEventListener('click', handleOverlayClick);
+    document.getElementById('btn-modal-search').addEventListener('click', runModalSearch);
+    document.getElementById('modal-search-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') runModalSearch();
+    });
+
+    // 필터
+    document.getElementById('btn-filter-search').addEventListener('click', () => loadCards(0));
+    document.getElementById('btn-filter-reset').addEventListener('click', resetFilter);
+    document.getElementById('filter-q').addEventListener('keydown', e => {
+        if (e.key === 'Enter') loadCards(0);
+    });
+
+    // 설문
+    document.getElementById('btn-open-survey').addEventListener('click', openSurvey);
+    document.getElementById('btn-close-survey').addEventListener('click', closeSurvey);
+    document.getElementById('survey-overlay').addEventListener('click', handleSurveyOverlay);
+
+    // 카드 타입 탭
+    document.querySelectorAll('.type-tab').forEach(btn =>
+        btn.addEventListener('click', () => selectCardType(btn, btn.dataset.type)));
 })();

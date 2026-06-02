@@ -663,29 +663,6 @@ to {
 }
 
 /* ════════════════════════════════════════════
-   비밀번호 규칙 안내
-════════════════════════════════════════════ */
-.pw-rules {
-	background: var(--gray-50);
-	border-radius: var(--radius);
-	padding: 14px;
-	margin-bottom: 20px;
-}
-
-.pw-rules__title {
-	font-size: 12px;
-	color: var(--gray-600);
-	line-height: 1.7;
-	font-weight: 600;
-	margin-bottom: 6px;
-}
-
-.pw-rules__list {
-	font-size: 12px;
-	color: var(--gray-400);
-	line-height: 1.8;
-	padding-left: 16px;
-}
 
 /* ════════════════════════════════════════════
    인증 타이머
@@ -1092,4 +1069,60 @@ select.form-input {
 	color: #5C7A83;
 	font-size: 12px;
 	line-height: 1.7;
+}
+
+/* 규칙 ul 컨테이너 */
+.pw-rules {
+	list-style: none;
+	background: var(--gray-50);
+	border: 1px solid var(--gray-200);
+	border-radius: var(--radius);
+	padding: 11px 14px;
+	margin-top: 10px;
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+
+/* 각 규칙 항목 — 기본: 회색(미충족) */
+.pw-rules li {
+	font-size: 12px;
+	color: var(--gray-400);
+	transition: color 0.18s, font-weight 0.18s;
+	display: flex;
+	align-items: center;
+	gap: 5px;
+}
+
+/* 충족 시: 초록색 */
+.pw-rules li.pass {
+	color: var(--green, #2E7D32);
+	font-weight: 500;
+}
+
+/* 강도 바 — 기존 .strength-wrap 에서 display:none 제어하는데
+   is-hidden 클래스가 있으면 display:none 유지
+   (기존 is-hidden 유틸이 없다면 아래 추가) */
+.strength-wrap.is-hidden {
+	display: none;
+}
+
+.strength-wrap:not(.is-hidden) {
+	display: block;
+}
+
+/* 강도 단계별 색상 (auth.css에 weak/medium/strong이 없을 경우 추가) */
+.strength-fill.weak {
+	width: 33%;
+	background: #DC2626;
+}
+
+.strength-fill.medium {
+	width: 66%;
+	background: #D97706;
+}
+
+.strength-fill.strong {
+	width: 100%;
+	background: #2E7D32;
 }
