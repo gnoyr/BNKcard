@@ -41,11 +41,11 @@ public class SignupRequest {
     // ── 선택 ──────────────────────────────────────────────────────────
 
     /**
-     * 생년월일 yyyyMMdd 형식 → 서비스단에서 LocalDate 변환.
+     * 생년월일
      */
-    @Pattern(regexp = "^(19|20)\\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\\d|3[01])$",
-             message = "생년월일은 yyyyMMdd 형식으로 입력해주세요.")
-    private String birthDate;
+    @Pattern(regexp = "^(19|20)\\d{2}-?(0[1-9]|1[0-2])-?(0[1-9]|[12]\\d|3[01])$",
+            message = "생년월일은 yyyyMMdd 또는 yyyy-MM-dd 형식으로 입력해주세요.")
+   private String birthDate;
 
     /**
      * 마케팅 수신 동의.
