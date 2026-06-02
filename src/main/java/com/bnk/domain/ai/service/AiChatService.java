@@ -21,6 +21,8 @@ import com.bnk.domain.spending.service.CardSearchService;
 
 import jakarta.validation.Valid;
 
+import com.bnk.domain.ai.dto.AiChatHistoryResponse;
+
 @Service
 @Validated
 @ConditionalOnProperty(name = "ai.enabled", havingValue = "true")
@@ -105,4 +107,17 @@ public class AiChatService {
                 .build();
     
 	}
+    
+    @Transactional(readOnly = true)
+    public List<AiChatHistoryResponse> getHistory(String sessionId) {
+        return aiChatLogMapper.findBySessionId(sessionId)
+                .stream()
+                .map(log -> AiChatHistoryResponse.builder()
+                        .chatId(log.getChatId())
+                        .sessionId(log.getSessionId())
+                        .userInput(log.getUserInput())
+                        .aiResponse(log.getAiResponse())
+                        .build())
+                .toList();
+    }
 }
