@@ -4,16 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>소비 패턴 관리 | 부산은행</title>
-  <link rel="stylesheet" href="/css/mypage.css">
-  <link rel="stylesheet" href="/css/components.css">
-  <link rel="stylesheet" href="/css/teal-theme.css">
+	<link rel="stylesheet" href="/css/components.css" />
+	<link rel="stylesheet" href="/css/mypage.css" />
+	<link rel="stylesheet" href="/css/teal-theme.css" />
 </head>
 <body data-page="mypage-spending">
-  <div id="app-header"></div>
-  <nav class="page-nav">
-    <button class="page-nav__back" id="btn-page-back">마이페이지</button>
-    <span class="page-nav__sep">›</span>
-    <span class="page-nav__title">소비 패턴 관리</span>
+  <nav class="sub-nav">
+    <button class="sub-nav__back" onclick="history.back()">마이페이지</button>
+    <span class="sub-nav__sep">›</span>
+    <span class="sub-nav__title">소비 패턴 관리</span>
   </nav>
   <div class="page-wrap">
     <div class="page-title">
@@ -48,8 +47,5 @@
   <script src="/js/utils.js"></script>
   <script src="/js/header.js"></script>
   <script src="/js/mypage.js"></script>
-  <script>
-    document.getElementById('btn-page-back')?.addEventListener('click', () => history.back());
-  </script>
 </body>
 </html>
