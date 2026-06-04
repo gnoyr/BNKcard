@@ -1289,6 +1289,33 @@ to {
 }
 
 /* ── 설문 모달 ── */
+
+/* ── 히어로 설문 버튼 래퍼 ── */
+.hero-survey-wrap {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+/* ── 설문 CTA 버튼 ── */
+.btn-survey {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: inherit;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 50px;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    transition: background 0.2s, border-color 0.2s, transform 0.15s;
+    white-space: nowrap;
+    border-color: var(--teal-200);
+}
 .survey-overlay {
 	display: none;
 	position: fixed;
@@ -1304,6 +1331,16 @@ to {
 	display: flex;
 }
 
+.btn-survey:hover {
+    background: rgba(255, 255, 255, 0.28);
+    border-color: #fff;
+    transform: translateY(-2px);
+}
+
+.btn-survey:active {
+    transform: translateY(0);
+}
+
 .survey-modal {
 	background: #fff;
 	border-radius: 20px;
@@ -1312,6 +1349,76 @@ to {
 	padding: 32px 28px;
 	box-shadow: 0 16px 60px rgba(0, 0, 0, .3);
 	animation: modalIn .25s ease;
+}
+
+.survey-modal__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.survey-modal__meta {
+    flex: 1;
+    min-width: 0;
+}
+/* ── 단계 레이블 (1 / 3) ── */
+.survey-step-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #888;
+    margin-bottom: 8px;
+    letter-spacing: 0.05em;
+}
+
+/* ── 설문 질문 텍스트 ── */
+.survey-question {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a1a2e;
+    line-height: 1.4;
+    word-break: keep-all;
+}
+
+/* ── 닫기 버튼 ── */
+.survey-close {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    background: #f4f4f5;
+    border: none;
+    border-radius: 50%;
+    font-size: 16px;
+    color: #52525b;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+    line-height: 1;
+}
+
+.survey-close:hover {
+    background: #e4e4e7;
+    color: #18181b;
+}
+
+/* ── 진행 바 ── */
+.survey-progress-bar {
+    height: 4px;
+    background: #e4e4e7;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+
+.survey-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: #003087;
+    border-radius: 2px;
+    transition: width 0.35s ease;
 }
 
 .survey-option {
@@ -1323,6 +1430,9 @@ to {
 	color: #333;
 	text-align: left;
 	transition: all .2s;
+	display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .survey-option:hover {
@@ -1330,6 +1440,7 @@ to {
 	background: #e8f0fe;
 	color: #003087;
 }
+
 
 /* ── 토스트 ── */
 .toast {

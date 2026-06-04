@@ -36,11 +36,8 @@ class UserServiceTest {
 
     @Mock private UserMapper      userMapper;
     @Mock private PasswordEncoder passwordEncoder;
+    @InjectMocks private UserService userService;
 
-    @InjectMocks
-    private UserService userService;
-
-    // ── 공통 상수 ──────────────────────────────────────────────────
     private static final Long   USER_ID = 1L;
     private static final String CURRENT = "Current123!";
     private static final String NEW_PW  = "NewSecure123!";
@@ -48,11 +45,9 @@ class UserServiceTest {
 
     // ── 픽스처 ────────────────────────────────────────────────────
 
-    /** getMyInfo / updateMyInfo에서 MaskingUtil 정상 동작에 필요한 필드 포함 */
     private User activeUser() {
         User user = new User();
         ReflectionTestUtils.setField(user, "userId",       USER_ID);
-        // [수정] "password" → "passwordHash" (User 모델의 실제 필드명)
         ReflectionTestUtils.setField(user, "passwordHash", ENC_PW);
         ReflectionTestUtils.setField(user, "statusCode",   "ACTIVE");
         ReflectionTestUtils.setField(user, "email",        "test@bnk.co.kr");
@@ -70,9 +65,11 @@ class UserServiceTest {
     }
 
     /**
-     * @param name        null이면 해당 필드 미설정
-     * @param phone       null이면 phone 변경 없음 → currentPassword 검증 생략
-     * @param currentPw   phone 변경 시 현재 비밀번호 확인용
+     * 내 정보 수정 요청 픽스처.
+     *
+     * 비밀번호 검증 정책:
+     *   개인정보 필드(name/phone/job/incomeLevelCode/creditScore) 변경 → currentPw 필수
+     *   알림 설정(pushEnabled/marketingAgree)만 변경 → currentPw 불필요
      */
     private UserUpdateRequest updateReq(String name, String phone, String currentPw) {
         UserUpdateRequest req = new UserUpdateRequest();
@@ -82,8 +79,15 @@ class UserServiceTest {
         return req;
     }
 
+    private UserUpdateRequest notificationOnlyReq(boolean push, boolean mkt) {
+        UserUpdateRequest req = new UserUpdateRequest();
+        ReflectionTestUtils.setField(req, "pushEnabled",    push);
+        ReflectionTestUtils.setField(req, "marketingAgree", mkt);
+        return req;
+    }
+
     // ════════════════════════════════════════════════════════════════
-    // [신규] F-24 | 내 정보 조회
+    // F-24 | 내 정보 조회
     // ════════════════════════════════════════════════════════════════
 
     @Nested
@@ -91,15 +95,13 @@ class UserServiceTest {
     class GetMyInfo {
 
         @Test
-        @DisplayName("[정상] userId로 유저 조회 → UserResponse 반환")
+        @DisplayName("[정상] userId로 유저 조회 → UserResponse 반환, passwordHash 미포함")
         void 정상_내정보조회() {
             given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
 
             UserResponse response = userService.getMyInfo(USER_ID);
 
-            assertThat(response).isNotNull();
             assertThat(response.getUserId()).isEqualTo(USER_ID);
-            // 이메일·전화번호는 마스킹 처리됨
             assertThat(response.getMaskedEmail()).isNotBlank();
             assertThat(response.getMaskedPhone()).isNotBlank();
         }
@@ -117,7 +119,11 @@ class UserServiceTest {
     }
 
     // ════════════════════════════════════════════════════════════════
-    // [신규] F-25 | 내 정보 수정
+    // F-25 | 내 정보 수정
+    //
+    // 비밀번호 검증 정책:
+    //   필수 — name, phone, job, incomeLevelCode, creditScore
+    //   불필요 — pushEnabled, marketingAgree (알림 설정)
     // ════════════════════════════════════════════════════════════════
 
     @Nested
@@ -125,25 +131,72 @@ class UserServiceTest {
     class UpdateMyInfo {
 
         @Test
-        @DisplayName("[정상] phone 미포함 수정 → 비밀번호 검증 없이 updateUser 호출")
-        void 정상_phone없이수정() {
+        @DisplayName("[정상] 개인정보 변경 + 비밀번호 검증 통과 → updateUser 호출")
+        void 정상_개인정보변경_비밀번호검증통과() {
             given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
+            given(passwordEncoder.matches(CURRENT, ENC_PW)).willReturn(true);
 
-            userService.updateMyInfo(USER_ID, updateReq("이순신", null, null));
+            userService.updateMyInfo(USER_ID, updateReq("이순신", null, CURRENT));
 
             then(userMapper).should().updateUser(any());
-            then(passwordEncoder).should(never()).matches(any(), any());
+            then(passwordEncoder).should().matches(CURRENT, ENC_PW);
         }
 
         @Test
-        @DisplayName("[정상] phone 변경 + 비밀번호 검증 통과 → updateUser 호출")
+        @DisplayName("[정상] phone + 비밀번호 검증 통과 → updateUser 호출")
         void 정상_phone변경_비밀번호검증통과() {
             given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
             given(passwordEncoder.matches(CURRENT, ENC_PW)).willReturn(true);
 
-            userService.updateMyInfo(USER_ID, updateReq("이순신", "01099998888", CURRENT));
+            userService.updateMyInfo(USER_ID, updateReq(null, "01099998888", CURRENT));
 
             then(userMapper).should().updateUser(any());
+        }
+
+        @Test
+        @DisplayName("[정상] 알림 설정만 변경 → 비밀번호 검증 없이 updateUser 호출")
+        void 정상_알림설정만변경_비밀번호검증없음() {
+            given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
+
+            userService.updateMyInfo(USER_ID, notificationOnlyReq(true, false));
+
+            then(userMapper).should().updateUser(any());
+            // 비밀번호 검증 호출 없어야 함
+            then(passwordEncoder).should(never()).matches(any(), any());
+        }
+
+        @Test
+        @DisplayName("[실패] 변경 내용 없음 → INVALID_INPUT")
+        void 실패_변경내용없음() {
+            given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
+
+            assertThatThrownBy(() -> userService.updateMyInfo(USER_ID, new UserUpdateRequest()))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.INVALID_INPUT));
+        }
+
+        @Test
+        @DisplayName("[실패] 개인정보 변경 + currentPassword 누락 → INVALID_INPUT")
+        void 실패_개인정보변경_비밀번호누락() {
+            given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
+
+            assertThatThrownBy(() -> userService.updateMyInfo(USER_ID, updateReq("이순신", null, null)))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.INVALID_INPUT));
+        }
+
+        @Test
+        @DisplayName("[실패] 개인정보 변경 + 비밀번호 불일치 → INVALID_PASSWORD")
+        void 실패_개인정보변경_비밀번호불일치() {
+            given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
+            given(passwordEncoder.matches("WrongPw!", ENC_PW)).willReturn(false);
+
+            assertThatThrownBy(() -> userService.updateMyInfo(USER_ID, updateReq("이순신", null, "WrongPw!")))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.INVALID_PASSWORD));
         }
 
         @Test
@@ -151,39 +204,15 @@ class UserServiceTest {
         void 실패_사용자없음() {
             given(userMapper.findById(USER_ID)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> userService.updateMyInfo(USER_ID, updateReq("이순신", null, null)))
+            assertThatThrownBy(() -> userService.updateMyInfo(USER_ID, updateReq("이순신", null, CURRENT)))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ErrorCode.USER_NOT_FOUND));
         }
-
-        @Test
-        @DisplayName("[실패] phone 변경 요청 + currentPassword 누락 → INVALID_INPUT")
-        void 실패_phone변경_비밀번호누락() {
-            given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
-
-            // phone이 있는데 currentPassword를 null로 넘김
-            assertThatThrownBy(() -> userService.updateMyInfo(USER_ID, updateReq(null, "01099998888", null)))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ErrorCode.INVALID_INPUT));
-        }
-
-        @Test
-        @DisplayName("[실패] phone 변경 + 현재 비밀번호 불일치 → INVALID_PASSWORD")
-        void 실패_phone변경_비밀번호불일치() {
-            given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
-            given(passwordEncoder.matches("WrongPw!", ENC_PW)).willReturn(false);
-
-            assertThatThrownBy(() -> userService.updateMyInfo(USER_ID, updateReq(null, "01099998888", "WrongPw!")))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ErrorCode.INVALID_PASSWORD));
-        }
     }
 
     // ════════════════════════════════════════════════════════════════
-    // [기존 + 보완] F-26 | 비밀번호 변경
+    // F-26 | 비밀번호 변경
     // ════════════════════════════════════════════════════════════════
 
     @Nested
@@ -200,12 +229,11 @@ class UserServiceTest {
             userService.changePassword(USER_ID, pwChangeReq(CURRENT, NEW_PW, NEW_PW));
 
             then(userMapper).should().updatePassword(eq(USER_ID), eq("$2a$10$newHash"), any());
-            // [신규] 비밀번호 변경 후 전 기기 세션 파기 검증
             then(userMapper).should().revokeAllSessions(USER_ID);
         }
 
         @Test
-        @DisplayName("[실패] 새 비밀번호 확인 불일치 → PASSWORD_CONFIRM_MISMATCH")
+        @DisplayName("[실패] 새 비밀번호 확인 불일치 → PASSWORD_CONFIRM_MISMATCH (DB 조회 없음)")
         void 실패_확인불일치() {
             assertThatThrownBy(() ->
                     userService.changePassword(USER_ID, pwChangeReq(CURRENT, NEW_PW, "WrongConfirm!")))
@@ -230,7 +258,7 @@ class UserServiceTest {
         }
 
         @Test
-        @DisplayName("[실패] 존재하지 않는 유저 → USER_NOT_FOUND")
+        @DisplayName("[실패] 존재하지 않는 userId → USER_NOT_FOUND")
         void 실패_사용자없음() {
             given(userMapper.findById(USER_ID)).willReturn(Optional.empty());
 
@@ -243,7 +271,7 @@ class UserServiceTest {
     }
 
     // ════════════════════════════════════════════════════════════════
-    // [신규] RQ-F17 | 보유 카드 및 신청 현황
+    // RQ-F17 | 보유 카드 및 신청 현황
     // ════════════════════════════════════════════════════════════════
 
     @Nested
@@ -251,17 +279,27 @@ class UserServiceTest {
     class GetMyCards {
 
         @Test
-        @DisplayName("[정상] 보유 카드·신청 이력 정상 반환 (빈 리스트도 포함)")
-        void 정상_카드현황조회() {
-            // selectOwnedCards / selectCardApplications → 빈 리스트 반환
+        @DisplayName("[정상] ownedCards + applications 반환")
+        void 정상_카드목록반환() {
+            given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
             given(userMapper.selectOwnedCards(USER_ID)).willReturn(Collections.emptyList());
             given(userMapper.selectCardApplications(USER_ID)).willReturn(Collections.emptyList());
 
             CardStatusResponse response = userService.getMyCards(USER_ID);
 
-            assertThat(response).isNotNull();
-            assertThat(response.getOwnedCards()).isEmpty();
-            assertThat(response.getApplications()).isEmpty();
+            assertThat(response.getOwnedCards()).isNotNull();
+            assertThat(response.getApplications()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("[실패] 존재하지 않는 userId → USER_NOT_FOUND")
+        void 실패_사용자없음() {
+            given(userMapper.findById(USER_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> userService.getMyCards(USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.USER_NOT_FOUND));
         }
     }
 }
