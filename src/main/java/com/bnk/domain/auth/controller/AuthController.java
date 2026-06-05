@@ -1,7 +1,7 @@
 package com.bnk.domain.auth.controller;
 
-import org.apache.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CookieValue;
@@ -96,7 +96,7 @@ public class AuthController {
 			@CookieValue(value = "refresh_token", required = false) String refreshToken, HttpServletResponse response) {
 		if (refreshToken == null || refreshToken.isBlank()) {
 	        // 쿠키 자체가 없는 경우 → 재로그인 유도
-	        return ResponseEntity.status(HttpStatus.SC_UNAUTHORIZED)
+	        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
 	                .body(ApiResponse.message("세션이 만료되었습니다. 다시 로그인해 주세요."));
 	    }
 		response.addHeader(HttpHeaders.SET_COOKIE, authService.refresh(refreshToken).toString());
