@@ -40,7 +40,7 @@ public class SearchAdminController {
      */
     @PostMapping("/cards/{cardId}/keywords")
     public ResponseEntity<ApiResponse<Integer>> mapKeywordsToCard(
-    		@PathVariable("cardId") Long cardId,
+    		@PathVariable Long cardId,
             @RequestBody @Valid KeywordMappingRequest request,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         int mappedCount = searchAdminService.mapKeywordsToCard(cardId, request, ad.getAdminId());

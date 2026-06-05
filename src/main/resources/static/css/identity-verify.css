@@ -1,0 +1,379 @@
+/* ════════════════════════════════════════════
+   본인인증 모달 — identity-verify.css
+   위치: src/main/resources/static/css/identity-verify.css
+════════════════════════════════════════════ */
+
+/* ── 오버레이 ─────────────────────────────── */
+.iv-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, .55);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 9000;
+	padding: 16px;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity .25s;
+}
+
+.iv-overlay.is-open {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+/* ── 모달 카드 ────────────────────────────── */
+.iv-modal {
+	background: #fff;
+	border-radius: 16px;
+	width: 100%;
+	max-width: 420px;
+	box-shadow: 0 20px 60px rgba(0, 0, 0, .2);
+	overflow: hidden;
+	transform: translateY(20px);
+	transition: transform .25s;
+}
+
+.iv-overlay.is-open .iv-modal {
+	transform: translateY(0);
+}
+
+/* ── 헤더 ─────────────────────────────────── */
+.iv-head {
+	background: linear-gradient(135deg, #C8102E 0%, #a00d24 100%);
+	padding: 18px 22px;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.iv-head-icon {
+	width: 38px;
+	height: 38px;
+	background: rgba(255, 255, 255, .18);
+	border-radius: 10px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 18px;
+	flex-shrink: 0;
+}
+
+.iv-head-title {
+	font-size: 15px;
+	font-weight: 700;
+	color: #fff;
+	margin-bottom: 2px;
+}
+
+.iv-head-sub {
+	font-size: 12px;
+	color: rgba(255, 255, 255, .75);
+}
+
+/* ── 바디 ─────────────────────────────────── */
+.iv-body {
+	padding: 22px;
+}
+
+/* ── 안내 박스 ────────────────────────────── */
+.iv-notice {
+	background: #f9fafb;
+	border-left: 3px solid #C8102E;
+	border-radius: 0 6px 6px 0;
+	padding: 10px 12px;
+	font-size: 12px;
+	color: #52525b;
+	line-height: 1.7;
+	margin-bottom: 20px;
+}
+
+/* ── 폼 그룹 ──────────────────────────────── */
+.iv-group {
+	margin-bottom: 16px;
+}
+
+.iv-label {
+	display: block;
+	font-size: 13px;
+	font-weight: 600;
+	color: #3f3f46;
+	margin-bottom: 6px;
+}
+
+.iv-label .req {
+	color: #C8102E;
+	margin-left: 2px;
+}
+
+.iv-input {
+	width: 100%;
+	padding: 11px 13px;
+	border: 1.5px solid #e4e4e7;
+	border-radius: 8px;
+	font-size: 14px;
+	color: #18181b;
+	background: #fff;
+	outline: none;
+	box-sizing: border-box;
+	transition: border-color .2s, box-shadow .2s;
+}
+
+.iv-input:focus {
+	border-color: #C8102E;
+	box-shadow: 0 0 0 3px rgba(200, 16, 46, .08);
+}
+
+.iv-input.error {
+	border-color: #ef4444;
+}
+
+/* ── 주민번호 ─────────────────────────────── */
+.iv-res-wrap {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.iv-res-front {
+	width: 130px;
+	flex-shrink: 0;
+}
+
+.iv-res-dash {
+	font-size: 18px;
+	color: #a1a1aa;
+	flex-shrink: 0;
+}
+
+.iv-res-back-wrap {
+	flex: 1;
+	position: relative;
+}
+
+.iv-res-back {
+	width: 100%;
+	padding: 11px 13px;
+	border: 1.5px solid #e4e4e7;
+	border-radius: 8px;
+	background: #fafafa;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	min-height: 44px;
+	box-sizing: border-box;
+	transition: border-color .2s, box-shadow .2s;
+	user-select: none;
+}
+
+.iv-res-back:hover, .iv-res-back.on {
+	border-color: #C8102E;
+	box-shadow: 0 0 0 3px rgba(200, 16, 46, .08);
+}
+
+.iv-dot {
+	width: 9px;
+	height: 9px;
+	border-radius: 50%;
+	background: #d4d4d8;
+	flex-shrink: 0;
+	transition: background .15s;
+}
+
+.iv-dot.filled {
+	background: #18181b;
+}
+
+/* ── 키패드 ───────────────────────────────── */
+.iv-keypad {
+	position: absolute;
+	top: calc(100% + 6px);
+	left: 0;
+	right: 0;
+	background: #fff;
+	border: 1px solid #e4e4e7;
+	border-radius: 12px;
+	padding: 10px;
+	box-shadow: 0 8px 30px rgba(0, 0, 0, .12);
+	z-index: 100;
+	display: none;
+}
+
+.iv-keypad.open {
+	display: block;
+}
+
+.iv-kgrid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 6px;
+}
+
+.iv-key {
+	padding: 12px 4px;
+	border: 1px solid #e4e4e7;
+	border-radius: 8px;
+	background: #f9fafb;
+	font-size: 15px;
+	font-weight: 600;
+	color: #18181b;
+	cursor: pointer;
+	text-align: center;
+	transition: background .1s;
+	user-select: none;
+}
+
+.iv-key:active {
+	background: #e5e7eb;
+}
+
+.iv-key.del {
+	background: #fee2e2;
+	color: #dc2626;
+	font-size: 13px;
+}
+
+.iv-key.blank {
+	background: transparent;
+	border-color: transparent;
+	pointer-events: none;
+}
+
+/* ── 주소 행 ──────────────────────────────── */
+.iv-addr-row {
+	display: flex;
+	gap: 8px;
+}
+
+.iv-addr-row .iv-input {
+	flex: 1;
+}
+
+.iv-btn-search {
+	padding: 0 14px;
+	height: 44px;
+	border: 1.5px solid #e4e4e7;
+	border-radius: 8px;
+	background: #f9fafb;
+	font-size: 13px;
+	color: #52525b;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: all .15s;
+	flex-shrink: 0;
+}
+
+.iv-btn-search:hover {
+	border-color: #C8102E;
+	color: #C8102E;
+	background: #fff5f6;
+}
+
+/* ── 에러 ─────────────────────────────────── */
+.iv-err {
+	font-size: 12px;
+	color: #dc2626;
+	margin-top: 5px;
+	display: none;
+}
+
+.iv-err.show {
+	display: block;
+}
+
+/* ── 푸터 버튼 ────────────────────────────── */
+.iv-foot {
+	display: flex;
+	gap: 8px;
+	padding: 0 22px 22px;
+}
+
+.iv-btn-cancel {
+	flex: 1;
+	padding: 12px;
+	border: 1.5px solid #e4e4e7;
+	border-radius: 10px;
+	background: transparent;
+	color: #71717a;
+	font-size: 14px;
+	cursor: pointer;
+	transition: border-color .15s;
+}
+
+.iv-btn-cancel:hover {
+	border-color: #a1a1aa;
+}
+
+.iv-btn-ok {
+	flex: 2;
+	padding: 12px;
+	border: none;
+	border-radius: 10px;
+	background: #C8102E;
+	color: #fff;
+	font-size: 14px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: background .15s;
+}
+
+.iv-btn-ok:hover {
+	background: #a00d24;
+}
+
+/* ── 완료 화면 ────────────────────────────── */
+.iv-done {
+	text-align: center;
+	padding: 8px 0 16px;
+}
+
+.iv-done-icon {
+	font-size: 44px;
+	margin-bottom: 10px;
+}
+
+.iv-done-title {
+	font-size: 17px;
+	font-weight: 700;
+	color: #18181b;
+	margin-bottom: 6px;
+}
+
+.iv-done-desc {
+	font-size: 13px;
+	color: #71717a;
+	margin-bottom: 16px;
+}
+
+.iv-done-info {
+	background: #f0fdf4;
+	border: 1px solid #bbf7d0;
+	border-radius: 10px;
+	padding: 12px 14px;
+	text-align: left;
+}
+
+.iv-done-row {
+	display: flex;
+	justify-content: space-between;
+	font-size: 13px;
+	padding: 5px 0;
+	border-bottom: 1px solid #d1fae5;
+}
+
+.iv-done-row:last-child {
+	border: none;
+}
+
+.iv-done-lbl {
+	color: #52525b;
+}
+
+.iv-done-val {
+	font-weight: 600;
+	color: #18181b;
+	max-width: 220px;
+	text-align: right;
+}

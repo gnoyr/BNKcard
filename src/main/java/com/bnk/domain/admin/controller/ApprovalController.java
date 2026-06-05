@@ -32,7 +32,7 @@ public class ApprovalController {
     /** 결재 상세 조회 */
     @GetMapping("/{approvalId}")
     public ResponseEntity<ApiResponse<ApprovalDetailResponse>> getApprovalDetail(
-    		@PathVariable("approvalId") Long approvalId,
+    		@PathVariable Long approvalId,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         return ApiResponse.toOk(approvalService.getApprovalDetail(approvalId, ad.getAdminId()));
     }
@@ -40,7 +40,7 @@ public class ApprovalController {
     /** 결재 승인 */
     @PostMapping("/{approvalId}/approve")
     public ResponseEntity<ApiResponse<Void>> approveRequest(
-    		@PathVariable("approvalId") Long approvalId,
+    		@PathVariable Long approvalId,
             @RequestBody @Valid ApprovalActionRequest request,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         approvalService.approve(approvalId, request, ad.getAdminId());
@@ -50,7 +50,7 @@ public class ApprovalController {
     /** 결재 반려 */
     @PostMapping("/{approvalId}/reject")
     public ResponseEntity<ApiResponse<Void>> rejectRequest(
-    		@PathVariable("approvalId") Long approvalId,
+    		@PathVariable Long approvalId,
             @RequestBody @Valid ApprovalActionRequest request,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         approvalService.reject(approvalId, request, ad.getAdminId());

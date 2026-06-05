@@ -50,7 +50,7 @@ public class AdminUserController {
      */
     @GetMapping("/users/{userId}")
     public ResponseEntity<ApiResponse<AdminUserResponse>> getUserDetail(
-    		@PathVariable("userId") Long userId,
+    		@PathVariable Long userId,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         return ApiResponse.toOk(adminUserService.getUserDetail(userId, ad.getAdminId()));
     }
@@ -62,7 +62,7 @@ public class AdminUserController {
      */
     @PatchMapping("/users/{userId}/unlock")
     public ResponseEntity<ApiResponse<Void>> unlockUser(
-    		@PathVariable("userId") Long userId,
+    		@PathVariable Long userId,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         adminUserService.unlockUser(userId, ad.getAdminId());
         return ApiResponse.toOk(null);
@@ -70,7 +70,7 @@ public class AdminUserController {
     
     @PatchMapping("/users/{userId}/status")
     public ResponseEntity<ApiResponse<Void>> changeUserStatus(
-    		@PathVariable("userId") Long userId,
+    		@PathVariable Long userId,
             @RequestBody Map<String, String> body,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         adminUserService.changeUserStatus(userId, body.get("statusCode"), ad.getAdminId());

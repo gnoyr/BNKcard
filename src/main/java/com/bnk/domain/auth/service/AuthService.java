@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.bnk.domain.admin.mapper.AdminUserMapper;
+import com.bnk.domain.application.service.CddService;
 import com.bnk.domain.auth.dto.request.AdminLoginRequest;
 import com.bnk.domain.auth.dto.request.EmailVerifyRequest;
 import com.bnk.domain.auth.dto.request.FindIdRequest;
@@ -36,6 +37,7 @@ import com.bnk.global.auth.JwtTokenProvider;
 import com.bnk.global.email.EmailService;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
+import com.bnk.global.util.CiValueGenerator;
 import com.bnk.global.util.CookieUtil;
 import com.bnk.global.util.MaskingUtil;
 import com.bnk.global.util.TokenStore;
@@ -59,6 +61,8 @@ public class AuthService {
 	private final CookieUtil cookieUtil;
 	private final TokenStore tokenStore;
 	private final EmailService mailService;
+	private final CiValueGenerator ciValueGenerator;
+    private final CddService       cddService;
 
 	// ──────────────────────────────────────────────────────────────────
 	//   KEY_VERIFY   : 인증코드 임시 저장  "email:verify:{email}"
@@ -112,56 +116,73 @@ public class AuthService {
 	// ──────────────────────────────────────────────────────────────────
 	@Transactional
     public Long signup(SignupRequest request) {
+ 
+        // ① 이메일 중복
         if (userMapper.existsByEmail(request.getEmail()) > 0)
             throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
  
+        // ② phone 중복 (암호화로 인해 전체 조회 후 비교)
         String formattedPhone = MaskingUtil.formatPhone(request.getPhone());
- 
-        if (userMapper.existsByPhone(formattedPhone) > 0)
+        boolean phoneExists = userMapper.findAllPhones().stream()
+                .anyMatch(u -> formattedPhone.equals(u.getPhone()));
+        if (phoneExists)
             throw new BusinessException(ErrorCode.DUPLICATE_PHONE);
  
+        // ③ 이메일 인증 확인
         if (tokenStore.get(KEY_VERIFIED + request.getEmail()) == null)
             throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
  
-        // 필수 약관 체크
+        // ④ 필수 약관 체크
         List<Terms> signupTerms = termsMapper.findByPackageType("SIGNUP");
         Set<Long> requiredIds = signupTerms.stream()
                 .filter(t -> "Y".equals(t.getRequiredYn()))
                 .map(Terms::getTermsId)
                 .collect(Collectors.toSet());
- 
         if (!request.getAgreedTermsIds().containsAll(requiredIds))
             throw new BusinessException(ErrorCode.REQUIRED_TERMS_NOT_AGREED);
  
-        // birthDate "yyyy-MM-dd" · "yyyyMMdd" 두 포맷 모두 파싱
+        // ⑤ birthDate 파싱
         LocalDate birthDate = null;
+        String birthDateStr = null;
         if (request.getBirthDate() != null && !request.getBirthDate().isBlank()) {
-            String raw = request.getBirthDate().replace("-", ""); // "2000-01-01" → "20000101"
-            birthDate = LocalDate.parse(raw, DateTimeFormatter.BASIC_ISO_DATE);
+            String raw = request.getBirthDate().replace("-", "");
+            birthDate    = LocalDate.parse(raw, DateTimeFormatter.BASIC_ISO_DATE);
+            birthDateStr = birthDate.toString();  // "YYYY-MM-DD"
         }
  
-        // marketingAgree Boolean → "Y"/"N" 변환
+        // ⑥ CI값 생성 (이름 + 생년월일 + 전화번호 조합 → SHA-256 Mock CI)
+        String ciValue = ciValueGenerator.generate(
+                request.getName(), birthDateStr, formattedPhone);
+ 
+        // ⑦ Watchlist 대조 (미가입 요주의 인물 차단)
+        cddService.checkWatchlist(ciValue, request.getName(), birthDateStr);
+ 
+        // ⑧ marketingAgree 변환
         String marketingAgreeYN = Boolean.TRUE.equals(request.getMarketingAgree()) ? "Y" : "N";
  
-        // ── User INSERT ──────────────────────────────────────────────
+        // ⑨ User INSERT
         User user = User.builder()
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .name(request.getName())
                 .phone(formattedPhone)
                 .birthDate(birthDate)
+                .ciValue(ciValue)           // CI값 저장 (AES 암호화는 TypeHandler가 자동 처리)
                 .job(request.getJob())
                 .incomeLevelCode(request.getIncomeLevelCode())
                 .creditScore(request.getCreditScore())
-                .marketingAgree(marketingAgreeYN)   // ✅ "Y" / "N" 보장
+                .marketingAgree(marketingAgreeYN)
                 .build();
  
         userMapper.insertUser(user);
  
-        // is_email_verified = 'Y' 로 즉시 업데이트
+        // ⑩ 이메일 인증 완료 처리
         userMapper.updateEmailVerified(user.getUserId(), "Y");
  
-        // 약관 동의 저장
+        // ⑪ CDD 초기화 (회원가입 = SIMPLE CDD 통과 → VERIFIED)
+        cddService.initializeCdd(user.getUserId());
+ 
+        // ⑫ 약관 동의 저장
         List<UserTermsAgreement> agreements = signupTerms.stream()
                 .filter(t -> request.getAgreedTermsIds().contains(t.getTermsId()))
                 .map(t -> UserTermsAgreement.builder()
@@ -246,14 +267,22 @@ public class AuthService {
 	// F-20 | 아이디 찾기
 	// ──────────────────────────────────────────────────────────────────
 	@Transactional(readOnly = true)
-	public FindIdResponse findId(FindIdRequest request) {
-		String formattedPhone = MaskingUtil.formatPhone(request.getPhone());
-		User user = userMapper.findByNameAndPhone(request.getName(), formattedPhone)
-				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-		return FindIdResponse.builder()
-				.maskedEmail(MaskingUtil.maskEmail(user.getEmail()))
-				.build();
-	}
+    public FindIdResponse findId(FindIdRequest request) {
+        String formattedPhone = MaskingUtil.formatPhone(request.getPhone());
+ 
+        List<User> candidates = userMapper.findByName(request.getName());
+ 
+        User user = candidates.stream()
+            .filter(u -> u.getPhone() != null
+                      && formattedPhone.equals(u.getPhone()))
+            .findFirst()
+            .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+ 
+        return FindIdResponse.builder()
+            .maskedEmail(MaskingUtil.maskEmail(user.getEmail()))
+            .message("이메일 조회 완료")
+            .build();
+    }
 
 	// ──────────────────────────────────────────────────────────────────
 	// F-22 | 비밀번호 재설정 링크 발송
