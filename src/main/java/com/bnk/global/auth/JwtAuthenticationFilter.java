@@ -32,10 +32,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final UserDetailsServiceImpl userDetailsService;
     private final AdminDetailsServiceImpl adminDetailsService;
 
-    /** 필터를 완전히 건너뛸 공개 경로 */
+    /**
+     * 필터를 완전히 건너뛸 공개 경로.
+     *
+     * /api/auth/send-verify-code 추가.
+     * 이메일 인증코드 발송은 비로그인 상태에서 호출하므로
+     * 명시적으로 SKIP 목록에 포함해야 의도한 경로를 명확히 문서화할 수 있다.
+     * (anonymousUser로 통과는 되지만 공식 skip 목록에 있어야 유지보수 혼선 방지)
+     */
     private static final List<String> SKIP_PATHS = List.of(
         "/api/auth/login",
         "/api/auth/signup",
+        "/api/auth/send-verify-code",
         "/api/auth/verify-email",
         "/api/auth/find-id",
         "/api/auth/find-password",
@@ -66,10 +74,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (token != null && jwtTokenProvider.validateToken(token)) {
             String type = jwtTokenProvider.getTokenType(token);
 
-            // REFRESH 타입 토큰이 access_token 쿠키에 잘못 세팅된 경우를 방어.
+            /*
+             * REFRESH 타입 토큰이 access_token 쿠키에 잘못 세팅된 경우 방어:
+             * "ACCESS" / "ADMIN_ACCESS" 외 타입은 익명 처리.
+             */
             if (!"ACCESS".equals(type) && !"ADMIN_ACCESS".equals(type)) {
-                log.warn("[JWT Filter] 잘못된 토큰 타입이 access_token 쿠키에서 감지됨: type={}, path={}",
-                        type, path);
+                log.warn("[JWT Filter] 허용되지 않은 토큰 타입: type={}, path={}", type, path);
                 setAnonymous();
                 chain.doFilter(request, response);
                 return;
@@ -79,7 +89,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             if (SecurityContextHolder.getContext().getAuthentication() == null) {
                 if ("ADMIN_ACCESS".equals(type)) {
-                    // DB 조회 결과가 아닌 토큰 클레임의 역할을 권위 있는 소스로 사용.
+                    // 토큰 클레임의 역할을 권위 있는 소스로 사용 (DB 재조회 없이 클레임 직접 사용)
                     UserDetails adminDetails = adminDetailsService.loadUserById(subjectId);
                     List<GrantedAuthority> authorities = jwtTokenProvider.getRoleList(token)
                             .stream()
@@ -115,7 +125,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     /**
      * 익명 인증 객체를 SecurityContext에 등록.
-     * 비로그인 / 잘못된 토큰 타입 두 경우 모두 공통 사용.
+     * 비로그인 / 허용되지 않은 토큰 타입 두 경우 모두 공통 사용.
      */
     private void setAnonymous() {
         AnonymousAuthenticationToken anonymousAuth = new AnonymousAuthenticationToken(

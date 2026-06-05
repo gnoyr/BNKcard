@@ -62,22 +62,22 @@ public class AuthService {
 	private final TokenStore tokenStore;
 	private final EmailService mailService;
 	private final CiValueGenerator ciValueGenerator;
-    private final CddService       cddService;
+	private final CddService cddService;
 
 	// ──────────────────────────────────────────────────────────────────
-	//   KEY_VERIFY   : 인증코드 임시 저장  "email:verify:{email}"
-	//   KEY_VERIFIED : 인증 완료 플래그   "email:verified:{email}"
-	//   KEY_RESET    : 비밀번호 재설정     "pw:reset:{token}"
+	// KEY_VERIFY : 인증코드 임시 저장 "email:verify:{email}"
+	// KEY_VERIFIED : 인증 완료 플래그 "email:verified:{email}"
+	// KEY_RESET : 비밀번호 재설정 "pw:reset:{token}"
 	// ──────────────────────────────────────────────────────────────────
-	private static final String KEY_VERIFY   = "email:verify:";
+	private static final String KEY_VERIFY = "email:verify:";
 	private static final String KEY_VERIFIED = "email:verified:";
-	private static final String KEY_RESET    = "pw:reset:";
+	private static final String KEY_RESET = "pw:reset:";
 
-	private static final long TTL_VERIFY_CODE_SEC   = 600L;   // 10분 (이메일 본문 안내와 일치)
-	private static final long TTL_VERIFIED_FLAG_SEC = 1800L;  // 30분 (회원가입 완료 전까지 유효)
-	private static final long TTL_PW_RESET_SEC      = 1800L;  // 30분 (이메일 본문 안내와 일치)
+	private static final long TTL_VERIFY_CODE_SEC = 600L; // 10분 (이메일 본문 안내와 일치)
+	private static final long TTL_VERIFIED_FLAG_SEC = 1800L; // 30분 (회원가입 완료 전까지 유효)
+	private static final long TTL_PW_RESET_SEC = 1800L; // 30분 (이메일 본문 안내와 일치)
 
-	private static final int MAX_LOGIN_FAIL    = 5;
+	private static final int MAX_LOGIN_FAIL = 5;
 	private static final int LOCK_DURATION_MIN = 30;
 
 	// ──────────────────────────────────────────────────────────────────
@@ -207,9 +207,15 @@ public class AuthService {
         return user.getUserId();
     }
 
-	// ──────────────────────────────────────────────────────────────────
-	// F-04 | 로그인
-	// ──────────────────────────────────────────────────────────────────
+	/**
+	 * F-04 | 사용자 로그인
+	 *
+	 * [중요] @Transactional(noRollbackFor = BusinessException.class)
+	 * 로그인 실패 시 incrementLoginFailCount() DB 쓰기가 예외 이후에도
+	 * 반드시 커밋되어야 하므로 BusinessException 발생 시 롤백을 허용하지 않음.
+	 * 이 선언을 제거하거나 readOnly = true 로 변경하면
+	 * 로그인 실패 횟수가 항상 0으로 초기화되어 잠금 기능이 동작하지 않음.
+	 */
 	@Transactional(noRollbackFor = BusinessException.class)
 	public AuthTokenResult login(LoginRequest request, HttpServletRequest httpRequest) {
 		String ipAddress = resolveClientIp(httpRequest);
