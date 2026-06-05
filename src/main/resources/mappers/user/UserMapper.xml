@@ -6,35 +6,48 @@
 
 	<resultMap id="userMap" type="com.bnk.domain.user.model.User">
 		<id property="userId" column="user_id" />
-		<result property="email" column="email" />
-		<result property="passwordHash" column="password_hash" />
-		<result property="name" column="name" />
+		<result property="email" column="email"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="passwordHash" column="password_hash"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="name" column="name"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
 		<result property="phone" column="phone"
 			typeHandler="com.bnk.global.mybatis.AesTypeHandler" />
 		<result property="ciValue" column="ci_value"
 			typeHandler="com.bnk.global.mybatis.AesTypeHandler" />
 		<result property="birthDate" column="birth_date"
 			typeHandler="com.bnk.global.mybatis.AesBirthDateTypeHandler" />
-		<result property="job" column="job" />
-		<result property="incomeLevelCode" column="income_level_code" />
+		<result property="job" column="job"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="incomeLevelCode" column="income_level_code"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
 		<result property="creditScore" column="credit_score" />
-		<result property="statusCode" column="status_code" />
+		<result property="statusCode" column="status_code"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
 		<result property="loginFailCount" column="login_fail_count" />
 		<result property="lockedUntil" column="locked_until" />
 		<result property="lastLoginAt" column="last_login_at" />
 		<result property="lastPasswordChangedAt"
 			column="last_password_changed_at" />
-		<result property="isEmailVerified" column="is_email_verified" />
-		<result property="isPhoneVerified" column="is_phone_verified" />
-		<result property="pushEnabled" column="push_enabled" />
-		<result property="marketingAgree" column="marketing_agree" />
-		<result property="privacyAgree" column="privacy_agree" />
+		<result property="isEmailVerified" column="is_email_verified"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="isPhoneVerified" column="is_phone_verified"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="pushEnabled" column="push_enabled"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="marketingAgree" column="marketing_agree"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="privacyAgree" column="privacy_agree"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
 		<result property="dormantAt" column="dormant_at" />
 		<result property="withdrawnAt" column="withdrawn_at" />
 		<result property="createdAt" column="created_at" />
 		<result property="updatedAt" column="updated_at" />
-		<result property="deletedYn" column="deleted_yn" />
-		<result property="cddStatusCode" column="cdd_status_code" />
+		<result property="deletedYn" column="deleted_yn"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="cddStatusCode" column="cdd_status_code"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
 	</resultMap>
 
 	<resultMap id="ownedCardRowMap"
@@ -79,7 +92,7 @@
 		AND deleted_yn = 'N'
 	</select>
 
-	<!-- [변경] phone 암호화로 WHERE phone = 불가 → 이름으로만 조회 후 Service에서 phone 비교 -->
+	<!-- phone 암호화로 WHERE phone = 불가 → 이름으로만 조회 후 Service에서 phone 비교 -->
 	<select id="findByName" resultMap="userMap">
 		SELECT * FROM USERS
 		WHERE name
@@ -99,7 +112,7 @@
 		WHERE email = #{email}
 	</select>
 
-	<!-- [변경] phone 암호화로 WHERE phone = 불가 → 전체 조회 후 Service에서 중복 판단 -->
+	<!-- phone 암호화로 WHERE phone = 불가 → 전체 조회 후 Service에서 중복 판단 -->
 	<select id="findAllPhones" resultMap="userMap">
 		SELECT user_id, phone
 		FROM
@@ -118,21 +131,29 @@
 		phone,
 		ci_value,
 		birth_date, job, income_level_code, credit_score,
-		marketing_agree, privacy_agree,
+		marketing_agree,
+		privacy_agree,
 		status_code, is_email_verified, is_phone_verified,
 		push_enabled, login_fail_count, created_at, deleted_yn
 		) VALUES (
-		#{email}, #{passwordHash}, #{name},
-		#{phone, typeHandler=com.bnk.global.mybatis.AesTypeHandler},
-		#{ciValue, typeHandler=com.bnk.global.mybatis.AesTypeHandler},
-		#{birthDate, typeHandler=com.bnk.global.mybatis.AesBirthDateTypeHandler},
-		#{job, jdbcType=VARCHAR},
+		#{email},
+		#{passwordHash},
+		#{name},
+		#{phone, typeHandler=aesTypeHandler}
+		#{ciValue, typeHandler=aesTypeHandler}
+		#{birthDate,
+		typeHandler=aesBirthDateTypeHandler}
+		#{job,
+		jdbcType=VARCHAR},
 		#{incomeLevelCode, jdbcType=VARCHAR},
-		#{creditScore, jdbcType=NUMERIC},
+		#{creditScore,
+		jdbcType=NUMERIC},
 		#{marketingAgree, jdbcType=VARCHAR},
 		'Y',
-		'ACTIVE', 'N', 'N',
-		'Y', 0, SYSTIMESTAMP, 'N'
+		'ACTIVE',
+		'N', 'N',
+		'Y', 0,
+		SYSTIMESTAMP, 'N'
 		)
 	</insert>
 
@@ -140,10 +161,8 @@
 		UPDATE USERS
 		<set>
 			<if test="name            != null">name = #{name},</if>
-			<if test="phone           != null">
-				phone = #{phone,
-				typeHandler=com.bnk.global.mybatis.AesTypeHandler},
-				is_phone_verified = 'N',
+			<if test="phone != null">
+				phone = #{phone, typeHandler=aesTypeHandler},
 			</if>
 			<if test="job             != null">job = #{job},</if>
 			<if test="incomeLevelCode != null">income_level_code = #{incomeLevelCode},</if>

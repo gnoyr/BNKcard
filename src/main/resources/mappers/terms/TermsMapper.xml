@@ -4,239 +4,300 @@
 
 <mapper namespace="com.bnk.domain.terms.mapper.TermsMapper">
 
-    <resultMap id="termsMap" type="com.bnk.domain.terms.model.Terms">
-        <id     property="termsId"             column="terms_id"/>
-        <result property="termsMasterId"       column="terms_master_id"/>
-        <result property="version"             column="version"/>
-        <result property="contentHtml"         column="content_html"/>
-        <result property="requiredYn"          column="required_yn"/>
-        <result property="reconsentRequiredYn" column="reconsent_required_yn"/>
-        <result property="status"              column="status"/>
-        <result property="effectiveFrom"       column="effective_from"/>
-        <result property="effectiveTo"         column="effective_to"/>
-        <result property="documentHash"        column="document_hash"/>
-        <result property="internalNote"        column="internal_note"/>
-        <result property="approvedBy"          column="approved_by"/>
-        <result property="approvedAt"          column="approved_at"/>
-        <result property="createdAt"           column="created_at"/>
-        <result property="updatedAt"           column="updated_at"/>
-        <result property="title"               column="terms_title"/>
-        <result property="termsType"           column="terms_type"/>
-    </resultMap>
+	<resultMap id="termsMap"
+		type="com.bnk.domain.terms.model.Terms">
+		<id property="termsId" column="terms_id" />
+		<result property="termsMasterId" column="terms_master_id" />
+		<result property="version" column="version" />
+		<result property="contentHtml" column="content_html" />
+		<result property="requiredYn" column="required_yn" />
+		<result property="reconsentRequiredYn"
+			column="reconsent_required_yn" />
+		<result property="status" column="status" />
+		<result property="effectiveFrom" column="effective_from" />
+		<result property="effectiveTo" column="effective_to" />
+		<result property="documentHash" column="document_hash" />
+		<result property="internalNote" column="internal_note" />
+		<result property="approvedBy" column="approved_by" />
+		<result property="approvedAt" column="approved_at" />
+		<result property="createdAt" column="created_at" />
+		<result property="updatedAt" column="updated_at" />
+		<result property="title" column="terms_title" />
+		<result property="termsType" column="terms_type" />
+	</resultMap>
 
-    <!-- PACKAGE_TERMS → TERMS(PUBLISHED) → TERMS_MASTERS JOIN -->
-    <select id="findByPackageType" resultMap="termsMap">
-        SELECT t.*,
-               tm.title     AS terms_title,
-               tm.terms_type
-        FROM   TERMS_PACKAGES tp
-        INNER JOIN PACKAGE_TERMS  pt ON tp.package_id     = pt.package_id
-        INNER JOIN TERMS          t  ON pt.terms_id       = t.terms_id
-        INNER JOIN TERMS_MASTERS  tm ON t.terms_master_id = tm.terms_master_id
-        WHERE  tp.package_type = #{packageType}
-          AND  t.status        = 'PUBLISHED'
-          AND  t.effective_from &lt;= SYSDATE
-          AND  (t.effective_to IS NULL OR t.effective_to &gt;= SYSDATE)
-        ORDER  BY pt.display_order ASC NULLS LAST
-    </select>
+	<!-- PACKAGE_TERMS → TERMS(PUBLISHED) → TERMS_MASTERS JOIN -->
+	<select id="findByPackageType" resultMap="termsMap">
+		SELECT t.*,
+		tm.title AS
+		terms_title,
+		tm.terms_type
+		FROM TERMS_PACKAGES tp
+		INNER JOIN
+		PACKAGE_TERMS pt ON tp.package_id = pt.package_id
+		INNER JOIN TERMS t ON
+		pt.terms_id = t.terms_id
+		INNER JOIN TERMS_MASTERS tm ON
+		t.terms_master_id = tm.terms_master_id
+		WHERE tp.package_type =
+		#{packageType}
+		AND t.status = 'PUBLISHED'
+		AND t.effective_from &lt;=
+		SYSDATE
+		AND (t.effective_to IS NULL OR t.effective_to &gt;= SYSDATE)
+		ORDER BY pt.display_order ASC NULLS LAST
+	</select>
 
-    <select id="findById" resultMap="termsMap">
-        SELECT t.*, tm.title AS terms_title, tm.terms_type
-        FROM   TERMS t
-        INNER JOIN TERMS_MASTERS tm ON t.terms_master_id = tm.terms_master_id
-        WHERE  t.terms_id = #{termsId}
-    </select>
+	<select id="findById" resultMap="termsMap">
+		SELECT t.*, tm.title AS
+		terms_title, tm.terms_type
+		FROM TERMS t
+		INNER JOIN TERMS_MASTERS tm ON
+		t.terms_master_id = tm.terms_master_id
+		WHERE t.terms_id = #{termsId}
+	</select>
 
-    <insert id="insertTermsFile">
-	    <selectKey keyProperty="fileId" resultType="long" order="AFTER">
-	        SELECT SEQ_TERMS_FILES.CURRVAL FROM DUAL
-	    </selectKey>
-	    INSERT INTO TERMS_FILES (
-	        terms_id, file_type, file_path,
-	        original_name, stored_name, file_extension,
-	        file_size, mime_type, is_primary,
-	        uploaded_at
-	    ) VALUES (
-	        #{termsId}, #{fileType}, #{filePath},
-	        #{originalName},
-	        #{storedName,      jdbcType=VARCHAR},
-	        #{fileExtension,   jdbcType=VARCHAR},
-	        #{fileSize,        jdbcType=NUMERIC},
-	        #{mimeType,        jdbcType=VARCHAR},
-	        #{isPrimary},
-	        SYSTIMESTAMP
-	    )
+	<insert id="insertTermsFile">
+		<selectKey keyProperty="fileId" resultType="long"
+			order="AFTER">
+			SELECT SEQ_TERMS_FILES.CURRVAL FROM DUAL
+		</selectKey>
+		INSERT INTO TERMS_FILES (
+		terms_id, file_type, file_path,
+		original_name, stored_name, file_extension,
+		file_size, mime_type,
+		is_primary,
+		uploaded_at
+		) VALUES (
+		#{termsId}, #{fileType}, #{filePath},
+		#{originalName},
+		#{storedName, jdbcType=VARCHAR},
+		#{fileExtension,
+		jdbcType=VARCHAR},
+		#{fileSize, jdbcType=NUMERIC},
+		#{mimeType,
+		jdbcType=VARCHAR},
+		#{isPrimary},
+		SYSTIMESTAMP
+		)
 	</insert>
-    
-    <update id="updateTermsStatus">
-        UPDATE TERMS
-        SET status     = #{status},
-            updated_at = SYSTIMESTAMP
-        <if test="status == 'APPROVED'">
-            , approved_by = #{changedBy}
-            , approved_at = SYSTIMESTAMP
-        </if>
-        WHERE terms_id = #{termsId}
-    </update>
 
-    <insert id="insertStatusHistory">
-        INSERT INTO TERMS_STATUS_HISTORY (
-            terms_id, previous_status, changed_status,
-            changed_by, changed_reason, changed_at
-        ) VALUES (
-            #{termsId},
-            #{previousStatus,  jdbcType=VARCHAR},
-            #{changedStatus},
-            #{changedBy,       jdbcType=NUMERIC},
-            #{changedReason,   jdbcType=VARCHAR},
-            SYSTIMESTAMP
-        )
-    </insert>
+	<update id="updateTermsStatus">
+		UPDATE TERMS
+		SET status = #{status},
+		updated_at = SYSTIMESTAMP
+		<if test="status == 'APPROVED'">
+			, approved_by = #{changedBy}
+			, approved_at = SYSTIMESTAMP
+		</if>
+		WHERE terms_id = #{termsId}
+	</update>
 
-    <!-- reconsent 대상 userId 조회 -->
-    <select id="findUserIdsForReconsent" resultType="long">
-        SELECT DISTINCT uta.user_id
-        FROM   USER_TERMS_AGREEMENTS uta
-        WHERE  uta.terms_id  = #{termsId}
-          AND  uta.agreed_yn = 'Y'
-    </select>
+	<insert id="insertStatusHistory">
+		INSERT INTO TERMS_STATUS_HISTORY (
+		terms_id,
+		previous_status, changed_status,
+		changed_by, changed_reason, changed_at
+		) VALUES (
+		#{termsId},
+		#{previousStatus, jdbcType=VARCHAR},
+		#{changedStatus},
+		#{changedBy, jdbcType=NUMERIC},
+		#{changedReason,
+		jdbcType=VARCHAR},
+		SYSTIMESTAMP
+		)
+	</insert>
 
-    <insert id="insertNotificationHistory">
-        INSERT INTO TERMS_NOTIFICATION_HISTORY (
-            user_id, terms_id, notification_type,
-            sent_yn, read_yn, created_at
-        ) VALUES (
-            #{userId}, #{termsId}, #{notificationType},
-            'N', 'N', SYSTIMESTAMP
-        )
-    </insert>
+	<!-- reconsent 대상 userId 조회 -->
+	<select id="findUserIdsForReconsent" resultType="long">
+		SELECT DISTINCT
+		uta.user_id
+		FROM USER_TERMS_AGREEMENTS uta
+		WHERE uta.terms_id =
+		#{termsId}
+		AND uta.agreed_yn = 'Y'
+	</select>
+
+	<insert id="insertNotificationHistory">
+		INSERT INTO TERMS_NOTIFICATION_HISTORY (
+		user_id,
+		terms_id, notification_type,
+		sent_yn, read_yn, created_at
+		) VALUES (
+		#{userId}, #{termsId}, #{notificationType},
+		'N', 'N', SYSTIMESTAMP
+		)
+	</insert>
 
 	<!-- 카드 상세용: CARD_TERMS → TERMS → TERMS_FILES JOIN -->
-	<resultMap id="termsFileMap" type="com.bnk.domain.card.dto.response.CardDetailResponse$TermsFileDto">
-	    <result property="termsId"   column="terms_id"/>
-	    <result property="title"     column="terms_title"/>
-	    <result property="filePath"  column="file_path"/>
-	    <result property="fileType"  column="file_type"/>
+	<resultMap id="termsFileMap"
+		type="com.bnk.domain.card.dto.response.CardDetailResponse$TermsFileDto">
+		<result property="termsId" column="terms_id" />
+		<result property="title" column="terms_title" />
+		<result property="filePath" column="file_path"
+			jdbcType="VARCHAR"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="fileType" column="file_type"
+			jdbcType="VARCHAR"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
 	</resultMap>
-	
+
 	<select id="findTermsFilesByCardId" resultMap="termsFileMap">
-	    SELECT t.terms_id,
-	           tm.title    AS terms_title,
-	           tf.file_path,
-	           tf.file_type
-	    FROM   CARD_TERMS ct
-	    INNER JOIN TERMS         t  ON ct.terms_id        = t.terms_id
-	    INNER JOIN TERMS_MASTERS tm ON t.terms_master_id  = tm.terms_master_id
-	    LEFT  JOIN TERMS_FILES   tf ON t.terms_id         = tf.terms_id
-	                                AND tf.is_primary      = 'Y'
-	    WHERE  ct.card_id    = #{cardId}
-	      AND  t.status      = 'PUBLISHED'
-	      AND  t.effective_from &lt;= SYSDATE
-	      AND  (t.effective_to IS NULL OR t.effective_to &gt;= SYSDATE)
-	    ORDER  BY ct.display_order ASC NULLS LAST
+		SELECT t.terms_id,
+		tm.title AS terms_title,
+		tf.file_path,
+		tf.file_type
+		FROM CARD_TERMS ct
+		INNER JOIN TERMS t ON ct.terms_id = t.terms_id
+		INNER JOIN TERMS_MASTERS tm ON t.terms_master_id = tm.terms_master_id
+		LEFT JOIN TERMS_FILES tf ON t.terms_id = tf.terms_id
+		AND tf.is_primary = 'Y'
+		WHERE ct.card_id = #{cardId}
+		AND t.status = 'PUBLISHED'
+		AND t.effective_from &lt;= SYSDATE
+		AND (t.effective_to IS NULL OR t.effective_to &gt;= SYSDATE)
+		ORDER BY ct.display_order ASC NULLS LAST
 	</select>
-	
-	<!-- TermsMapper.xml -->
-	<select id="findFilesByTermsId" resultType="com.bnk.domain.terms.model.TermsFile">
-	    SELECT file_id, terms_id, file_type, file_path,
-	           original_name, stored_name, file_extension,
-	           file_size, mime_type, is_primary, uploaded_at
-	    FROM   TERMS_FILES
-	    WHERE  terms_id = #{termsId}
-	    ORDER  BY is_primary DESC, uploaded_at ASC
-	</select>	
-	
+
+	<resultMap id="termsFileFullMap"
+		type="com.bnk.domain.terms.model.TermsFile">
+		<id property="fileId" column="file_id" />
+		<result property="termsId" column="terms_id" />
+		<result property="fileType" column="file_type"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="filePath" column="file_path"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="originalName" column="original_name"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="storedName" column="stored_name"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="fileExtension" column="file_extension"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="fileSize" column="file_size" />
+		<result property="mimeType" column="mime_type"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="isPrimary" column="is_primary"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="uploadedAt" column="uploaded_at" />
+	</resultMap>
+
+	<!-- findFilesByTermsId도 동일하게 StringTypeHandler 명시 -->
+	<select id="findFilesByTermsId" resultMap="termsFileFullMap">
+		SELECT file_id, terms_id, file_type, file_path,
+		original_name, stored_name, file_extension,
+		file_size, mime_type, is_primary, uploaded_at
+		FROM TERMS_FILES
+		WHERE terms_id = #{termsId}
+		ORDER BY is_primary DESC, uploaded_at ASC
+	</select>
+
 	<!-- 관리자 약관 목록 (TERMS + TERMS_MASTERS JOIN, status 필터 가능) -->
 	<select id="findAllForAdmin" resultMap="termsMap">
-	    SELECT t.terms_id, t.terms_master_id, t.version, t.status,
-	           t.required_yn, t.reconsent_required_yn,
-	           t.effective_from, t.effective_to, t.created_at,
-	           tm.title     AS terms_title,
-	           tm.terms_type
-	    FROM   TERMS t
-	    INNER JOIN TERMS_MASTERS tm ON t.terms_master_id = tm.terms_master_id
-	    <where>
-	        <if test="status != null and status != ''">
-	            t.status = #{status}
-	        </if>
-	    </where>
-	    ORDER  BY t.created_at DESC
+		SELECT t.terms_id, t.terms_master_id, t.version, t.status,
+		t.required_yn, t.reconsent_required_yn,
+		t.effective_from,
+		t.effective_to, t.created_at,
+		tm.title AS terms_title,
+		tm.terms_type
+		FROM TERMS t
+		INNER JOIN TERMS_MASTERS tm ON t.terms_master_id =
+		tm.terms_master_id
+		<where>
+			<if test="status != null and status != ''">
+				t.status = #{status}
+			</if>
+		</where>
+		ORDER BY t.created_at DESC
 	</select>
-	
+
 	<!-- TERMS_MASTERS 전체 목록 (terms-create.html select 박스용) -->
-	<select id="findAllMasters" resultType="com.bnk.domain.terms.model.TermsMaster">
-	    SELECT terms_master_id, terms_type, title, description, created_at
-	    FROM   TERMS_MASTERS
-	    ORDER  BY terms_master_id ASC
+	<select id="findAllMasters"
+		resultType="com.bnk.domain.terms.model.TermsMaster">
+		SELECT terms_master_id, terms_type, title, description,
+		created_at
+		FROM TERMS_MASTERS
+		ORDER BY terms_master_id ASC
 	</select>
-	
-		<!-- TERMS INSERT (status = DRAFT, Oracle TRG_TERMS_BI + SEQ_TERMS 채번) -->
+
+	<!-- TERMS INSERT (status = DRAFT, Oracle TRG_TERMS_BI + SEQ_TERMS 채번) -->
 	<insert id="insertTerms">
-	    <selectKey keyProperty="termsId" resultType="long" order="AFTER">
-	        SELECT SEQ_TERMS.CURRVAL FROM DUAL
-	    </selectKey>
-	    INSERT INTO TERMS (
-	        terms_master_id,
-	        version,
-	        content_html,
-	        required_yn,
-	        reconsent_required_yn,
-	        status,
-	        effective_from,
-	        effective_to,
-	        created_at
-	    ) VALUES (
-	        #{termsMasterId},
-	        #{version},
-	        #{contentHtml,         jdbcType=CLOB},
-	        #{requiredYn},
-	        #{reconsentRequiredYn, jdbcType=VARCHAR},
-	        'DRAFT',
-	        #{effectiveFrom},
-	        #{effectiveTo,         jdbcType=DATE},
-	        SYSTIMESTAMP
-	    )
+		<selectKey keyProperty="termsId" resultType="long"
+			order="AFTER">
+			SELECT SEQ_TERMS.CURRVAL FROM DUAL
+		</selectKey>
+		INSERT INTO TERMS (
+		terms_master_id,
+		version,
+		content_html,
+		required_yn,
+		reconsent_required_yn,
+		status,
+		effective_from,
+		effective_to,
+		created_at
+		)
+		VALUES (
+		#{termsMasterId},
+		#{version},
+		#{contentHtml, jdbcType=CLOB},
+		#{requiredYn},
+		#{reconsentRequiredYn, jdbcType=VARCHAR},
+		'DRAFT',
+		#{effectiveFrom},
+		#{effectiveTo, jdbcType=DATE},
+		SYSTIMESTAMP
+		)
 	</insert>
-	
+
 	<!-- findByIdWithMaster — TermsMapper.java에 선언된 메서드와 연결 -->
 	<select id="findByIdWithMaster" resultMap="termsMap">
-	    SELECT t.*, tm.title AS terms_title, tm.terms_type
-	    FROM   TERMS t
-	    INNER JOIN TERMS_MASTERS tm ON t.terms_master_id = tm.terms_master_id
-	    WHERE  t.terms_id = #{termsId}
+		SELECT t.*, tm.title
+		AS terms_title, tm.terms_type
+		FROM TERMS t
+		INNER JOIN TERMS_MASTERS tm
+		ON t.terms_master_id = tm.terms_master_id
+		WHERE t.terms_id = #{termsId}
 	</select>
-	
+
 	<update id="supersedePreviousPublished">
-	    UPDATE TERMS
-	    SET    status     = 'EXPIRED',
-	           updated_at = SYSTIMESTAMP
-	    WHERE  terms_master_id = #{termsMasterId}
-	      AND  status          = 'PUBLISHED'
-	      AND  terms_id        != #{currentTermsId}
+		UPDATE TERMS
+		SET status = 'EXPIRED',
+		updated_at =
+		SYSTIMESTAMP
+		WHERE terms_master_id = #{termsMasterId}
+		AND status =
+		'PUBLISHED'
+		AND terms_id != #{currentTermsId}
 	</update>
-	
+
 	<insert id="insertTermsMaster">
-	    <selectKey keyProperty="termsMasterId" resultType="long" order="AFTER">
-	        SELECT SEQ_TERMS_MASTERS.CURRVAL FROM DUAL
-	    </selectKey>
-	    INSERT INTO TERMS_MASTERS (
-	        terms_type, title, description,
-	        display_order, required_yn, created_at
-	    ) VALUES (
-	        #{termsType}, #{title},
-	        #{description, jdbcType=VARCHAR},
-	        #{displayOrder, jdbcType=NUMERIC},
-	        #{requiredYn},
-	        SYSTIMESTAMP
-	    )
+		<selectKey keyProperty="termsMasterId" resultType="long"
+			order="AFTER">
+			SELECT SEQ_TERMS_MASTERS.CURRVAL FROM DUAL
+		</selectKey>
+		INSERT INTO TERMS_MASTERS (
+		terms_type, title, description,
+		display_order, required_yn, created_at
+		) VALUES (
+		#{termsType},
+		#{title},
+		#{description, jdbcType=VARCHAR},
+		#{displayOrder,
+		jdbcType=NUMERIC},
+		#{requiredYn},
+		SYSTIMESTAMP
+		)
 	</insert>
 
 	<select id="findLatestVersionByMasterId" resultType="string">
-	    SELECT version FROM TERMS
-	    WHERE  terms_master_id = #{termsMasterId}
-	      AND  status != 'EXPIRED'
-	    ORDER  BY created_at DESC
-	    FETCH  FIRST 1 ROWS ONLY
+		SELECT
+		version FROM TERMS
+		WHERE terms_master_id = #{termsMasterId}
+		AND status
+		!= 'EXPIRED'
+		ORDER BY created_at DESC
+		FETCH FIRST 1 ROWS ONLY
 	</select>
-	
+
 </mapper>

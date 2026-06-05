@@ -15,4 +15,5 @@ public class MigrationUserRow {
 	private String phone;
 	private String ciValue;
 	private String birthDate;
+	private String passwordHash;
 }
