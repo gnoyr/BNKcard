@@ -213,5 +213,10 @@
     "name": "ci.salt",
     "type": "java.lang.String",
     "description": "CI 생성용 Salt"
+  },
+  {
+    "name": "migration.encrypt.enabled",
+    "type": "java.lang.String",
+    "description": "DB에 잘못 저장된 값 일괄 교체 하기 위한 마이그레이션 사용 여부"
   }
 ]}
