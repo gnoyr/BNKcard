@@ -14,8 +14,10 @@
 		<result property="reconsentRequiredYn"
 			column="reconsent_required_yn" />
 		<result property="status" column="status" />
-		<result property="effectiveFrom" column="effective_from" />
-		<result property="effectiveTo" column="effective_to" />
+		<result property="effectiveFrom" column="effective_from"
+			jdbcType="TIMESTAMP" />
+		<result property="effectiveTo" column="effective_to"
+			jdbcType="TIMESTAMP" />
 		<result property="documentHash" column="document_hash" />
 		<result property="internalNote" column="internal_note" />
 		<result property="approvedBy" column="approved_by" />
@@ -150,14 +152,18 @@
 		tf.file_type
 		FROM CARD_TERMS ct
 		INNER JOIN TERMS t ON ct.terms_id = t.terms_id
-		INNER JOIN TERMS_MASTERS tm ON t.terms_master_id = tm.terms_master_id
-		LEFT JOIN TERMS_FILES tf ON t.terms_id = tf.terms_id
+		INNER JOIN TERMS_MASTERS
+		tm ON t.terms_master_id = tm.terms_master_id
+		LEFT JOIN TERMS_FILES tf
+		ON t.terms_id = tf.terms_id
 		AND tf.is_primary = 'Y'
-		WHERE ct.card_id = #{cardId}
+		WHERE ct.card_id =
+		#{cardId}
 		AND t.status = 'PUBLISHED'
 		AND t.effective_from &lt;= SYSDATE
 		AND (t.effective_to IS NULL OR t.effective_to &gt;= SYSDATE)
-		ORDER BY ct.display_order ASC NULLS LAST
+		ORDER BY
+		ct.display_order ASC NULLS LAST
 	</select>
 
 	<resultMap id="termsFileFullMap"
@@ -184,12 +190,16 @@
 
 	<!-- findFilesByTermsId도 동일하게 StringTypeHandler 명시 -->
 	<select id="findFilesByTermsId" resultMap="termsFileFullMap">
-		SELECT file_id, terms_id, file_type, file_path,
-		original_name, stored_name, file_extension,
+		SELECT file_id,
+		terms_id, file_type, file_path,
+		original_name, stored_name,
+		file_extension,
 		file_size, mime_type, is_primary, uploaded_at
-		FROM TERMS_FILES
+		FROM
+		TERMS_FILES
 		WHERE terms_id = #{termsId}
-		ORDER BY is_primary DESC, uploaded_at ASC
+		ORDER BY is_primary DESC,
+		uploaded_at ASC
 	</select>
 
 	<!-- 관리자 약관 목록 (TERMS + TERMS_MASTERS JOIN, status 필터 가능) -->

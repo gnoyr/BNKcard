@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import javax.sql.DataSource;
 
 import org.apache.ibatis.session.SqlSessionFactory;
+import org.apache.ibatis.type.JdbcType;
 import org.mybatis.spring.SqlSessionFactoryBean;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.context.annotation.Bean;
@@ -51,7 +52,7 @@ public class MyBatisConfig {
 		AesTypeHandler aesHandler = aesTypeHandler();
 		AesBirthDateTypeHandler aesBirthHandler = aesBirthDateTypeHandler();
 
-		config.getTypeHandlerRegistry().register(aesHandler);
+		config.getTypeHandlerRegistry().register(String.class, JdbcType.VARCHAR, aesHandler);
 		config.getTypeHandlerRegistry().register(LocalDate.class, aesBirthHandler);
 
 		// ── XML에서 alias로 참조할 수 있도록 TypeAliasRegistry에도 등록 ──

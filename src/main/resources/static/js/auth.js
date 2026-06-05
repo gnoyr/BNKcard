@@ -227,14 +227,19 @@
 					    authToast.error('필수 약관에 모두 동의해 주세요.');
 					    return;
 					}
-                    _agreedTermsIds = [...document.querySelectorAll('[data-id]:checked')]
-                        .map(cb => Number(cb.dataset.id))
-                        .filter(id => id > 0);
+					_agreedTermsIds = [...document.querySelectorAll('[data-id]:checked')]
+					    .map(cb => Number(cb.dataset.id))
+					    .filter(id => id > 0);
 
-                    if (_agreedTermsIds.length === 0) {
-                        authToast.error('약관 정보를 불러올 수 없습니다. 페이지를 새로고침 해주세요.');
-                        return;
-                    }
+					// 필수 약관 ID 존재 여부로 체크 (선택 약관 미체크는 허용)
+					const requiredCheckedIds = [...document.querySelectorAll(
+					    'input[type="checkbox"][data-required="Y"]:checked, input[type="checkbox"][data-required="true"]:checked'
+					)].map(cb => Number(cb.dataset.id)).filter(id => id > 0);
+
+					if (requiredCheckedIds.length === 0) {
+					    authToast.error('약관 정보를 불러올 수 없습니다. 페이지를 새로고침 해주세요.');
+					    return;
+					}
                     showView('view-step2');
                     _updateStepBar(2);
                 });
