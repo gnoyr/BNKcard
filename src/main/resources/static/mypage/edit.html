@@ -4,18 +4,17 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>내 정보 수정 | 부산은행</title>
-<link rel="stylesheet" href="/css/mypage.css" />
-<link rel="stylesheet" href="/css/components.css" />
-<link rel="stylesheet" href="/css/teal-theme.css" />
+	<link rel="stylesheet" href="/css/components.css" />
+	<link rel="stylesheet" href="/css/mypage.css" />
+	<link rel="stylesheet" href="/css/teal-theme.css" />
 </head>
-<body>
+<body data-page="mypage-edit">
 
-	<div id="app-header"></div>
 
-	<nav class="page-nav">
-		<button class="page-nav__back" onclick="history.back()">마이페이지</button>
-		<span class="page-nav__sep">›</span>
-		<span class="page-nav__title">내 정보 수정</span>
+	<nav class="sub-nav">
+		<button class="sub-nav__back" onclick="history.back()">마이페이지</button>
+		<span class="sub-nav__sep">›</span>
+		<span class="sub-nav__title">내 정보 수정</span>
 	</nav>
 
 	<div class="page-wrap">
@@ -26,6 +25,7 @@
 
 		<form id="editForm" novalidate>
 
+			<!-- 기본 정보 -->
 			<div class="card">
 				<div class="card__head">기본 정보</div>
 
@@ -50,6 +50,7 @@
 				</div>
 			</div>
 
+			<!-- 추가 정보 -->
 			<div class="card">
 				<div class="card__head">추가 정보</div>
 
@@ -84,34 +85,62 @@
 				</div>
 			</div>
 
+			<!-- 알림 설정 -->
+			<div class="card">
+				<div class="card__head">알림 설정</div>
+
+				<div class="toggle-row">
+					<div>
+						<div class="toggle-row__label">푸시 알림</div>
+						<div class="toggle-row__sub">카드 혜택 및 공지사항 알림</div>
+					</div>
+					<label class="toggle">
+						<input type="checkbox" id="pushEnabled" />
+						<span class="toggle-track"></span>
+					</label>
+				</div>
+
+				<div class="toggle-row">
+					<div>
+						<div class="toggle-row__label">마케팅 정보 수신 동의</div>
+						<div class="toggle-row__sub">이벤트 및 혜택 안내 수신</div>
+					</div>
+					<label class="toggle">
+						<input type="checkbox" id="marketingAgree" />
+						<span class="toggle-track"></span>
+					</label>
+				</div>
+			</div>
+
 			<div class="form-actions">
-				<a href="/mypage/index.html" class="btn btn-outline">취소</a>
+				<a href="/mypage" class="btn btn-outline">취소</a>
 				<button type="submit" class="btn btn-primary" id="submitBtn">저장하기</button>
 			</div>
 
 		</form>
 	</div>
 
-		<div class="modal-overlay" id="pwConfirmModal">
-			<div class="modal">
-				<div class="modal__title">비밀번호 확인</div>
-				<div class="modal__body">
-					정보 변경을 위해 현재 비밀번호를 입력해주세요.
-				</div>
-				<div class="form-group">
-					<input class="form-control" type="password" id="confirmPwInput"
-						placeholder="현재 비밀번호" autocomplete="current-password" />
-					<span class="form-error" id="confirmPwErr"></span>
-				</div>
-				<div class="modal__footer">
-					<button class="btn btn-outline" id="modalCancelBtn" style="flex:1;">취소</button>
-					<button class="btn btn-primary" id="modalConfirmBtn" style="flex:2;">확인</button>
-				</div>
+	<!-- 비밀번호 확인 모달 — 어떤 정보든 변경 시 항상 표시 -->
+	<div class="modal-overlay" id="pwConfirmModal">
+		<div class="modal">
+			<div class="modal__title">비밀번호 확인</div>
+			<div class="modal__body">
+				정보 변경을 위해 현재 비밀번호를 입력해주세요.
+			</div>
+			<div class="form-group">
+				<input class="form-control" type="password" id="confirmPwInput"
+					placeholder="현재 비밀번호" autocomplete="current-password" />
+				<span class="form-error" id="confirmPwErr"></span>
+			</div>
+			<div class="modal__footer">
+				<button class="btn btn-outline modal-btn-cancel" id="modalCancelBtn">취소</button>
+				<button class="btn btn-primary modal-btn-confirm" id="modalConfirmBtn">확인</button>
 			</div>
 		</div>
+	</div>
 
 	<div id="toast-container"></div>
-
+	<script src="/js/utils.js"></script>
 	<script src="/js/header.js"></script>
 	<script src="/js/mypage.js"></script>
 </body>

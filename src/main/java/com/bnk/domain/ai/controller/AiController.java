@@ -1,13 +1,18 @@
 package com.bnk.domain.ai.controller;
 
+import java.util.List;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.bnk.domain.ai.dto.AiChatHistoryResponse;
 import com.bnk.domain.ai.dto.AiChatRequest;
 import com.bnk.domain.ai.dto.AiChatResponse;
 import com.bnk.domain.ai.service.AiChatService;
@@ -45,5 +50,12 @@ public class AiController {
             @AuthenticationPrincipal(errorOnInvalidType = false) CustomUserDetails ud) {
         Long userId = ud != null ? ud.getUserId() : null;
         return ApiResponse.toOk(aiChatService.chat(request, userId));
+    }
+    
+    @GetMapping("/chat/history")
+    public ResponseEntity<ApiResponse<List<AiChatHistoryResponse>>> history(
+            @RequestParam String sessionId) {
+
+        return ApiResponse.toOk(aiChatService.getHistory(sessionId));
     }
 }

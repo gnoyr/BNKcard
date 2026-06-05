@@ -104,7 +104,11 @@ public class AdminTermsService {
     private void uploadTermsFiles(Long termsId, MultipartFile pdfFile) throws IOException {
         UploadResult pdfMeta = fileStorageService.extractMeta(pdfFile, "terms");
         byte[] pdfBytes = pdfFile.getBytes();
-
+        
+        List<byte[]> imageBytesList = pdfConvertService.convertPdfToImageBytes(pdfFile);
+        String baseName = pdfMeta.getStoredName()
+                .substring(0, pdfMeta.getStoredName().lastIndexOf("."));
+        
         objectStorageService.upload(pdfMeta.getObjectName(), pdfBytes, pdfMeta.getMimeType());
         String pdfUrl = objectStorageService.getPublicUrl(pdfMeta.getObjectName());
 
@@ -120,9 +124,7 @@ public class AdminTermsService {
                 .isPrimary("Y")
                 .build());
 
-        List<byte[]> imageBytesList = pdfConvertService.convertPdfToImageBytes(pdfFile);
-        String baseName = pdfMeta.getStoredName()
-                .substring(0, pdfMeta.getStoredName().lastIndexOf("."));
+        
 
         for (int i = 0; i < imageBytesList.size(); i++) {
             String imageStoredName = baseName + "_page" + (i + 1) + ".jpg";
