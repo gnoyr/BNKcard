@@ -4,92 +4,92 @@
 
 <mapper namespace="com.bnk.domain.admin.mapper.WatchlistMapper">
 
-    <resultMap id="watchlistMap" type="com.bnk.domain.admin.model.Watchlist">
-        <id     property="watchlistId"  column="watchlist_id"/>
-        <result property="name"         column="name"/>
-        <result property="birthDate"    column="birth_date"/>   <!-- AES TypeHandler 자동 복호화 -->
-        <result property="ciValue"      column="ci_value"/>     <!-- AES TypeHandler 자동 복호화 -->
-        <result property="ciValueHash"  column="ci_value_hash"/>
-        <result property="birthDateHash" column="birth_date_hash"/>
-        <result property="reason"       column="reason"/>
-        <result property="riskLevel"    column="risk_level"/>
-        <result property="registeredAt" column="registered_at"/>
-        <result property="registeredBy" column="registered_by"/>
-        <result property="deletedYn"    column="deleted_yn"/>
-    </resultMap>
+	<resultMap id="watchlistMap"
+		type="com.bnk.domain.admin.model.Watchlist">
+		<id property="watchlistId" column="watchlist_id" />
+		<result property="name" column="name" />
 
-    <!-- ============================================================
-         CI값 해시로 단건 조회 (IDX_WATCHLIST_CI_HASH 인덱스 사용)
-         ============================================================ -->
-    <select id="findByCiValueHash" resultMap="watchlistMap">
-        SELECT *
-        FROM   WATCHLIST
-        WHERE  ci_value_hash = #{ciValueHash}
-          AND  deleted_yn    = 'N'
-        FETCH FIRST 1 ROWS ONLY
-    </select>
+		<result property="ciValue" column="ci_value"
+			typeHandler="aesTypeHandler" />
+		<result property="birthDate" column="birth_date"
+			typeHandler="aesTypeHandler" />
 
-    <!-- ============================================================
-         이름 + 생년월일 해시로 조회 (IDX_WATCHLIST_NAME_BD 인덱스 사용)
-         name은 평문 저장이므로 직접 비교,
-         birth_date는 AES 암호화이므로 birth_date_hash 컬럼으로 비교
-         ============================================================ -->
-    <select id="findByNameAndBirthDateHash" resultMap="watchlistMap">
-        SELECT *
-        FROM   WATCHLIST
-        WHERE  name            = #{name}
-          AND  birth_date_hash = #{birthDateHash}
-          AND  deleted_yn      = 'N'
-    </select>
+		<result property="ciValueHash" column="ci_value_hash" />
+		<result property="birthDateHash" column="birth_date_hash" />
 
-    <!-- ============================================================
-         전체 목록 조회 (관리자 화면)
-         ============================================================ -->
-    <select id="findAll" resultMap="watchlistMap">
-        SELECT *
-        FROM   WATCHLIST
-        WHERE  deleted_yn = 'N'
-        ORDER  BY registered_at DESC
-    </select>
+		<result property="reason" column="reason" />
+		<result property="riskLevel" column="risk_level" />
+		<result property="registeredAt" column="registered_at" />
+		<result property="registeredBy" column="registered_by" />
+		<result property="deletedYn" column="deleted_yn" />
+	</resultMap>
 
-    <!-- ============================================================
-         등록 — ci_value_hash, birth_date_hash 함께 저장
-         실제 해시 계산은 CddService.sha256Hex()에서 수행 후 전달
-         ============================================================ -->
-    <insert id="insert">
-        INSERT INTO WATCHLIST (
-            name,
-            birth_date,
-            ci_value,
-            ci_value_hash,
-            birth_date_hash,
-            reason,
-            risk_level,
-            registered_by,
-            registered_at,
-            deleted_yn
-        ) VALUES (
-            #{name},
-            #{birthDate},        <!-- AES TypeHandler 자동 암호화 -->
-            #{ciValue},          <!-- AES TypeHandler 자동 암호화 -->
-            #{ciValueHash},
-            #{birthDateHash},
-            #{reason,      jdbcType=VARCHAR},
-            #{riskLevel,   jdbcType=VARCHAR},
-            #{registeredBy},
-            SYSTIMESTAMP,
-            'N'
-        )
-    </insert>
+	<!-- CI값 해시로 단건 조회 — 평문 해시 컬럼 직접 비교 -->
+	<select id="findByCiValueHash" resultMap="watchlistMap">
+		SELECT *
+		FROM WATCHLIST
+		WHERE ci_value_hash = #{ciValueHash}
+		AND deleted_yn = 'N'
+		FETCH FIRST 1
+		ROWS ONLY
+	</select>
 
-    <!-- ============================================================
-         논리 삭제
-         ============================================================ -->
-    <update id="delete">
-        UPDATE WATCHLIST
-        SET    deleted_yn   = 'Y',
-               registered_by = #{registeredBy}
-        WHERE  watchlist_id = #{watchlistId}
-    </update>
+	<!-- 이름 + 생년월일 해시로 조회 -->
+	<select id="findByNameAndBirthDateHash" resultMap="watchlistMap">
+		SELECT *
+		FROM
+		WATCHLIST
+		WHERE name = #{name}
+		AND birth_date_hash = #{birthDateHash}
+		AND deleted_yn = 'N'
+	</select>
+
+	<!-- 전체 목록 (관리자 화면) -->
+	<select id="findAll" resultMap="watchlistMap">
+		SELECT *
+		FROM WATCHLIST
+		WHERE
+		deleted_yn = 'N'
+		ORDER BY registered_at DESC
+	</select>
+
+	<!-- 등록 ci_value, birth_date → AES 암호화 (typeHandler 명시) ci_value_hash, birth_date_hash 
+		→ 평문 SHA-256 해시 (typeHandler 없음) -->
+	<insert id="insert">
+		INSERT INTO WATCHLIST (
+		name,
+		birth_date,
+		ci_value,
+		ci_value_hash,
+		birth_date_hash,
+		reason,
+		risk_level,
+		registered_by,
+		registered_at,
+		deleted_yn
+		) VALUES (
+		#{name},
+		#{birthDate,
+		typeHandler=aesTypeHandler},
+		#{ciValue, typeHandler=aesTypeHandler},
+		#{ciValueHash},
+		#{birthDateHash},
+		#{reason, jdbcType=VARCHAR},
+		#{riskLevel,
+		jdbcType=VARCHAR},
+		#{registeredBy},
+		SYSTIMESTAMP,
+		'N'
+		)
+	</insert>
+
+	<!-- 논리 삭제 -->
+	<update id="delete">
+		UPDATE WATCHLIST
+		SET deleted_yn = 'Y',
+		registered_by =
+		#{registeredBy}
+		WHERE watchlist_id = #{watchlistId}
+	</update>
 
 </mapper>

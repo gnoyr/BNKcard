@@ -90,4 +90,31 @@
 		updated_at = SYSTIMESTAMP
 		WHERE user_id = #{userId}
 	</update>
+
+	<select id="findDoubleEncryptedPasswordUsers"
+		resultType="com.bnk.global.migration.MigrationUserRow">
+		SELECT user_id AS userId,
+		password_hash AS passwordHash
+		FROM USERS
+		WHERE password_hash IS NOT NULL
+		AND deleted_yn = 'N'
+		AND INSTR(password_hash, ':') > 0
+		ORDER BY user_id
+		OFFSET #{offset} ROWS FETCH NEXT #{batchSize} ROWS ONLY
+	</select>
+
+	<select id="countDoubleEncryptedPasswordUsers" resultType="int">
+		SELECT COUNT(1)
+		FROM USERS
+		WHERE password_hash IS NOT NULL
+		AND deleted_yn = 'N'
+		AND INSTR(password_hash, ':') > 0
+	</select>
+
+	<update id="updateRestoredPassword">
+		UPDATE USERS
+		SET password_hash = #{passwordHash},
+		updated_at = SYSTIMESTAMP
+		WHERE user_id = #{userId}
+	</update>
 </mapper>

@@ -26,9 +26,17 @@ if (!cardId) {
 async function api(url) {
     try {
         const res = await fetch(url, { credentials: 'include' });
-        if (!res.ok) return null;
-        return (await res.json())?.data ?? null;
-    } catch { return null; }
+        if (!res.ok) {
+            console.error(`[card.js] API 오류: ${url} → ${res.status}`);
+            return null;
+        }
+        const json = await res.json();
+        console.log(`[card.js] API 응답: ${url}`, json);   
+        return json?.data ?? json ?? null;
+    } catch (e) {
+        console.error(`[card.js] API 예외: ${url}`, e);
+        return null;
+    }
 }
 
 function fmtFee(v) {
@@ -50,11 +58,25 @@ function benefitTypeLabel(t) {
 //  카드 상세 데이터 로드
 // ══════════════════════════════════════════════
 async function loadCard() {
-    const card = await api(`/api/cards/${cardId}`);
+    const res = await fetch(`/api/cards/${cardId}`, { credentials: 'include' });
+    
+    if (!res.ok) {
+        document.getElementById('main-wrap').innerHTML =
+            `<div class="loading-wrap">
+               <p>카드 정보를 불러올 수 없습니다. (${res.status})</p>
+               <br><a href="/">메인으로</a>
+             </div>`;
+        console.error(`[카드 상세] API 오류 status=${res.status}`);
+        return;
+    }
+
+    const json = await res.json();
+    const card = json?.data ?? null;
 
     if (!card) {
         document.getElementById('main-wrap').innerHTML =
             '<div class="loading-wrap"><p>카드 정보를 불러올 수 없습니다.</p><br><a href="/">메인으로</a></div>';
+        console.error('[카드 상세] data 필드 없음:', json);
         return;
     }
 

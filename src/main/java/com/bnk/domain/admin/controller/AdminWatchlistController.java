@@ -53,7 +53,7 @@ public class AdminWatchlistController {
 	        @RequestBody @Valid WatchlistRegisterRequest request,
 	        @AuthenticationPrincipal CustomUserDetails admin) {
 
-	    Watchlist watchlist = Watchlist.builder()
+	    Watchlist raw = Watchlist.builder()
 	            .name(request.getName())
 	            .birthDate(request.getBirthDate())
 	            .ciValue(request.getCiValue())
@@ -62,8 +62,8 @@ public class AdminWatchlistController {
 	            .registeredBy(admin.getUserId())
 	            .build();
 
-	    // 해시 계산 + insert는 CddService에서 처리
-	    cddService.registerWatchlist(watchlist);
+	    // 해시 계산 + insert → CddService에서 처리
+	    cddService.registerWatchlist(raw);
 
 	    log.info("[Watchlist] 등록 adminId={} name={}", admin.getUserId(), request.getName());
 	    return ResponseEntity.ok(ApiResponse.ok(null));
