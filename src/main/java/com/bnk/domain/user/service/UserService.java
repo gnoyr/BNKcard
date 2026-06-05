@@ -45,31 +45,31 @@ public class UserService {
 
     // ================================================================
     // F-25 | 내 정보 수정
+    //
+    // 비밀번호 검증 정책:
+    //   필수 — 개인정보 필드 변경 시 (name, phone, job, incomeLevelCode, creditScore)
+    //   불필요 — 알림 설정만 변경 시 (pushEnabled, marketingAgree)
     // ================================================================
 
-    /**
-     * 어떤 필드를 변경하든 currentPassword BCrypt 검증 필수.
-     * phone 변경 시 → 포맷 변환(010-XXXX-XXXX) + is_phone_verified='N' 자동 처리(UserMapper.xml).
-     */
     @Transactional
     public void updateMyInfo(Long userId, @Valid UserUpdateRequest request) {
         User user = userMapper.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        // ── 변경할 필드가 하나도 없으면 early return ────────────────
+        // ── 변경할 필드가 하나도 없으면 차단 ────────────────────────
         if (!hasAnyField(request)) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT,
-                    "변경된 내용이 없습니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "변경된 내용이 없습니다.");
         }
 
-        // ── 비밀번호 재확인 (모든 수정에 필수) ──────────────────────
-        if (request.getCurrentPassword() == null
-                || request.getCurrentPassword().isBlank()) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT,
-                    "정보 수정 시 현재 비밀번호 확인이 필요합니다.");
-        }
-        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
-            throw new BusinessException(ErrorCode.INVALID_PASSWORD);
+        // ── 개인정보 필드 변경 시에만 비밀번호 재확인 ───────────────
+        if (requiresPasswordVerification(request)) {
+            if (request.getCurrentPassword() == null || request.getCurrentPassword().isBlank()) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT,
+                        "개인정보 수정 시 현재 비밀번호 확인이 필요합니다.");
+            }
+            if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+                throw new BusinessException(ErrorCode.INVALID_PASSWORD);
+            }
         }
 
         // ── 전화번호 포맷 변환 (01012345678 → 010-1234-5678) ────────
@@ -83,26 +83,40 @@ public class UserService {
                 .phone(formattedPhone)
                 .job(request.getJob())
                 .incomeLevelCode(request.getIncomeLevelCode())
-                .creditScore(request.getCreditScore())                       
+                .creditScore(request.getCreditScore())
                 .pushEnabled(request.getPushEnabled() != null
                         ? (request.getPushEnabled() ? "Y" : "N") : null)
                 .marketingAgree(request.getMarketingAgree() != null
                         ? (request.getMarketingAgree() ? "Y" : "N") : null)
                 .build());
+
+        log.info("[내정보수정] userId={} passwordRequired={}", userId, requiresPasswordVerification(request));
     }
 
     // ================================================================
-    // F-25 헬퍼 | 수정 가능한 필드 중 하나라도 있는지 확인
+    // F-25 헬퍼
     // ================================================================
 
-    private boolean hasAnyField(UserUpdateRequest request) {
+    /**
+     * 개인정보 필드(name, phone, job, incomeLevelCode, creditScore) 중 하나라도 있으면
+     * 비밀번호 재확인 필요.
+     * pushEnabled / marketingAgree 는 알림 설정이므로 검증 불필요.
+     */
+    private boolean requiresPasswordVerification(UserUpdateRequest request) {
         return request.getName()            != null
             || request.getPhone()           != null
             || request.getJob()             != null
             || request.getIncomeLevelCode() != null
-            || request.getCreditScore()     != null
-            || request.getPushEnabled()     != null
-            || request.getMarketingAgree()  != null;
+            || request.getCreditScore()     != null;
+    }
+
+    /**
+     * 수정 가능한 필드(개인정보 + 알림 설정) 중 하나라도 있는지 확인.
+     */
+    private boolean hasAnyField(UserUpdateRequest request) {
+        return requiresPasswordVerification(request)
+            || request.getPushEnabled()    != null
+            || request.getMarketingAgree() != null;
     }
 
     // ================================================================
@@ -118,7 +132,6 @@ public class UserService {
      */
     @Transactional
     public void changePassword(Long userId, @Valid PasswordChangeRequest request) {
-        // ① 새 비밀번호 확인 불일치 — DB 조회 전에 차단
         if (!request.getNewPassword().equals(request.getNewPasswordConfirm())) {
             throw new BusinessException(ErrorCode.PASSWORD_CONFIRM_MISMATCH);
         }
@@ -126,12 +139,10 @@ public class UserService {
         User user = userMapper.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        // ③ 현재 비밀번호 검증
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
             throw new BusinessException(ErrorCode.INVALID_PASSWORD);
         }
 
-        // ④ 비밀번호 업데이트 + 전 기기 세션 파기
         String newHash = passwordEncoder.encode(request.getNewPassword());
         userMapper.updatePassword(userId, newHash, LocalDateTime.now());
         userMapper.revokeAllSessions(userId);

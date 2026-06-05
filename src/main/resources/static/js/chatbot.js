@@ -75,7 +75,56 @@
         if (json.body?.response) return json.body.response;
         return "응답 형식을 확인해 주세요.";
     }
+	
+	function extractHistoryList(json) {
+	    if (!json) return [];
+	    if (Array.isArray(json)) return json;
+	    if (Array.isArray(json.data)) return json.data;
+	    if (Array.isArray(json.result)) return json.result;
+	    if (Array.isArray(json.body)) return json.body;
+	    return [];
+	}
+	
+	async function loadChatHistory() {
+	    try {
+	        const response = await fetch(
+	            `/api/chat/history?sessionId=${encodeURIComponent(getSessionId())}`,
+	            {
+	                method: "GET",
+	                credentials: "same-origin"
+	            }
+	        );
 
+	        if (!response.ok) {
+	            throw new Error("HTTP " + response.status);
+	        }
+
+	        const json = await response.json();
+	        const history = extractHistoryList(json);
+
+	        if (history.length === 0) {
+	            return false;
+	        }
+
+	        messages.innerHTML = "";
+
+	        history.forEach(item => {
+	            if (item.userInput) {
+	                appendMessage("user", item.userInput);
+	            }
+	            if (item.aiResponse) {
+	                appendMessage("bot", item.aiResponse);
+	            }
+	        });
+
+	        return true;
+
+	    } catch (err) {
+	        console.error("[BNK Chatbot] 대화 기록 조회 오류:", err);
+	        return false;
+	    }
+	}
+	
     // ── CSRF 헤더 (Spring Security meta 태그 감지) ─────────────────
     function getCsrfHeaders() {
         const token = document.querySelector('meta[name="_csrf"]')?.content;
@@ -140,7 +189,14 @@
     }
 
     // 챗봇 열릴 때 최초 1회만 실행
-    let welcomed = false;
+	let welcomed = false;
+
+	loadChatHistory().then(hasHistory => {
+	    if (hasHistory) {
+	        welcomed = true;
+	    }
+	});
+	
     toggleButton.addEventListener("click", function() {
         widget.classList.toggle("open");
         if (widget.classList.contains("open")) {
@@ -194,5 +250,5 @@
             // 줄바꿈 \n
             .replace(/\n/g, '<br/>');
     }
-
+	
 })();

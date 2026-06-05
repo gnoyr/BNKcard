@@ -57,7 +57,7 @@ class UserControllerTest {
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
 
-        // ✅ stub을 @BeforeEach에 두지 않음 → UnnecessaryStubbingException 방지
+        // stub을 @BeforeEach에 두지 않음 → UnnecessaryStubbingException 방지
         //    (Bean Validation이 컨트롤러 진입 전에 막는 테스트에서 getUserId() 미호출)
         mockUserDetails = Mockito.mock(CustomUserDetails.class);
 
@@ -121,68 +121,67 @@ class UserControllerTest {
         }
     }
 
-    // ════════════════════════════════════════════════════════════════
+ // ════════════════════════════════════════════════════════════════
     // F-25 | 내 정보 수정
+    // 정책: 어떤 필드든 변경 시 currentPassword 검증 필수
     // ════════════════════════════════════════════════════════════════
-
+ 
     @Nested
     @DisplayName("내 정보 수정 API [PUT /api/users/me]")
     class UpdateMyInfo {
-
+ 
         @Test
-        @DisplayName("[정상] 200 OK")
+        @DisplayName("[정상] 이름 + 비밀번호 재확인 → 200 OK")
         void 정상_200() throws Exception {
             given(mockUserDetails.getUserId()).willReturn(1L);
             willDoNothing().given(userService).updateMyInfo(anyLong(), any());
-
+ 
             mvc.perform(put("/api/users/me")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"name\":\"이순신\",\"phone\":\"01099998888\"}"))
+                    .content("{\"name\":\"이순신\",\"currentPassword\":\"Current123!\"}"))
                     .andExpect(status().isOk());
         }
-
-        // ── [신규] 실패 케이스 ────────────────────────────────────
-
+ 
         @Test
         @DisplayName("[실패] 존재하지 않는 유저 → 404 + code=U001")
         void 실패_사용자없음_404() throws Exception {
             given(mockUserDetails.getUserId()).willReturn(1L);
             willThrow(new BusinessException(ErrorCode.USER_NOT_FOUND))
                     .given(userService).updateMyInfo(anyLong(), any());
-
+ 
             mvc.perform(put("/api/users/me")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"name\":\"이순신\"}"))
+                    .content("{\"name\":\"이순신\",\"currentPassword\":\"Current123!\"}"))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value("U001"));
         }
-
+ 
         @Test
-        @DisplayName("[실패] phone 변경 시 비밀번호 불일치 → 400 + code=U003")
-        void 실패_phone변경_비밀번호불일치_400() throws Exception {
-            given(mockUserDetails.getUserId()).willReturn(1L);
-            willThrow(new BusinessException(ErrorCode.INVALID_PASSWORD))
-                    .given(userService).updateMyInfo(anyLong(), any());
-
-            mvc.perform(put("/api/users/me")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"phone\":\"01099998888\",\"currentPassword\":\"WrongPw!\"}"))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("U003"));
-        }
-
-        @Test
-        @DisplayName("[실패] phone 변경 시 currentPassword 누락 → 400 + code=C001")
-        void 실패_phone변경_비밀번호누락_400() throws Exception {
+        @DisplayName("[실패] currentPassword 누락 → 400 + code=C001")
+        void 실패_비밀번호누락_400() throws Exception {
             given(mockUserDetails.getUserId()).willReturn(1L);
             willThrow(new BusinessException(ErrorCode.INVALID_INPUT))
                     .given(userService).updateMyInfo(anyLong(), any());
-
+ 
             mvc.perform(put("/api/users/me")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"phone\":\"01099998888\"}"))
+                    .content("{\"name\":\"이순신\"}"))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("C001"));
+        }
+ 
+        @Test
+        @DisplayName("[실패] 비밀번호 불일치 → 400 + code=U003")
+        void 실패_비밀번호불일치_400() throws Exception {
+            given(mockUserDetails.getUserId()).willReturn(1L);
+            willThrow(new BusinessException(ErrorCode.INVALID_PASSWORD))
+                    .given(userService).updateMyInfo(anyLong(), any());
+ 
+            mvc.perform(put("/api/users/me")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"name\":\"이순신\",\"currentPassword\":\"WrongPw!\"}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("U003"));
         }
     }
 
