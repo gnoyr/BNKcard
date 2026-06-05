@@ -22,13 +22,13 @@ public interface UserMapper {
 
 	Optional<User> findById(@Param("userId") Long userId);
 
-	Optional<User> findByNameAndPhone(@Param("name") String name, @Param("phone") String phone);
+	List<User> findByName(@Param("name") String name);
 
 	Optional<User> findByEmailAndName(@Param("email") String email, @Param("name") String name);
 
 	int existsByEmail(@Param("email") String email);
 
-	int existsByPhone(@Param("phone") String phone);
+	List<User> findAllPhones();
 
 	int insertUser(User user);
 
@@ -55,43 +55,30 @@ public interface UserMapper {
 
 	int revokeAllSessions(@Param("userId") Long userId);
 
-	/**
-	 * AUDIT_LOGS INSERT. actor_type_code('USER'/'ADMIN'), actor_id,
-	 * action_type_code, target_type_code, target_id, description, ip_address
-	 */
 	int insertAuditLog(@Param("actorType") String actorType, @Param("actorId") Long actorId,
 			@Param("actionType") String actionType, @Param("targetType") String targetType,
 			@Param("targetId") Long targetId, @Param("description") String description,
 			@Param("ipAddress") String ipAddress);
 
-	/**
-	 * 발급 완료 카드 목록 USER_CARDS JOIN CARDS JOIN CARD_IMAGES(image_type='FRONT') WHERE
-	 * USER_CARDS.deleted_yn='N'
-	 */
+	// 보유 카드 및 신청 현황
 	List<OwnedCardRow> selectOwnedCards(@Param("userId") Long userId);
 
-	/**
-	 * 카드 신청 현황 목록 CARD_APPLICATIONS JOIN CARDS JOIN
-	 * CARD_IMAGES(image_type='THUMBNAIL')
-	 */
 	List<CardApplicationRow> selectCardApplications(@Param("userId") Long userId);
 
-	/**
-	 * 소비 패턴 조회 (RQ-F16) CARD_CATEGORIES LEFT JOIN USER_SPENDING_PATTERNS 패턴 없는
-	 * 카테고리도 0원으로 포함
-	 */
 	List<SpendingPatternRow> selectSpendingPatterns(@Param("userId") Long userId);
 
-	/**
-	 * 소비 패턴 UPSERT (RQ-F18) — Oracle MERGE INTO 존재: monthly_amount, updated_at
-	 * UPDATE 없음: INSERT (source='MANUAL' 고정)
-	 */
 	int upsertSpendingPattern(@Param("userId") Long userId, @Param("categoryId") Long categoryId,
 			@Param("monthlyAmount") BigDecimal monthlyAmount, @Param("source") String source);
 
-	// ----------------------------------------------------------------
-	// Inner Row 클래스 — MyBatis resultMap 매핑용
-	// ----------------------------------------------------------------
+	// 비밀번호 이력
+	int insertPasswordHistory(@Param("userId") Long userId, @Param("passwordHash") String passwordHash);
+
+	List<String> findRecentPasswordHashes(@Param("userId") Long userId, @Param("limit") int limit);
+
+	int deleteOldPasswordHistories(@Param("userId") Long userId);
+
+	// CDD 상태 변경
+	int updateCddStatus(@Param("userId") Long userId, @Param("cddStatusCode") String cddStatusCode);
 
 	@Getter
 	@Builder

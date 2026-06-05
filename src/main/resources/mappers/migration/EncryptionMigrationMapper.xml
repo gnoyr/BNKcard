@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- TypeHandler 없이 평문 그대로 읽고 암호화된 값 그대로 씀. INSTR(phone, ':') = 0 → ":" 없는 
+	평문만 조회. -->
+<mapper
+	namespace="com.bnk.global.migration.EncryptionMigrationMapper">
+
+	<select id="findPlainPhoneUsers"
+		resultType="com.bnk.global.migration.MigrationUserRow">
+		SELECT user_id, phone
+		FROM USERS
+		WHERE phone IS NOT NULL
+		AND
+		deleted_yn = 'N'
+		AND INSTR(phone, ':') = 0
+		ORDER BY user_id
+		OFFSET
+		#{offset} ROWS FETCH NEXT #{batchSize} ROWS ONLY
+	</select>
+
+	<select id="findPlainCiValueUsers"
+		resultType="com.bnk.global.migration.MigrationUserRow">
+		SELECT user_id, ci_value AS ciValue
+		FROM USERS
+		WHERE ci_value
+		IS NOT NULL
+		AND deleted_yn = 'N'
+		AND INSTR(ci_value, ':') = 0
+		ORDER BY
+		user_id
+		OFFSET #{offset} ROWS FETCH NEXT #{batchSize} ROWS ONLY
+	</select>
+
+	<select id="countPlainPhoneUsers" resultType="int">
+		SELECT COUNT(1)
+		FROM USERS
+		WHERE phone IS NOT NULL AND deleted_yn = 'N' AND
+		INSTR(phone, ':') = 0
+	</select>
+
+	<select id="countPlainCiValueUsers" resultType="int">
+		SELECT COUNT(1)
+		FROM USERS
+		WHERE ci_value IS NOT NULL AND deleted_yn = 'N' AND
+		INSTR(ci_value, ':') =
+		0
+	</select>
+
+	<update id="updateEncryptedPhone">
+		UPDATE USERS
+		SET phone = #{encryptedPhone},
+		updated_at
+		= SYSTIMESTAMP
+		WHERE user_id = #{userId}
+	</update>
+
+	<update id="updateEncryptedCiValue">
+		UPDATE USERS
+		SET ci_value = #{encryptedCiValue},
+		updated_at = SYSTIMESTAMP
+		WHERE user_id = #{userId}
+	</update>
+	<select id="findPlainBirthDateUsers"
+		resultType="com.bnk.global.migration.MigrationUserRow">
+		SELECT user_id, birth_date AS birthDate
+		FROM USERS
+		WHERE
+		birth_date IS NOT NULL
+		AND deleted_yn = 'N'
+		AND INSTR(birth_date, ':') =
+		0
+		ORDER BY user_id
+		OFFSET #{offset} ROWS FETCH NEXT #{batchSize} ROWS
+		ONLY
+	</select>
+
+	<select id="countPlainBirthDateUsers" resultType="int">
+		SELECT COUNT(1)
+		FROM USERS
+		WHERE birth_date IS NOT NULL AND deleted_yn = 'N' AND
+		INSTR(birth_date,
+		':') = 0
+	</select>
+
+	<update id="updateEncryptedBirthDate">
+		UPDATE USERS
+		SET birth_date = #{encryptedBirthDate},
+		updated_at = SYSTIMESTAMP
+		WHERE user_id = #{userId}
+	</update>
+</mapper>
