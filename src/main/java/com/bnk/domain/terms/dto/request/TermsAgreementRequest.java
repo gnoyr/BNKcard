@@ -3,12 +3,19 @@ package com.bnk.domain.terms.dto.request;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
 
+/**
+ * 약관 동의 요청 DTO — POST /api/terms/agree
+ *
+ * 변경 이력:
+ *  - Inner Class AgreedTermsItem 제거
+ *    → com.bnk.domain.terms.dto.request.AgreedTermsItem 공통 DTO로 분리
+ *    → CardApplyRequest.AgreedTermsItem 과 동일한 구조를 중복 정의하고 있었음
+ */
 @Getter
 @NoArgsConstructor
 public class TermsAgreementRequest {
@@ -22,15 +29,4 @@ public class TermsAgreementRequest {
     @NotEmpty(message = "약관 동의 목록은 필수입니다.")
     @Valid
     private List<AgreedTermsItem> agreedTerms;
-
-    @Getter
-    @NoArgsConstructor
-    public static class AgreedTermsItem {
-
-        @NotNull(message = "약관 ID는 필수입니다.")
-        private Long termsId;
-
-        @NotBlank(message = "동의 여부는 필수입니다.")
-        private String agreedYn;        // Y / N
-    }
 }

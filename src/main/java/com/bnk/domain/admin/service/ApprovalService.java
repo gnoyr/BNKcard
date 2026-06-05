@@ -17,7 +17,7 @@ import com.bnk.domain.admin.dto.response.ApprovalListResponse;
 import com.bnk.domain.admin.mapper.ApprovalMapper;
 import com.bnk.domain.admin.model.ApprovalLine;
 import com.bnk.domain.admin.model.ApprovalRequest;
-import com.bnk.domain.card.dto.request.CardSnapshot;
+import com.bnk.domain.card.dto.CardSnapshot;
 import com.bnk.domain.card.mapper.CardMapper;
 import com.bnk.domain.card.mapper.CardStatusHistoryMapper;
 import com.bnk.domain.card.mapper.CardVersionMapper;
@@ -101,9 +101,9 @@ public class ApprovalService {
         ApprovalRequest approval = approvalMapper.findById(approvalId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.APPROVAL_NOT_FOUND));
 
-        List<ApprovalDetailResponse.LineItem> lineItems = approval.getLines() != null
+        List<ApprovalDetailResponse.ApprovalLineItem> lineItems = approval.getLines() != null
                 ? approval.getLines().stream()
-                        .map(l -> ApprovalDetailResponse.LineItem.builder()
+                        .map(l -> ApprovalDetailResponse.ApprovalLineItem.builder()
                                 .approvalLineId(l.getApprovalLineId())
                                 .approvalOrder(l.getApprovalOrder())
                                 .approverName(l.getApproverName())
