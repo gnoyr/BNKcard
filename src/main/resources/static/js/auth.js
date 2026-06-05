@@ -26,22 +26,17 @@ const API = {
     patch: (url, body) => API.request('PATCH', url, body),
 };
 
-/**
- * ✅ 인라인 에러 표시
- * auth.css의 .alert 는 display:none 이고 .show 규칙이 별도로 있으나
- * 안전하게 style.display 를 직접 세팅해 CSS 의존도 제거
- */
 function showError(el, msg) {
     if (!el) return;
     el.textContent = msg;
-    el.style.display = 'block';     // ✅ CSS 클래스 대신 직접 제어
-    el.classList.add('show');       // (CSS .alert.show 있는 경우 대비 유지)
+    el.style.display = 'block';
+    el.classList.add('show');
 }
 
 function hideError(el) {
     if (!el) return;
     el.textContent = '';
-    el.style.display = '';          // ✅ 직접 제어
+    el.style.display = '';
     el.classList.remove('show');
 }
 
@@ -53,11 +48,13 @@ function showView(id) {
 /**
  * GlobalExceptionHandler 응답 구조에서 사용자 메시지 추출
  * 우선순위: fieldErrors[0] > detail > message > data.message > fallback
+ * fe.message 우선, fe.reason fallback (ErrorResponse.FieldError 필드명 통일)
  */
 function extractMessage(data) {
     if (data?.fieldErrors?.length) {
         const fe = data.fieldErrors[0];
-        return fe.field ? `${fe.field}: ${fe.message}` : fe.message;
+        const msg = fe.message ?? fe.reason;
+        return fe.field ? `${fe.field}: ${msg}` : msg;
     }
     return data?.detail
         || data?.message
@@ -65,19 +62,12 @@ function extractMessage(data) {
         || '오류가 발생했습니다. 다시 시도해 주세요.';
 }
 
-/**
- * ✅ 토스트 알림
- * header.js가 window.showToast 를 노출하면 위임,
- * 그렇지 않으면 자체 구현으로 동작 (CSS는 auth.css에 추가됨)
- */
 function authToast(msg, type = 'info') {
-    // header.js 에서 window.showToast 노출 후 이 분기 사용
     if (typeof window.showToast === 'function') {
         window.showToast(msg, type);
         return;
     }
 
-    // fallback: auth.css에 추가한 토스트 CSS 클래스 사용
     let container = document.getElementById('toast-container');
     if (!container) {
         container = document.createElement('div');
@@ -159,33 +149,32 @@ const login = {
             deviceInfo: navigator.userAgent.substring(0, 100),
         });
 
-		if (res.ok) {
-		    sessionStorage.setItem('bnk_login_at', String(Date.now()));
+        if (res.ok) {
+            sessionStorage.setItem('bnk_login_at', String(Date.now()));
 
-		    try {
-		        const me = await API.get('/api/users/me');
+            try {
+                const me = await API.get('/api/users/me');
 
-		        if (me.ok) {
-		            const name =
-		                me.data?.data?.name ||
-		                me.data?.data?.userName ||
-		                me.data?.data?.email ||
-		                '회원';
+                if (me.ok) {
+                    const name =
+                        me.data?.data?.name ||
+                        me.data?.data?.userName ||
+                        me.data?.data?.email ||
+                        '회원';
 
-		            sessionStorage.setItem('bnk_user_name', name);
-		        } else {
-		            sessionStorage.setItem('bnk_user_name', '회원');
-		        }
-		    } catch (e) {
-		        sessionStorage.setItem('bnk_user_name', '회원');
-		    }
+                    sessionStorage.setItem('bnk_user_name', name);
+                } else {
+                    sessionStorage.setItem('bnk_user_name', '회원');
+                }
+            } catch (e) {
+                sessionStorage.setItem('bnk_user_name', '회원');
+            }
 
-		    const next = new URLSearchParams(location.search).get('next');
-		    const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
+            const next = new URLSearchParams(location.search).get('next');
+            const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
 
-		    window.location.href = safeNext;
-		} else if (res.status === 0) {
-            // 네트워크 단절 — 토스트로 표시 (인라인 에러보다 위치상 적절)
+            window.location.href = safeNext;
+        } else if (res.status === 0) {
             authToast('서버에 연결할 수 없습니다. 네트워크를 확인해 주세요.', 'error');
         } else {
             showError(err, extractMessage(res.data));
@@ -266,7 +255,7 @@ const signup = (() => {
             });
 
             document.getElementById('btnStep1Next')?.addEventListener('click', (e) => {
-				e.preventDefault();
+                e.preventDefault();
                 const requiredCbs = document.querySelectorAll('[data-required="Y"]');
                 const allAgreed   = [...requiredCbs].every(cb => cb.checked);
                 if (!allAgreed) {
@@ -341,6 +330,8 @@ const signup = (() => {
                         if (remaining <= 0) { _clearCodeTimer(); timerEl.textContent = '만료됨'; }
                     }, 1000);
                 }
+            } else if (res.status === 409) {
+                showError(errEl, '이미 가입된 이메일입니다. 로그인 페이지에서 로그인해 주세요.');
             } else {
                 showError(errEl, extractMessage(res.data));
             }
@@ -370,7 +361,10 @@ const signup = (() => {
             const pwc         = document.getElementById('passwordConfirm')?.value ?? '';
             const name        = document.getElementById('name')?.value.trim();
             const phone       = document.getElementById('phone')?.value.trim().replace(/-/g, '');
-            const birth       = document.getElementById('birthDate')?.value;
+            // ✅ 수정: "yyyy-MM-dd" → "yyyyMMdd" 변환 (HTML date input 포맷 대응)
+            const birthRaw    = document.getElementById('birthDate')?.value;
+            const birth       = birthRaw ? birthRaw.replace(/-/g, '') : null;
+            // ✅ 수정: Boolean 그대로 전송 (SignupRequest.marketingAgree = Boolean 타입)
             const mkt         = document.getElementById('marketingAgree')?.checked ?? false;
             const job         = document.getElementById('job')?.value ?? '';
             const incomeLevel = document.getElementById('incomeLevelCode')?.value ?? '';
@@ -379,13 +373,13 @@ const signup = (() => {
             const err         = document.getElementById('signup-error');
 
             const checks = [
-                [!email,                                                              '이메일을 입력해 주세요.'],
-                [!_emailVerified,                                                     '이메일 인증을 완료해 주세요.'],
-                [pw.length < 8,                                                       '비밀번호는 8자 이상 입력해 주세요.'],
-                [pw !== pwc,                                                          '비밀번호가 일치하지 않습니다.'],
-                [!name,                                                               '이름을 입력해 주세요.'],
-                [!phone,                                                              '휴대전화 번호를 입력해 주세요.'],
-                [creditScore !== null && (creditScore < 300 || creditScore > 1000),   '신용점수는 300~1000 사이로 입력해 주세요.'],
+                [!email,                                                             '이메일을 입력해 주세요.'],
+                [!_emailVerified,                                                    '이메일 인증을 완료해 주세요.'],
+                [pw.length < 8,                                                      '비밀번호는 8자 이상 입력해 주세요.'],
+                [pw !== pwc,                                                         '비밀번호가 일치하지 않습니다.'],
+                [!name,                                                              '이름을 입력해 주세요.'],
+                [!phone,                                                             '휴대전화 번호를 입력해 주세요.'],
+                [creditScore !== null && (creditScore < 300 || creditScore > 900),   '신용점수는 300~900 사이로 입력해 주세요.'],
             ];
             for (const [cond, msg] of checks) {
                 if (cond) { showError(err, msg); return; }
@@ -397,11 +391,11 @@ const signup = (() => {
                 password:        pw,
                 name,
                 phone,
-                birthDate:       birth || null,
-                marketingAgree:  mkt,
+                birthDate:       birth,          // ✅ "yyyyMMdd" or null
+                marketingAgree:  mkt,            // ✅ Boolean
                 agreedTermsIds:  _agreedTermsIds,
-                job,
-                incomeLevelCode: incomeLevel,
+                job:             job || undefined,
+                incomeLevelCode: incomeLevel || undefined,
                 creditScore,
             });
 
@@ -543,7 +537,6 @@ const resetPw = {
         });
 
         if (res.ok) {
-            // ✅ alert() 제거 → 토스트 표시 후 2초 뒤 자동 이동
             authToast('비밀번호가 변경되었습니다. 로그인 페이지로 이동합니다.', 'success');
             setTimeout(() => { window.location.href = '/login'; }, 2000);
         } else if (res.status === 400 || res.status === 401) {

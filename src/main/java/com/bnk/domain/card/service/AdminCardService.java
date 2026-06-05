@@ -72,7 +72,7 @@ public class AdminCardService {
     // ══════════════════════════════════════════════════════════════════
     @Transactional
     public Map<String, Long> createCard(@Valid CardCreateRequest request, Long adminId) {
-
+    	
         // 1. CARDS INSERT (DRAFT)
         Card card = Card.builder()
                 .cardCode(request.getCardCode())
