@@ -206,7 +206,7 @@ public class ApprovalService {
         }
 
         String previousStatus = terms.getStatus();
-
+        
         // 1. TERMS status → PUBLISHED
         termsMapper.updateTermsStatus(termsId, "PUBLISHED", adminId);
 
