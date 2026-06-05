@@ -816,3 +816,34 @@ footer strong {
 .terms-preview img:hover {
   transform: scale(1.04);
 }
+
+/* ── 이미지 모달 좌우 화살표 ── */
+.img-modal-prev,
+.img-modal-next {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255,255,255,.18);
+    border: none;
+    color: #fff;
+    font-size: 42px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 9001;
+    transition: background .2s;
+    line-height: 1;
+}
+.img-modal-prev { left: 20px; }
+.img-modal-next { right: 20px; }
+.img-modal-prev:hover,
+.img-modal-next:hover { background: rgba(255,255,255,.35); }
+
+@media (max-width: 480px) {
+    .img-modal-prev { left: 8px; font-size: 30px; width: 40px; height: 40px; }
+    .img-modal-next { right: 8px; font-size: 30px; width: 40px; height: 40px; }
+}
