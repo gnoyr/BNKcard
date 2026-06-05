@@ -49,16 +49,24 @@ public class AdminWatchlistController {
 
 	// ── Watchlist 등록 ───────────────────────────────────────────
 	@PostMapping("/api/admin/watchlist")
-	public ResponseEntity<ApiResponse<Void>> register(@RequestBody @Valid WatchlistRegisterRequest request,
-			@AuthenticationPrincipal CustomUserDetails admin) {
+	public ResponseEntity<ApiResponse<Void>> register(
+	        @RequestBody @Valid WatchlistRegisterRequest request,
+	        @AuthenticationPrincipal CustomUserDetails admin) {
 
-		Watchlist watchlist = Watchlist.builder().name(request.getName()).birthDate(request.getBirthDate())
-				.ciValue(request.getCiValue()).reason(request.getReason()).riskLevel(request.getRiskLevel())
-				.registeredBy(admin.getUserId()).build();
+	    Watchlist watchlist = Watchlist.builder()
+	            .name(request.getName())
+	            .birthDate(request.getBirthDate())
+	            .ciValue(request.getCiValue())
+	            .reason(request.getReason())
+	            .riskLevel(request.getRiskLevel())
+	            .registeredBy(admin.getUserId())
+	            .build();
 
-		watchlistMapper.insert(watchlist);
-		log.info("[Watchlist] 등록 adminId={} name={}", admin.getUserId(), request.getName());
-		return ResponseEntity.ok(ApiResponse.ok(null));
+	    // 해시 계산 + insert는 CddService에서 처리
+	    cddService.registerWatchlist(watchlist);
+
+	    log.info("[Watchlist] 등록 adminId={} name={}", admin.getUserId(), request.getName());
+	    return ResponseEntity.ok(ApiResponse.ok(null));
 	}
 
 	// ── Watchlist 삭제 ───────────────────────────────────────────
