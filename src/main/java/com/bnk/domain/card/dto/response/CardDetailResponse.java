@@ -2,12 +2,19 @@ package com.bnk.domain.card.dto.response;
 
 import java.time.LocalDateTime;
 import java.util.List;
+
 import com.bnk.domain.card.model.CardBenefit;
+
 import lombok.Builder;
 import lombok.Getter;
 
-@Getter @Builder
+/**
+ * 카드 상세 조회 응답 DTO (관리자용)
+ */
+@Getter
+@Builder
 public class CardDetailResponse {
+
     private Long cardId;
     private String cardCode;
     private String cardType;
@@ -30,20 +37,21 @@ public class CardDetailResponse {
     private String cardStatus;
     private LocalDateTime publishStartAt;
     private LocalDateTime publishEndAt;
-    private Long  applicationCount;
+    private Long applicationCount;
     private Long createdBy;
     private LocalDateTime createdAt;
-    private Long updateBy;
-    private LocalDateTime updateAt;
+    private Long updatedBy;          // 변경: updateBy → updatedBy
+    private LocalDateTime updatedAt; // 변경: updateAt → updatedAt
     private String deletedYn;
-    private LocalDateTime deleteAt;
+    private LocalDateTime deletedAt; // 변경: deleteAt → deletedAt
 
     private List<CardBenefit> benefits;
     private List<ImageDto> images;
     private List<ContentDto> contents;
     private List<TermsFileDto> termsFiles;
 
-    @Getter @Builder
+    @Getter
+    @Builder
     public static class ImageDto {
         private Long imageId;
         private String imageType;
@@ -57,21 +65,25 @@ public class CardDetailResponse {
         private Integer sortOrder;
         private LocalDateTime createdAt;
     }
-    @Getter @Builder
+
+    @Getter
+    @Builder
     public static class ContentDto {
-        private Long contentId;        // ← 추가
-        private Long cardId;           // ← 추가
+        private Long contentId;
+        private Long cardId;
         private String contentType;
         private String title;
         private String contentHtml;
         private String mobileContentHtml;
         private Integer displayOrder;
-        private String visibleYn;      // ← 추가
-        private Long createdBy;        // ← 추가
-        private LocalDateTime createdAt;  // ← 추가
-        private LocalDateTime updatedAt;  // ← 추가
+        private String visibleYn;
+        private Long createdBy;
+        private LocalDateTime createdAt;
+        private LocalDateTime updatedAt;
     }
-    @Getter @Builder
+
+    @Getter
+    @Builder
     public static class TermsFileDto {
         private Long termsId;
         private String title;
