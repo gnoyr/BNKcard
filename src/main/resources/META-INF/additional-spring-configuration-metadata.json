@@ -208,5 +208,10 @@
     "name": "spring.ai.ollama.embedding.options.model",
     "type": "java.lang.String",
     "description": "Ollama에서 사용할 모델"
+  },
+  {
+    "name": "ci.salt",
+    "type": "java.lang.String",
+    "description": "CI 생성용 Salt"
   }
 ]}

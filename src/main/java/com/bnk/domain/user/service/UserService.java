@@ -29,53 +29,41 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class UserService {
 
-    private final UserMapper      userMapper;
-    private final PasswordEncoder passwordEncoder;
+	private final UserMapper userMapper;
+	private final PasswordEncoder passwordEncoder;
 
-    // ================================================================
-    // F-24 | 내 정보 조회
-    // ================================================================
+	private static final int PASSWORD_HISTORY_LIMIT = 5;
 
-    @Transactional(readOnly = true)
-    public UserResponse getMyInfo(Long userId) {
-        User user = userMapper.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        return UserResponse.from(user);
-    }
+	// ================================================================
+	   // F-24 | 내 정보 조회
+	// ================================================================
+	@Transactional(readOnly = true)
+	public UserResponse getMyInfo(Long userId) {
+		User user = userMapper.findById(userId).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+		return UserResponse.from(user);
+	}
 
-    // ================================================================
-    // F-25 | 내 정보 수정
-    //
-    // 비밀번호 검증 정책:
-    //   필수 — 개인정보 필드 변경 시 (name, phone, job, incomeLevelCode, creditScore)
-    //   불필요 — 알림 설정만 변경 시 (pushEnabled, marketingAgree)
-    // ================================================================
+	// ================================================================
+	// F-25 | 내 정보 수정
+	// ================================================================
+	@Transactional
+	public void updateMyInfo(Long userId, @Valid UserUpdateRequest request) {
+		User user = userMapper.findById(userId).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-    @Transactional
-    public void updateMyInfo(Long userId, @Valid UserUpdateRequest request) {
-        User user = userMapper.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+		if (!hasAnyField(request)) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT);
+		}
 
-        // ── 변경할 필드가 하나도 없으면 차단 ────────────────────────
-        if (!hasAnyField(request)) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT, "변경된 내용이 없습니다.");
-        }
+		if (requiresPasswordVerification(request)) {
+			if (request.getCurrentPassword() == null || request.getCurrentPassword().isBlank()) {
+				throw new BusinessException(ErrorCode.INVALID_INPUT);
+			}
+			if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+				throw new BusinessException(ErrorCode.INVALID_PASSWORD);
+			}
+		}
 
-        // ── 개인정보 필드 변경 시에만 비밀번호 재확인 ───────────────
-        if (requiresPasswordVerification(request)) {
-            if (request.getCurrentPassword() == null || request.getCurrentPassword().isBlank()) {
-                throw new BusinessException(ErrorCode.INVALID_INPUT,
-                        "개인정보 수정 시 현재 비밀번호 확인이 필요합니다.");
-            }
-            if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
-                throw new BusinessException(ErrorCode.INVALID_PASSWORD);
-            }
-        }
-
-        // ── 전화번호 포맷 변환 (01012345678 → 010-1234-5678) ────────
-        String formattedPhone = request.getPhone() != null
-                ? MaskingUtil.formatPhone(request.getPhone())
-                : null;
+		String formattedPhone = request.getPhone() != null ? MaskingUtil.formatPhone(request.getPhone()) : null;
 
         userMapper.updateUser(User.builder()
                 .userId(userId)
@@ -90,99 +78,95 @@ public class UserService {
                         ? (request.getMarketingAgree() ? "Y" : "N") : null)
                 .build());
 
-        log.info("[내정보수정] userId={} passwordRequired={}", userId, requiresPasswordVerification(request));
-    }
+		log.info("[내정보수정] userId={}", userId);
+	}
 
-    // ================================================================
-    // F-25 헬퍼
-    // ================================================================
+	// ================================================================
+	// F-26 | 비밀번호 변경 — 재사용 방지 로직 추가
+	// ================================================================
+	@Transactional
+	public void changePassword(Long userId, @Valid PasswordChangeRequest request) {
 
-    /**
-     * 개인정보 필드(name, phone, job, incomeLevelCode, creditScore) 중 하나라도 있으면
-     * 비밀번호 재확인 필요.
-     * pushEnabled / marketingAgree 는 알림 설정이므로 검증 불필요.
-     */
-    private boolean requiresPasswordVerification(UserUpdateRequest request) {
-        return request.getName()            != null
-            || request.getPhone()           != null
-            || request.getJob()             != null
-            || request.getIncomeLevelCode() != null
-            || request.getCreditScore()     != null;
-    }
+		// ① 새 비밀번호 확인 일치 검사
+		if (!request.getNewPassword().equals(request.getNewPasswordConfirm())) {
+			throw new BusinessException(ErrorCode.PASSWORD_CONFIRM_MISMATCH);
+		}
 
-    /**
-     * 수정 가능한 필드(개인정보 + 알림 설정) 중 하나라도 있는지 확인.
-     */
-    private boolean hasAnyField(UserUpdateRequest request) {
-        return requiresPasswordVerification(request)
-            || request.getPushEnabled()    != null
-            || request.getMarketingAgree() != null;
-    }
+		// ② 사용자 조회
+		User user = userMapper.findById(userId).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-    // ================================================================
-    // F-26 | 비밀번호 변경
-    // ================================================================
+		// ③ 현재 비밀번호 검증
+		if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+			throw new BusinessException(ErrorCode.INVALID_PASSWORD);
+		}
 
-    /**
-     * 검증 순서:
-     * ① newPassword == newPasswordConfirm
-     * ② findById (USER_NOT_FOUND)
-     * ③ currentPassword BCrypt 검증
-     * ④ updatePassword + revokeAllSessions (전 기기 로그아웃)
-     */
-    @Transactional
-    public void changePassword(Long userId, @Valid PasswordChangeRequest request) {
-        if (!request.getNewPassword().equals(request.getNewPasswordConfirm())) {
-            throw new BusinessException(ErrorCode.PASSWORD_CONFIRM_MISMATCH);
-        }
+		// ④ 최근 N회 비밀번호 재사용 방지
+		List<String> recentHashes = userMapper.findRecentPasswordHashes(userId, PASSWORD_HISTORY_LIMIT);
+		boolean isReused = recentHashes.stream()
+				.anyMatch(hash -> passwordEncoder.matches(request.getNewPassword(), hash));
+		if (isReused) {
+			throw new BusinessException(ErrorCode.PASSWORD_RECENTLY_USED);
+		}
 
-        User user = userMapper.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+		// ⑤ 비밀번호 변경
+		String newHash = passwordEncoder.encode(request.getNewPassword());
+		userMapper.updatePassword(userId, newHash, LocalDateTime.now());
 
-        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
-            throw new BusinessException(ErrorCode.INVALID_PASSWORD);
-        }
+		// ⑥ 이력 저장 + 오래된 이력 정리 (최근 5건만 유지)
+		userMapper.insertPasswordHistory(userId, newHash);
+		userMapper.deleteOldPasswordHistories(userId);
 
-        String newHash = passwordEncoder.encode(request.getNewPassword());
-        userMapper.updatePassword(userId, newHash, LocalDateTime.now());
-        userMapper.revokeAllSessions(userId);
-    }
+		// ⑦ 전 기기 세션 무효화
+		userMapper.revokeAllSessions(userId);
 
-    // ================================================================
-    // RQ-F17 | 보유 카드 및 신청 현황
-    // ================================================================
+		log.info("[비밀번호변경] userId={} 변경 완료 (전 기기 로그아웃)", userId);
+	}
 
-    @Transactional(readOnly = true)
-    public CardStatusResponse getMyCards(Long userId) {
-        userMapper.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+	// ================================================================
+	// RQ-F17 | 보유 카드 및 신청 현황
+	// ================================================================
+	@Transactional(readOnly = true)
+	public CardStatusResponse getMyCards(Long userId) {
+		List<UserMapper.OwnedCardRow> ownedCards = userMapper.selectOwnedCards(userId);
+		List<UserMapper.CardApplicationRow> applications = userMapper.selectCardApplications(userId);
 
-        List<CardStatusResponse.OwnedCardDto> ownedCards =
-                userMapper.selectOwnedCards(userId).stream()
-                        .map(r -> CardStatusResponse.OwnedCardDto.builder()
-                                .userCardId(r.getUserCardId())
-                                .cardId(r.getCardId())
-                                .cardName(r.getCardName())
-                                .cardImageUrl(r.getCardImageUrl())
-                                .issuedAt(r.getIssuedAt())
-                                .build())
-                        .collect(Collectors.toList());
+        List<CardStatusResponse.OwnedCardDto> ownedDtos = ownedCards.stream()
+                .map(r -> CardStatusResponse.OwnedCardDto.builder()
+                        .userCardId(r.getUserCardId())
+                        .cardId(r.getCardId())
+                        .cardName(r.getCardName())
+                        .cardImageUrl(r.getCardImageUrl())
+                        .issuedAt(r.getIssuedAt())
+                        .build())
+                .collect(Collectors.toList());
 
-        List<CardStatusResponse.CardApplicationDto> applications =
-                userMapper.selectCardApplications(userId).stream()
-                        .map(r -> CardStatusResponse.CardApplicationDto.builder()
-                                .applicationId(r.getApplicationId())
-                                .cardId(r.getCardId())
-                                .cardName(r.getCardName())
-                                .cardImageUrl(r.getCardImageUrl())
-                                .applicationStatus(r.getApplicationStatus())
-                                .appliedAt(r.getAppliedAt())
-                                .build())
-                        .collect(Collectors.toList());
+        List<CardStatusResponse.CardApplicationDto> appDtos = applications.stream()
+                .map(r -> CardStatusResponse.CardApplicationDto.builder()
+                        .applicationId(r.getApplicationId())
+                        .cardId(r.getCardId())
+                        .cardName(r.getCardName())
+                        .cardImageUrl(r.getCardImageUrl())
+                        .applicationStatus(r.getApplicationStatus())
+                        .appliedAt(r.getAppliedAt())
+                        .build())
+                .collect(Collectors.toList());
 
         return CardStatusResponse.builder()
-                .ownedCards(ownedCards)
-                .applications(applications)
+                .ownedCards(ownedDtos)
+                .applications(appDtos)
                 .build();
     }
+
+	// ================================================================
+	// 헬퍼
+	// ================================================================
+	private boolean requiresPasswordVerification(UserUpdateRequest request) {
+		return request.getName() != null || request.getPhone() != null || request.getJob() != null
+				|| request.getIncomeLevelCode() != null || request.getCreditScore() != null;
+	}
+
+	private boolean hasAnyField(UserUpdateRequest request) {
+		return requiresPasswordVerification(request) || request.getPushEnabled() != null
+				|| request.getMarketingAgree() != null;
+	}
 }

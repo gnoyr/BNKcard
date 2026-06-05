@@ -9,9 +9,12 @@
 		<result property="email" column="email" />
 		<result property="passwordHash" column="password_hash" />
 		<result property="name" column="name" />
-		<result property="phone" column="phone" />
-		<result property="birthDate" column="birth_date" />
-		<result property="ciValue" column="ci_value" />
+		<result property="phone" column="phone"
+			typeHandler="com.bnk.global.mybatis.AesTypeHandler" />
+		<result property="ciValue" column="ci_value"
+			typeHandler="com.bnk.global.mybatis.AesTypeHandler" />
+		<result property="birthDate" column="birth_date"
+			typeHandler="com.bnk.global.mybatis.AesBirthDateTypeHandler" />
 		<result property="job" column="job" />
 		<result property="incomeLevelCode" column="income_level_code" />
 		<result property="creditScore" column="credit_score" />
@@ -31,6 +34,7 @@
 		<result property="createdAt" column="created_at" />
 		<result property="updatedAt" column="updated_at" />
 		<result property="deletedYn" column="deleted_yn" />
+		<result property="cddStatusCode" column="cdd_status_code" />
 	</resultMap>
 
 	<resultMap id="ownedCardRowMap"
@@ -63,23 +67,24 @@
 
 	<select id="findByEmail" resultMap="userMap">
 		SELECT * FROM USERS
-		WHERE email = #{email}
+		WHERE
+		email = #{email}
 		AND deleted_yn = 'N'
 	</select>
 
 	<select id="findById" resultMap="userMap">
 		SELECT * FROM USERS
-		WHERE user_id = #{userId}
+		WHERE user_id
+		= #{userId}
 		AND deleted_yn = 'N'
 	</select>
 
-	<!-- 아이디찾기: 이름 + 휴대폰 -->
-	<select id="findByNameAndPhone" resultMap="userMap">
+	<!-- [변경] phone 암호화로 WHERE phone = 불가 → 이름으로만 조회 후 Service에서 phone 비교 -->
+	<select id="findByName" resultMap="userMap">
 		SELECT * FROM USERS
-		WHERE name = #{name}
-		AND phone = #{phone}
+		WHERE name
+		= #{name}
 		AND deleted_yn = 'N'
-		FETCH FIRST 1 ROWS ONLY
 	</select>
 
 	<select id="findByEmailAndName" resultMap="userMap">
@@ -89,32 +94,38 @@
 		AND deleted_yn = 'N'
 	</select>
 
-	<!-- 이메일 중복 체크 (deleted_yn 무관 — 탈퇴 후 재가입 방지) -->
 	<select id="existsByEmail" resultType="int">
-		SELECT COUNT(1) FROM USERS WHERE email = #{email}
+		SELECT COUNT(1) FROM USERS
+		WHERE email = #{email}
 	</select>
 
-	<!-- 휴대폰 중복 체크 (deleted_yn 무관) -->
-	<select id="existsByPhone" resultType="int">
-		SELECT COUNT(1) FROM USERS WHERE phone = #{phone}
+	<!-- [변경] phone 암호화로 WHERE phone = 불가 → 전체 조회 후 Service에서 중복 판단 -->
+	<select id="findAllPhones" resultMap="userMap">
+		SELECT user_id, phone
+		FROM
+		USERS
+		WHERE phone IS NOT NULL
+		AND deleted_yn = 'N'
 	</select>
 
-	<!-- selectKey order="AFTER" + SEQ_USERS.CURRVAL 방식 트리거(TRG_USERS_BI)가 SEQ_USERS.NEXTVAL로 
-		user_id를 채번한 직후, CURRVAL로 해당 값을 읽어 User.userId에 주입한다. -->
 	<insert id="insertUser">
 		<selectKey keyProperty="userId" resultType="long"
 			order="AFTER">
 			SELECT SEQ_USERS.CURRVAL FROM DUAL
 		</selectKey>
 		INSERT INTO USERS (
-		email, password_hash, name, phone, birth_date,
-		job, income_level_code, credit_score,
+		email, password_hash, name,
+		phone,
+		ci_value,
+		birth_date, job, income_level_code, credit_score,
 		marketing_agree, privacy_agree,
 		status_code, is_email_verified, is_phone_verified,
 		push_enabled, login_fail_count, created_at, deleted_yn
 		) VALUES (
-		#{email}, #{passwordHash}, #{name}, #{phone},
-		#{birthDate, jdbcType=DATE},
+		#{email}, #{passwordHash}, #{name},
+		#{phone, typeHandler=com.bnk.global.mybatis.AesTypeHandler},
+		#{ciValue, typeHandler=com.bnk.global.mybatis.AesTypeHandler},
+		#{birthDate, typeHandler=com.bnk.global.mybatis.AesBirthDateTypeHandler},
 		#{job, jdbcType=VARCHAR},
 		#{incomeLevelCode, jdbcType=VARCHAR},
 		#{creditScore, jdbcType=NUMERIC},
@@ -124,40 +135,39 @@
 		'Y', 0, SYSTIMESTAMP, 'N'
 		)
 	</insert>
-	<!--
-		updateUser: null 이 아닌 필드만 SET (동적 UPDATE).
-		변경할 필드가 하나도 없는 경우 → UserService 에서 hasAnyField() 로 early return.
-		XML 은 "전달된 것만 UPDATE" 에만 집중한다.
-	-->
+
 	<update id="updateUser">
 		UPDATE USERS
 		<set>
-			<if test="name           != null">name              = #{name},</if>
-			<if test="phone          != null">
-				phone             = #{phone},
+			<if test="name            != null">name = #{name},</if>
+			<if test="phone           != null">
+				phone = #{phone,
+				typeHandler=com.bnk.global.mybatis.AesTypeHandler},
 				is_phone_verified = 'N',
 			</if>
-			<if test="job            != null">job               = #{job},</if>
+			<if test="job             != null">job = #{job},</if>
 			<if test="incomeLevelCode != null">income_level_code = #{incomeLevelCode},</if>
-			<if test="creditScore    != null">credit_score      = #{creditScore},</if>
-			<if test="pushEnabled    != null">push_enabled      = #{pushEnabled},</if>
-			<if test="marketingAgree != null">marketing_agree   = #{marketingAgree},</if>
+			<if test="creditScore     != null">credit_score = #{creditScore},</if>
+			<if test="pushEnabled     != null">push_enabled = #{pushEnabled},</if>
+			<if test="marketingAgree  != null">marketing_agree = #{marketingAgree},</if>
 			updated_at = SYSTIMESTAMP
 		</set>
-		WHERE user_id    = #{userId}
-		  AND deleted_yn = 'N'
+		WHERE user_id = #{userId}
+		AND deleted_yn = 'N'
 	</update>
 
 	<update id="updateEmailVerified">
 		UPDATE USERS
-		SET is_email_verified = #{isEmailVerified},
+		SET is_email_verified =
+		#{isEmailVerified},
 		updated_at = SYSTIMESTAMP
 		WHERE user_id = #{userId}
 	</update>
 
 	<update id="updatePhoneVerified">
 		UPDATE USERS
-		SET is_phone_verified = #{isPhoneVerified},
+		SET is_phone_verified =
+		#{isPhoneVerified},
 		updated_at = SYSTIMESTAMP
 		WHERE user_id = #{userId}
 	</update>
@@ -166,192 +176,121 @@
 		UPDATE USERS
 		SET password_hash = #{passwordHash},
 		last_password_changed_at = #{lastPasswordChangedAt},
-		updated_at = SYSTIMESTAMP
+		updated_at =
+		SYSTIMESTAMP
 		WHERE user_id = #{userId}
 	</update>
 
 	<update id="incrementLoginFailCount">
 		UPDATE USERS
-		SET login_fail_count = login_fail_count + 1
+		SET login_fail_count = login_fail_count +
+		1
 		WHERE user_id = #{userId}
 	</update>
 
-	<!-- Race Condition 방지: increment 직후 DB에서 실제 카운트 재조회 -->
 	<select id="getLoginFailCount" resultType="int">
-		SELECT login_fail_count
-		FROM USERS
-		WHERE user_id = #{userId}
+		SELECT
+		login_fail_count FROM USERS WHERE user_id = #{userId}
 	</select>
 
 	<update id="resetLoginFailCount">
 		UPDATE USERS
 		SET login_fail_count = 0,
-		locked_until = NULL
+		locked_until =
+		NULL
 		WHERE user_id = #{userId}
 	</update>
 
 	<update id="updateLockedUntil">
 		UPDATE USERS
 		SET locked_until = #{lockedUntil}
-		WHERE user_id = #{userId}
+		WHERE
+		user_id = #{userId}
 	</update>
 
 	<update id="updateLastLoginAt">
 		UPDATE USERS
 		SET last_login_at = #{lastLoginAt}
-		WHERE user_id = #{userId}
+		WHERE
+		user_id = #{userId}
 	</update>
 
-	<!-- 타 기기 세션 revoke (현재 session 제외) -->
 	<update id="revokeOtherSessions">
 		UPDATE USER_SESSIONS
 		SET revoked_yn = 'Y',
-		revoked_at = SYSTIMESTAMP
+		revoked_at =
+		SYSTIMESTAMP
 		WHERE user_id = #{userId}
-		AND session_id != #{currentSessionId}
+		AND session_id !=
+		#{currentSessionId}
 		AND revoked_yn = 'N'
 	</update>
 
-	<!-- 전체 세션 revoke (비밀번호 재설정 강제 로그아웃) -->
 	<update id="revokeAllSessions">
 		UPDATE USER_SESSIONS
 		SET revoked_yn = 'Y',
-		revoked_at = SYSTIMESTAMP
+		revoked_at =
+		SYSTIMESTAMP
 		WHERE user_id = #{userId}
 		AND revoked_yn = 'N'
 	</update>
 
-	<!-- ============================================================ AUDIT_LOGS 
-		INSERT actor_type_code / action_type_code / target_type_code 컬럼명 busanbank_insert_all.sql 
-		스키마 기준 ============================================================ -->
 	<insert id="insertAuditLog">
 		INSERT INTO AUDIT_LOGS (
-		actor_type_code,
-		actor_id,
+		actor_type_code, actor_id,
 		action_type_code,
-		target_type_code,
-		target_id,
-		description,
+		target_type_code, target_id, description,
 		ip_address,
 		created_at
 		) VALUES (
-		#{actorType},
-		#{actorId},
-		#{actionType},
+		#{actorType}, #{actorId}, #{actionType},
 		#{targetType},
 		#{targetId, jdbcType=NUMERIC},
-		#{description, jdbcType=VARCHAR},
+		#{description,
+		jdbcType=VARCHAR},
 		#{ipAddress, jdbcType=VARCHAR},
 		SYSTIMESTAMP
 		)
 	</insert>
 
-	<!-- ============================================================ 보유 카드 
-		목록 (RQ-F17) USER_CARDS JOIN CARDS JOIN CARD_IMAGES(image_type='FRONT') WHERE 
-		deleted_yn = 'N' ============================================================ -->
-	<select id="selectOwnedCards" resultMap="ownedCardRowMap">
+	<insert id="insertPasswordHistory">
+		INSERT INTO USER_PASSWORD_HISTORIES (user_id,
+		password_hash, created_at)
+		VALUES (#{userId}, #{passwordHash},
+		SYSTIMESTAMP)
+	</insert>
+
+	<select id="findRecentPasswordHashes" resultType="string">
 		SELECT
-		uc.user_card_id,
-		uc.card_id,
-		c.card_name,
-		ci.image_url AS card_image_url,
-		TO_CHAR(uc.issued_at, 'YYYY-MM-DD') AS issued_at
-		FROM
-		USER_CARDS uc
-		JOIN CARDS c ON c.card_id = uc.card_id
-		LEFT JOIN CARD_IMAGES ci
-		ON ci.card_id = uc.card_id
-		AND ci.image_type = 'FRONT'
-		WHERE
-		uc.user_id = #{userId}
-		AND uc.deleted_yn = 'N'
-		ORDER BY
-		uc.issued_at DESC
+		password_hash
+		FROM USER_PASSWORD_HISTORIES
+		WHERE user_id = #{userId}
+		ORDER BY created_at DESC
+		FETCH FIRST #{limit} ROWS ONLY
 	</select>
 
-	<!-- ============================================================ 카드 신청 
-		현황 (RQ-F17) CARD_APPLICATIONS JOIN CARDS JOIN CARD_IMAGES(image_type='THUMBNAIL') 
-		============================================================ -->
-	<select id="selectCardApplications"
-		resultMap="cardApplicationRowMap">
-		SELECT
-		ca.application_id,
-		ca.card_id,
-		c.card_name,
-		ci.image_url AS card_image_url,
-		ca.application_status,
-		TO_CHAR(ca.applied_at, 'YYYY-MM-DD') AS applied_at
+	<delete id="deleteOldPasswordHistories">
+		DELETE FROM USER_PASSWORD_HISTORIES
+		WHERE user_id =
+		#{userId}
+		AND history_id NOT IN (
+		SELECT history_id
 		FROM
-		CARD_APPLICATIONS ca
-		JOIN CARDS c ON c.card_id = ca.card_id
-		LEFT JOIN CARD_IMAGES ci
-		ON ci.card_id = ca.card_id
-		AND ci.image_type = 'THUMBNAIL'
-		WHERE
-		ca.user_id = #{userId}
-		ORDER BY
-		ca.applied_at DESC
-	</select>
-
-	<!-- ============================================================ 소비 패턴 
-		조회 (RQ-F16) CARD_CATEGORIES LEFT JOIN USER_SPENDING_PATTERNS 패턴 미등록 카테고리도 
-		0원으로 포함 (도넛 차트 항목 고정) ============================================================ -->
-	<select id="selectSpendingPatterns"
-		resultMap="spendingPatternRowMap">
-		SELECT
-		cc.category_id,
-		cc.category_name,
-		NVL(usp.monthly_amount, 0) AS monthly_amount,
-		cc.color_code
-		FROM
-		CARD_CATEGORIES cc
-		LEFT JOIN USER_SPENDING_PATTERNS usp
-		ON usp.category_id = cc.category_id
-		AND usp.user_id = #{userId}
-		WHERE
-		cc.use_yn = 'Y'
-		ORDER BY
-		cc.display_order ASC
-	</select>
-
-	<!-- ============================================================ 소비 패턴 
-		UPSERT (RQ-F18) — Oracle MERGE INTO 존재 시: monthly_amount, updated_at UPDATE 
-		없으면: INSERT (SEQ_USER_SPENDING_PATTERNS.NEXTVAL or 트리거) ============================================================ -->
-	<update id="upsertSpendingPattern">
-		MERGE INTO USER_SPENDING_PATTERNS usp
-		USING (
-		SELECT
-		#{userId} AS user_id,
-		#{categoryId} AS category_id,
-		#{monthlyAmount} AS monthly_amount,
-		#{source} AS source
-		FROM DUAL
-		) src
-		ON (
-		usp.user_id = src.user_id
-		AND usp.category_id = src.category_id
+		USER_PASSWORD_HISTORIES
+		WHERE user_id = #{userId}
+		ORDER BY created_at
+		DESC
+		FETCH FIRST 5 ROWS ONLY
 		)
-		WHEN MATCHED THEN
-		UPDATE SET
-		usp.monthly_amount = src.monthly_amount,
-		usp.source = src.source,
-		usp.updated_at = SYSTIMESTAMP
-		WHEN NOT MATCHED THEN
-		INSERT (
-		user_id,
-		category_id,
-		monthly_amount,
-		source,
-		created_at,
-		updated_at
-		) VALUES (
-		src.user_id,
-		src.category_id,
-		src.monthly_amount,
-		src.source,
-		SYSTIMESTAMP,
-		SYSTIMESTAMP
-		)
+	</delete>
+
+	<update id="updateCddStatus">
+		UPDATE USERS
+		SET cdd_status_code = #{cddStatusCode},
+		updated_at = SYSTIMESTAMP
+		WHERE user_id = #{userId}
+		AND deleted_yn = 'N'
 	</update>
+
 
 </mapper>

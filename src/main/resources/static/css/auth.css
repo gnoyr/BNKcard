@@ -1126,3 +1126,38 @@ select.form-input {
 	width: 100%;
 	background: #2E7D32;
 }
+
+/* 본인인증 완료 안내 메시지 */
+.iv-complete-msg {
+	display: none;
+	background: #f0fdf4;
+	border: 1px solid #bbf7d0;
+	border-radius: 8px;
+	padding: 10px 14px;
+	font-size: 13px;
+	color: #16a34a;
+	margin-bottom: 10px;
+}
+
+/* 본인인증 버튼 — 기본 상태 */
+.btn-identity-verify {
+	width: 100%;
+	border-color: #C8102E;
+	color: #C8102E;
+	font-weight: 700;
+	margin-bottom: 6px;
+}
+
+/* 본인인증 버튼 — 완료 상태 */
+.btn-identity-verify.is-done {
+	background: #f0fdf4;
+	border-color: #bbf7d0;
+	color: #16a34a;
+}
+
+/* 읽기 전용 입력 필드 (본인인증 후 자동 입력) */
+.form-input.is-readonly {
+	background: #f9fafb;
+	cursor: not-allowed;
+	color: #52525b;
+}
