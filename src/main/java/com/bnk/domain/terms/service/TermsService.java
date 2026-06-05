@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
+import com.bnk.domain.terms.dto.request.AgreedTermsItem;
 import com.bnk.domain.terms.dto.request.TermsAgreementRequest;
 import com.bnk.domain.terms.dto.response.TermsFileResponse;
 import com.bnk.domain.terms.dto.response.TermsPackageResponse;
@@ -43,7 +44,7 @@ public class TermsService {
         }
 
         List<TermsPackageResponse.TermsItem> items = termsList.stream()
-                .map(TermsPackageResponse::fromTerms)
+                .map(TermsPackageResponse.TermsItem::from)
                 .collect(Collectors.toList());
 
         return TermsPackageResponse.builder()
@@ -61,12 +62,12 @@ public class TermsService {
         // 동의 목록에서 Y로 동의한 termsId 집합
         Set<Long> agreedIds = request.getAgreedTerms().stream()
                 .filter(item -> "Y".equals(item.getAgreedYn()))
-                .map(TermsAgreementRequest.AgreedTermsItem::getTermsId)
+                .map(AgreedTermsItem::getTermsId)
                 .collect(Collectors.toSet());
 
         // 요청한 termsId들 DB 조회 후 필수 약관 동의 검증
         List<Long> allTermsIds = request.getAgreedTerms().stream()
-                .map(TermsAgreementRequest.AgreedTermsItem::getTermsId)
+                .map(AgreedTermsItem::getTermsId)
                 .collect(Collectors.toList());
 
         boolean requiredNotAgreed = allTermsIds.stream()
@@ -99,15 +100,17 @@ public class TermsService {
                 .map(UserTermsAgreement::getTermsId)
                 .collect(Collectors.toList());
     }
-    
-    // TermsService.java에 추가
+
+    /**
+     * 약관 파일 URL 조회 (PDF 다운로드용)
+     */
+    @Transactional(readOnly = true)
     public List<TermsFileResponse> getTermsFiles(Long termsId) {
-    	// 약관 존재 여부 확인
         termsMapper.findById(termsId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TERMS_NOT_FOUND));
 
         List<TermsFile> files = termsMapper.findFilesByTermsId(termsId);
-        
+
         return files.stream()
                 .map(f -> TermsFileResponse.builder()
                         .fileId(f.getFileId())

@@ -186,7 +186,11 @@
             }
 
             const terms = res.data?.data?.terms ?? [];
-            const extraTerms = terms.filter(t => (t.requiredYn ?? t.required) === 'Y' || t.required === true);
+			const STATIC_TERMS_IDS = [1, 2]; // signup.html에 하드코딩된 약관 ID
+			const extraTerms = terms.filter(t => {
+			    const id = t.id ?? t.termsId ?? t.termsMasterId;
+			    return !STATIC_TERMS_IDS.includes(Number(id));
+			});
 
             if (!extraTerms.length) return;
 
@@ -216,12 +220,13 @@
                 });
 
                 document.getElementById('btnStep1Next')?.addEventListener('click', () => {
-                    const requiredCbs = document.querySelectorAll('[data-required]:not([data-id])') ??
-                        document.querySelectorAll('input[type="checkbox"][required]');
-                    if (![...requiredCbs].every(cb => cb.checked)) {
-                        authToast.error('필수 약관에 모두 동의해 주세요.');
-                        return;
-                    }
+					const requiredCbs = document.querySelectorAll(
+					    'input[type="checkbox"][data-required="Y"], input[type="checkbox"][data-required="true"]'
+					);
+					if (![...requiredCbs].every(cb => cb.checked)) {
+					    authToast.error('필수 약관에 모두 동의해 주세요.');
+					    return;
+					}
                     _agreedTermsIds = [...document.querySelectorAll('[data-id]:checked')]
                         .map(cb => Number(cb.dataset.id))
                         .filter(id => id > 0);
