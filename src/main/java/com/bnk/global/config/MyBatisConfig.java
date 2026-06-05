@@ -24,6 +24,16 @@ public class MyBatisConfig {
 	private final AesCryptoUtil aesCryptoUtil;
 
 	@Bean
+	AesTypeHandler aesTypeHandler() {
+		return new AesTypeHandler(aesCryptoUtil);
+	}
+
+	@Bean
+	AesBirthDateTypeHandler aesBirthDateTypeHandler() {
+		return new AesBirthDateTypeHandler(aesCryptoUtil);
+	}
+
+	@Bean
 	SqlSessionFactory sqlSessionFactory(DataSource dataSource) throws Exception {
 		SqlSessionFactoryBean factoryBean = new SqlSessionFactoryBean();
 		factoryBean.setDataSource(dataSource);
@@ -35,11 +45,19 @@ public class MyBatisConfig {
 		config.setDefaultStatementTimeout(30);
 		config.setCacheEnabled(false);
 
-		// AES TypeHandler 등록
-		config.getTypeHandlerRegistry().register(String.class, new AesTypeHandler(aesCryptoUtil));
+		// ── TypeHandler 인스턴스를 registry에 직접 등록 ──────────────
+		// Spring Bean으로 만든 인스턴스를 주입하므로 MyBatis가
+		// new AesTypeHandler() 기본 생성자를 호출하지 않음.
+		AesTypeHandler aesHandler = aesTypeHandler();
+		AesBirthDateTypeHandler aesBirthHandler = aesBirthDateTypeHandler();
 
-		// birth_date 전용 TypeHandler 등록
-		config.getTypeHandlerRegistry().register(LocalDate.class, new AesBirthDateTypeHandler(aesCryptoUtil));
+		config.getTypeHandlerRegistry().register(aesHandler);
+		config.getTypeHandlerRegistry().register(LocalDate.class, aesBirthHandler);
+
+		// ── XML에서 alias로 참조할 수 있도록 TypeAliasRegistry에도 등록 ──
+		// XML: typeHandler="aesTypeHandler" 로 참조 가능해짐
+		config.getTypeAliasRegistry().registerAlias("aesTypeHandler", AesTypeHandler.class);
+		config.getTypeAliasRegistry().registerAlias("aesBirthDateTypeHandler", AesBirthDateTypeHandler.class);
 
 		factoryBean.setConfiguration(config);
 		return factoryBean.getObject();
