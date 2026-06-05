@@ -10,7 +10,8 @@
         <result property="passwordHash"   column="password_hash"/>
         <result property="name"           column="name"/>
         <result property="email"          column="email"/>
-        <result property="phone"          column="phone"/>
+        <result property="phone" column="phone"
+            typeHandler="com.bnk.global.mybatis.AesTypeHandler"/>
         <result property="statusCode"     column="status_code"/>
         <result property="loginFailCount" column="login_fail_count"/>
         <result property="lockedUntil"    column="locked_until"/>
@@ -95,9 +96,11 @@
         <if test="email != null and email != ''">
           AND email LIKE '%' || #{email} || '%'
         </if>
+        <!-- phone 암호화로 LIKE 검색 불가
         <if test="phone != null and phone != ''">
           AND phone LIKE '%' || #{phone} || '%'
         </if>
+        -->
         <if test="statusCode != null and statusCode != ''">
           AND status_code = #{statusCode}
         </if>
@@ -120,9 +123,11 @@
         <if test="email != null and email != ''">
           AND email LIKE '%' || #{email} || '%'
         </if>
+        <!-- phone 암호화로 LIKE 검색 불가
         <if test="phone != null and phone != ''">
           AND phone LIKE '%' || #{phone} || '%'
         </if>
+        -->
         <if test="statusCode != null and statusCode != ''">
           AND status_code = #{statusCode}
         </if>

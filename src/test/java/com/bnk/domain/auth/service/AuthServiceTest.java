@@ -12,6 +12,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -55,46 +56,54 @@ import jakarta.servlet.http.HttpServletRequest;
 @DisplayName("AuthService 단위 테스트")
 class AuthServiceTest {
 
-    // ── 기존 Mock ──────────────────────────────────────────────────────
-    @Mock private UserMapper              userMapper;
-    @Mock private UserSessionMapper       userSessionMapper;
-    @Mock private PasswordEncoder         passwordEncoder;
-    @Mock private JwtTokenProvider        jwtTokenProvider;
-    @Mock private CookieUtil              cookieUtil;
-    @Mock private TokenStore        tokenStore;
+	// ── Mock ──────────────────────────────────────────────────────
+	@Mock
+	private UserMapper userMapper;
+	@Mock
+	private UserSessionMapper userSessionMapper;
+	@Mock
+	private PasswordEncoder passwordEncoder;
+	@Mock
+	private JwtTokenProvider jwtTokenProvider;
+	@Mock
+	private CookieUtil cookieUtil;
+	@Mock
+	private TokenStore tokenStore;
+	@Mock
+	private TermsMapper termsMapper;
+	@Mock
+	private AdminUserMapper adminUserMapper;
+	@Mock
+	private UserTermsAgreementMapper userTermsAgreementMapper;
+	@Mock
+	private EmailService emailService;
 
-    // ── 추가 Mock (AuthService 생성자 주입에 필요) ─────────────────────
-    @Mock private TermsMapper             termsMapper;
-    @Mock private AdminUserMapper         adminUserMapper;
-    @Mock private UserTermsAgreementMapper userTermsAgreementMapper;
-    @Mock private EmailService            emailService;
+	@InjectMocks
+	private AuthService authService;
 
-    @InjectMocks
-    private AuthService authService;
+	// ── 공통 상수 ──────────────────────────────────────────────────────
+	private static final Long USER_ID = 1L;
+	private static final String EMAIL = "test@bnk.co.kr";
+	private static final String NAME = "홍길동";
+	private static final String PHONE = "01012345678";
+	private static final String PASSWORD = "Password123!";
+	private static final String ENC_PW = "$2a$10$encodedPasswordHashValue";
+	private static final String TOKEN = "mock-uuid-token";
+	private static final String NEW_PW = "NewSecure123!";
 
-    // ── 공통 상수 ──────────────────────────────────────────────────────
-    private static final Long   USER_ID  = 1L;
-    private static final String EMAIL    = "test@bnk.co.kr";
-    private static final String NAME     = "홍길동";
-    private static final String PHONE    = "01012345678";
-    private static final String PASSWORD = "Password123!";
-    private static final String ENC_PW   = "$2a$10$encodedPasswordHashValue";
-    private static final String TOKEN    = "mock-uuid-token";
-    private static final String NEW_PW   = "NewSecure123!";
+	// ── 공통 픽스처 ────────────────────────────────────────────────────
 
-    // ── 공통 픽스처 ────────────────────────────────────────────────────
-
-    /** 정상 활성 계정 (로그인 실패 횟수 0, 잠금 없음) */
-    private User activeUser() {
-        User user = new User();
-        ReflectionTestUtils.setField(user, "userId",        USER_ID);
-        ReflectionTestUtils.setField(user, "email",         EMAIL);
-        ReflectionTestUtils.setField(user, "name",          NAME);
-        ReflectionTestUtils.setField(user, "passwordHash",  ENC_PW);
-        ReflectionTestUtils.setField(user, "statusCode",    "ACTIVE");
-        ReflectionTestUtils.setField(user, "loginFailCount", 0);
-        return user;
-    }
+	/** 정상 활성 계정 (로그인 실패 횟수 0, 잠금 없음) */
+	private User activeUser() {
+		User user = new User();
+		ReflectionTestUtils.setField(user, "userId", USER_ID);
+		ReflectionTestUtils.setField(user, "email", EMAIL);
+		ReflectionTestUtils.setField(user, "name", NAME);
+		ReflectionTestUtils.setField(user, "passwordHash", ENC_PW);
+		ReflectionTestUtils.setField(user, "statusCode", "ACTIVE");
+		ReflectionTestUtils.setField(user, "loginFailCount", 0);
+		return user;
+	}
 
     /** 로그인 실패 4회 누적 상태 (다음 실패 시 잠금 트리거) */
     private User userWithFourFails() {
@@ -188,7 +197,7 @@ class AuthServiceTest {
     }
 
     // ════════════════════════════════════════════════════════════════
-    // [신규] F-03 | 로그인
+    //  F-03 | 로그인
     // ════════════════════════════════════════════════════════════════
 
     @Nested
@@ -283,7 +292,7 @@ class AuthServiceTest {
     }
 
     // ════════════════════════════════════════════════════════════════
-    // [신규] F-05 | 로그아웃
+    //  F-05 | 로그아웃
     // ════════════════════════════════════════════════════════════════
 
     @Nested
@@ -299,7 +308,7 @@ class AuthServiceTest {
     }
 
     // ════════════════════════════════════════════════════════════════
-    // [신규] F-04 | Access Token 재발급
+    //  F-04 | Access Token 재발급
     // ════════════════════════════════════════════════════════════════
 
     @Nested
@@ -344,7 +353,7 @@ class AuthServiceTest {
     }
 
     // ════════════════════════════════════════════════════════════════
-    // [신규] F-01 | 회원가입
+    //  F-01 | 회원가입
     // ════════════════════════════════════════════════════════════════
 
     @Nested
@@ -361,7 +370,7 @@ class AuthServiceTest {
         /** 이메일/전화 중복 없음 + 인증 완료 + 약관 정상 스텁 */
         private void stubSignupHappyPath() {
             given(userMapper.existsByEmail(EMAIL)).willReturn(0);
-            given(userMapper.existsByPhone(anyString())).willReturn(0);
+            given(userMapper.findAllPhones()).willReturn(Collections.emptyList());
             given(tokenStore.get("email:verified:" + EMAIL)).willReturn("Y");
             given(termsMapper.findByPackageType("SIGNUP")).willReturn(twoTerms());
             given(passwordEncoder.encode(PASSWORD)).willReturn(ENC_PW);
@@ -395,7 +404,9 @@ class AuthServiceTest {
         @DisplayName("[실패] 휴대폰 중복 → DUPLICATE_PHONE")
         void 실패_전화번호중복() {
             given(userMapper.existsByEmail(EMAIL)).willReturn(0);
-            given(userMapper.existsByPhone(anyString())).willReturn(1);
+            User existing = new User();
+            ReflectionTestUtils.setField(existing, "phone", "010-1234-5678");
+            given(userMapper.findAllPhones()).willReturn(List.of(existing));
 
             assertThatThrownBy(() -> authService.signup(signupReq(EMAIL, PASSWORD, NAME, PHONE, List.of(1L))))
                     .isInstanceOf(BusinessException.class)
@@ -407,7 +418,7 @@ class AuthServiceTest {
         @DisplayName("[실패] 이메일 인증 미완료 → EMAIL_NOT_VERIFIED")
         void 실패_이메일인증미완료() {
             given(userMapper.existsByEmail(EMAIL)).willReturn(0);
-            given(userMapper.existsByPhone(anyString())).willReturn(0);
+            given(userMapper.findAllPhones()).willReturn(Collections.emptyList());
             given(tokenStore.get("email:verified:" + EMAIL)).willReturn(null);
 
             assertThatThrownBy(() -> authService.signup(signupReq(EMAIL, PASSWORD, NAME, PHONE, List.of(1L))))
@@ -420,7 +431,7 @@ class AuthServiceTest {
         @DisplayName("[실패] 필수 약관 미동의 → REQUIRED_TERMS_NOT_AGREED")
         void 실패_필수약관미동의() {
             given(userMapper.existsByEmail(EMAIL)).willReturn(0);
-            given(userMapper.existsByPhone(anyString())).willReturn(0);
+            given(userMapper.findAllPhones()).willReturn(Collections.emptyList());
             given(tokenStore.get("email:verified:" + EMAIL)).willReturn("Y");
             given(termsMapper.findByPackageType("SIGNUP")).willReturn(twoTerms());
 
@@ -433,7 +444,7 @@ class AuthServiceTest {
     }
 
     // ════════════════════════════════════════════════════════════════
-    // [신규] F-00 | 이메일 인증코드 발송
+    // F-00 | 이메일 인증코드 발송
     // ════════════════════════════════════════════════════════════════
 
     @Nested
@@ -467,7 +478,7 @@ class AuthServiceTest {
     }
 
     // ════════════════════════════════════════════════════════════════
-    // [신규] F-02 | 이메일 인증코드 확인
+    //  F-02 | 이메일 인증코드 확인
     // ════════════════════════════════════════════════════════════════
 
     @Nested
@@ -500,7 +511,7 @@ class AuthServiceTest {
     }
 
     // ════════════════════════════════════════════════════════════════
-    // [신규] F-22 | 비밀번호 재설정 링크 요청 (findPassword)
+    //  F-22 | 비밀번호 재설정 링크 요청 (findPassword)
     // ════════════════════════════════════════════════════════════════
 
     @Nested
@@ -542,7 +553,7 @@ class AuthServiceTest {
     }
 
     // ════════════════════════════════════════════════════════════════
-    // [기존] F-23 | 비밀번호 재설정
+    //  F-23 | 비밀번호 재설정
     // ════════════════════════════════════════════════════════════════
 
     @Nested
