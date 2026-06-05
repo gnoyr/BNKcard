@@ -98,3 +98,42 @@ COMMIT;
 ALTER TABLE USERS DROP COLUMN birth_date_temp;
 
 COMMIT;
+
+
+CREATE TABLE WATCHLIST (
+    watchlist_id  NUMBER(19)    PRIMARY KEY,
+    name          VARCHAR2(100) NOT NULL,
+    birth_date    VARCHAR2(200),
+    ci_value      VARCHAR2(500),
+    reason        VARCHAR2(500),
+    risk_level    VARCHAR2(20)  DEFAULT 'HIGH'
+                  CHECK (risk_level IN ('HIGH','MEDIUM')),
+    registered_at TIMESTAMP     DEFAULT SYSTIMESTAMP,
+    registered_by NUMBER(10),
+    deleted_yn    CHAR(1)       DEFAULT 'N' CHECK (deleted_yn IN ('Y','N'))
+);
+CREATE SEQUENCE SEQ_WATCHLIST START WITH 1 INCREMENT BY 1 NOCACHE;
+ 
+CREATE OR REPLACE TRIGGER TRG_WATCHLIST_BI
+    BEFORE INSERT ON WATCHLIST FOR EACH ROW
+BEGIN
+    IF :NEW.watchlist_id IS NULL THEN
+        SELECT SEQ_WATCHLIST.NEXTVAL INTO :NEW.watchlist_id FROM DUAL;
+    END IF;
+END;
+/
+ 
+CREATE INDEX IDX_WATCHLIST_NAME ON WATCHLIST(name);
+
+ALTER TABLE WATCHLIST ADD (
+    ci_value_hash    VARCHAR2(64),
+    birth_date_hash  VARCHAR2(64)
+);
+
+CREATE INDEX IDX_WATCHLIST_CI_HASH ON WATCHLIST(ci_value_hash);
+CREATE INDEX IDX_WATCHLIST_NAME_BD ON WATCHLIST(name, birth_date_hash);
+-- ※ AES 복호화는 Java에서만 가능하므로, 마이그레이션 엔드포인트 또는
+--    EncryptionMigrationService 패턴으로 Java에서 일괄 처리 필요.
+--    기존 Watchlist 데이터가 없다면 이 단계 생략.
+
+COMMIT;
