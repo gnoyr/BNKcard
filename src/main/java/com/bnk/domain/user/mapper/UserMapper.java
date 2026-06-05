@@ -8,12 +8,10 @@ import java.util.Optional;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import com.bnk.domain.user.dto.query.CardApplicationRow;
+import com.bnk.domain.user.dto.query.OwnedCardRow;
+import com.bnk.domain.user.dto.query.SpendingPatternRow;
 import com.bnk.domain.user.model.User;
-
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
 
 @Mapper
 public interface UserMapper {
@@ -79,40 +77,4 @@ public interface UserMapper {
 
 	// CDD 상태 변경
 	int updateCddStatus(@Param("userId") Long userId, @Param("cddStatusCode") String cddStatusCode);
-
-	@Getter
-	@Builder
-	@NoArgsConstructor
-	@AllArgsConstructor
-	class OwnedCardRow {
-		private Long userCardId;
-		private Long cardId;
-		private String cardName;
-		private String cardImageUrl;
-		private String issuedAt;
-	}
-
-	@Getter
-	@Builder
-	@NoArgsConstructor
-	@AllArgsConstructor
-	class CardApplicationRow {
-		private Long applicationId;
-		private Long cardId;
-		private String cardName;
-		private String cardImageUrl;
-		private String applicationStatus;
-		private String appliedAt;
-	}
-
-	@Getter
-	@Builder
-	@NoArgsConstructor
-	@AllArgsConstructor
-	class SpendingPatternRow {
-		private Long categoryId;
-		private String categoryName;
-		private BigDecimal monthlyAmount;
-		private String colorCode;
-	}
 }

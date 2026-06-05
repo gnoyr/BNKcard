@@ -4,17 +4,17 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>내 정보 수정 | 부산은행</title>
-	<link rel="stylesheet" href="/css/components.css" />
-	<link rel="stylesheet" href="/css/mypage.css" />
-	<link rel="stylesheet" href="/css/teal-theme.css" />
+<link rel="stylesheet" href="/css/components.css" />
+<link rel="stylesheet" href="/css/mypage.css" />
+<link rel="stylesheet" href="/css/teal-theme.css" />
 </head>
 <body data-page="mypage-edit">
 
 
 	<nav class="sub-nav">
 		<button class="sub-nav__back" onclick="history.back()">마이페이지</button>
-		<span class="sub-nav__sep">›</span>
-		<span class="sub-nav__title">내 정보 수정</span>
+		<span class="sub-nav__sep">›</span> <span class="sub-nav__title">내
+			정보 수정</span>
 	</nav>
 
 	<div class="page-wrap">
@@ -30,10 +30,10 @@
 				<div class="card__head">기본 정보</div>
 
 				<div class="form-group">
-					<label class="form-label" for="name">이름</label>
-					<input class="form-control" type="text" id="name"
-						placeholder="이름 입력" maxlength="20" autocomplete="off" />
-					<span class="form-error" id="name-err"></span>
+					<label class="form-label" for="name">이름</label> <input
+						class="form-control" type="text" id="name" placeholder="이름 입력"
+						maxlength="20" autocomplete="off" /> <span class="form-error"
+						id="name-err"></span>
 				</div>
 
 				<div class="form-group">
@@ -42,11 +42,10 @@
 				</div>
 
 				<div class="form-group">
-					<label class="form-label" for="phone">새 휴대폰 번호</label>
-					<input class="form-control" type="tel" id="phone"
+					<label class="form-label" for="phone">새 휴대폰 번호</label> <input
+						class="form-control" type="tel" id="phone"
 						placeholder="변경할 번호 입력 (예: 01012345678)" maxlength="11"
-						autocomplete="off" />
-					<span class="form-error" id="phone-err"></span>
+						autocomplete="off" /> <span class="form-error" id="phone-err"></span>
 				</div>
 			</div>
 
@@ -55,8 +54,8 @@
 				<div class="card__head">추가 정보</div>
 
 				<div class="form-group">
-					<label class="form-label" for="job">직업</label>
-					<select class="form-control" id="job">
+					<label class="form-label" for="job">직업</label> <select
+						class="form-control" id="job">
 						<option value="">선택 안함</option>
 						<option value="EMPLOYED">직장인</option>
 						<option value="SELF_EMPLOYED">자영업</option>
@@ -67,8 +66,8 @@
 				</div>
 
 				<div class="form-group">
-					<label class="form-label" for="incomeLevelCode">소득 등급</label>
-					<select class="form-control" id="incomeLevelCode">
+					<label class="form-label" for="incomeLevelCode">소득 등급</label> <select
+						class="form-control" id="incomeLevelCode">
 						<option value="">선택 안함</option>
 						<option value="LV1">LV1 (3천만 미만)</option>
 						<option value="LV2">LV2 (3천~5천만)</option>
@@ -78,10 +77,10 @@
 				</div>
 
 				<div class="form-group">
-					<label class="form-label" for="creditScore">신용점수</label>
-					<input class="form-control" type="number" id="creditScore"
-						placeholder="300~900" min="300" max="900" />
-					<span class="form-error" id="creditScore-err"></span>
+					<label class="form-label" for="creditScore">신용점수</label> <input
+						class="form-control" type="number" id="creditScore"
+						placeholder="300~900" min="300" max="900" /> <span
+						class="form-error" id="creditScore-err"></span>
 				</div>
 			</div>
 
@@ -94,9 +93,8 @@
 						<div class="toggle-row__label">푸시 알림</div>
 						<div class="toggle-row__sub">카드 혜택 및 공지사항 알림</div>
 					</div>
-					<label class="toggle">
-						<input type="checkbox" id="pushEnabled" />
-						<span class="toggle-track"></span>
+					<label class="toggle"> <input type="checkbox"
+						id="pushEnabled" /> <span class="toggle-track"></span>
 					</label>
 				</div>
 
@@ -105,9 +103,8 @@
 						<div class="toggle-row__label">마케팅 정보 수신 동의</div>
 						<div class="toggle-row__sub">이벤트 및 혜택 안내 수신</div>
 					</div>
-					<label class="toggle">
-						<input type="checkbox" id="marketingAgree" />
-						<span class="toggle-track"></span>
+					<label class="toggle"> <input type="checkbox"
+						id="marketingAgree" /> <span class="toggle-track"></span>
 					</label>
 				</div>
 			</div>
@@ -124,17 +121,16 @@
 	<div class="modal-overlay" id="pwConfirmModal">
 		<div class="modal">
 			<div class="modal__title">비밀번호 확인</div>
-			<div class="modal__body">
-				정보 변경을 위해 현재 비밀번호를 입력해주세요.
-			</div>
+			<div class="modal__body">정보 변경을 위해 현재 비밀번호를 입력해주세요.</div>
 			<div class="form-group">
 				<input class="form-control" type="password" id="confirmPwInput"
-					placeholder="현재 비밀번호" autocomplete="current-password" />
-				<span class="form-error" id="confirmPwErr"></span>
+					placeholder="현재 비밀번호" autocomplete="current-password" /> <span
+					class="form-error" id="confirmPwErr"></span>
 			</div>
 			<div class="modal__footer">
 				<button class="btn btn-outline modal-btn-cancel" id="modalCancelBtn">취소</button>
-				<button class="btn btn-primary modal-btn-confirm" id="modalConfirmBtn">확인</button>
+				<button class="btn btn-primary modal-btn-confirm"
+					id="modalConfirmBtn">확인</button>
 			</div>
 		</div>
 	</div>
