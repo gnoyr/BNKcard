@@ -9,6 +9,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
@@ -34,272 +35,307 @@ import com.bnk.global.exception.ErrorCode;
 @DisplayName("UserService 단위 테스트")
 class UserServiceTest {
 
-    @Mock private UserMapper      userMapper;
-    @Mock private PasswordEncoder passwordEncoder;
-    @InjectMocks private UserService userService;
+	@Mock
+	private UserMapper userMapper;
+	@Mock
+	private PasswordEncoder passwordEncoder;
+	@InjectMocks
+	private UserService userService;
 
-    private static final Long   USER_ID = 1L;
-    private static final String CURRENT = "Current123!";
-    private static final String NEW_PW  = "NewSecure123!";
-    private static final String ENC_PW  = "$2a$10$encodedPasswordHashValue";
+	private static final Long USER_ID = 1L;
+	private static final String CURRENT = "Current123!";
+	private static final String NEW_PW = "NewSecure123!";
+	private static final String ENC_PW = "$2a$10$encodedPasswordHashValue";
 
-    // ── 픽스처 ────────────────────────────────────────────────────
+	// ── 픽스처 ────────────────────────────────────────────────────
 
-    private User activeUser() {
-        User user = new User();
-        ReflectionTestUtils.setField(user, "userId",       USER_ID);
-        ReflectionTestUtils.setField(user, "passwordHash", ENC_PW);
-        ReflectionTestUtils.setField(user, "statusCode",   "ACTIVE");
-        ReflectionTestUtils.setField(user, "email",        "test@bnk.co.kr");
-        ReflectionTestUtils.setField(user, "name",         "홍길동");
-        ReflectionTestUtils.setField(user, "phone",        "010-1234-5678");
-        return user;
-    }
+	private User activeUser() {
+		User user = new User();
+		ReflectionTestUtils.setField(user, "userId", USER_ID);
+		ReflectionTestUtils.setField(user, "passwordHash", ENC_PW);
+		ReflectionTestUtils.setField(user, "statusCode", "ACTIVE");
+		ReflectionTestUtils.setField(user, "email", "test@bnk.co.kr");
+		ReflectionTestUtils.setField(user, "name", "홍길동");
+		ReflectionTestUtils.setField(user, "phone", "010-1234-5678");
+		return user;
+	}
 
-    private PasswordChangeRequest pwChangeReq(String current, String newPw, String confirm) {
-        PasswordChangeRequest req = new PasswordChangeRequest();
-        ReflectionTestUtils.setField(req, "currentPassword",    current);
-        ReflectionTestUtils.setField(req, "newPassword",        newPw);
-        ReflectionTestUtils.setField(req, "newPasswordConfirm", confirm);
-        return req;
-    }
+	private PasswordChangeRequest pwChangeReq(String current, String newPw, String confirm) {
+		PasswordChangeRequest req = new PasswordChangeRequest();
+		ReflectionTestUtils.setField(req, "currentPassword", current);
+		ReflectionTestUtils.setField(req, "newPassword", newPw);
+		ReflectionTestUtils.setField(req, "newPasswordConfirm", confirm);
+		return req;
+	}
 
-    /**
-     * 내 정보 수정 요청 픽스처.
-     *
-     * 비밀번호 검증 정책:
-     *   개인정보 필드(name/phone/job/incomeLevelCode/creditScore) 변경 → currentPw 필수
-     *   알림 설정(pushEnabled/marketingAgree)만 변경 → currentPw 불필요
-     */
-    private UserUpdateRequest updateReq(String name, String phone, String currentPw) {
-        UserUpdateRequest req = new UserUpdateRequest();
-        if (name      != null) ReflectionTestUtils.setField(req, "name",            name);
-        if (phone     != null) ReflectionTestUtils.setField(req, "phone",           phone);
-        if (currentPw != null) ReflectionTestUtils.setField(req, "currentPassword", currentPw);
-        return req;
-    }
+	/**
+	 * 내 정보 수정 요청 픽스처.
+	 *
+	 * 비밀번호 검증 정책: 개인정보 필드(name/phone/job/incomeLevelCode/creditScore) 변경 →
+	 * currentPw 필수 알림 설정(pushEnabled/marketingAgree)만 변경 → currentPw 불필요
+	 */
+	private UserUpdateRequest updateReq(String name, String phone, String currentPw) {
+		UserUpdateRequest req = new UserUpdateRequest();
+		if (name != null)
+			ReflectionTestUtils.setField(req, "name", name);
+		if (phone != null)
+			ReflectionTestUtils.setField(req, "phone", phone);
+		if (currentPw != null)
+			ReflectionTestUtils.setField(req, "currentPassword", currentPw);
+		return req;
+	}
 
-    private UserUpdateRequest notificationOnlyReq(boolean push, boolean mkt) {
-        UserUpdateRequest req = new UserUpdateRequest();
-        ReflectionTestUtils.setField(req, "pushEnabled",    push);
-        ReflectionTestUtils.setField(req, "marketingAgree", mkt);
-        return req;
-    }
+	private UserUpdateRequest notificationOnlyReq(boolean push, boolean mkt) {
+		UserUpdateRequest req = new UserUpdateRequest();
+		ReflectionTestUtils.setField(req, "pushEnabled", push);
+		ReflectionTestUtils.setField(req, "marketingAgree", mkt);
+		return req;
+	}
 
-    // ════════════════════════════════════════════════════════════════
-    // F-24 | 내 정보 조회
-    // ════════════════════════════════════════════════════════════════
+	// ════════════════════════════════════════════════════════════════
+	// F-24 | 내 정보 조회
+	// ════════════════════════════════════════════════════════════════
 
-    @Nested
-    @DisplayName("내 정보 조회")
-    class GetMyInfo {
+	@Nested
+	@DisplayName("내 정보 조회")
+	class GetMyInfo {
 
-        @Test
-        @DisplayName("[정상] userId로 유저 조회 → UserResponse 반환, passwordHash 미포함")
-        void 정상_내정보조회() {
-            given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
+		@Test
+		@DisplayName("[정상] userId로 유저 조회 → UserResponse 반환, passwordHash 미포함")
+		void 정상_내정보조회() {
+			given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
 
-            UserResponse response = userService.getMyInfo(USER_ID);
+			UserResponse response = userService.getMyInfo(USER_ID);
 
-            assertThat(response.getUserId()).isEqualTo(USER_ID);
-            assertThat(response.getMaskedEmail()).isNotBlank();
-            assertThat(response.getMaskedPhone()).isNotBlank();
-        }
+			assertThat(response.getUserId()).isEqualTo(USER_ID);
+			assertThat(response.getMaskedEmail()).isNotBlank();
+			assertThat(response.getMaskedPhone()).isNotBlank();
+		}
 
-        @Test
-        @DisplayName("[실패] 존재하지 않는 userId → USER_NOT_FOUND")
-        void 실패_사용자없음() {
-            given(userMapper.findById(USER_ID)).willReturn(Optional.empty());
+		@Test
+		@DisplayName("[실패] 존재하지 않는 userId → USER_NOT_FOUND")
+		void 실패_사용자없음() {
+			given(userMapper.findById(USER_ID)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> userService.getMyInfo(USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ErrorCode.USER_NOT_FOUND));
-        }
-    }
+			assertThatThrownBy(() -> userService.getMyInfo(USER_ID)).isInstanceOf(BusinessException.class).satisfies(
+					e -> assertThat(((BusinessException) e).getErrorCode()).isEqualTo(ErrorCode.USER_NOT_FOUND));
+		}
+	}
 
-    // ════════════════════════════════════════════════════════════════
-    // F-25 | 내 정보 수정
-    //
-    // 비밀번호 검증 정책:
-    //   필수 — name, phone, job, incomeLevelCode, creditScore
-    //   불필요 — pushEnabled, marketingAgree (알림 설정)
-    // ════════════════════════════════════════════════════════════════
+	// ════════════════════════════════════════════════════════════════
+	// F-25 | 내 정보 수정
+	//
+	// 비밀번호 검증 정책:
+	// 필수 — name, phone, job, incomeLevelCode, creditScore
+	// 불필요 — pushEnabled, marketingAgree (알림 설정)
+	// ════════════════════════════════════════════════════════════════
 
-    @Nested
-    @DisplayName("내 정보 수정")
-    class UpdateMyInfo {
+	@Nested
+	@DisplayName("내 정보 수정")
+	class UpdateMyInfo {
 
-        @Test
-        @DisplayName("[정상] 개인정보 변경 + 비밀번호 검증 통과 → updateUser 호출")
-        void 정상_개인정보변경_비밀번호검증통과() {
-            given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
-            given(passwordEncoder.matches(CURRENT, ENC_PW)).willReturn(true);
+		@Test
+	    @DisplayName("[정상] 검증 통과 → updatePassword + revokeAllSessions 호출")
+	    void 정상_변경성공() {
+	        given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
+	        given(passwordEncoder.matches(CURRENT, ENC_PW)).willReturn(true);
+	        given(userMapper.findRecentPasswordHashes(USER_ID, 5))
+	                .willReturn(Collections.emptyList());
+	        given(passwordEncoder.encode(NEW_PW)).willReturn("$2a$10$newHash");
+	 
+	        userService.changePassword(USER_ID, pwChangeReq(CURRENT, NEW_PW, NEW_PW));
+	 
+	        then(userMapper).should().updatePassword(eq(USER_ID), eq("$2a$10$newHash"), any());
+	        then(userMapper).should().revokeAllSessions(USER_ID);
+	    }
 
-            userService.updateMyInfo(USER_ID, updateReq("이순신", null, CURRENT));
+		@Test
+		@DisplayName("[정상] phone + 비밀번호 검증 통과 → updateUser 호출")
+		void 정상_phone변경_비밀번호검증통과() {
+			given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
+			given(passwordEncoder.matches(CURRENT, ENC_PW)).willReturn(true);
 
-            then(userMapper).should().updateUser(any());
-            then(passwordEncoder).should().matches(CURRENT, ENC_PW);
-        }
+			userService.updateMyInfo(USER_ID, updateReq(null, "01099998888", CURRENT));
 
-        @Test
-        @DisplayName("[정상] phone + 비밀번호 검증 통과 → updateUser 호출")
-        void 정상_phone변경_비밀번호검증통과() {
-            given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
-            given(passwordEncoder.matches(CURRENT, ENC_PW)).willReturn(true);
+			then(userMapper).should().updateUser(any());
+		}
 
-            userService.updateMyInfo(USER_ID, updateReq(null, "01099998888", CURRENT));
+		@Test
+		@DisplayName("[정상] 알림 설정만 변경 → 비밀번호 검증 없이 updateUser 호출")
+		void 정상_알림설정만변경_비밀번호검증없음() {
+			given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
 
-            then(userMapper).should().updateUser(any());
-        }
+			userService.updateMyInfo(USER_ID, notificationOnlyReq(true, false));
 
-        @Test
-        @DisplayName("[정상] 알림 설정만 변경 → 비밀번호 검증 없이 updateUser 호출")
-        void 정상_알림설정만변경_비밀번호검증없음() {
-            given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
+			then(userMapper).should().updateUser(any());
+			// 비밀번호 검증 호출 없어야 함
+			then(passwordEncoder).should(never()).matches(any(), any());
+		}
 
-            userService.updateMyInfo(USER_ID, notificationOnlyReq(true, false));
+		@Test
+		@DisplayName("[실패] 변경 내용 없음 → INVALID_INPUT")
+		void 실패_변경내용없음() {
+			given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
 
-            then(userMapper).should().updateUser(any());
-            // 비밀번호 검증 호출 없어야 함
-            then(passwordEncoder).should(never()).matches(any(), any());
-        }
+			assertThatThrownBy(() -> userService.updateMyInfo(USER_ID, new UserUpdateRequest()))
+					.isInstanceOf(BusinessException.class).satisfies(
+							e -> assertThat(((BusinessException) e).getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT));
+		}
 
-        @Test
-        @DisplayName("[실패] 변경 내용 없음 → INVALID_INPUT")
-        void 실패_변경내용없음() {
-            given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
+		@Test
+		@DisplayName("[실패] 개인정보 변경 + currentPassword 누락 → INVALID_INPUT")
+		void 실패_개인정보변경_비밀번호누락() {
+			given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
 
-            assertThatThrownBy(() -> userService.updateMyInfo(USER_ID, new UserUpdateRequest()))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ErrorCode.INVALID_INPUT));
-        }
+			assertThatThrownBy(() -> userService.updateMyInfo(USER_ID, updateReq("이순신", null, null)))
+					.isInstanceOf(BusinessException.class).satisfies(
+							e -> assertThat(((BusinessException) e).getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT));
+		}
 
-        @Test
-        @DisplayName("[실패] 개인정보 변경 + currentPassword 누락 → INVALID_INPUT")
-        void 실패_개인정보변경_비밀번호누락() {
-            given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
+		@Test
+		@DisplayName("[실패] 개인정보 변경 + 비밀번호 불일치 → INVALID_PASSWORD")
+		void 실패_개인정보변경_비밀번호불일치() {
+			given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
+			given(passwordEncoder.matches("WrongPw!", ENC_PW)).willReturn(false);
 
-            assertThatThrownBy(() -> userService.updateMyInfo(USER_ID, updateReq("이순신", null, null)))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ErrorCode.INVALID_INPUT));
-        }
+			assertThatThrownBy(() -> userService.updateMyInfo(USER_ID, updateReq("이순신", null, "WrongPw!")))
+					.isInstanceOf(BusinessException.class)
+					.satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+							.isEqualTo(ErrorCode.INVALID_PASSWORD));
+		}
 
-        @Test
-        @DisplayName("[실패] 개인정보 변경 + 비밀번호 불일치 → INVALID_PASSWORD")
-        void 실패_개인정보변경_비밀번호불일치() {
-            given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
-            given(passwordEncoder.matches("WrongPw!", ENC_PW)).willReturn(false);
+		@Test
+		@DisplayName("[실패] 존재하지 않는 userId → USER_NOT_FOUND")
+		void 실패_사용자없음() {
+			given(userMapper.findById(USER_ID)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> userService.updateMyInfo(USER_ID, updateReq("이순신", null, "WrongPw!")))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ErrorCode.INVALID_PASSWORD));
-        }
+			assertThatThrownBy(() -> userService.updateMyInfo(USER_ID, updateReq("이순신", null, CURRENT)))
+					.isInstanceOf(BusinessException.class)
+					.satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+							.isEqualTo(ErrorCode.USER_NOT_FOUND));
+		}
+		
+		@Test
+	    @DisplayName("[실패] 최근 사용 비밀번호 재사용 → PASSWORD_RECENTLY_USED")
+	    void 실패_비밀번호재사용() {
+	        given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
+	        given(passwordEncoder.matches(CURRENT, ENC_PW)).willReturn(true);
+	        given(userMapper.findRecentPasswordHashes(USER_ID, 5))
+	                .willReturn(List.of("$2a$10$oldHash1", "$2a$10$oldHash2"));
+	        // 새 비밀번호가 이전 이력 중 하나와 일치
+	        given(passwordEncoder.matches(eq(NEW_PW), eq("$2a$10$oldHash1"))).willReturn(true);
+	 
+	        assertThatThrownBy(() ->
+	                userService.changePassword(USER_ID, pwChangeReq(CURRENT, NEW_PW, NEW_PW)))
+	                .isInstanceOf(BusinessException.class)
+	                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+	                        .isEqualTo(ErrorCode.PASSWORD_RECENTLY_USED));
+	 
+	        then(userMapper).should(never()).updatePassword(any(), any(), any());
+	        then(userMapper).should(never()).insertPasswordHistory(any(), any());
+	    }
+	}
 
-        @Test
-        @DisplayName("[실패] 존재하지 않는 userId → USER_NOT_FOUND")
-        void 실패_사용자없음() {
-            given(userMapper.findById(USER_ID)).willReturn(Optional.empty());
+	// ════════════════════════════════════════════════════════════════
+	// F-26 | 비밀번호 변경
+	// ════════════════════════════════════════════════════════════════
 
-            assertThatThrownBy(() -> userService.updateMyInfo(USER_ID, updateReq("이순신", null, CURRENT)))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ErrorCode.USER_NOT_FOUND));
-        }
-    }
+	@Nested
+	@DisplayName("비밀번호 변경")
+	class ChangePassword {
 
-    // ════════════════════════════════════════════════════════════════
-    // F-26 | 비밀번호 변경
-    // ════════════════════════════════════════════════════════════════
+		@Test
+		@DisplayName("[정상] 검증 통과 → updatePassword + revokeAllSessions 호출")
+		void 정상_변경성공() {
+			given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
+			given(passwordEncoder.matches(CURRENT, ENC_PW)).willReturn(true);
+			given(passwordEncoder.encode(NEW_PW)).willReturn("$2a$10$newHash");
 
-    @Nested
-    @DisplayName("비밀번호 변경")
-    class ChangePassword {
+			userService.changePassword(USER_ID, pwChangeReq(CURRENT, NEW_PW, NEW_PW));
 
-        @Test
-        @DisplayName("[정상] 검증 통과 → updatePassword + revokeAllSessions 호출")
-        void 정상_변경성공() {
-            given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
-            given(passwordEncoder.matches(CURRENT, ENC_PW)).willReturn(true);
-            given(passwordEncoder.encode(NEW_PW)).willReturn("$2a$10$newHash");
+			then(userMapper).should().updatePassword(eq(USER_ID), eq("$2a$10$newHash"), any());
+			then(userMapper).should().revokeAllSessions(USER_ID);
+		}
 
-            userService.changePassword(USER_ID, pwChangeReq(CURRENT, NEW_PW, NEW_PW));
+		@Test
+		@DisplayName("[정상] 최근 이력 없음 → 변경 성공 + 이력 저장")
+		void 정상_변경성공_이력저장() {
+			given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
+			given(passwordEncoder.matches(CURRENT, ENC_PW)).willReturn(true);
+			given(userMapper.findRecentPasswordHashes(USER_ID, 5)).willReturn(Collections.emptyList());
+			given(passwordEncoder.encode(NEW_PW)).willReturn("$2a$10$newHash");
 
-            then(userMapper).should().updatePassword(eq(USER_ID), eq("$2a$10$newHash"), any());
-            then(userMapper).should().revokeAllSessions(USER_ID);
-        }
+			userService.changePassword(USER_ID, pwChangeReq(CURRENT, NEW_PW, NEW_PW));
 
-        @Test
-        @DisplayName("[실패] 새 비밀번호 확인 불일치 → PASSWORD_CONFIRM_MISMATCH (DB 조회 없음)")
-        void 실패_확인불일치() {
-            assertThatThrownBy(() ->
-                    userService.changePassword(USER_ID, pwChangeReq(CURRENT, NEW_PW, "WrongConfirm!")))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ErrorCode.PASSWORD_CONFIRM_MISMATCH));
+			then(userMapper).should().updatePassword(eq(USER_ID), eq("$2a$10$newHash"), any());
+			then(userMapper).should().insertPasswordHistory(USER_ID, "$2a$10$newHash");
+			then(userMapper).should().deleteOldPasswordHistories(USER_ID);
+			then(userMapper).should().revokeAllSessions(USER_ID);
+		}
 
-            then(userMapper).should(never()).findById(any());
-        }
+		@Test
+		@DisplayName("[실패] 새 비밀번호 확인 불일치 → PASSWORD_CONFIRM_MISMATCH (DB 조회 없음)")
+		void 실패_확인불일치() {
+			assertThatThrownBy(() -> userService.changePassword(USER_ID, pwChangeReq(CURRENT, NEW_PW, "WrongConfirm!")))
+					.isInstanceOf(BusinessException.class)
+					.satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+							.isEqualTo(ErrorCode.PASSWORD_CONFIRM_MISMATCH));
 
-        @Test
-        @DisplayName("[실패] 현재 비밀번호 불일치 → INVALID_PASSWORD")
-        void 실패_현재비밀번호불일치() {
-            given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
-            given(passwordEncoder.matches("WrongCurrent!", ENC_PW)).willReturn(false);
+			then(userMapper).should(never()).findById(any());
+		}
 
-            assertThatThrownBy(() ->
-                    userService.changePassword(USER_ID, pwChangeReq("WrongCurrent!", NEW_PW, NEW_PW)))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ErrorCode.INVALID_PASSWORD));
-        }
+		@Test
+		@DisplayName("[실패] 현재 비밀번호 불일치 → INVALID_PASSWORD")
+		void 실패_현재비밀번호불일치() {
+			given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
+			given(passwordEncoder.matches("WrongCurrent!", ENC_PW)).willReturn(false);
 
-        @Test
-        @DisplayName("[실패] 존재하지 않는 userId → USER_NOT_FOUND")
-        void 실패_사용자없음() {
-            given(userMapper.findById(USER_ID)).willReturn(Optional.empty());
+			assertThatThrownBy(() -> userService.changePassword(USER_ID, pwChangeReq("WrongCurrent!", NEW_PW, NEW_PW)))
+					.isInstanceOf(BusinessException.class)
+					.satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+							.isEqualTo(ErrorCode.INVALID_PASSWORD));
+		}
 
-            assertThatThrownBy(() ->
-                    userService.changePassword(USER_ID, pwChangeReq(CURRENT, NEW_PW, NEW_PW)))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ErrorCode.USER_NOT_FOUND));
-        }
-    }
+		@Test
+		@DisplayName("[실패] 존재하지 않는 userId → USER_NOT_FOUND")
+		void 실패_사용자없음() {
+			given(userMapper.findById(USER_ID)).willReturn(Optional.empty());
 
-    // ════════════════════════════════════════════════════════════════
-    // RQ-F17 | 보유 카드 및 신청 현황
-    // ════════════════════════════════════════════════════════════════
+			assertThatThrownBy(() -> userService.changePassword(USER_ID, pwChangeReq(CURRENT, NEW_PW, NEW_PW)))
+					.isInstanceOf(BusinessException.class)
+					.satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+							.isEqualTo(ErrorCode.USER_NOT_FOUND));
+		}
+	}
 
-    @Nested
-    @DisplayName("보유 카드 및 신청 현황")
-    class GetMyCards {
+	// ════════════════════════════════════════════════════════════════
+	// RQ-F17 | 보유 카드 및 신청 현황
+	// ════════════════════════════════════════════════════════════════
 
-        @Test
-        @DisplayName("[정상] ownedCards + applications 반환")
-        void 정상_카드목록반환() {
-            given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
-            given(userMapper.selectOwnedCards(USER_ID)).willReturn(Collections.emptyList());
-            given(userMapper.selectCardApplications(USER_ID)).willReturn(Collections.emptyList());
+	@Nested
+	@DisplayName("보유 카드 및 신청 현황")
+	class GetMyCards {
 
-            CardStatusResponse response = userService.getMyCards(USER_ID);
+		@Test
+		@DisplayName("[정상] ownedCards + applications 반환")
+		void 정상_카드목록반환() {
+			given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
+			given(userMapper.selectOwnedCards(USER_ID)).willReturn(Collections.emptyList());
+			given(userMapper.selectCardApplications(USER_ID)).willReturn(Collections.emptyList());
 
-            assertThat(response.getOwnedCards()).isNotNull();
-            assertThat(response.getApplications()).isNotNull();
-        }
+			CardStatusResponse response = userService.getMyCards(USER_ID);
 
-        @Test
-        @DisplayName("[실패] 존재하지 않는 userId → USER_NOT_FOUND")
-        void 실패_사용자없음() {
-            given(userMapper.findById(USER_ID)).willReturn(Optional.empty());
+			assertThat(response.getOwnedCards()).isNotNull();
+			assertThat(response.getApplications()).isNotNull();
+		}
 
-            assertThatThrownBy(() -> userService.getMyCards(USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ErrorCode.USER_NOT_FOUND));
-        }
-    }
+		@Test
+		@DisplayName("[실패] 존재하지 않는 userId → USER_NOT_FOUND")
+		void 실패_사용자없음() {
+			given(userMapper.findById(USER_ID)).willReturn(Optional.empty());
+
+			assertThatThrownBy(() -> userService.getMyCards(USER_ID)).isInstanceOf(BusinessException.class).satisfies(
+					e -> assertThat(((BusinessException) e).getErrorCode()).isEqualTo(ErrorCode.USER_NOT_FOUND));
+		}
+	}
 }
