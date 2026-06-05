@@ -15,11 +15,11 @@ import org.springframework.validation.annotation.Validated;
 import com.bnk.domain.admin.mapper.ApprovalMapper;
 import com.bnk.domain.admin.model.ApprovalLine;
 import com.bnk.domain.admin.model.ApprovalRequest;
+import com.bnk.domain.card.dto.CardSnapshot;
 import com.bnk.domain.card.dto.request.AdminCardSearchRequest;
 import com.bnk.domain.card.dto.request.BenefitCreateRequest;
 import com.bnk.domain.card.dto.request.BenefitUpdateRequest;
 import com.bnk.domain.card.dto.request.CardCreateRequest;
-import com.bnk.domain.card.dto.request.CardSnapshot;
 import com.bnk.domain.card.dto.request.CardStatusRequest;
 import com.bnk.domain.card.dto.request.CardUpdateRequest;
 import com.bnk.domain.card.dto.request.ContentUpdateRequest;
@@ -451,10 +451,10 @@ public class AdminCardService {
                 .applicationCount(card.getApplicationCount())
                 .createdBy(card.getCreatedBy())
                 .createdAt(card.getCreatedAt())
-                .updateBy(card.getUpdatedBy())
-                .updateAt(card.getUpdatedAt())
+                .updatedBy(card.getUpdatedBy())
+                .updatedAt(card.getUpdatedAt())
                 .deletedYn(card.getDeletedYn())
-                .deleteAt(card.getDeletedAt())
+                .deletedAt(card.getDeletedAt())
                 // ── 연관 데이터 ────────────────────────────────────────
                 .benefits(benefits)
                 .images(images.stream()
