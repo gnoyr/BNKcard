@@ -30,9 +30,11 @@
   </div>
 
   <!-- 이미지 확대 모달 -->
-  <div class="img-modal" id="img-modal">
-    <button class="img-modal-close" id="btn-img-modal-close" aria-label="닫기">✕</button>
-    <img id="img-modal-src" src="" alt="카드 이미지 확대">
+  <div class="img-modal" id="img-modal" onclick="handleImgModalClick(event)">
+    <button class="img-modal-close" onclick="closeImgModal()" aria-label="닫기">✕</button>
+    <button class="img-modal-prev" onclick="imgModalSlide(-1)">&#8249;</button>
+    <img id="img-modal-src" src="" alt="카드 이미지 확대" onclick="event.stopPropagation()">
+    <button class="img-modal-next" onclick="imgModalSlide(1)">&#8250;</button>
   </div>
 
   <!-- AI 챗봇 위젯 -->
