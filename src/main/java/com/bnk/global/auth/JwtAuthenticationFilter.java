@@ -32,16 +32,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final UserDetailsServiceImpl userDetailsService;
     private final AdminDetailsServiceImpl adminDetailsService;
 
-    /**
+    /** 
      * 필터를 완전히 건너뛸 공개 경로.
      *
-     * /api/auth/send-verify-code 추가.
-     * 이메일 인증코드 발송은 비로그인 상태에서 호출하므로
-     * 명시적으로 SKIP 목록에 포함해야 의도한 경로를 명확히 문서화할 수 있다.
-     * (anonymousUser로 통과는 되지만 공식 skip 목록에 있어야 유지보수 혼선 방지)
+     *   로그아웃은 토큰이 만료된 상태에서도 호출될 수 있음.
+     *   SKIP_PATHS 에 포함해야 필터가 토큰 검사 없이 통과시키고
+     *   컨트롤러의 @AuthenticationPrincipal(errorOnInvalidType = false) 가
+     *   ud=null 로 처리해 쿠키만 삭제하는 정상 흐름이 동작함.
+     *   SecurityConfig.permitAll() 만으로는 부족 — 필터가 먼저 실행되기 때문.
      */
     private static final List<String> SKIP_PATHS = List.of(
         "/api/auth/login",
+        "/api/auth/logout",
         "/api/auth/signup",
         "/api/auth/send-verify-code",
         "/api/auth/verify-email",
@@ -49,6 +51,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         "/api/auth/find-password",
         "/api/auth/reset-password",
         "/api/admin/auth/login",
+        "/api/admin/auth/logout",
         "/swagger-ui/**",
         "/v3/api-docs/**"
     );
@@ -62,7 +65,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // 1) SKIP_PATHS 에 매칭되는 주소는 토큰 검사 없이 바로 통과
+        // 1) SKIP_PATHS 에 매칭되는 경로는 토큰 검사 없이 바로 통과
         if (SKIP_PATHS.stream().anyMatch(p -> pathMatcher.match(p, path))) {
             chain.doFilter(request, response);
             return;
@@ -70,7 +73,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = resolveAccessToken(request);
 
-        // 2) 유효한 토큰이 제공된 경우 Spring Security 인증 객체 등록
+        // 2) 유효한 토큰이 있는 경우 Spring Security 인증 객체 등록
         if (token != null && jwtTokenProvider.validateToken(token)) {
             String type = jwtTokenProvider.getTokenType(token);
 
@@ -89,7 +92,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             if (SecurityContextHolder.getContext().getAuthentication() == null) {
                 if ("ADMIN_ACCESS".equals(type)) {
-                    // 토큰 클레임의 역할을 권위 있는 소스로 사용 (DB 재조회 없이 클레임 직접 사용)
                     UserDetails adminDetails = adminDetailsService.loadUserById(subjectId);
                     List<GrantedAuthority> authorities = jwtTokenProvider.getRoleList(token)
                             .stream()
@@ -102,7 +104,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(auth);
 
                 } else {
-                    // 일반 사용자 토큰 (type = "ACCESS")
                     UserDetails userDetails = userDetailsService.loadUserById(subjectId);
                     UsernamePasswordAuthenticationToken auth =
                         new UsernamePasswordAuthenticationToken(
@@ -112,9 +113,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
         } else {
-            // 3) 토큰이 없거나 유효하지 않은 비로그인 사용자
-            // Spring Security 기본 "anonymousUser" 문자열 대신 명시적 익명 인증 객체를 등록.
-            // → 컨트롤러 @AuthenticationPrincipal 주입 타입 미스매치 방어
+            // 3) 토큰이 없거나 유효하지 않은 경우 — 익명 인증 객체 등록
             if (SecurityContextHolder.getContext().getAuthentication() == null) {
                 setAnonymous();
             }
@@ -124,8 +123,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * 익명 인증 객체를 SecurityContext에 등록.
-     * 비로그인 / 허용되지 않은 토큰 타입 두 경우 모두 공통 사용.
+     * 익명 인증 객체를 SecurityContext 에 등록.
+     * 비로그인 / 허용되지 않은 토큰 타입 두 경우 모두 사용.
      */
     private void setAnonymous() {
         AnonymousAuthenticationToken anonymousAuth = new AnonymousAuthenticationToken(

@@ -21,8 +21,11 @@ import java.time.LocalDateTime;
 public class UserResponse {
 
 	private Long userId;
+	private String name;
 	private String maskedName; // 홍*동
+	private String email;
 	private String maskedEmail; // ab***@domain.com
+	private String phone;
 	private String maskedPhone; // 010-****-5678
 	private String maskedBirthDate; // 1990-**-**
 
@@ -40,8 +43,11 @@ public class UserResponse {
     public static UserResponse from(User user) {
         return UserResponse.builder()
                 .userId(user.getUserId())
+                .name(user.getName())
                 .maskedName(MaskingUtil.maskName(user.getName()))
+                .email(user.getEmail())
                 .maskedEmail(MaskingUtil.maskEmail(user.getEmail()))
+                .phone(user.getPhone())
                 .maskedPhone(MaskingUtil.maskPhone(user.getPhone()))
                 .maskedBirthDate(maskBirthDate(user.getBirthDate()))
                 .job(user.getJob())
