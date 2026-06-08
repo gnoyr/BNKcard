@@ -40,18 +40,17 @@ public class AdminTermsService {
     private final PdfConvertService    pdfConvertService;
     private final FileStorageService   fileStorageService;
     private final ObjectStorageService objectStorageService;
-    private final ApprovalMapper       approvalMapper;   // ← 추가
+    private final ApprovalMapper       approvalMapper;
 
-    // ══════════════════════════════════════════════════════════════════
-    // 약관 신규 등록 + 결재 신청 (수정 후)
-    // ══════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════
+    // 약관 신규 등록 + 결재 신청
+    // ════════════════════════════════════════════════════════════
     @Transactional
     public java.util.Map<String, Long> registerTermsWithApproval(
             TermsCreateRequest request,
             MultipartFile pdfFile,
             Long adminId) throws IOException {
 
-        // ── 1. TERMS INSERT (status = DRAFT) ──────────────────────────
         Terms terms = Terms.builder()
                 .termsMasterId(request.getTermsMasterId())
                 .version(request.getVersion())
@@ -60,30 +59,23 @@ public class AdminTermsService {
                 .reconsentRequiredYn(request.getReconsentRequiredYn())
                 .effectiveFrom(request.getEffectiveFrom())
                 .build();
-        termsMapper.insertTerms(terms);   // termsId 채번 완료
+        termsMapper.insertTerms(terms);
 
         log.info("[약관등록] TERMS INSERT 완료: termsId={}, status=DRAFT", terms.getTermsId());
 
-        // ── 2. PDF/JPG 파일 업로드 ────────────────────────────────────
         uploadTermsFiles(terms.getTermsId(), pdfFile);
 
-        // ── 3. TERMS_STATUS_HISTORY INSERT (DRAFT 최초 이력) ──────────
         termsMapper.insertStatusHistory(
                 terms.getTermsId(), null, "DRAFT", adminId, "약관 신규 등록");
 
-        // ── 4. APPROVAL_REQUESTS INSERT ───────────────────────────────
         ApprovalRequest approval = ApprovalRequest.builder()
                 .requestTypeCode("TERMS_PUBLISH")
                 .requesterAdminId(adminId)
-                .targetId(terms.getTermsId())      // ← terms_id를 직접 target_id로
+                .targetId(terms.getTermsId())
                 .requestComment(request.getChangeSummary())
                 .build();
         approvalMapper.insertApprovalRequest(approval);
 
-        log.info("[약관등록] APPROVAL_REQUESTS INSERT 완료: approvalId={}", approval.getApprovalId());
-
-        // ── 5. APPROVAL_LINES INSERT ──────────────────────────────────
-        // 결재자는 1번 관리자(superAdmin) 고정 — 실 운영에서는 결재라인 설정 기반으로 동적 지정
         ApprovalLine line = ApprovalLine.builder()
                 .approvalId(approval.getApprovalId())
                 .approverAdminId(1L)
@@ -92,30 +84,30 @@ public class AdminTermsService {
                 .build();
         approvalMapper.insertApprovalLine(line);
 
-        log.info("[약관등록] APPROVAL_LINES INSERT 완료: approvalLineId={}", line.getApprovalLineId());
-
         java.util.Map<String, Long> result = new java.util.HashMap<>();
         result.put("termsId",    terms.getTermsId());
         result.put("approvalId", approval.getApprovalId());
         return result;
     }
 
-    // ── PDF + JPG 파일 업로드 공통 메서드 ─────────────────────────────
+    // ════════════════════════════════════════════════════════════
+    // PDF + JPG 파일 업로드 공통 메서드
+    // ════════════════════════════════════════════════════════════
     private void uploadTermsFiles(Long termsId, MultipartFile pdfFile) throws IOException {
-        UploadResult pdfMeta = fileStorageService.extractMeta(pdfFile, "terms");
-        byte[] pdfBytes = pdfFile.getBytes();
-        
+        UploadResult pdfMeta   = fileStorageService.extractMeta(pdfFile, "terms");
+        byte[]       pdfBytes  = pdfFile.getBytes();
+
         List<byte[]> imageBytesList = pdfConvertService.convertPdfToImageBytes(pdfFile);
         String baseName = pdfMeta.getStoredName()
                 .substring(0, pdfMeta.getStoredName().lastIndexOf("."));
-        
+
+        // ── PDF 업로드 — DB에는 objectName만 저장 ──────────────────────
         objectStorageService.upload(pdfMeta.getObjectName(), pdfBytes, pdfMeta.getMimeType());
-        String pdfUrl = objectStorageService.createDownloadUrl(pdfMeta.getObjectName());
 
         termsMapper.insertTermsFile(TermsFile.builder()
                 .termsId(termsId)
                 .fileType("PDF")
-                .filePath(pdfUrl)
+                .filePath(pdfMeta.getObjectName())   // ← PAR URL 아닌 objectName 저장
                 .originalName(pdfMeta.getOriginalName())
                 .storedName(pdfMeta.getStoredName())
                 .fileExtension(pdfMeta.getFileExtension())
@@ -124,18 +116,17 @@ public class AdminTermsService {
                 .isPrimary("Y")
                 .build());
 
-        
-
+        // ── 이미지 업로드 — DB에는 objectName만 저장 ───────────────────
         for (int i = 0; i < imageBytesList.size(); i++) {
             String imageStoredName = baseName + "_page" + (i + 1) + ".jpg";
             String imageObjectName = "terms/" + imageStoredName;
+
             objectStorageService.upload(imageObjectName, imageBytesList.get(i), "image/jpeg");
-            String imageUrl = objectStorageService.createDownloadUrl(imageObjectName);
 
             termsMapper.insertTermsFile(TermsFile.builder()
                     .termsId(termsId)
                     .fileType("IMAGE")
-                    .filePath(imageUrl)
+                    .filePath(imageObjectName)       // ← PAR URL 아닌 objectName 저장
                     .originalName(pdfMeta.getOriginalName().replace(".pdf", ".jpg"))
                     .storedName(imageStoredName)
                     .fileExtension("jpg")
@@ -143,12 +134,13 @@ public class AdminTermsService {
                     .isPrimary("N")
                     .build());
         }
+
         log.info("[약관등록] 파일 업로드 완료: termsId={}, pages={}", termsId, imageBytesList.size());
     }
 
-    // ══════════════════════════════════════════════════════════════════
-    // 기존 약관에 파일만 추가 (파일 업로드 탭)
-    // ══════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════
+    // 기존 약관에 파일만 추가
+    // ════════════════════════════════════════════════════════════
     @Transactional
     public void addFileToExistingTerms(Long termsId, MultipartFile pdfFile) throws IOException {
         termsMapper.findById(termsId)
@@ -156,10 +148,9 @@ public class AdminTermsService {
         uploadTermsFiles(termsId, pdfFile);
     }
 
-    // ══════════════════════════════════════════════════════════════════
-    // 약관 상태 직접 변경 (관리자 수동 — 긴급 처리용으로만 사용)
-    // 정상 흐름은 Approval 승인을 통해 처리됨
-    // ══════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════
+    // 약관 상태 변경
+    // ════════════════════════════════════════════════════════════
     @Transactional
     public void changeTermsStatus(Long termsId, TermsStatusRequest request, Long adminId) {
         Terms terms = termsMapper.findById(termsId)
@@ -174,9 +165,8 @@ public class AdminTermsService {
                 adminId, request.getChangedReason());
 
         if ("PUBLISHED".equals(newStatus)) {
-            // 같은 terms_master_id의 기존 PUBLISHED → SUPERSEDED 처리
             termsMapper.supersedePreviousPublished(terms.getTermsMasterId(), termsId);
-            log.info("[약관상태변경] 기존 PUBLISHED → EXPIRED 처리: termsMasterId={}",
+            log.info("[약관상태변경] 기존 PUBLISHED → SUPERSEDED 처리: termsMasterId={}",
                     terms.getTermsMasterId());
 
             if ("Y".equals(terms.getReconsentRequiredYn())) {
@@ -188,9 +178,9 @@ public class AdminTermsService {
         log.info("[약관상태변경] termsId={}, {} → {}", termsId, previousStatus, newStatus);
     }
 
-    // ══════════════════════════════════════════════════════════════════
-    // 조회 메서드들 (변경 없음)
-    // ══════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════
+    // 조회 메서드
+    // ════════════════════════════════════════════════════════════
     @Transactional(readOnly = true)
     public List<TermsAdminResponse> getTermsList(String status) {
         return termsMapper.findAllForAdmin(status).stream()
@@ -215,13 +205,13 @@ public class AdminTermsService {
 
         List<TermsFile> files = termsMapper.findFilesByTermsId(termsId);
 
-        // TermsAdminResponse.files 타입 = List<TermsFileResponse>
         List<TermsFileResponse> fileResponses = files.stream()
                 .map(f -> TermsFileResponse.builder()
                         .fileId(f.getFileId())
                         .termsId(f.getTermsId())
                         .fileType(f.getFileType())
-                        .filePath(f.getFilePath())
+                        // [수정] objectName → 요청 시점 PAR URL로 변환
+                        .filePath(objectStorageService.resolveUrl(f.getFilePath()))
                         .originalName(f.getOriginalName())
                         .isPrimary(f.getIsPrimary())
                         .build())
@@ -231,18 +221,11 @@ public class AdminTermsService {
                 .termsId(terms.getTermsId())
                 .termsMasterId(terms.getTermsMasterId())
                 .title(terms.getTitle())
-                .termsType(terms.getTermsType())
                 .version(terms.getVersion())
-                .contentHtml(terms.getContentHtml())
                 .status(terms.getStatus())
                 .requiredYn(terms.getRequiredYn())
                 .reconsentRequiredYn(terms.getReconsentRequiredYn())
                 .effectiveFrom(terms.getEffectiveFrom())
-                .effectiveTo(terms.getEffectiveTo())
-                .documentHash(terms.getDocumentHash())
-                .internalNote(terms.getInternalNote())
-                .approvedBy(terms.getApprovedBy())
-                .approvedAt(terms.getApprovedAt())
                 .createdAt(terms.getCreatedAt())
                 .files(fileResponses)
                 .build();
@@ -255,11 +238,10 @@ public class AdminTermsService {
                         .termsMasterId(m.getTermsMasterId())
                         .termsType(m.getTermsType())
                         .title(m.getTitle())
-                        .description(m.getDescription())
                         .build())
                 .collect(Collectors.toList());
     }
-    
+
     @Transactional
     public void createTermsMaster(TermsMasterCreateRequest request, Long adminId) {
         TermsMaster master = TermsMaster.builder()
@@ -272,19 +254,18 @@ public class AdminTermsService {
         termsMapper.insertTermsMaster(master);
         log.info("[마스터등록] termsMasterId={}, title={}", master.getTermsMasterId(), master.getTitle());
     }
-
+    
     @Transactional(readOnly = true)
     public String suggestNextVersion(Long termsMasterId) {
         String latest = termsMapper.findLatestVersionByMasterId(termsMasterId);
-        if (latest == null) return "v1.0";
-        // v1.0 → v2.0, v2.3 → v3.0 형태로 메이저 버전만 올림
+        if (latest == null) return "1.0";
         try {
-            String numeric = latest.replaceAll("[^0-9.]", "");
-            int major = Integer.parseInt(numeric.split("\\.")[0]);
-            return "v" + (major + 1) + ".0";
+            String[] parts = latest.split("\\.");
+            int minor = Integer.parseInt(parts[parts.length - 1]) + 1;
+            parts[parts.length - 1] = String.valueOf(minor);
+            return String.join(".", parts);
         } catch (Exception e) {
-            return latest + "_new";
+            return latest + ".1";
         }
     }
-    
 }

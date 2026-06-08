@@ -3,7 +3,6 @@ package com.bnk.global.filter;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Map;
-import java.util.Set;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -23,22 +22,19 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
+ * IP 기반 Rate Limit 필터 (Redis Sliding Window 근사).
+ *
  * [보안 패치] 2026-06-08
+ *   변경 1 — XFF 스푸핑 방어: RemoteAddr 전용
+ *   변경 2 — POST 인증 API Rate Limit 경로 확장
+ *   변경 3 — GET 공개 API Rate Limit 추가 (/api/cards/**, /api/search/**)
+ *   변경 4 — Redis 장애 시 fail-closed (503 반환)
  *
- * 변경 1 — XFF 스푸핑 방어
- *   변경 전: X-Forwarded-For 헤더를 무조건 신뢰 → 공격자가 IP를 매 요청마다 위조 가능
- *   변경 후: application.properties의 server.forward-headers-strategy=framework 설정과
- *            Spring의 ForwardedHeaderFilter 가 신뢰 프록시에서만 XFF를 수용하도록 처리.
- *            이 필터에서는 RemoteAddr만 사용 (프록시 레이어가 이미 실제 IP로 교체한 값).
- *
- *   운영 환경 Nginx 설정 추가 필수:
- *     proxy_set_header X-Forwarded-For $remote_addr;  # overwrite, not append
- *     proxy_set_header X-Real-IP $remote_addr;
- *
- * 변경 2 — Rate Limit 적용 경로 확장
- *   변경 전: /api/auth/login, /api/admin/auth/login 만 적용
- *   변경 후: 이메일 인증 발송, 비밀번호 재설정 등 고비용 API 전체로 확장
- *            경로별로 MAX_REQUESTS 차등 적용
+ *  auditLogger.failure(AUTH, LOGIN) 추가
+ *            → Redis 인프라 장애 이벤트를 AUDIT_LOGS DB에서 추적 가능
+ * resolveAuditAction()으로 경로·메서드에 맞는 액션 상수 반환
+ *            POST 인증 경로 → LOGIN / SIGNUP / EMAIL_VERIFY 등
+ *            GET 공개 경로 → API_CALL (EXTERNAL_API 카테고리 신규 활용)
  */
 @Slf4j
 @Component
@@ -47,29 +43,27 @@ import lombok.extern.slf4j.Slf4j;
 public class RedisRateLimitFilter extends OncePerRequestFilter {
 
     private final StringRedisTemplate redisTemplate;
-    private final ObjectMapper objectMapper;
-    private final AuditLogger auditLogger;
+    private final ObjectMapper        objectMapper;
+    private final AuditLogger         auditLogger;
 
-    // ── Rate Limit 정책 ──────────────────────────────────────────────
-    // 1분 윈도우 기준 최대 허용 요청 수
     private static final Duration WINDOW = Duration.ofMinutes(1);
 
-    /**
-     * 경로별 Rate Limit 정책.
-     * key: URI prefix (완전 일치), value: 1분 내 최대 허용 횟수
-     */
-    private static final Map<String, Long> RATE_LIMIT_RULES = Map.of(
-			"/api/auth/login", 10L, // 로그인: 1분 10회
-			"/api/admin/auth/login", 10L, // 관리자 로그인: 1분 10회
-			"/api/auth/send-verify-code", 5L, // 이메일 인증 발송: 1분 5회
-			"/api/auth/verify-email", 10L, // 인증코드 확인: 1분 10회
-			"/api/auth/find-password", 5L, // 비밀번호 재설정 요청: 1분 5회
-			"/api/auth/reset-password", 5L, // 비밀번호 재설정: 1분 5회
-			"/api/auth/signup", 3L // 회원가입: 1분 3회
+    // ── POST 인증 API ─────────────────────────────────────────────────
+    private static final Map<String, Long> POST_RATE_LIMIT_RULES = Map.of(
+            "/api/auth/login",            10L,
+            "/api/admin/auth/login",      10L,
+            "/api/auth/send-verify-code",  5L,
+            "/api/auth/verify-email",     10L,
+            "/api/auth/find-password",     5L,
+            "/api/auth/reset-password",    5L,
+            "/api/auth/signup",            3L
     );
 
-    /** Rate Limit을 적용할 HTTP 메서드 */
-    private static final Set<String> TARGET_METHODS = Set.of("POST");
+    // ── GET 공개 API ──────────────────────────────────────────────────
+    private static final Map<String, Long> GET_RATE_LIMIT_RULES = Map.of(
+            "/api/cards",  60L,
+            "/api/search", 60L
+    );
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -77,37 +71,51 @@ public class RedisRateLimitFilter extends OncePerRequestFilter {
                                     FilterChain chain) throws ServletException, IOException {
 
         String path   = request.getRequestURI();
-        String method = request.getMethod();
+        String method = request.getMethod().toUpperCase();
+        String ip     = resolveClientIp(request);
 
-        // 대상 메서드가 아닌 경우 패스
-        if (!TARGET_METHODS.contains(method.toUpperCase())) {
-            chain.doFilter(request, response);
-            return;
-        }
-
-        // 적용 경로 확인
-        Long maxRequests = getMaxRequests(path);
+        Long maxRequests = resolveMaxRequests(path, method);
         if (maxRequests == null) {
             chain.doFilter(request, response);
             return;
         }
 
-        // XFF를 신뢰하지 않고 RemoteAddr만 사용
-        // Nginx가 proxy_set_header X-Forwarded-For $remote_addr 로 덮어쓴 뒤
-        // Spring의 ForwardedHeaderFilter가 RemoteAddr를 실제 IP로 교체함
-        String ip  = resolveClientIp(request);
-        String key = buildRedisKey(path, ip);
+        String key = buildRedisKey(path, method, ip);
 
-        Long count = redisTemplate.opsForValue().increment(key);
-        if (count != null && count == 1L) {
-            redisTemplate.expire(key, WINDOW);
-        }
+        try {
+            Long count = redisTemplate.opsForValue().increment(key);
+            if (count != null && count == 1L) {
+                redisTemplate.expire(key, WINDOW);
+            }
 
-        if (count != null && count > maxRequests) {
-            log.warn("[RateLimit] 요청 초과 path={} ip={} count={} limit={}", path, ip, count, maxRequests);
-            auditLogger.failure(AuditLogger.AUTH, AuditLogger.LOGIN,
-                    null, ip, "Rate Limit 초과 - 1분 내 " + count + "회 시도 (" + path + ")");
-            writeTooManyRequests(response);
+            if (count != null && count > maxRequests) {
+                String action = resolveAuditAction(path, method);
+                log.warn("[RateLimit] 요청 초과 method={} path={} ip={} count={} limit={}",
+                        method, path, ip, count, maxRequests);
+                auditLogger.failure(
+                        AuditLogger.AUTH,
+                        action,
+                        null,
+                        ip,
+                        "Rate Limit 초과: " + method + " " + path
+                                + " | 1분 내 " + count + "회 (최대 " + maxRequests + "회)"
+                );
+                writeTooManyRequests(response);
+                return;
+            }
+
+        } catch (Exception e) {
+            log.error("[RateLimit] Redis 연결 오류 — fail-closed 적용: path={} ip={} error={}",
+                    path, ip, e.getMessage());
+            auditLogger.failure(
+                    AuditLogger.AUTH,
+                    AuditLogger.LOGIN,
+                    null,
+                    ip,
+                    "Redis 장애로 Rate Limit 불가 (fail-closed 503): path=" + path
+                            + " | error=" + e.getMessage()
+            );
+            writeServiceUnavailable(response);
             return;
         }
 
@@ -115,28 +123,51 @@ public class RedisRateLimitFilter extends OncePerRequestFilter {
     }
 
     /**
-     * 경로에 맞는 최대 허용 횟수 반환. 해당 경로가 없으면 null.
+     * 경로·메서드 조합으로 최대 허용 횟수 반환.
+     * POST: 완전 일치, GET: prefix 매칭. 해당 없으면 null.
      */
-    private Long getMaxRequests(String path) {
-        return RATE_LIMIT_RULES.get(path);
+    private Long resolveMaxRequests(String path, String method) {
+        if ("POST".equals(method)) {
+            return POST_RATE_LIMIT_RULES.get(path);
+        }
+        if ("GET".equals(method)) {
+            return GET_RATE_LIMIT_RULES.entrySet().stream()
+                    .filter(e -> path.startsWith(e.getKey()))
+                    .map(Map.Entry::getValue)
+                    .findFirst()
+                    .orElse(null);
+        }
+        return null;
     }
 
     /**
-     * Redis 키 생성: "rate:{path-segment}:{ip}"
-     * 예) rate:login:1.2.3.4, rate:send-verify-code:5.6.7.8
+     *   POST /api/auth/signup         → SIGNUP
+     *   POST /api/auth/send-verify-code, verify-email → EMAIL_VERIFY
+     *   POST /api/auth/login, admin login → LOGIN
+     *   POST /api/auth/find-password, reset-password → PASSWORD_CHANGE
+     *   GET  공개 API                 → API_CALL
      */
-    private String buildRedisKey(String path, String ip) {
-        // URI 마지막 세그먼트를 키 식별자로 사용
+    private String resolveAuditAction(String path, String method) {
+        if ("GET".equals(method))              return AuditLogger.API_CALL;
+        if (path.contains("signup"))           return AuditLogger.SIGNUP;
+        if (path.contains("verify"))           return AuditLogger.EMAIL_VERIFY;
+        if (path.contains("password"))         return AuditLogger.PASSWORD_CHANGE;
+        return AuditLogger.LOGIN;  // /api/auth/login, /api/admin/auth/login
+    }
+
+    /**
+     * Redis 키 생성: "rate:{method}:{path-segment}:{ip}"
+     * 예) rate:POST:login:1.2.3.4, rate:GET:cards:5.6.7.8
+     */
+    private String buildRedisKey(String path, String method, String ip) {
         String segment = path.substring(path.lastIndexOf('/') + 1);
-        return "rate:" + segment + ":" + ip;
+        return "rate:" + method + ":" + segment + ":" + ip;
     }
 
     /**
      * XFF 헤더를 신뢰하지 않음.
      * server.forward-headers-strategy=framework + ForwardedHeaderFilter 조합으로
      * Spring이 신뢰 프록시의 XFF만 적용하여 RemoteAddr를 실제 클라이언트 IP로 교체함.
-     * 따라서 여기서는 RemoteAddr만 읽으면 됨.
-     *
      * 로컬 개발 편의를 위해 IPv6 루프백(::1)만 변환.
      */
     private String resolveClientIp(HttpServletRequest request) {
@@ -150,6 +181,15 @@ public class RedisRateLimitFilter extends OncePerRequestFilter {
         response.setHeader("Retry-After", "60");
         objectMapper.writeValue(response.getWriter(),
                 Map.of("success", false, "code", "C004",
-                       "message", "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."));
+                        "message", "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."));
+    }
+
+    private void writeServiceUnavailable(HttpServletResponse response) throws IOException {
+        response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8");
+        response.setHeader("Retry-After", "30");
+        objectMapper.writeValue(response.getWriter(),
+                Map.of("success", false, "code", "S001",
+                        "message", "서비스가 일시적으로 불가합니다. 잠시 후 다시 시도해 주세요."));
     }
 }
