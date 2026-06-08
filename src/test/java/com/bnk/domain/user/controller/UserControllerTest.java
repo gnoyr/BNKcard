@@ -93,7 +93,7 @@ class UserControllerTest {
 
             UserResponse response = UserResponse.builder()
                     .userId(1L)
-                    .name("홍길동")
+                    .maskedName("홍길동")
                     .maskedEmail("te**@test.com")
                     .maskedPhone("010-****-5678")
                     .build();
@@ -106,7 +106,7 @@ class UserControllerTest {
                     .andExpect(jsonPath("$.data.maskedEmail").value("te**@test.com"));
         }
 
-        // ── [신규] 실패 케이스 ────────────────────────────────────
+        // ── 실패 케이스 ────────────────────────────────────
 
         @Test
         @DisplayName("[실패] 존재하지 않는 유저 → 404 + code=U001")
@@ -253,7 +253,7 @@ class UserControllerTest {
     }
 
     // ════════════════════════════════════════════════════════════════
-    // [신규] RQ-F17 | 보유 카드 및 신청 현황
+    // RQ-F17 | 보유 카드 및 신청 현황
     // ════════════════════════════════════════════════════════════════
 
     @Nested
