@@ -461,7 +461,8 @@ async function initEdit() {
         if (phone !== _original.phone) body.phone = phone;
         if (job !== _original.job) body.job = job;
         if (incomeCode !== _original.incomeLevelCode) body.incomeLevelCode = incomeCode;
-        body.creditScore = score ? Number(score) : null;
+		if (score !== _original.creditScore) body.creditScore = score ? Number(score) : null;
+
 
         // 알림 설정은 항상 현재 상태 전송
         body.pushEnabled = pushEl?.checked ?? false;

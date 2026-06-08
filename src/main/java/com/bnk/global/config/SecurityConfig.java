@@ -9,15 +9,18 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -29,34 +32,15 @@ import com.bnk.global.filter.RedisRateLimitFilter;
 
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * [보안 패치] 2026-06-08
- *
- * 변경 전: anyRequest().permitAll() → Spring Security 인가가 사실상 미사용
- * 변경 후: 공개 경로만 명시적으로 permitAll(), 나머지는 authenticated() 요구
- *
- * 관리자 API(/api/admin/**)는 ROLE_SUPER_ADMIN, ROLE_MANAGER, ROLE_OPERATOR 중
- * 하나 이상의 역할을 가진 인증된 사용자만 접근 가능.
- *
- * CORS allowedHeaders 범위 축소:
- * 변경 전: List.of("*") — 모든 헤더 허용
- * 변경 후: 실제 사용하는 헤더만 명시
- *
- * [추가 수정] 2026-06-08
- * - /api/auth/logout, /api/admin/auth/logout permitAll() 추가
- *   → 토큰 만료 상태에서도 로그아웃 가능하도록 (쿠키 삭제 보장)
- * - CleanUrlController 가 처리하는 페이지 경로 permitAll() 추가
- *   → /login, /signup, /mypage 등 clean URL 접근 시 401 차단 방지
- */
 @Slf4j
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
-    private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
-    private final RedisRateLimitFilter rateLimitFilter;
+    private final JwtAuthenticationFilter      jwtAuthenticationFilter;
+    private final JwtAuthenticationEntryPoint  jwtAuthenticationEntryPoint;
+    private final JwtAccessDeniedHandler       jwtAccessDeniedHandler;
+    private final RedisRateLimitFilter         rateLimitFilter;
 
     @Value("${cors.allowed-origins}")
     private String allowedOrigins;
@@ -72,7 +56,7 @@ public class SecurityConfig {
         this.jwtAccessDeniedHandler      = jwtAccessDeniedHandler;
         this.rateLimitFilter             = rateLimitFilter;
         if (rateLimitFilter == null) {
-            log.info("[SecurityConfig] RedisRateLimitFilter 비활성 (Redis disabled 또는 미설정)");
+            log.warn("[SecurityConfig] RedisRateLimitFilter 비활성 — Rate Limit 미적용 상태");
         }
     }
 
@@ -96,9 +80,38 @@ public class SecurityConfig {
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint(jwtAuthenticationEntryPoint)
                 .accessDeniedHandler(jwtAccessDeniedHandler))
+
+            // ── HTTP Security Headers ─────────────────────────────────
+            .headers(headers -> headers
+                .frameOptions(HeadersConfigurer.FrameOptionsConfig::deny)
+                .contentTypeOptions(Customizer.withDefaults())
+                .httpStrictTransportSecurity(hsts -> hsts
+                    .maxAgeInSeconds(31536000)
+                    .includeSubDomains(true))
+                .referrerPolicy(referrer -> referrer
+                    .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                .contentSecurityPolicy(csp -> csp
+                    .policyDirectives(
+                        "default-src 'self'; " +
+                        "script-src 'self' 'unsafe-inline'; " +
+                        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+                        "font-src 'self' https://fonts.gstatic.com; " +
+                        // [수정] busanbank.co.kr 이미지 도메인 추가
+                        // 카드 이미지가 https://www.busanbank.co.kr 에서 로드되므로 허용
+                        "img-src 'self' data: " +
+                            "https://bnkcard.store " +
+                            "https://www.bnkcard.store " +
+                            "https://objectstorage.ap-chuncheon-1.oraclecloud.com " +
+                            "https://www.busanbank.co.kr " +
+                            "https://busanbank.co.kr; " +
+                        "connect-src 'self'; " +
+                        "frame-ancestors 'none'"
+                    ))
+            )
+
             .authorizeHttpRequests(auth -> auth
 
-                // ── 회원 인증 API ──────────────────────────────────────────────
+                // ── 회원 인증 API ─────────────────────────────────────────
                 .requestMatchers(
                     "/api/auth/login",
                     "/api/auth/logout",
@@ -111,14 +124,14 @@ public class SecurityConfig {
                     "/api/auth/refresh"
                 ).permitAll()
 
-                // ── 관리자 인증 API ────────────────────────────────────────────
+                // ── 관리자 인증 API ───────────────────────────────────────
                 .requestMatchers(
                     "/api/admin/auth/login",
                     "/api/admin/auth/logout",
                     "/api/admin/auth/refresh"
                 ).permitAll()
 
-                // ── 카드 공개 조회 (비로그인 사용자 허용) ────────────────────
+                // ── 카드 공개 조회 (비로그인 허용) ───────────────────────
                 .requestMatchers(
                     "/api/cards",
                     "/api/cards/**",
@@ -126,7 +139,14 @@ public class SecurityConfig {
                     "/api/terms/packages/**"
                 ).permitAll()
 
-                // ── 정적 리소스 ────────────────────────────────────────────────
+                //  약관 파일 조회 — 비로그인 허용 ────────────────
+                // 카드 상세 페이지에서 비로그인 사용자도 약관 PDF를 볼 수 있어야 함
+                // /api/terms/{id}/files 형태로 호출됨
+                .requestMatchers("/api/terms/*/files").permitAll()
+                
+                .requestMatchers("/api/chat/history").permitAll()
+
+                // ── 정적 리소스 ──────────────────────────────────────────
                 .requestMatchers(
                     "/",
                     "/*.html",
@@ -143,9 +163,7 @@ public class SecurityConfig {
                     "/error"
                 ).permitAll()
 
-                // ── CleanUrlController 페이지 경로 ────────────────────────────
-                // CleanUrlController 가 처리하는 경로들.
-                // 이 경로들이 없으면 Spring Security 가 컨트롤러 도달 전에 401 반환.
+                // ── CleanUrlController 페이지 경로 ───────────────────────
                 .requestMatchers(
                     "/login",
                     "/signup",
@@ -158,12 +176,19 @@ public class SecurityConfig {
                     "/admin/approvals/**"
                 ).permitAll()
 
-                // ── 관리자 API — 관리자 역할 필수 ────────────────────────────
+                // ── Swagger — 인증 필요 (운영 차단) ─────────────────────
+                .requestMatchers(
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/v3/api-docs/**"
+                ).authenticated()
+
+                // ── 관리자 API — 역할 필수 ───────────────────────────────
                 .requestMatchers("/api/admin/**")
                     .hasAnyRole("SUPER_ADMIN", "MANAGER", "OPERATOR",
                                 "CARD_MANAGER", "REVIEWER")
 
-                // ── 나머지 모든 요청 — 로그인 필수 ──────────────────────────
+                // ── 나머지 — 로그인 필수 ────────────────────────────────
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -193,7 +218,6 @@ public class SecurityConfig {
             .toList();
 
         configuration.setAllowedOrigins(origins);
-
         configuration.setAllowedHeaders(List.of(
             "Content-Type",
             "Authorization",
@@ -202,7 +226,6 @@ public class SecurityConfig {
             "Accept",
             "Origin"
         ));
-
         configuration.setAllowedMethods(
             Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowCredentials(true);
