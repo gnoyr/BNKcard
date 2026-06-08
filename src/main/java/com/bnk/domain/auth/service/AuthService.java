@@ -1,13 +1,11 @@
 package com.bnk.domain.auth.service;
 
-import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseCookie;
@@ -69,7 +67,6 @@ public class AuthService {
 	private final CddService cddService;
 	private final TokenSecurityService tokenSecurityService;
 	private final AuditLogger auditLogger;
-	private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
 	// ──────────────────────────────────────────────────────────────────
 	// KEY_VERIFY : 인증코드 임시 저장 "email:verify:{email}"
@@ -88,7 +85,7 @@ public class AuthService {
 	private static final int LOCK_DURATION_MIN = 30;
 
 	// ──────────────────────────────────────────────────────────────────
-	// F-01 | 이메일 인증코드 발송
+	// 이메일 인증코드 발송
 	// ──────────────────────────────────────────────────────────────────
 	@Transactional(readOnly = true)
 	public void sendVerifyCode(SendVerifyCodeRequest request) {
@@ -98,15 +95,16 @@ public class AuthService {
 			throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
 		}
 
-		String code = generateVerifyCode();
+		String code = generateCode();
 
 		tokenStore.set(KEY_VERIFY + request.getEmail(), code, TTL_VERIFY_CODE_SEC);
 		mailService.sendVerificationEmail(request.getEmail(), code);
-		log.info("[인증코드발송] email={}", request.getEmail());
+		auditLogger.success(AuditLogger.AUTH, AuditLogger.EMAIL_VERIFY,
+				null, null, "인증코드 발송: " + request.getEmail());
 	}
 
 	// ──────────────────────────────────────────────────────────────────
-	// F-02 | 이메일 인증코드 확인
+	// 이메일 인증코드 확인
 	// ──────────────────────────────────────────────────────────────────
 	@Transactional
 	public void verifyEmail(EmailVerifyRequest request) {
@@ -126,7 +124,7 @@ public class AuthService {
 	}
 
 	// ──────────────────────────────────────────────────────────────────
-	// F-03 | 회원가입
+	// 회원가입
 	// ──────────────────────────────────────────────────────────────────
 	@Transactional
 	public Long signup(SignupRequest request) {
@@ -218,7 +216,7 @@ public class AuthService {
 	}
 
 	/**
-	 * F-04 | 사용자 로그인
+	 * 사용자 로그인
 	 *
 	 * [중요] @Transactional(noRollbackFor = BusinessException.class) 로그인 실패 시
 	 * incrementLoginFailCount() DB 쓰기가 예외 이후에도 반드시 커밋되어야 하므로 BusinessException 발생 시
@@ -269,7 +267,7 @@ public class AuthService {
 	}
 
 	// ──────────────────────────────────────────────────────────────────
-	// F-05 | Access Token 재발급
+	// Access Token 재발급
 	// ──────────────────────────────────────────────────────────────────
 	@Transactional
 	public ResponseCookie refresh(String refreshToken) {
@@ -294,7 +292,7 @@ public class AuthService {
 	}
 
 	// ──────────────────────────────────────────────────────────────────
-	// F-06 | 로그아웃
+	// 로그아웃
 	// ──────────────────────────────────────────────────────────────────
 	@Transactional
 	public void logout(Long userId) {
@@ -303,7 +301,7 @@ public class AuthService {
 	}
 
 	// ──────────────────────────────────────────────────────────────────
-	// F-20 | 아이디 찾기
+	// 아이디 찾기
 	// ──────────────────────────────────────────────────────────────────
 	@Transactional(readOnly = true)
 	public FindIdResponse findId(FindIdRequest request) {
@@ -319,22 +317,23 @@ public class AuthService {
 	}
 
 	// ──────────────────────────────────────────────────────────────────
-	// F-22 | 비밀번호 재설정 링크 발송
+	// 비밀번호 재설정 링크 발송
 	// ──────────────────────────────────────────────────────────────────
 	@Transactional(readOnly = true)
 	public void findPassword(FindPasswordRequest request) {
 		User user = userMapper.findByEmailAndName(request.getEmail(), request.getName())
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-		String token = generateResetToken();
+		String token = generateCode() + generateCode();
 
 		tokenStore.set(KEY_RESET + token, String.valueOf(user.getUserId()), TTL_PW_RESET_SEC);
 		mailService.sendPasswordResetEmail(user.getEmail(), token);
-		log.info("[비밀번호재설정링크발송] userId={}", user.getUserId());
+		auditLogger.success(AuditLogger.AUTH, AuditLogger.PASSWORD_CHANGE,
+				user.getUserId(), null, "비밀번호 재설정 링크 발송");
 	}
 
 	// ──────────────────────────────────────────────────────────────────
-	// F-23 | 비밀번호 재설정
+	// 비밀번호 재설정
 	// ──────────────────────────────────────────────────────────────────
 	@Transactional
 	public void resetPassword(ResetPasswordRequest request) {
@@ -433,14 +432,8 @@ public class AuthService {
 		}
 	}
 
-	/** 이메일 인증코드 — 6자리, SecureRandom 기반 */
-	private String generateVerifyCode() {
-	    return String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
-	}
-
-	/** 비밀번호 재설정 토큰 — UUID 32자 hex */
-	private String generateResetToken() {
-	    return UUID.randomUUID().toString().replace("-", "");
+	private String generateCode() {
+		return String.format("%06d", (int) (Math.random() * 1_000_000));
 	}
 
 	private String resolveClientIp(HttpServletRequest request) {
