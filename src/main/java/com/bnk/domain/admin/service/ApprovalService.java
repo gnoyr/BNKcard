@@ -129,8 +129,8 @@ public class ApprovalService {
                     snapshotInfo = objectMapper.readValue(
                             cardVersion.getSnapshotJson(), CardSnapshot.class);
                 } catch (JsonProcessingException e) {
-                    log.warn("[결재상세] snapshot 파싱 실패: approvalId={}, versionId={}",
-                            approvalId, approval.getTargetId(), e);
+                    auditLogger.adminFailure(AuditLogger.CARD, AuditLogger.APPROVAL_REQUEST,
+                            adminId, String.valueOf(approvalId), "snapshot 파싱 실패: versionId=" + approval.getTargetId());
                 }
             }
         }
@@ -184,8 +184,8 @@ public class ApprovalService {
 
         // 전체 라인 완료 여부 확인
         if (!approvalMapper.isAllLinesCompleted(approvalId)) {
-            log.info("[결재승인] 부분 승인 완료 (대기 라인 잔존): approvalId={}, adminId={}",
-                    approvalId, adminId);
+            auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.APPROVAL_APPROVE,
+                    adminId, String.valueOf(approvalId), "부분 승인 완료 (대기 라인 잔존)");
             return;
         }
 
@@ -210,7 +210,8 @@ public class ApprovalService {
 
         Terms terms = termsMapper.findById(termsId).orElse(null);
         if (terms == null) {
-            log.warn("[결재승인-약관] terms 없음: termsId={}", termsId);
+            auditLogger.adminFailure(AuditLogger.CARD, AuditLogger.APPROVAL_APPROVE,
+                    adminId, String.valueOf(termsId), "약관 데이터 없음");
             return;
         }
 
@@ -232,7 +233,8 @@ public class ApprovalService {
             List<Long> userIds = termsMapper.findUserIdsForReconsent(termsId);
             userIds.forEach(uid ->
                     termsMapper.insertNotificationHistory(termsId, uid, "EMAIL"));
-            log.info("[결재승인-약관] 재동의 알림 {}명 발송: termsId={}", userIds.size(), termsId);
+            auditLogger.adminSuccess(AuditLogger.TERMS, AuditLogger.AGREE,
+                    adminId, String.valueOf(termsId), "재동의 알림 발송: " + userIds.size() + "명");
         }
 
         auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.APPROVAL_APPROVE,
@@ -243,7 +245,8 @@ public class ApprovalService {
     private void handleCardApprove(ApprovalRequest approval, Long adminId, Long approvalId) {
         CardVersion cardVersion = approvalMapper.findVersionByApprovalId(approvalId);
         if (cardVersion == null) {
-            log.warn("[결재승인-카드] CardVersion 없음: approvalId={}", approvalId);
+            auditLogger.adminFailure(AuditLogger.CARD, AuditLogger.APPROVAL_APPROVE,
+                    adminId, String.valueOf(approvalId), "CardVersion 없음");
             return;
         }
 
@@ -306,7 +309,8 @@ public class ApprovalService {
                     adminId, String.valueOf(cardId), "카드 결재 승인 완료: approvalId=" + approvalId);
 
         } catch (JsonProcessingException e) {
-            log.error("[결재승인-카드] snapshot 역직렬화 실패: approvalId={}", approvalId, e);
+            auditLogger.adminFailure(AuditLogger.CARD, AuditLogger.APPROVAL_APPROVE,
+                    adminId, String.valueOf(approvalId), "snapshot 역직렬화 실패: " + e.getMessage());
             throw new BusinessException(ErrorCode.INTERNAL_ERROR,
                     "카드 데이터 복원 실패. 관리자에게 문의하세요.");
         }

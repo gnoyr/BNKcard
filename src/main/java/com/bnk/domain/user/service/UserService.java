@@ -36,7 +36,7 @@ public class UserService {
 	private final AuditLogger auditLogger;
 
     // ================================================================
-    // F-24 | 내 정보 조회
+    // 내 정보 조회
     // ================================================================
     @Transactional(readOnly = true)
     public UserResponse getMyInfo(Long userId) {
@@ -47,7 +47,7 @@ public class UserService {
     }
 
     // ================================================================
-    // F-25 | 내 정보 수정
+    // 내 정보 수정
     // ================================================================
     @Transactional
     public void updateMyInfo(Long userId, @Valid UserUpdateRequest request) {
@@ -83,7 +83,7 @@ public class UserService {
     }
 
     // ================================================================
-    // F-26 | 비밀번호 변경
+    // 비밀번호 변경
     // ================================================================
     @Transactional
     public void changePassword(Long userId, @Valid PasswordChangeRequest request) {
@@ -121,7 +121,7 @@ public class UserService {
     }
 
     // ================================================================
-    // RQ-F17 | 보유 카드 및 신청 현황
+    // 보유 카드 및 신청 현황
     // ================================================================
     @Transactional(readOnly = true)
     public CardStatusResponse getMyCards(Long userId) {
