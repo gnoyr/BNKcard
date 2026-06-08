@@ -21,6 +21,7 @@ import com.bnk.domain.terms.model.TermsFile;
 import com.bnk.domain.terms.model.UserTermsAgreement;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
+import com.bnk.global.util.ObjectStorageService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,14 +33,10 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class TermsService {
 
-    private final TermsMapper termsMapper;
+    private final TermsMapper              termsMapper;
     private final UserTermsAgreementMapper userTermsAgreementMapper;
+    private final ObjectStorageService     objectStorageService; 
 
-    /**
-     * 약관 1건당 INSERT INTO ... VALUES(...) 구문이 약 400바이트이므로
-     * 100건 × 400B = 40KB — 안전 범위.
-     * 일반적인 약관 동의는 5~20건이므로 실질적으로 단일 배치로 처리됨.
-     */
     private static final int BATCH_SIZE = 50;
 
     // ─────────────────────────────────────────────────────────────
@@ -69,29 +66,25 @@ public class TermsService {
     @Transactional
     public List<Long> agreeTerms(@Valid TermsAgreementRequest request, Long userId) {
 
-		//클라이언트가 Y로 동의한 termsId 집합
-		Set<Long> agreedIds = request.getAgreedTerms().stream().filter(item -> "Y".equals(item.getAgreedYn()))
-				.map(AgreedTermsItem::getTermsId).collect(Collectors.toSet());
+        Set<Long> agreedIds = request.getAgreedTerms().stream()
+                .filter(item -> "Y".equals(item.getAgreedYn()))
+                .map(AgreedTermsItem::getTermsId)
+                .collect(Collectors.toSet());
 
-		// 검증 방식:
-		// 1) 요청에 포함된 termsId를 DB에서 조회해 required_yn 확인
-		// 2) 추가로 packageType 기반으로 패키지 전체 필수 약관과 비교하면 더 강하지만,
-		// 현재 구조(TermsAgreementRequest에 packageType 없음)에서는 요청 내 termsId
-		// 기준으로 DB 재조회하여 검증하는 방식 적용.
-		List<Long> requestedTermsIds = request.getAgreedTerms().stream().map(AgreedTermsItem::getTermsId)
-				.collect(Collectors.toList());
+        List<Long> requestedTermsIds = request.getAgreedTerms().stream()
+                .map(AgreedTermsItem::getTermsId)
+                .collect(Collectors.toList());
 
-		for (Long termsId : requestedTermsIds) {
-			Terms terms = termsMapper.findById(termsId)
-					.orElseThrow(() -> new BusinessException(ErrorCode.TERMS_NOT_FOUND));
+        for (Long termsId : requestedTermsIds) {
+            Terms terms = termsMapper.findById(termsId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.TERMS_NOT_FOUND));
 
-			if ("Y".equals(terms.getRequiredYn()) && !agreedIds.contains(termsId)) {
-				log.warn("[약관동의] 필수 약관 미동의: userId={}, termsId={}", userId, termsId);
-				throw new BusinessException(ErrorCode.REQUIRED_TERMS_NOT_AGREED);
-			}
-		}
+            if ("Y".equals(terms.getRequiredYn()) && !agreedIds.contains(termsId)) {
+                log.warn("[약관동의] 필수 약관 미동의: userId={}, termsId={}", userId, termsId);
+                throw new BusinessException(ErrorCode.REQUIRED_TERMS_NOT_AGREED);
+            }
+        }
 
-        // UserTermsAgreement 목록 구성
         List<UserTermsAgreement> agreements = request.getAgreedTerms().stream()
                 .map(item -> UserTermsAgreement.builder()
                         .userId(userId)
@@ -104,20 +97,14 @@ public class TermsService {
                         .build())
                 .collect(Collectors.toList());
 
-		// Oracle INSERT ALL SQL 길이 제한 방어 — 배치 분할 INSERT
-		// MyBatis <foreach> + Oracle INSERT ALL 은 단일 SQL로 실행되므로
-		// 건수가 많으면 ORA-01795 (최대 표현식 초과) 발생 가능.
-		// BATCH_SIZE(50건) 단위로 분할하여 순차 INSERT.
-		// 일반 약관 동의(5~20건)는 항상 단일 배치로 처리되므로 성능 영향 없음.
-		List<Long> insertedIds = new ArrayList<>();
-		for (int i = 0; i < agreements.size(); i += BATCH_SIZE) {
-			int end = Math.min(i + BATCH_SIZE, agreements.size());
-			List<UserTermsAgreement> batch = agreements.subList(i, end);
-			userTermsAgreementMapper.insertAgreements(batch);
-			log.debug("[약관동의] 배치 INSERT: userId={}, 건수={}", userId, batch.size());
-		}
+        List<Long> insertedIds = new ArrayList<>();
+        for (int i = 0; i < agreements.size(); i += BATCH_SIZE) {
+            int end = Math.min(i + BATCH_SIZE, agreements.size());
+            List<UserTermsAgreement> batch = agreements.subList(i, end);
+            userTermsAgreementMapper.insertAgreements(batch);
+            log.debug("[약관동의] 배치 INSERT: userId={}, 건수={}", userId, batch.size());
+        }
 
-        // 처리된 termsId 목록 반환 (inserted agreements 기준)
         insertedIds = agreements.stream()
                 .map(UserTermsAgreement::getTermsId)
                 .collect(Collectors.toList());
@@ -140,7 +127,7 @@ public class TermsService {
                         .fileId(f.getFileId())
                         .termsId(f.getTermsId())
                         .fileType(f.getFileType())
-                        .filePath(f.getFilePath())
+                        .filePath(objectStorageService.resolveUrl(f.getFilePath()))
                         .originalName(f.getOriginalName())
                         .fileExtension(f.getFileExtension())
                         .fileSize(f.getFileSize())

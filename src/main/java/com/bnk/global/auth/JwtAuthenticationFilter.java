@@ -15,6 +15,7 @@ import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.bnk.global.util.CookieUtil;
+import com.bnk.global.util.audit.AuditLogger;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -23,23 +24,27 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * JWT Access Token 검증 필터.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtTokenProvider jwtTokenProvider;
+    private final JwtTokenProvider       jwtTokenProvider;
     private final UserDetailsServiceImpl userDetailsService;
     private final AdminDetailsServiceImpl adminDetailsService;
+    private final AuditLogger            auditLogger;   // 추가
 
-    /** 
+    /**
      * 필터를 완전히 건너뛸 공개 경로.
      *
-     *   로그아웃은 토큰이 만료된 상태에서도 호출될 수 있음.
-     *   SKIP_PATHS 에 포함해야 필터가 토큰 검사 없이 통과시키고
-     *   컨트롤러의 @AuthenticationPrincipal(errorOnInvalidType = false) 가
-     *   ud=null 로 처리해 쿠키만 삭제하는 정상 흐름이 동작함.
-     *   SecurityConfig.permitAll() 만으로는 부족 — 필터가 먼저 실행되기 때문.
+     * 로그아웃은 토큰이 만료된 상태에서도 호출될 수 있음.
+     * SKIP_PATHS 에 포함해야 필터가 토큰 검사 없이 통과시키고
+     * 컨트롤러의 @AuthenticationPrincipal(errorOnInvalidType = false) 가
+     * ud=null 로 처리해 쿠키만 삭제하는 정상 흐름이 동작함.
+     * SecurityConfig.permitAll() 만으로는 부족 — 필터가 먼저 실행되기 때문.
      */
     private static final List<String> SKIP_PATHS = List.of(
         "/api/auth/login",
@@ -77,12 +82,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (token != null && jwtTokenProvider.validateToken(token)) {
             String type = jwtTokenProvider.getTokenType(token);
 
-            /*
-             * REFRESH 타입 토큰이 access_token 쿠키에 잘못 세팅된 경우 방어:
-             * "ACCESS" / "ADMIN_ACCESS" 외 타입은 익명 처리.
-             */
+            // REFRESH 타입 토큰이 access_token 쿠키에 잘못 세팅된 경우 방어:
+            // "ACCESS" / "ADMIN_ACCESS" 외 타입은 익명 처리 후 감사 로그 기록
             if (!"ACCESS".equals(type) && !"ADMIN_ACCESS".equals(type)) {
-                log.warn("[JWT Filter] 허용되지 않은 토큰 타입: type={}, path={}", type, path);
+                String ip = request.getRemoteAddr();
+
+                // AUDIT_LOGS에 FAILURE 이벤트 INSERT — 토큰 위조·오남용 추적용
+                auditLogger.failure(
+                    AuditLogger.AUTH,
+                    AuditLogger.TOKEN_REFRESH,
+                    null,
+                    ip,
+                    "허용되지 않은 토큰 타입 감지: type=" + type + ", path=" + path
+                );
+
                 setAnonymous();
                 chain.doFilter(request, response);
                 return;
@@ -135,9 +148,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         SecurityContextHolder.getContext().setAuthentication(anonymousAuth);
     }
 
-    /**
-     * 토큰 탐색 — access_token 쿠키에서 추출
-     */
+    /** 토큰 탐색 — access_token 쿠키에서 추출 */
     private String resolveAccessToken(HttpServletRequest request) {
         return CookieUtil.extractCookieValue(request, "access_token").orElse(null);
     }
