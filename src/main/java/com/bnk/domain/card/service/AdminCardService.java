@@ -43,6 +43,7 @@ import com.bnk.domain.terms.mapper.TermsMapper;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.response.PageResponse;
+import com.bnk.global.util.audit.AuditLogger;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -65,16 +66,16 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class AdminCardService {
 
-
-    private final CardMapper             cardMapper;
-    private final CardVersionMapper      cardVersionMapper;
-    private final CardBenefitMapper      cardBenefitMapper;
-    private final CardImageMapper        cardImageMapper;
-    private final CardContentMapper      cardContentMapper;
-    private final TermsMapper            termsMapper;
-    private final ApprovalMapper         approvalMapper;
-    private final ObjectMapper           objectMapper;
-    private final CardStatusHistoryMapper cardStatusHistoryMapper;
+	private final CardMapper cardMapper;
+	private final CardVersionMapper cardVersionMapper;
+	private final CardBenefitMapper cardBenefitMapper;
+	private final CardImageMapper cardImageMapper;
+	private final CardContentMapper cardContentMapper;
+	private final TermsMapper termsMapper;
+	private final ApprovalMapper approvalMapper;
+	private final ObjectMapper objectMapper;
+	private final CardStatusHistoryMapper cardStatusHistoryMapper;
+	private final AuditLogger auditLogger;
 
     // ══════════════════════════════════════════════════════════════════
     // B-03 카드 신규 등록
@@ -175,11 +176,10 @@ public class AdminCardService {
                         .build()
         );
 
-        Map<String, Long> result = new HashMap<>();
-        result.put("cardId",     card.getCardId());
-        result.put("versionId",  version.getVersionId());
-        result.put("approvalId", approval.getApprovalId());
-        return result;
+        auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.CREATE,
+                adminId, String.valueOf(card.getCardId()),
+                "카드 신규 등록: " + card.getCardName());  // ← 추가
+        return Map.of("cardId", card.getCardId(), "versionId", version.getVersionId(), "approvalId", approval.getApprovalId());
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -190,6 +190,8 @@ public class AdminCardService {
 
         Card existing = cardMapper.findById(cardId);
         if (existing == null) {
+            auditLogger.adminFailure(AuditLogger.CARD, AuditLogger.UPDATE,
+                    adminId, String.valueOf(cardId), "카드 없음");
             throw new BusinessException(ErrorCode.CARD_NOT_FOUND);
         }
 
@@ -295,7 +297,11 @@ public class AdminCardService {
     @Transactional
     public Map<String, Long> saveCardBenefits(Long cardId, @Valid BenefitUpdateRequest request, Long adminId) {
         Card existing = cardMapper.findById(cardId);
-        if (existing == null) throw new BusinessException(ErrorCode.CARD_NOT_FOUND);
+        if (existing == null) {
+            auditLogger.adminFailure(AuditLogger.CARD, AuditLogger.UPDATE,
+                    adminId, String.valueOf(cardId), "카드 없음 (혜택 수정)");
+            throw new BusinessException(ErrorCode.CARD_NOT_FOUND);
+        }
 
         cardBenefitMapper.deleteByCardId(cardId);
 
@@ -315,7 +321,11 @@ public class AdminCardService {
     @Transactional
     public Map<String, Long> saveCardImages(Long cardId, @Valid ImageUpdateRequest request, Long adminId) {
         Card existing = cardMapper.findById(cardId);
-        if (existing == null) throw new BusinessException(ErrorCode.CARD_NOT_FOUND);
+        if (existing == null) {
+            auditLogger.adminFailure(AuditLogger.CARD, AuditLogger.UPDATE,
+                    adminId, String.valueOf(cardId), "카드 없음 (이미지 수정)");
+            throw new BusinessException(ErrorCode.CARD_NOT_FOUND);
+        }
 
         cardImageMapper.deleteByCardId(cardId);
 
@@ -335,7 +345,11 @@ public class AdminCardService {
     @Transactional
     public void saveCardContents(Long cardId, @Valid ContentUpdateRequest request, Long adminId) {
         Card existing = cardMapper.findById(cardId);
-        if (existing == null) throw new BusinessException(ErrorCode.CARD_NOT_FOUND);
+        if (existing == null) {
+            auditLogger.adminFailure(AuditLogger.CARD, AuditLogger.UPDATE,
+                    adminId, String.valueOf(cardId), "카드 없음 (콘텐츠 수정)");
+            throw new BusinessException(ErrorCode.CARD_NOT_FOUND);
+        }
 
         cardContentMapper.deleteByCardId(cardId);
 
@@ -364,6 +378,8 @@ public class AdminCardService {
         // ← cardMapper2.getCardDetail() 대신 cardMapper.findById() 사용
         Card card = cardMapper.findById(cardId);
         if (card == null) {
+            auditLogger.adminFailure(AuditLogger.CARD, AuditLogger.STATUS_CHANGE,
+                    adminId, String.valueOf(cardId), "카드 없음");
             throw new BusinessException(ErrorCode.CARD_NOT_FOUND);
         }
 
@@ -374,7 +390,7 @@ public class AdminCardService {
             return;
         }
 
-        cardMapper.updateCardStatus(cardId, newStatus);   // ← cardMapper2 → cardMapper
+        cardMapper.updateCardStatus(cardId, newStatus);
 
         cardStatusHistoryMapper.insertCardStatusHistory(
                 CardStatusHistory.builder()
@@ -386,6 +402,10 @@ public class AdminCardService {
                                 ? request.getChangedReason() : "관리자 수동 변경")
                         .build()
         );
+        
+        auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.STATUS_CHANGE,
+                adminId, String.valueOf(cardId),
+                "카드 상태 변경: " + previousStatus + " → " + newStatus);
     }
 
     // ══════════════════════════════════════════════════════════════════

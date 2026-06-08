@@ -110,7 +110,7 @@ public class AdminTermsService {
                 .substring(0, pdfMeta.getStoredName().lastIndexOf("."));
         
         objectStorageService.upload(pdfMeta.getObjectName(), pdfBytes, pdfMeta.getMimeType());
-        String pdfUrl = objectStorageService.getPublicUrl(pdfMeta.getObjectName());
+        String pdfUrl = objectStorageService.createDownloadUrl(pdfMeta.getObjectName());
 
         termsMapper.insertTermsFile(TermsFile.builder()
                 .termsId(termsId)
@@ -130,7 +130,7 @@ public class AdminTermsService {
             String imageStoredName = baseName + "_page" + (i + 1) + ".jpg";
             String imageObjectName = "terms/" + imageStoredName;
             objectStorageService.upload(imageObjectName, imageBytesList.get(i), "image/jpeg");
-            String imageUrl = objectStorageService.getPublicUrl(imageObjectName);
+            String imageUrl = objectStorageService.createDownloadUrl(imageObjectName);
 
             termsMapper.insertTermsFile(TermsFile.builder()
                     .termsId(termsId)

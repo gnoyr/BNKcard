@@ -29,27 +29,28 @@ import com.bnk.global.filter.RedisRateLimitFilter;
 
 import lombok.extern.slf4j.Slf4j;
 
-/*
- * [WARN-4 확인]
- * @RequiredArgsConstructor 를 사용하면 Optional<RedisRateLimitFilter> 필드가
- * 생성자 주입 대상이 된다. Spring은 Optional 타입 파라미터를
- * "빈이 없으면 Optional.empty(), 있으면 Optional.of(빈)" 으로 주입하므로
- * Redis 비활성 환경(spring.data.redis.enabled=false)에서 NPE 없이 안전하게 동작한다.
+/**
+ * [보안 패치] 2026-06-08
  *
- * 단, Spring Boot 4.x + @RequiredArgsConstructor 조합에서
- * Optional 필드 생성자 주입이 제대로 처리되지 않는 엣지 케이스 방어를 위해
- * 명시적 생성자로 전환하고 @Autowired(required = false) 를 사용하는 방식으로 변경.
+ * 변경 전: anyRequest().permitAll() → Spring Security 인가가 사실상 미사용
+ * 변경 후: 공개 경로만 명시적으로 permitAll(), 나머지는 authenticated() 요구
+ *
+ * 관리자 API(/api/admin/**)는 ROLE_SUPER_ADMIN, ROLE_MANAGER, ROLE_OPERATOR 중
+ * 하나 이상의 역할을 가진 인증된 사용자만 접근 가능.
+ *
+ * CORS allowedHeaders 범위 축소:
+ * 변경 전: List.of("*") — 모든 헤더 허용
+ * 변경 후: 실제 사용하는 헤더만 명시
  */
 @Slf4j
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter     jwtAuthenticationFilter;
-    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
-    private final JwtAccessDeniedHandler      jwtAccessDeniedHandler;
-
-    private final RedisRateLimitFilter rateLimitFilter; // null 가능 — required=false 주입
+	private final JwtAuthenticationFilter jwtAuthenticationFilter;
+	private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+	private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
+	private final RedisRateLimitFilter rateLimitFilter;
 
     @Value("${cors.allowed-origins}")
     private String allowedOrigins;
@@ -63,7 +64,7 @@ public class SecurityConfig {
         this.jwtAuthenticationFilter     = jwtAuthenticationFilter;
         this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
         this.jwtAccessDeniedHandler      = jwtAccessDeniedHandler;
-        this.rateLimitFilter             = rateLimitFilter; // Redis 비활성 시 null
+        this.rateLimitFilter             = rateLimitFilter;
         if (rateLimitFilter == null) {
             log.info("[SecurityConfig] RedisRateLimitFilter 비활성 (Redis disabled 또는 미설정)");
         }
@@ -89,7 +90,60 @@ public class SecurityConfig {
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint(jwtAuthenticationEntryPoint)
                 .accessDeniedHandler(jwtAccessDeniedHandler))
-            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+            .authorizeHttpRequests(auth -> auth
+
+                // ── 인증 없이 접근 가능한 공개 경로 ──────────────────────────
+                // 회원 인증 (로그인, 회원가입, 이메일 인증, 비밀번호 재설정 등)
+                .requestMatchers(
+                    "/api/auth/login",
+                    "/api/auth/signup",
+                    "/api/auth/send-verify-code",
+                    "/api/auth/verify-email",
+                    "/api/auth/find-id",
+                    "/api/auth/find-password",
+                    "/api/auth/reset-password",
+                    "/api/auth/refresh"
+                ).permitAll()
+
+                // 관리자 인증
+                .requestMatchers(
+                    "/api/admin/auth/login",
+                    "/api/admin/auth/refresh"
+                ).permitAll()
+
+                // 카드 공개 조회 (비로그인 사용자도 카드 목록·상세 조회 가능)
+                .requestMatchers(
+                    "/api/cards",
+                    "/api/cards/**",
+                    "/api/search/**",
+                    "/api/terms/packages/**"
+                ).permitAll()
+
+                // 정적 리소스
+                .requestMatchers(
+                    "/",
+                    "/*.html",
+                    "/css/**",
+                    "/js/**",
+                    "/images/**",
+                    "/fonts/**",
+                    "/components/**",
+                    "/admin/**",
+                    "/auth/**",
+                    "/mypage/**",
+                    "/favicon.ico",
+                    "/error"
+                ).permitAll()
+
+                // ── 관리자 API — 관리자 역할 필수 ─────────────────────────────
+                // JwtAuthenticationFilter 에서 ROLE_SUPER_ADMIN 등 관리자 권한이 부여됨
+                .requestMatchers("/api/admin/**")
+                    .hasAnyRole("SUPER_ADMIN", "MANAGER", "OPERATOR",
+                                "CARD_MANAGER", "REVIEWER")
+
+                // ── 나머지 모든 API — 로그인 필수 ─────────────────────────────
+                .anyRequest().authenticated()
+            )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         if (rateLimitFilter != null) {
@@ -103,12 +157,32 @@ public class SecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+
         List<String> origins = Arrays.stream(allowedOrigins.split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
+            // 와일드카드(*) origin은 credentials=true와 함께 사용 불가 — 기동 시 차단
+            .filter(s -> {
+                if ("*".equals(s)) {
+                    log.error("[CORS] 와일드카드(*) origin은 허용되지 않습니다. cors.allowed-origins 설정을 확인하세요.");
+                    return false;
+                }
+                return true;
+            })
             .toList();
+
         configuration.setAllowedOrigins(origins);
-        configuration.setAllowedHeaders(List.of("*"));
+
+        // 와일드카드 → 실제 사용 헤더만 명시
+        configuration.setAllowedHeaders(List.of(
+            "Content-Type",
+            "Authorization",
+            "Cookie",
+            "X-Requested-With",
+            "Accept",
+            "Origin"
+        ));
+
         configuration.setAllowedMethods(
             Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowCredentials(true);

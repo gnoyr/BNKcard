@@ -19,6 +19,7 @@ import com.bnk.domain.user.mapper.UserMapper;
 import com.bnk.domain.user.model.User;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
+import com.bnk.global.util.audit.AuditLogger;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class UserService {
 
 	private final UserMapper userMapper;
 	private final PasswordEncoder passwordEncoder;
+	private final AuditLogger auditLogger;
 
     // ================================================================
     // F-24 | 내 정보 조회
@@ -55,6 +57,8 @@ public class UserService {
         if (requiresPasswordVerification(request)) {
             if (request.getCurrentPassword() == null ||
                     !passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+                auditLogger.failure(AuditLogger.AUTH, AuditLogger.UPDATE,
+                        userId, null, "내 정보 수정 — 비밀번호 검증 실패");
                 throw new BusinessException(ErrorCode.INVALID_PASSWORD);
             }
         }
@@ -75,7 +79,7 @@ public class UserService {
                 .build();
 
         userMapper.updateUser(updated);
-        log.info("[내정보수정] userId={}", userId);
+        auditLogger.success(AuditLogger.AUTH, AuditLogger.UPDATE, userId, null, null);
     }
 
     // ================================================================
@@ -84,6 +88,8 @@ public class UserService {
     @Transactional
     public void changePassword(Long userId, @Valid PasswordChangeRequest request) {
         if (!request.getNewPassword().equals(request.getNewPasswordConfirm())) {
+            auditLogger.failure(AuditLogger.AUTH, AuditLogger.PASSWORD_CHANGE,
+                    userId, null, "비밀번호 확인 불일치");
             throw new BusinessException(ErrorCode.PASSWORD_CONFIRM_MISMATCH);
         }
 
@@ -91,6 +97,8 @@ public class UserService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            auditLogger.failure(AuditLogger.AUTH, AuditLogger.PASSWORD_CHANGE,
+                    userId, null, "현재 비밀번호 불일치");
             throw new BusinessException(ErrorCode.INVALID_PASSWORD);
         }
 
@@ -98,6 +106,8 @@ public class UserService {
         boolean recentlyUsed = recentHashes.stream()
                 .anyMatch(h -> passwordEncoder.matches(request.getNewPassword(), h));
         if (recentlyUsed) {
+            auditLogger.failure(AuditLogger.AUTH, AuditLogger.PASSWORD_CHANGE,
+                    userId, null, "최근 사용한 비밀번호 재사용 시도");
             throw new BusinessException(ErrorCode.PASSWORD_RECENTLY_USED);
         }
 
@@ -106,8 +116,8 @@ public class UserService {
         userMapper.insertPasswordHistory(userId, newHash);
         userMapper.deleteOldPasswordHistories(userId);
         userMapper.revokeAllSessions(userId);
-
-        log.info("[비밀번호변경] userId={} 변경 완료 (전 기기 로그아웃)", userId);
+        auditLogger.success(AuditLogger.AUTH, AuditLogger.PASSWORD_CHANGE,
+                userId, null, null);
     }
 
     // ================================================================
