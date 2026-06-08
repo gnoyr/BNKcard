@@ -94,8 +94,9 @@
   }
 
   function clearCache() {
-    sessionStorage.removeItem(CACHE_KEY_NAME);
-    sessionStorage.removeItem(CACHE_KEY_LOGIN_AT);
+      sessionStorage.removeItem(CACHE_KEY_NAME);
+      sessionStorage.removeItem(CACHE_KEY_LOGIN_AT);
+      sessionStorage.removeItem('bnk_is_admin');
   }
 
   /* ─────────────────────────────────────────────────────────────
@@ -151,7 +152,7 @@
             // 비인증 페이지는 비로그인 상태로 계속
           } else if (res.ok) {
             const json = await res.json().catch(() => ({}));
-            name = json.data?.name ?? json.name ?? '회원';
+            name = json.data?.maskedName ?? json.name ?? '회원';
             writeCache(name); // [FIX-1] 쌍으로 저장
           } else {
             // 5xx 등 서버 오류 → BnkAPI가 Toast 처리함
@@ -382,16 +383,15 @@
   }
 
   async function adminLogout() {
-    stopTokenTimer();
-    try {
-      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-    } finally {
-      clearCache();
-      sessionStorage.removeItem('bnk_is_admin');
-      location.replace(ADMIN_LOGIN_URL);
-    }
+      stopTokenTimer();
+      try {
+          await fetch('/api/admin/auth/logout', { method: 'POST', credentials: 'include' });
+      } finally {
+          clearCache();
+          sessionStorage.removeItem('bnk_is_admin');
+          location.replace(ADMIN_LOGIN_URL);
+      }
   }
-
   /* ─────────────────────────────────────────────────────────────
      XSS 방어용 이스케이프
   ──────────────────────────────────────────────────────────────── */
