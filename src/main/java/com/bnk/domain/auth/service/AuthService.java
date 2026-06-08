@@ -1,11 +1,13 @@
 package com.bnk.domain.auth.service;
 
+import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseCookie;
@@ -42,6 +44,7 @@ import com.bnk.global.util.CookieUtil;
 import com.bnk.global.util.MaskingUtil;
 import com.bnk.global.util.TokenSecurityService;
 import com.bnk.global.util.TokenStore;
+import com.bnk.global.util.audit.AuditLogger;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -65,6 +68,8 @@ public class AuthService {
 	private final CiValueGenerator ciValueGenerator;
 	private final CddService cddService;
 	private final TokenSecurityService tokenSecurityService;
+	private final AuditLogger auditLogger;
+	private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
 	// ──────────────────────────────────────────────────────────────────
 	// KEY_VERIFY : 인증코드 임시 저장 "email:verify:{email}"
@@ -87,10 +92,13 @@ public class AuthService {
 	// ──────────────────────────────────────────────────────────────────
 	@Transactional(readOnly = true)
 	public void sendVerifyCode(SendVerifyCodeRequest request) {
-		if (userMapper.existsByEmail(request.getEmail()) > 0)
+		if (userMapper.existsByEmail(request.getEmail()) > 0) {
+			auditLogger.failure(AuditLogger.AUTH, AuditLogger.EMAIL_VERIFY,
+					null, null, "이메일 중복: " + request.getEmail());
 			throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+		}
 
-		String code = generateCode();
+		String code = generateVerifyCode();
 
 		tokenStore.set(KEY_VERIFY + request.getEmail(), code, TTL_VERIFY_CODE_SEC);
 		mailService.sendVerificationEmail(request.getEmail(), code);
@@ -104,119 +112,118 @@ public class AuthService {
 	public void verifyEmail(EmailVerifyRequest request) {
 		// KEY_VERIFY 키에서 인증코드 조회
 		String stored = tokenStore.get(KEY_VERIFY + request.getEmail());
-		if (stored == null || !stored.equals(request.getCode()))
+		if (stored == null || !stored.equals(request.getCode())) {
+			auditLogger.failure(AuditLogger.AUTH, AuditLogger.EMAIL_VERIFY,
+					null, null, "인증코드 불일치: " + request.getEmail());
 			throw new BusinessException(ErrorCode.VERIFY_TOKEN_INVALID);
+		}
 
 		// 사용된 인증코드 삭제 후 인증 완료 플래그를 별도 KEY_VERIFIED 키에 저장
 		tokenStore.delete(KEY_VERIFY + request.getEmail());
 		tokenStore.set(KEY_VERIFIED + request.getEmail(), "Y", TTL_VERIFIED_FLAG_SEC);
-		log.info("[이메일인증완료] email={}", request.getEmail());
+		auditLogger.success(AuditLogger.AUTH, AuditLogger.EMAIL_VERIFY,
+				null, null, "이메일 인증 완료: " + request.getEmail());
 	}
 
 	// ──────────────────────────────────────────────────────────────────
 	// F-03 | 회원가입
 	// ──────────────────────────────────────────────────────────────────
 	@Transactional
-    public Long signup(SignupRequest request) {
- 
-        // ① 이메일 중복
-        if (userMapper.existsByEmail(request.getEmail()) > 0)
-            throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
- 
-        // ② phone 중복 (암호화로 인해 전체 조회 후 비교)
-        String formattedPhone = MaskingUtil.formatPhone(request.getPhone());
-        boolean phoneExists = userMapper.findAllPhones().stream()
-                .anyMatch(u -> formattedPhone.equals(u.getPhone()));
-        if (phoneExists)
-            throw new BusinessException(ErrorCode.DUPLICATE_PHONE);
- 
-        // ③ 이메일 인증 확인
-        if (tokenStore.get(KEY_VERIFIED + request.getEmail()) == null)
-            throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
- 
-        // ④ 필수 약관 체크
-        List<Terms> signupTerms = termsMapper.findByPackageType("SIGNUP");
-        Set<Long> requiredIds = signupTerms.stream()
-                .filter(t -> "Y".equals(t.getRequiredYn()))
-                .map(Terms::getTermsId)
-                .collect(Collectors.toSet());
-        if (!request.getAgreedTermsIds().containsAll(requiredIds))
-            throw new BusinessException(ErrorCode.REQUIRED_TERMS_NOT_AGREED);
- 
-        // ⑤ birthDate 파싱
-        LocalDate birthDate = null;
-        String birthDateStr = null;
-        if (request.getBirthDate() != null && !request.getBirthDate().isBlank()) {
-            String raw = request.getBirthDate().replace("-", "");
-            birthDate    = LocalDate.parse(raw, DateTimeFormatter.BASIC_ISO_DATE);
-            birthDateStr = birthDate.toString();  // "YYYY-MM-DD"
-        }
- 
-        // ⑥ CI값 생성 (이름 + 생년월일 + 전화번호 조합 → SHA-256 Mock CI)
-        String ciValue = ciValueGenerator.generate(
-                request.getName(), birthDateStr, formattedPhone);
- 
-        // ⑦ Watchlist 대조 (미가입 요주의 인물 차단)
-        cddService.checkWatchlist(ciValue, request.getName(), birthDateStr);
- 
-        // ⑧ marketingAgree 변환
-        String marketingAgreeYN = Boolean.TRUE.equals(request.getMarketingAgree()) ? "Y" : "N";
- 
-        // ⑨ User INSERT
-        User user = User.builder()
-                .email(request.getEmail())
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .name(request.getName())
-                .phone(formattedPhone)
-                .birthDate(birthDate)
-                .ciValue(ciValue)           // CI값 저장 (AES 암호화는 TypeHandler가 자동 처리)
-                .job(request.getJob())
-                .incomeLevelCode(request.getIncomeLevelCode())
-                .creditScore(request.getCreditScore())
-                .marketingAgree(marketingAgreeYN)
-                .build();
- 
-        userMapper.insertUser(user);
- 
-        // ⑩ 이메일 인증 완료 처리
-        userMapper.updateEmailVerified(user.getUserId(), "Y");
- 
-        // ⑪ CDD 초기화 (회원가입 = SIMPLE CDD 통과 → VERIFIED)
-        cddService.initializeCdd(user.getUserId());
- 
-        // ⑫ 약관 동의 저장
-        List<UserTermsAgreement> agreements = signupTerms.stream()
-                .filter(t -> request.getAgreedTermsIds().contains(t.getTermsId()))
-                .map(t -> UserTermsAgreement.builder()
-                        .userId(user.getUserId())
-                        .termsId(t.getTermsId())
-                        .agreedYn("Y")
-                        .agreementAction("AGREE")
-                        .agreedVersion(t.getVersion())
-                        .agreementChannel("WEB")
-                        .agreementSource("SIGNUP")
-                        .agreedAt(LocalDateTime.now(ZoneId.of("Asia/Seoul")))
-                        .build())
-                .collect(Collectors.toList());
- 
-        if (!agreements.isEmpty()) {
-            userTermsAgreementMapper.insertAgreements(agreements);
-        }
- 
-        tokenStore.delete(KEY_VERIFIED + request.getEmail());
- 
-        log.info("[회원가입] 완료: userId={}, email={}", user.getUserId(), request.getEmail());
-        return user.getUserId();
-    }
+	public Long signup(SignupRequest request) {
+
+		// ① 이메일 중복
+		if (userMapper.existsByEmail(request.getEmail()) > 0) {
+			auditLogger.failure(AuditLogger.AUTH, AuditLogger.SIGNUP,
+					null, null, "이메일 중복: " + request.getEmail());
+			throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+		}
+
+		// ② phone 중복 (암호화로 인해 전체 조회 후 비교)
+		String formattedPhone = MaskingUtil.formatPhone(request.getPhone());
+		boolean phoneExists = userMapper.findAllPhones().stream().anyMatch(u -> formattedPhone.equals(u.getPhone()));
+		if (phoneExists) {
+			auditLogger.failure(AuditLogger.AUTH, AuditLogger.SIGNUP,
+					null, null, "전화번호 중복: " + formattedPhone);
+			throw new BusinessException(ErrorCode.DUPLICATE_PHONE);
+		}
+
+		// ③ 이메일 인증 확인
+		if (tokenStore.get(KEY_VERIFIED + request.getEmail()) == null) {
+			auditLogger.failure(AuditLogger.AUTH, AuditLogger.SIGNUP,
+					null, null, "이메일 인증 미완료: " + request.getEmail());
+			throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
+		}
+
+		// ④ 필수 약관 체크
+		List<Terms> signupTerms = termsMapper.findByPackageType("SIGNUP");
+		Set<Long> requiredIds = signupTerms.stream().filter(t -> "Y".equals(t.getRequiredYn())).map(Terms::getTermsId)
+				.collect(Collectors.toSet());
+		if (!request.getAgreedTermsIds().containsAll(requiredIds)) {
+			auditLogger.failure(AuditLogger.AUTH, AuditLogger.SIGNUP,
+					null, null, "필수 약관 미동의");
+			throw new BusinessException(ErrorCode.REQUIRED_TERMS_NOT_AGREED);
+		}
+
+		// ⑤ birthDate 파싱
+		LocalDate birthDate = null;
+		String birthDateStr = null;
+		if (request.getBirthDate() != null && !request.getBirthDate().isBlank()) {
+			String raw = request.getBirthDate().replace("-", "");
+			birthDate = LocalDate.parse(raw, DateTimeFormatter.BASIC_ISO_DATE);
+			birthDateStr = birthDate.toString(); // "YYYY-MM-DD"
+		}
+
+		// ⑥ CI값 생성 (이름 + 생년월일 + 전화번호 조합 → SHA-256 Mock CI)
+		String ciValue = ciValueGenerator.generate(request.getName(), birthDateStr, formattedPhone);
+
+		// ⑦ Watchlist 대조 (미가입 요주의 인물 차단)
+		cddService.checkWatchlist(ciValue, request.getName(), birthDateStr);
+
+		// ⑧ marketingAgree 변환
+		String marketingAgreeYN = Boolean.TRUE.equals(request.getMarketingAgree()) ? "Y" : "N";
+
+		// ⑨ User INSERT
+		User user = User.builder().email(request.getEmail()).passwordHash(passwordEncoder.encode(request.getPassword()))
+				.name(request.getName()).phone(formattedPhone).birthDate(birthDate).ciValue(ciValue) // CI값 저장 (AES 암호화는
+																										// TypeHandler가
+																										// 자동 처리)
+				.job(request.getJob()).incomeLevelCode(request.getIncomeLevelCode())
+				.creditScore(request.getCreditScore()).marketingAgree(marketingAgreeYN).build();
+
+		userMapper.insertUser(user);
+
+		// ⑩ 이메일 인증 완료 처리
+		userMapper.updateEmailVerified(user.getUserId(), "Y");
+
+		// ⑪ CDD 초기화 (회원가입 = SIMPLE CDD 통과 → VERIFIED)
+		cddService.initializeCdd(user.getUserId());
+
+		// ⑫ 약관 동의 저장
+		List<UserTermsAgreement> agreements = signupTerms.stream()
+				.filter(t -> request.getAgreedTermsIds().contains(t.getTermsId()))
+				.map(t -> UserTermsAgreement.builder().userId(user.getUserId()).termsId(t.getTermsId()).agreedYn("Y")
+						.agreementAction("AGREE").agreedVersion(t.getVersion()).agreementChannel("WEB")
+						.agreementSource("SIGNUP").agreedAt(LocalDateTime.now(ZoneId.of("Asia/Seoul"))).build())
+				.collect(Collectors.toList());
+
+		if (!agreements.isEmpty()) {
+			userTermsAgreementMapper.insertAgreements(agreements);
+		}
+
+		tokenStore.delete(KEY_VERIFIED + request.getEmail());
+
+		auditLogger.success(AuditLogger.AUTH, AuditLogger.SIGNUP,
+				user.getUserId(), null, null);
+		return user.getUserId();
+	}
 
 	/**
 	 * F-04 | 사용자 로그인
 	 *
-	 * [중요] @Transactional(noRollbackFor = BusinessException.class)
-	 * 로그인 실패 시 incrementLoginFailCount() DB 쓰기가 예외 이후에도
-	 * 반드시 커밋되어야 하므로 BusinessException 발생 시 롤백을 허용하지 않음.
-	 * 이 선언을 제거하거나 readOnly = true 로 변경하면
-	 * 로그인 실패 횟수가 항상 0으로 초기화되어 잠금 기능이 동작하지 않음.
+	 * [중요] @Transactional(noRollbackFor = BusinessException.class) 로그인 실패 시
+	 * incrementLoginFailCount() DB 쓰기가 예외 이후에도 반드시 커밋되어야 하므로 BusinessException 발생 시
+	 * 롤백을 허용하지 않음. 이 선언을 제거하거나 readOnly = true 로 변경하면 로그인 실패 횟수가 항상 0으로 초기화되어 잠금
+	 * 기능이 동작하지 않음.
 	 */
 	@Transactional(noRollbackFor = BusinessException.class)
 	public AuthTokenResult login(LoginRequest request, HttpServletRequest httpRequest) {
@@ -224,26 +231,40 @@ public class AuthService {
 		String userAgent = httpRequest.getHeader("User-Agent");
 
 		User user = userMapper.findByEmail(request.getEmail())
-				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+				.orElseGet(() -> {
+					auditLogger.failure(AuditLogger.AUTH, AuditLogger.LOGIN,
+							null, null, "존재하지 않는 이메일: " + request.getEmail());
+					throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+				});
 
-		validateUserStatus(user);
+		try {
+			validateUserStatus(user);
+		} catch (BusinessException e) {
+			auditLogger.failure(AuditLogger.AUTH, AuditLogger.LOGIN,
+					user.getUserId(), null, e.getErrorCode().getMessage());
+			throw e;
+		}
 
 		if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
 			handleLoginFail(user);
-			adminUserMapper.insertLoginHistory("USER", user.getUserId(), "FAIL", "\ube44\ubc00\ubc88\ud638 \ubd88\uc77c\uce58",
-					ipAddress, request.getDeviceInfo(), userAgent);
+			adminUserMapper.insertLoginHistory("USER", user.getUserId(), "FAIL",
+					"\ube44\ubc00\ubc88\ud638 \ubd88\uc77c\uce58", ipAddress, request.getDeviceInfo(), userAgent);
+			auditLogger.failure(AuditLogger.AUTH, AuditLogger.LOGIN,
+					user.getUserId(), null, "비밀번호 불일치");
 			throw new BusinessException(ErrorCode.INVALID_PASSWORD);
 		}
 
 		if (user.getLoginFailCount() > 0)
 			userMapper.resetLoginFailCount(user.getUserId());
 
-		adminUserMapper.insertLoginHistory("USER", user.getUserId(), "SUCCESS", null,
-				ipAddress, request.getDeviceInfo(), userAgent);
+		adminUserMapper.insertLoginHistory("USER", user.getUserId(), "SUCCESS", null, ipAddress,
+				request.getDeviceInfo(), userAgent);
 		userMapper.updateLastLoginAt(user.getUserId(), LocalDateTime.now(ZoneId.of("Asia/Seoul")));
+		auditLogger.success(AuditLogger.AUTH, AuditLogger.LOGIN,
+				user.getUserId(), null, null);
 
 		String accessToken = jwtTokenProvider.generateAccessToken(user.getUserId(), "ROLE_USER");
-		
+
 		return buildAuthCookies(accessToken, user.getUserId(), request.getDeviceInfo(), ipAddress, userAgent);
 	}
 
@@ -258,13 +279,18 @@ public class AuthService {
 			throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
 		});
 
-		if (session.getExpiresAt().isBefore(LocalDateTime.now()))
+		if (session.getExpiresAt().isBefore(LocalDateTime.now())) {
+			auditLogger.failure(AuditLogger.AUTH, AuditLogger.TOKEN_REFRESH,
+					session.getUserId(), null, "Refresh Token 만료");
 			throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
+		}
 
 		String newAccessToken = jwtTokenProvider.generateAccessToken(session.getUserId(), "ROLE_USER");
 		long expirationSec = jwtTokenProvider.getAccessExpirationSec();
-	 
-	    return cookieUtil.createAccessCookie(newAccessToken, expirationSec);
+		auditLogger.success(AuditLogger.AUTH, AuditLogger.TOKEN_REFRESH,
+				session.getUserId(), null, null);
+
+		return cookieUtil.createAccessCookie(newAccessToken, expirationSec);
 	}
 
 	// ──────────────────────────────────────────────────────────────────
@@ -273,29 +299,24 @@ public class AuthService {
 	@Transactional
 	public void logout(Long userId) {
 		userSessionMapper.revokeAllByUserId(userId);
-		log.info("[로그아웃] userId={}", userId);
+		auditLogger.success(AuditLogger.AUTH, AuditLogger.LOGOUT, userId, null, null);
 	}
 
 	// ──────────────────────────────────────────────────────────────────
 	// F-20 | 아이디 찾기
 	// ──────────────────────────────────────────────────────────────────
 	@Transactional(readOnly = true)
-    public FindIdResponse findId(FindIdRequest request) {
-        String formattedPhone = MaskingUtil.formatPhone(request.getPhone());
- 
-        List<User> candidates = userMapper.findByName(request.getName());
- 
-        User user = candidates.stream()
-            .filter(u -> u.getPhone() != null
-                      && formattedPhone.equals(u.getPhone()))
-            .findFirst()
-            .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
- 
-        return FindIdResponse.builder()
-            .maskedEmail(MaskingUtil.maskEmail(user.getEmail()))
-            .message("이메일 조회 완료")
-            .build();
-    }
+	public FindIdResponse findId(FindIdRequest request) {
+		String formattedPhone = MaskingUtil.formatPhone(request.getPhone());
+
+		List<User> candidates = userMapper.findByName(request.getName());
+
+		User user = candidates.stream().filter(u -> u.getPhone() != null && formattedPhone.equals(u.getPhone()))
+				.findFirst().orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+		return FindIdResponse.builder().maskedEmail(MaskingUtil.maskEmail(user.getEmail())).message("이메일 조회 완료")
+				.build();
+	}
 
 	// ──────────────────────────────────────────────────────────────────
 	// F-22 | 비밀번호 재설정 링크 발송
@@ -305,8 +326,8 @@ public class AuthService {
 		User user = userMapper.findByEmailAndName(request.getEmail(), request.getName())
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-		String token = generateCode() + generateCode();
-		
+		String token = generateResetToken();
+
 		tokenStore.set(KEY_RESET + token, String.valueOf(user.getUserId()), TTL_PW_RESET_SEC);
 		mailService.sendPasswordResetEmail(user.getEmail(), token);
 		log.info("[비밀번호재설정링크발송] userId={}", user.getUserId());
@@ -317,20 +338,25 @@ public class AuthService {
 	// ──────────────────────────────────────────────────────────────────
 	@Transactional
 	public void resetPassword(ResetPasswordRequest request) {
-		if (!request.getNewPassword().equals(request.getNewPasswordConfirm()))
+		if (!request.getNewPassword().equals(request.getNewPasswordConfirm())) {
+			auditLogger.failure(AuditLogger.AUTH, AuditLogger.PASSWORD_CHANGE,
+					null, null, "비밀번호 확인 불일치");
 			throw new BusinessException(ErrorCode.PASSWORD_CONFIRM_MISMATCH);
+		}
 
 		String userIdStr = tokenStore.get(KEY_RESET + request.getToken());
-		if (userIdStr == null)
+		if (userIdStr == null) {
+			auditLogger.failure(AuditLogger.AUTH, AuditLogger.PASSWORD_CHANGE,
+					null, null, "재설정 토큰 만료 또는 없음");
 			throw new BusinessException(ErrorCode.VERIFY_TOKEN_INVALID);
+		}
 
 		Long userId = Long.parseLong(userIdStr);
-		userMapper.updatePassword(userId,
-				passwordEncoder.encode(request.getNewPassword()),
-				LocalDateTime.now());
+		userMapper.updatePassword(userId, passwordEncoder.encode(request.getNewPassword()), LocalDateTime.now());
 		userMapper.revokeAllSessions(userId);
 		tokenStore.delete(KEY_RESET + request.getToken());
-		log.info("[비밀번호재설정] userId={}", userId);
+		auditLogger.success(AuditLogger.AUTH, AuditLogger.PASSWORD_CHANGE,
+				userId, null, "비밀번호 재설정 완료");
 	}
 
 	// ──────────────────────────────────────────────────────────────────
@@ -341,21 +367,29 @@ public class AuthService {
 		String ipAddress = resolveClientIp(httpRequest);
 		String userAgent = httpRequest.getHeader("User-Agent");
 
-		com.bnk.domain.admin.model.AdminUser admin =
-				adminUserMapper.findByUsername(request.getUsername())
-						.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+		com.bnk.domain.admin.model.AdminUser admin = adminUserMapper.findByUsername(request.getUsername())
+				.orElseGet(() -> {
+					auditLogger.adminFailure(AuditLogger.ADMIN, AuditLogger.LOGIN,
+							null, null, "존재하지 않는 관리자 계정: " + request.getUsername());
+					throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+				});
 
-		if (!passwordEncoder.matches(request.getPassword(), admin.getPasswordHash()))
+		if (!passwordEncoder.matches(request.getPassword(), admin.getPasswordHash())) {
+			auditLogger.adminFailure(AuditLogger.ADMIN, AuditLogger.LOGIN,
+					admin.getAdminId(), null, "비밀번호 불일치");
 			throw new BusinessException(ErrorCode.INVALID_PASSWORD);
+		}
 
 		adminUserMapper.updateLastLoginAt(admin.getAdminId(), LocalDateTime.now());
+		auditLogger.adminSuccess(AuditLogger.ADMIN, AuditLogger.LOGIN,
+				admin.getAdminId(), null, null);
 
 		String roles = (admin.getRoleCodes() != null && !admin.getRoleCodes().isEmpty())
 				? String.join(",", admin.getRoleCodes())
 				: "ADMIN";
 
 		String accessToken = jwtTokenProvider.generateAdminAccessToken(admin.getAdminId(), roles);
-		
+
 		return buildAuthCookies(accessToken, admin.getAdminId(), null, ipAddress, userAgent);
 	}
 
@@ -363,19 +397,14 @@ public class AuthService {
 	// private helpers
 	// ──────────────────────────────────────────────────────────────────
 
-	private AuthTokenResult buildAuthCookies(String accessToken, Long userId,
-			String deviceInfo, String ipAddress, String userAgent) {
+	private AuthTokenResult buildAuthCookies(String accessToken, Long userId, String deviceInfo, String ipAddress,
+			String userAgent) {
 		String refreshToken = jwtTokenProvider.generateRefreshToken(userId);
-		long refreshExpSec  = jwtTokenProvider.getRefreshExpirationSec();
+		long refreshExpSec = jwtTokenProvider.getRefreshExpirationSec();
 
-		userSessionMapper.insertSession(UserSession.builder()
-				.userId(userId)
-				.refreshToken(refreshToken)
-				.deviceInfo(deviceInfo)
-				.ipAddress(ipAddress)
-				.userAgent(userAgent)
-				.expiresAt(LocalDateTime.now().plusSeconds(refreshExpSec))
-				.build());
+		userSessionMapper.insertSession(UserSession.builder().userId(userId).refreshToken(refreshToken)
+				.deviceInfo(deviceInfo).ipAddress(ipAddress).userAgent(userAgent)
+				.expiresAt(LocalDateTime.now().plusSeconds(refreshExpSec)).build());
 
 		AuthTokenResult result = new AuthTokenResult();
 		result.setAccessCookie(cookieUtil.createAccessCookie(accessToken, jwtTokenProvider.getAccessExpirationSec()));
@@ -399,12 +428,19 @@ public class AuthService {
 		if (newFailCount >= MAX_LOGIN_FAIL) {
 			LocalDateTime lockUntil = LocalDateTime.now().plusMinutes(LOCK_DURATION_MIN);
 			userMapper.updateLockedUntil(user.getUserId(), lockUntil);
-			log.warn("[로그인실패] 계정 잠금: userId={}, until={}", user.getUserId(), lockUntil);
+			auditLogger.failure(AuditLogger.AUTH, AuditLogger.LOGIN,
+					user.getUserId(), null, "비밀번호 " + MAX_LOGIN_FAIL + "회 오류 — 계정 잠금: until=" + lockUntil);
 		}
 	}
 
-	private String generateCode() {
-		return String.format("%06d", (int) (Math.random() * 1_000_000));
+	/** 이메일 인증코드 — 6자리, SecureRandom 기반 */
+	private String generateVerifyCode() {
+	    return String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
+	}
+
+	/** 비밀번호 재설정 토큰 — UUID 32자 hex */
+	private String generateResetToken() {
+	    return UUID.randomUUID().toString().replace("-", "");
 	}
 
 	private String resolveClientIp(HttpServletRequest request) {
