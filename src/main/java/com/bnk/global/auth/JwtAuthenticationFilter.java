@@ -32,7 +32,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final UserDetailsServiceImpl userDetailsService;
     private final AdminDetailsServiceImpl adminDetailsService;
 
-    /**
+    /** 
      * 필터를 완전히 건너뛸 공개 경로.
      *
      *   로그아웃은 토큰이 만료된 상태에서도 호출될 수 있음.
