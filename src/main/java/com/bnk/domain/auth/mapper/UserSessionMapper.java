@@ -14,6 +14,13 @@ public interface UserSessionMapper {
     /** revoked_yn='N' AND expires_at > SYSTIMESTAMP 조건 */
     Optional<UserSession> findByRefreshToken(@Param("refreshToken") String refreshToken);
 
+    /**
+     * revoke_yn / expires_at 조건 없이 refreshToken으로 세션 조회.
+     * 이미 revoke된 토큰 재사용 감지 시 userId 역추적 전용.
+     * TokenSecurityService.handleStolenToken()에서만 사용.
+     */
+    Optional<UserSession> findAnyByRefreshToken(@Param("refreshToken") String refreshToken);
+
     int revokeSession(@Param("sessionId") Long sessionId);
 
     int revokeByRefreshToken(@Param("refreshToken") String refreshToken);

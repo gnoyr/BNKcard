@@ -40,6 +40,7 @@ import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.util.CiValueGenerator;
 import com.bnk.global.util.CookieUtil;
 import com.bnk.global.util.MaskingUtil;
+import com.bnk.global.util.TokenSecurityService;
 import com.bnk.global.util.TokenStore;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -63,6 +64,7 @@ public class AuthService {
 	private final EmailService mailService;
 	private final CiValueGenerator ciValueGenerator;
 	private final CddService cddService;
+	private final TokenSecurityService tokenSecurityService;
 
 	// ──────────────────────────────────────────────────────────────────
 	// KEY_VERIFY : 인증코드 임시 저장 "email:verify:{email}"
@@ -248,16 +250,21 @@ public class AuthService {
 	// ──────────────────────────────────────────────────────────────────
 	// F-05 | Access Token 재발급
 	// ──────────────────────────────────────────────────────────────────
-	@Transactional(readOnly = true)
+	@Transactional
 	public ResponseCookie refresh(String refreshToken) {
-		UserSession session = userSessionMapper.findByRefreshToken(refreshToken)
-				.orElseThrow(() -> new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID));
+		UserSession session = userSessionMapper.findByRefreshToken(refreshToken).orElseGet(() -> {
+			// 유효한 세션 없음 → 이미 revoke된 토큰인지 확인하여 탈취 감지
+			tokenSecurityService.handleStolenToken(refreshToken);
+			throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
+		});
 
 		if (session.getExpiresAt().isBefore(LocalDateTime.now()))
 			throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
 
 		String newAccessToken = jwtTokenProvider.generateAccessToken(session.getUserId(), "ROLE_USER");
-		return cookieUtil.createAccessCookie(newAccessToken, jwtTokenProvider.getAccessExpirationSec());
+		long expirationSec = jwtTokenProvider.getAccessExpirationSec();
+	 
+	    return cookieUtil.createAccessCookie(newAccessToken, expirationSec);
 	}
 
 	// ──────────────────────────────────────────────────────────────────

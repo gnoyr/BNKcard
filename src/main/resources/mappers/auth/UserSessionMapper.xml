@@ -4,86 +4,86 @@
 
 <mapper namespace="com.bnk.domain.auth.mapper.UserSessionMapper">
 
-    <resultMap id="sessionMap" type="com.bnk.domain.auth.model.UserSession">
-        <id     property="sessionId"    column="session_id"/>
-        <result property="userId"       column="user_id"/>
-        <result property="refreshToken" column="refresh_token"/>
-        <result property="deviceInfo"   column="device_info"/>
-        <result property="ipAddress"    column="ip_address"/>
-        <result property="userAgent"    column="user_agent"/>
-        <result property="revokedYn"    column="revoked_yn"/>
-        <result property="revokedAt"    column="revoked_at"/>
-        <result property="expiresAt"    column="expires_at"/>
-        <result property="createdAt"    column="created_at"/>
-    </resultMap>
+	<resultMap id="sessionMap"
+		type="com.bnk.domain.auth.model.UserSession">
+		<id property="sessionId" column="session_id" />
+		<result property="userId" column="user_id" />
+		<result property="refreshToken" column="refresh_token" />
+		<result property="deviceInfo" column="device_info" />
+		<result property="ipAddress" column="ip_address" />
+		<result property="userAgent" column="user_agent" />
+		<result property="revokedYn" column="revoked_yn" />
+		<result property="revokedAt" column="revoked_at" />
+		<result property="expiresAt" column="expires_at" />
+		<result property="createdAt" column="created_at" />
+	</resultMap>
 
-    <!--
-        [수정] useGeneratedKeys="true" 제거 — Oracle JDBC 드라이버는 이 방식으로
-              시퀀스 기반 PK를 반환하지 못한다(ROWID만 반환).
-              selectKey order="AFTER" + SEQ_USER_SESSIONS.CURRVAL 방식으로 교체.
-              트리거(TRG_USER_SESSIONS_BI)가 NEXTVAL로 session_id를 채번한 직후
-              CURRVAL로 읽어 UserSession.sessionId에 주입한다.
-    -->
-    <insert id="insertSession">
-        <selectKey keyProperty="sessionId" resultType="long" order="AFTER">
-            SELECT SEQ_USER_SESSIONS.CURRVAL FROM DUAL
-        </selectKey>
-        INSERT INTO USER_SESSIONS (
-            user_id, refresh_token, device_info,
-            ip_address, user_agent,
-            revoked_yn, expires_at, created_at
-        ) VALUES (
-            #{userId},
-            #{refreshToken},
-            #{deviceInfo,  jdbcType=VARCHAR},
-            #{ipAddress,   jdbcType=VARCHAR},
-            #{userAgent,   jdbcType=VARCHAR},
-            'N',
-            #{expiresAt},
-            SYSTIMESTAMP
-        )
-    </insert>
+	<insert id="insertSession">
+		<selectKey keyProperty="sessionId" resultType="long"
+			order="AFTER">
+			SELECT SEQ_USER_SESSIONS.CURRVAL FROM DUAL
+		</selectKey>
+		INSERT INTO USER_SESSIONS (
+		user_id, refresh_token, device_info,
+		ip_address, user_agent,
+		revoked_yn, expires_at, created_at
+		) VALUES (
+		#{userId},
+		#{refreshToken},
+		#{deviceInfo, jdbcType=VARCHAR},
+		#{ipAddress, jdbcType=VARCHAR},
+		#{userAgent, jdbcType=VARCHAR},
+		'N',
+		#{expiresAt},
+		SYSTIMESTAMP
+		)
+	</insert>
 
-    <!-- revoked_yn='N' AND expires_at > SYSTIMESTAMP -->
-    <select id="findByRefreshToken" resultMap="sessionMap">
-        SELECT *
-        FROM   USER_SESSIONS
-        WHERE  refresh_token = #{refreshToken}
-          AND  revoked_yn    = 'N'
-          AND  expires_at    > SYSTIMESTAMP
-    </select>
+	<select id="findByRefreshToken" resultMap="sessionMap">
+		SELECT *
+		FROM USER_SESSIONS
+		WHERE refresh_token = #{refreshToken}
+		AND revoked_yn = 'N'
+		AND expires_at > SYSTIMESTAMP
+	</select>
 
-    <update id="revokeSession">
-        UPDATE USER_SESSIONS
-        SET    revoked_yn = 'Y',
-               revoked_at = SYSTIMESTAMP
-        WHERE  session_id = #{sessionId}
-    </update>
+	<update id="revokeSession">
+		UPDATE USER_SESSIONS
+		SET revoked_yn = 'Y',
+		revoked_at = SYSTIMESTAMP
+		WHERE session_id = #{sessionId}
+	</update>
 
-    <update id="revokeByRefreshToken">
-        UPDATE USER_SESSIONS
-        SET    revoked_yn = 'Y',
-               revoked_at = SYSTIMESTAMP
-        WHERE  refresh_token = #{refreshToken}
-          AND  revoked_yn    = 'N'
-    </update>
+	<update id="revokeByRefreshToken">
+		UPDATE USER_SESSIONS
+		SET revoked_yn = 'Y',
+		revoked_at = SYSTIMESTAMP
+		WHERE refresh_token = #{refreshToken}
+		AND revoked_yn = 'N'
+	</update>
 
-    <update id="revokeAllByUserId">
-        UPDATE USER_SESSIONS
-        SET    revoked_yn = 'Y',
-               revoked_at = SYSTIMESTAMP
-        WHERE  user_id    = #{userId}
-          AND  revoked_yn = 'N'
-    </update>
+	<update id="revokeAllByUserId">
+		UPDATE USER_SESSIONS
+		SET revoked_yn = 'Y',
+		revoked_at = SYSTIMESTAMP
+		WHERE user_id = #{userId}
+		AND revoked_yn = 'N'
+	</update>
 
-    <!-- 현재 세션 제외 타 기기 전체 revoke -->
-    <update id="revokeOtherSessions">
-        UPDATE USER_SESSIONS
-        SET    revoked_yn = 'Y',
-               revoked_at = SYSTIMESTAMP
-        WHERE  user_id    = #{userId}
-          AND  session_id != #{currentSessionId}
-          AND  revoked_yn = 'N'
-    </update>
+	<update id="revokeOtherSessions">
+		UPDATE USER_SESSIONS
+		SET revoked_yn = 'Y',
+		revoked_at = SYSTIMESTAMP
+		WHERE user_id = #{userId}
+		AND session_id != #{currentSessionId}
+		AND revoked_yn = 'N'
+	</update>
+
+	<select id="findAnyByRefreshToken" resultMap="sessionMap">
+		SELECT *
+		FROM USER_SESSIONS
+		WHERE refresh_token = #{refreshToken}
+		FETCH FIRST 1 ROWS ONLY
+	</select>
 
 </mapper>

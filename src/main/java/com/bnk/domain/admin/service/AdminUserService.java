@@ -19,6 +19,7 @@ import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.response.PageResponse;
 import com.bnk.global.util.MaskingUtil;
+import com.bnk.global.util.audit.AuditLogger;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,9 +29,10 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class AdminUserService {
 
-    private final AdminUserMapper adminUserMapper;
-    private final ApprovalMapper  approvalMapper;
-    private final CardMapper      cardMapper;
+	private final AdminUserMapper adminUserMapper;
+	private final ApprovalMapper approvalMapper;
+	private final CardMapper cardMapper;
+	private final AuditLogger auditLogger;
 
     /** 대시보드 최근 관리자 로그인 표시 건수 */
     private static final int DASHBOARD_LOGIN_LIMIT = 5;
@@ -78,18 +80,18 @@ public class AdminUserService {
                         .collect(Collectors.toList());
 
         // ④ 카드 현황
-        long totalCards     = adminUserMapper.countCardsByStatus(null);
-        long publishedCards = adminUserMapper.countCardsByStatus("PUBLISHED");
-        long draftCards     = adminUserMapper.countCardsByStatus("DRAFT");
+		long totalCards = adminUserMapper.countCardsByStatus(null);
+		long publishedCards = adminUserMapper.countCardsByStatus("PUBLISHED");
+		long draftCards = adminUserMapper.countCardsByStatus("DRAFT");
 
-        // ⑤ 회원 현황
-        long totalUsers   = adminUserMapper.countUsersByStatus(null);
-        long lockedUsers  = adminUserMapper.countUsersByStatus("LOCKED");
-        long todaySignups = adminUserMapper.countTodaySignups();
+		// ⑤ 회원 현황
+		long totalUsers = adminUserMapper.countUsersByStatus(null);
+		long lockedUsers = adminUserMapper.countUsersByStatus("LOCKED");
+		long todaySignups = adminUserMapper.countTodaySignups();
 
-        // ⑥ 약관 현황
-        long totalTerms     = adminUserMapper.countTermsByStatus(null);
-        long publishedTerms = adminUserMapper.countTermsByStatus("PUBLISHED");
+		// ⑥ 약관 현황
+		long totalTerms = adminUserMapper.countTermsByStatus(null);
+		long publishedTerms = adminUserMapper.countTermsByStatus("PUBLISHED");
 
         return DashboardResponse.builder()
                 .pendingApprovalCount(pendingCount)
@@ -136,9 +138,8 @@ public class AdminUserService {
                         .build())
                 .collect(Collectors.toList());
 
-        adminUserMapper.insertAuditLog(
-                "ADMIN", adminId, "USER_LIST_VIEW",
-                "USERS", null, "관리자 회원 목록 조회", null);
+        auditLogger.adminSuccess(AuditLogger.ADMIN, "USER_LIST_VIEW",
+                adminId, null, "관리자 회원 목록 조회");
 
         return PageResponse.of(content, totalCount, request.getPage(), request.getSize());
     }
@@ -192,9 +193,8 @@ public class AdminUserService {
                         .collect(Collectors.toList());
 
         // ④ AUDIT_LOGS INSERT
-        adminUserMapper.insertAuditLog(
-                "ADMIN", adminId, "USER_DETAIL_VIEW",
-                "USERS", userId, "관리자 회원 상세 조회", null);
+        auditLogger.adminSuccess(AuditLogger.ADMIN, "USER_DETAIL_VIEW",
+                adminId, String.valueOf(userId), "관리자 회원 상세 조회");
 
         return AdminUserResponse.builder()
                 .userId(user.getUserId())
@@ -202,24 +202,24 @@ public class AdminUserService {
                 .maskedEmail(MaskingUtil.maskEmail(user.getEmail()))
                 .maskedPhone(MaskingUtil.maskPhone(user.getPhone()))
                 .birthDate(user.getBirthDate())
-                .job(user.getJob())                                          // 추가
-                .incomeLevelCode(user.getIncomeLevelCode())                  // 추가
+                .job(user.getJob())                                         
+                .incomeLevelCode(user.getIncomeLevelCode())                 
                 .statusCode(user.getStatusCode())
                 .creditScore(user.getCreditScore())
-                .loginFailCount(user.getLoginFailCount())                    // 추가
-                .lockedUntil(user.getLockedUntil())                          // 추가
+                .loginFailCount(user.getLoginFailCount())                    
+                .lockedUntil(user.getLockedUntil())                         
                 .lastLoginAt(user.getLastLoginAt())
-                .lastPasswordChangedAt(user.getLastPasswordChangedAt())      // 추가
-                .isEmailVerified(user.getIsEmailVerified())                  // 추가
-                .isPhoneVerified(user.getIsPhoneVerified())                  // 추가
-                .pushEnabled(user.getPushEnabled())                          // 추가
-                .marketingAgree(user.getMarketingAgree())                    // 추가
-                .privacyAgree(user.getPrivacyAgree())                        // 추가
-                .dormantAt(user.getDormantAt())                              // 추가
-                .withdrawnAt(user.getWithdrawnAt())                          // 추가
+                .lastPasswordChangedAt(user.getLastPasswordChangedAt())     
+                .isEmailVerified(user.getIsEmailVerified())                  
+                .isPhoneVerified(user.getIsPhoneVerified())                 
+                .pushEnabled(user.getPushEnabled())                        
+                .marketingAgree(user.getMarketingAgree())                    
+                .privacyAgree(user.getPrivacyAgree())                        
+                .dormantAt(user.getDormantAt())                             
+                .withdrawnAt(user.getWithdrawnAt())                         
                 .createdAt(user.getCreatedAt())
-                .updatedAt(user.getUpdatedAt())                              // 추가
-                .deletedYn(user.getDeletedYn())                             // 추가
+                .updatedAt(user.getUpdatedAt())                           
+                .deletedYn(user.getDeletedYn())                          
                 .loginHistories(loginHistories)
                 .agreements(agreements)
                 .applications(applications)
@@ -227,7 +227,7 @@ public class AdminUserService {
     }
 
     // ================================================================
-    // 계정 잠금 강제 해제 (기존 그대로)
+    // 계정 잠금 강제 해제
     // ================================================================
 
     @Transactional
@@ -237,9 +237,9 @@ public class AdminUserService {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND,
                     "잠금 해제 대상 유저를 찾을 수 없습니다. userId=" + userId);
         }
-        adminUserMapper.insertAuditLog(
-                "ADMIN", adminId, "UNLOCK_USER",
-                "USER", userId, "계정 잠금 강제 해제", null);
+        auditLogger.adminSuccess(AuditLogger.ADMIN, "UNLOCK_USER",
+                adminId, String.valueOf(userId), "계정 잠금 강제 해제");
+        
         log.info("[계정잠금해제] adminId={} → userId={}", adminId, userId);
     }
     
@@ -254,9 +254,8 @@ public class AdminUserService {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND,
                     "상태 변경 대상 유저를 찾을 수 없습니다. userId=" + userId);
         }
-        adminUserMapper.insertAuditLog(
-                "ADMIN", adminId, "USER_STATUS_CHANGE",
-                "USER", userId, "회원 상태 변경: " + statusCode, null);
+        auditLogger.adminSuccess(AuditLogger.ADMIN, AuditLogger.STATUS_CHANGE,
+                adminId, String.valueOf(userId), "회원 상태 변경: " + statusCode);
         log.info("[회원상태변경] adminId={} → userId={}, status={}", adminId, userId, statusCode);
     }
 }
