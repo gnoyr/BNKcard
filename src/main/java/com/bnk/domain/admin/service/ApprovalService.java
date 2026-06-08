@@ -402,7 +402,7 @@ public class ApprovalService {
             String previousStatus = Optional.ofNullable(
                     cardMapper.findById(cardVersion.getCardId()))
                     .map(Card::getCardStatus)
-                    .orElse("REVIEW");
+                    .orElse("REVIEW"); 
 
             // CARDS → REVIEW
             cardMapper.updateCardStatus(cardVersion.getCardId(), "REVIEW");

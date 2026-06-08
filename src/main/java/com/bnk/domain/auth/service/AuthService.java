@@ -216,7 +216,7 @@ public class AuthService {
 	}
 
 	/**
-	 * F-04 | 사용자 로그인
+	 * 사용자 로그인
 	 *
 	 * [중요] @Transactional(noRollbackFor = BusinessException.class) 로그인 실패 시
 	 * incrementLoginFailCount() DB 쓰기가 예외 이후에도 반드시 커밋되어야 하므로 BusinessException 발생 시
@@ -292,7 +292,7 @@ public class AuthService {
 	}
 
 	// ──────────────────────────────────────────────────────────────────
-	// F-06 | 로그아웃
+	// 로그아웃
 	// ──────────────────────────────────────────────────────────────────
 	@Transactional
 	public void logout(Long userId) {
@@ -301,7 +301,7 @@ public class AuthService {
 	}
 
 	// ──────────────────────────────────────────────────────────────────
-	// F-20 | 아이디 찾기
+	// 아이디 찾기
 	// ──────────────────────────────────────────────────────────────────
 	@Transactional(readOnly = true)
 	public FindIdResponse findId(FindIdRequest request) {
@@ -317,7 +317,7 @@ public class AuthService {
 	}
 
 	// ──────────────────────────────────────────────────────────────────
-	// F-22 | 비밀번호 재설정 링크 발송
+	// 비밀번호 재설정 링크 발송
 	// ──────────────────────────────────────────────────────────────────
 	@Transactional(readOnly = true)
 	public void findPassword(FindPasswordRequest request) {

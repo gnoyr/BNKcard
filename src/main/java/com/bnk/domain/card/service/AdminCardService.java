@@ -178,7 +178,7 @@ public class AdminCardService {
 
         auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.CREATE,
                 adminId, String.valueOf(card.getCardId()),
-                "카드 신규 등록: " + card.getCardName());
+                "카드 신규 등록: " + card.getCardName());  // ← 추가
         return Map.of("cardId", card.getCardId(), "versionId", version.getVersionId(), "approvalId", approval.getApprovalId());
     }
 
