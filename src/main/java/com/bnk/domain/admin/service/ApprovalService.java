@@ -29,6 +29,7 @@ import com.bnk.domain.terms.model.Terms;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.response.PageResponse;
+import com.bnk.global.util.audit.AuditLogger;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -42,12 +43,13 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class ApprovalService {
 
-    private final ApprovalMapper          approvalMapper;
-    private final CardMapper              cardMapper;
-    private final CardVersionMapper       cardVersionMapper;
-    private final CardStatusHistoryMapper cardStatusHistoryMapper;
-    private final ObjectMapper            objectMapper;
-    private final TermsMapper             termsMapper;
+	private final ApprovalMapper approvalMapper;
+	private final CardMapper cardMapper;
+	private final CardVersionMapper cardVersionMapper;
+	private final CardStatusHistoryMapper cardStatusHistoryMapper;
+	private final ObjectMapper objectMapper;
+	private final TermsMapper termsMapper;
+	private final AuditLogger auditLogger;
 
     // ─────────────────────────────────────────────────────────────
     // 결재 목록 조회
@@ -155,9 +157,15 @@ public class ApprovalService {
     public void approve(Long approvalId, @Valid ApprovalActionRequest request, Long adminId) {
 
         ApprovalRequest approval = approvalMapper.findById(approvalId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.APPROVAL_NOT_FOUND));
+                .orElseGet(() -> {
+                    auditLogger.adminFailure(AuditLogger.CARD, AuditLogger.APPROVAL_APPROVE,
+                            adminId, String.valueOf(approvalId), "결재 건 없음");
+                    throw new BusinessException(ErrorCode.APPROVAL_NOT_FOUND);
+                });
 
         if (!"PENDING".equals(approval.getStatusCode())) {
+            auditLogger.adminFailure(AuditLogger.CARD, AuditLogger.APPROVAL_APPROVE,
+                    adminId, String.valueOf(approvalId), "이미 처리된 결재");
             throw new BusinessException(ErrorCode.APPROVAL_ALREADY_DONE);
         }
 
@@ -191,7 +199,8 @@ public class ApprovalService {
         }
 
         approvalMapper.updateRequestStatus(approvalId, "APPROVED", LocalDateTime.now());
-        log.info("[결재승인] 최종 완료: approvalId={}, typeCode={}", approvalId, typeCode);
+        auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.APPROVAL_APPROVE,
+                adminId, String.valueOf(approvalId), "결재 승인 완료: typeCode=" + typeCode);
     }
 
     // ── 약관 승인 처리 ──────────────────────────────────────────────
@@ -226,7 +235,8 @@ public class ApprovalService {
             log.info("[결재승인-약관] 재동의 알림 {}명 발송: termsId={}", userIds.size(), termsId);
         }
 
-        log.info("[결재승인-약관] 완료: termsId={}, {} → PUBLISHED", termsId, previousStatus);
+        auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.APPROVAL_APPROVE,
+                adminId, String.valueOf(termsId), "약관 결재 승인 완료: " + previousStatus + " → PUBLISHED");
     }
 
     // ── 카드 승인 처리 ──────────────────────────────────────────────
@@ -292,8 +302,8 @@ public class ApprovalService {
                             .changedReason("결재 승인 완료: approvalId=" + approvalId)
                             .build());
 
-            log.info("[결재승인-카드] 완료: approvalId={}, cardId={}, versionId={}",
-                    approvalId, cardId, cardVersion.getVersionId());
+            auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.APPROVAL_APPROVE,
+                    adminId, String.valueOf(cardId), "카드 결재 승인 완료: approvalId=" + approvalId);
 
         } catch (JsonProcessingException e) {
             log.error("[결재승인-카드] snapshot 역직렬화 실패: approvalId={}", approvalId, e);
@@ -309,13 +319,21 @@ public class ApprovalService {
     public void reject(Long approvalId, @Valid ApprovalActionRequest request, Long adminId) {
 
         if (request.getComment() == null || request.getComment().isBlank()) {
+            auditLogger.adminFailure(AuditLogger.CARD, AuditLogger.APPROVAL_REJECT,
+                    adminId, String.valueOf(approvalId), "반려 사유 누락");
             throw new BusinessException(ErrorCode.REJECT_COMMENT_REQUIRED);
         }
 
         ApprovalRequest approval = approvalMapper.findById(approvalId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.APPROVAL_NOT_FOUND));
+                .orElseGet(() -> {
+                    auditLogger.adminFailure(AuditLogger.CARD, AuditLogger.APPROVAL_REJECT,
+                            adminId, String.valueOf(approvalId), "결재 건 없음");
+                    throw new BusinessException(ErrorCode.APPROVAL_NOT_FOUND);
+                });
 
         if (!"PENDING".equals(approval.getStatusCode())) {
+            auditLogger.adminFailure(AuditLogger.CARD, AuditLogger.APPROVAL_REJECT,
+                    adminId, String.valueOf(approvalId), "이미 처리된 결재");
             throw new BusinessException(ErrorCode.APPROVAL_ALREADY_DONE);
         }
 
@@ -342,7 +360,8 @@ public class ApprovalService {
         }
 
         approvalMapper.updateRequestStatus(approvalId, "REJECTED", LocalDateTime.now());
-        log.info("[결재반려] 완료: approvalId={}, typeCode={}", approvalId, typeCode);
+        auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.APPROVAL_REJECT,
+                adminId, String.valueOf(approvalId), "결재 반려 완료: typeCode=" + typeCode);
     }
 
     // ── 약관 반려 처리 ──────────────────────────────────────────────
@@ -362,7 +381,8 @@ public class ApprovalService {
                 termsId, previousStatus, "DRAFT", adminId,
                 "결재 반려: approvalId=" + approval.getApprovalId());
 
-        log.info("[결재반려-약관] 완료: termsId={}, {} → DRAFT", termsId, previousStatus);
+        auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.APPROVAL_REJECT,
+                adminId, String.valueOf(termsId), "약관 결재 반려 완료: " + previousStatus + " → DRAFT");
     }
 
     // ── 카드 반려 처리 ──────────────────────────────────────────────
@@ -392,8 +412,8 @@ public class ApprovalService {
                             .changedReason("결재 반려: approvalId=" + approvalId)
                             .build());
 
-            log.info("[결재반려-카드] 완료: approvalId={}, cardId={}, versionId={}",
-                    approvalId, cardVersion.getCardId(), approval.getTargetId());
+            auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.APPROVAL_REJECT,
+                    adminId, String.valueOf(cardVersion.getCardId()), "카드 결재 반려 완료: approvalId=" + approvalId);
         }
     }
 }
