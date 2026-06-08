@@ -390,7 +390,7 @@ public class AdminCardService {
             return;
         }
 
-        cardMapper.updateCardStatus(cardId, newStatus);
+        cardMapper.updateCardStatus(cardId, newStatus);   // ← cardMapper2 → cardMapper
 
         cardStatusHistoryMapper.insertCardStatusHistory(
                 CardStatusHistory.builder()
@@ -602,7 +602,8 @@ public class AdminCardService {
         try {
             return objectMapper.writeValueAsString(snapshot);
         } catch (JsonProcessingException e) {
-            log.error("[스냅샷] 직렬화 실패", e);
+            auditLogger.adminFailure(AuditLogger.CARD, AuditLogger.CREATE,
+                    null, null, "스냅샷 직렬화 실패: " + e.getMessage());
             throw new BusinessException(ErrorCode.INTERNAL_ERROR, "스냅샷 생성 실패");
         }
     }
