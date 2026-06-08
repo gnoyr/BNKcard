@@ -269,8 +269,12 @@ async function initMain() {
             ).join('');
         }
     } catch (err) {
-        if (err.status !== 403 && err.status < 500)
+        if (err.status === 403) {
+            Toast.error('접근 권한이 없습니다. 다시 로그인해 주세요.');
+            setTimeout(() => location.replace(LOGIN_URL), 1500);
+        } else if (err.status < 500) {
             Toast.error('내 정보를 불러오지 못했습니다.');
+        }
     }
     /* [2] 보유 카드 / 신청 현황 탭 */
     const ownedTab = document.getElementById('tab-owned');
@@ -388,10 +392,10 @@ async function initEdit() {
         document.getElementById('currentPhone').textContent = user.phone ?? '미등록';
         document.getElementById('job').value = user.job ?? '';
         document.getElementById('incomeLevelCode').value = user.incomeLevelCode ?? '';
-		const creditScoreEl = document.getElementById('creditScore');
-		if (creditScoreEl && user.creditScore != null) {
-		    creditScoreEl.value = user.creditScore;
-		}
+        const creditScoreEl = document.getElementById('creditScore');
+        if (creditScoreEl && user.creditScore != null) {
+            creditScoreEl.value = user.creditScore;
+        }
         const pushEl = document.getElementById('pushEnabled');
         if (pushEl) pushEl.checked = user.pushEnabled === 'Y' || user.pushEnabled === true;
         const mktEl = document.getElementById('marketingAgree');

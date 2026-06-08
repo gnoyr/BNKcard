@@ -41,16 +41,22 @@ import lombok.extern.slf4j.Slf4j;
  * CORS allowedHeaders 범위 축소:
  * 변경 전: List.of("*") — 모든 헤더 허용
  * 변경 후: 실제 사용하는 헤더만 명시
+ *
+ * [추가 수정] 2026-06-08
+ * - /api/auth/logout, /api/admin/auth/logout permitAll() 추가
+ *   → 토큰 만료 상태에서도 로그아웃 가능하도록 (쿠키 삭제 보장)
+ * - CleanUrlController 가 처리하는 페이지 경로 permitAll() 추가
+ *   → /login, /signup, /mypage 등 clean URL 접근 시 401 차단 방지
  */
 @Slf4j
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
-	private final JwtAuthenticationFilter jwtAuthenticationFilter;
-	private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
-	private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
-	private final RedisRateLimitFilter rateLimitFilter;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
+    private final RedisRateLimitFilter rateLimitFilter;
 
     @Value("${cors.allowed-origins}")
     private String allowedOrigins;
@@ -92,10 +98,10 @@ public class SecurityConfig {
                 .accessDeniedHandler(jwtAccessDeniedHandler))
             .authorizeHttpRequests(auth -> auth
 
-                // ── 인증 없이 접근 가능한 공개 경로 ──────────────────────────
-                // 회원 인증 (로그인, 회원가입, 이메일 인증, 비밀번호 재설정 등)
+                // ── 회원 인증 API ──────────────────────────────────────────────
                 .requestMatchers(
                     "/api/auth/login",
+                    "/api/auth/logout",
                     "/api/auth/signup",
                     "/api/auth/send-verify-code",
                     "/api/auth/verify-email",
@@ -105,13 +111,14 @@ public class SecurityConfig {
                     "/api/auth/refresh"
                 ).permitAll()
 
-                // 관리자 인증
+                // ── 관리자 인증 API ────────────────────────────────────────────
                 .requestMatchers(
                     "/api/admin/auth/login",
+                    "/api/admin/auth/logout",
                     "/api/admin/auth/refresh"
                 ).permitAll()
 
-                // 카드 공개 조회 (비로그인 사용자도 카드 목록·상세 조회 가능)
+                // ── 카드 공개 조회 (비로그인 사용자 허용) ────────────────────
                 .requestMatchers(
                     "/api/cards",
                     "/api/cards/**",
@@ -119,7 +126,7 @@ public class SecurityConfig {
                     "/api/terms/packages/**"
                 ).permitAll()
 
-                // 정적 리소스
+                // ── 정적 리소스 ────────────────────────────────────────────────
                 .requestMatchers(
                     "/",
                     "/*.html",
@@ -131,17 +138,32 @@ public class SecurityConfig {
                     "/admin/**",
                     "/auth/**",
                     "/mypage/**",
+                    "/card/**",
                     "/favicon.ico",
                     "/error"
                 ).permitAll()
 
-                // ── 관리자 API — 관리자 역할 필수 ─────────────────────────────
-                // JwtAuthenticationFilter 에서 ROLE_SUPER_ADMIN 등 관리자 권한이 부여됨
+                // ── CleanUrlController 페이지 경로 ────────────────────────────
+                // CleanUrlController 가 처리하는 경로들.
+                // 이 경로들이 없으면 Spring Security 가 컨트롤러 도달 전에 401 반환.
+                .requestMatchers(
+                    "/login",
+                    "/signup",
+                    "/find-id",
+                    "/reset-password",
+                    "/admin/login",
+                    "/admin/cards",
+                    "/admin/users",
+                    "/admin/approvals",
+                    "/admin/approvals/**"
+                ).permitAll()
+
+                // ── 관리자 API — 관리자 역할 필수 ────────────────────────────
                 .requestMatchers("/api/admin/**")
                     .hasAnyRole("SUPER_ADMIN", "MANAGER", "OPERATOR",
                                 "CARD_MANAGER", "REVIEWER")
 
-                // ── 나머지 모든 API — 로그인 필수 ─────────────────────────────
+                // ── 나머지 모든 요청 — 로그인 필수 ──────────────────────────
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -161,7 +183,6 @@ public class SecurityConfig {
         List<String> origins = Arrays.stream(allowedOrigins.split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
-            // 와일드카드(*) origin은 credentials=true와 함께 사용 불가 — 기동 시 차단
             .filter(s -> {
                 if ("*".equals(s)) {
                     log.error("[CORS] 와일드카드(*) origin은 허용되지 않습니다. cors.allowed-origins 설정을 확인하세요.");
@@ -173,7 +194,6 @@ public class SecurityConfig {
 
         configuration.setAllowedOrigins(origins);
 
-        // 와일드카드 → 실제 사용 헤더만 명시
         configuration.setAllowedHeaders(List.of(
             "Content-Type",
             "Authorization",
