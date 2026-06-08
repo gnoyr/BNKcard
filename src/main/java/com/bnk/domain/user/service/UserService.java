@@ -115,8 +115,8 @@ public class UserService {
     // ================================================================
     @Transactional(readOnly = true)
     public CardStatusResponse getMyCards(Long userId) {
-        List<OwnedCardRow>       ownedCards   = userMapper.selectOwnedCards(userId);
-        List<CardApplicationRow> applications = userMapper.selectCardApplications(userId);
+		List<OwnedCardRow> ownedCards = userMapper.selectOwnedCards(userId);
+		List<CardApplicationRow> applications = userMapper.selectCardApplications(userId);
 
         List<CardStatusResponse.OwnedCardDto> ownedDtos = ownedCards.stream()
                 .map(r -> CardStatusResponse.OwnedCardDto.builder()
