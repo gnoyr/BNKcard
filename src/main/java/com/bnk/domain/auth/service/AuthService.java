@@ -388,8 +388,8 @@ public class AuthService {
 				admin.getAdminId(), null, null);
 
 		String roles = (admin.getRoleCodes() != null && !admin.getRoleCodes().isEmpty())
-				? String.join(",", admin.getRoleCodes())
-				: "ADMIN";
+		        ? String.join(",", admin.getRoleCodes())
+		        : "";
 
 		String accessToken = jwtTokenProvider.generateAdminAccessToken(admin.getAdminId(), roles);
 
