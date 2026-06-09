@@ -12,6 +12,8 @@ import com.bnk.ai.qa.solutions.metric.Metric.MetricConfiguration;
 import com.bnk.ai.qa.solutions.metric.metadata.FaithfulnessMetadata;
 import com.bnk.ai.qa.solutions.sample.Sample;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -115,17 +117,20 @@ public class FaithfulnessMetric extends AbstractMultiModelMetric<FaithfulnessMet
 
     private final String statementGeneratorTemplate;
     private final String nliStatementTemplate;
+    private final Clock clock;
 
     @Builder(toBuilder = true)
     protected FaithfulnessMetric(
             final MultiModelExecutor executor,
             final String statementGeneratorTemplate,
-            final String nliStatementTemplate) {
+            final String nliStatementTemplate,
+            Clock clock) {
         super(executor);
         this.statementGeneratorTemplate =
                 statementGeneratorTemplate != null ? statementGeneratorTemplate : DEFAULT_STATEMENT_GENERATOR_TEMPLATE;
         this.nliStatementTemplate =
                 nliStatementTemplate != null ? nliStatementTemplate : DEFAULT_NLI_STATEMENT_TEMPLATE;
+        this.clock = clock;
     }
 
     /**
@@ -155,7 +160,7 @@ public class FaithfulnessMetric extends AbstractMultiModelMetric<FaithfulnessMet
 
     @Override
     public CompletableFuture<Double> singleTurnScoreAsync(final FaithfulnessConfig config, final Sample sample) {
-        final Instant startTime = Instant.now();
+        final Instant startTime = Instant.now(clock);
         final List<String> modelIds =
                 config.models != null && !config.models.isEmpty() ? config.models : executor.getModelIds();
 
@@ -332,7 +337,7 @@ public class FaithfulnessMetric extends AbstractMultiModelMetric<FaithfulnessMet
             }
 
             // Notify with full results
-            final Duration duration = Duration.between(startTime, Instant.now());
+            final Duration duration = Duration.between(startTime, Instant.now(clock));
             notifier.afterMetricEvaluation(MetricEvaluationResult.builder()
                     .metricName(getName())
                     .sample(sample)

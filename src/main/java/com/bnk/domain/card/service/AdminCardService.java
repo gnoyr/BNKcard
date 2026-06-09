@@ -1,6 +1,7 @@
 package com.bnk.domain.card.service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -76,6 +77,8 @@ public class AdminCardService {
 	private final ObjectMapper objectMapper;
 	private final CardStatusHistoryMapper cardStatusHistoryMapper;
 	private final AuditLogger auditLogger;
+	
+	private static final ZoneId KST_ZONE = ZoneId.of("Asia/Seoul");
 
     // ══════════════════════════════════════════════════════════════════
     // B-03 카드 신규 등록
@@ -222,14 +225,14 @@ public class AdminCardService {
                 .visibleYn(request.getVisibleYn()       != null ? request.getVisibleYn()     : existing.getVisibleYn())
                 .deletedYn(request.getDeletedYn()       != null ? request.getDeletedYn()     : existing.getDeletedYn())
                 .deletedAt(("Y".equals(request.getDeletedYn()) && !"Y".equals(existing.getDeletedYn()))
-                        ? LocalDateTime.now() : existing.getDeletedAt())
+                        ? LocalDateTime.now(KST_ZONE) : existing.getDeletedAt())
                 .cardStatus(request.getCardStatus() != null ? request.getCardStatus() : existing.getCardStatus())
                 .approvalRequiredYn(existing.getApprovalRequiredYn())
                 .applicationCount(existing.getApplicationCount())
                 .createdBy(existing.getCreatedBy())
                 .createdAt(existing.getCreatedAt())
                 .updatedBy(adminId)
-                .updatedAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now(KST_ZONE))
                 .build();
 
         // 상태 변경 이력

@@ -12,7 +12,6 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -37,10 +36,10 @@ import lombok.extern.slf4j.Slf4j;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter      jwtAuthenticationFilter;
-    private final JwtAuthenticationEntryPoint  jwtAuthenticationEntryPoint;
-    private final JwtAccessDeniedHandler       jwtAccessDeniedHandler;
-    private final RedisRateLimitFilter         rateLimitFilter;
+	private final JwtAuthenticationFilter jwtAuthenticationFilter;
+	private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+	private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
+	private final RedisRateLimitFilter rateLimitFilter;
 
     @Value("${cors.allowed-origins}")
     private String allowedOrigins;
@@ -74,7 +73,15 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(AbstractHttpConfigurer::disable)
+            // ── CSRF ────────────────────────────────────────────────────
+            // 이 애플리케이션은 JWT 기반 Stateless 인증을 사용합니다.
+            // 세션(HttpSession)을 사용하지 않으므로 서버가 CSRF 토큰을 저장·검증할 수 없고,
+            // 쿠키 대신 Authorization 헤더로 토큰을 전달하므로 CSRF 공격 벡터가 존재하지 않습니다.
+            // 핸들러를 명시적으로 설정합니다.
+            .csrf(csrf -> csrf
+                .csrfTokenRequestHandler(new org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler())
+                .ignoringRequestMatchers("/**")
+            )
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .exceptionHandling(exception -> exception
@@ -96,7 +103,6 @@ public class SecurityConfig {
                         "script-src 'self' 'unsafe-inline'; " +
                         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
                         "font-src 'self' https://fonts.gstatic.com; " +
-                        // [수정] busanbank.co.kr 이미지 도메인 추가
                         // 카드 이미지가 https://www.busanbank.co.kr 에서 로드되므로 허용
                         "img-src 'self' data: " +
                             "https://bnkcard.store " +

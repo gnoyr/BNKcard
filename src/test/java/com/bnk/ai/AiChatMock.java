@@ -5,7 +5,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doAnswer;
 
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -42,17 +44,25 @@ import com.bnk.ai.qa.solutions.sample.Sample;
 public class AiChatMock {
 	
     @MockitoBean private com.bnk.domain.card.scheduler.CardScheduler cardScheduler;
+    @MockitoBean private Clock clock;
     private Sample sample;
-    @Mock private MultiModelExecutor mockExecutor; 
+    @Mock private MultiModelExecutor mockExecutor;
     private ResponseRelevancyMetric responseRelevancy;
     private FaithfulnessMetric faithfulness;
     private ContextRecallMetric contextRecall;
     private ContextPrecisionMetric contextPrecision;
+
+    private static final Instant FIXED_INSTANT = Instant.parse("2026-06-09T10:00:00Z");
+    private static final Duration FIXED_DURATION = Duration.ZERO;
     
     
     @BeforeEach
     void setUp() throws Exception {
         MockitoAnnotations.openMocks(this);
+
+        // Clock mock 스텁 — 시스템 Clock 사용 금지
+        given(clock.instant()).willReturn(FIXED_INSTANT);
+        given(clock.getZone()).willReturn(java.time.ZoneOffset.UTC);
 
         this.responseRelevancy = ResponseRelevancyMetric.builder().executor(mockExecutor).build();
         this.faithfulness = FaithfulnessMetric.builder().executor(mockExecutor).build();
@@ -97,11 +107,11 @@ public class AiChatMock {
             
             Object dummyResponse;
 
-            if (responseClass.getSimpleName().contains("GeneratedQuestionsResponse")) {
+            if (ResponseRelevancyMetric.GeneratedQuestionsResponse.class.isAssignableFrom(responseClass)) {
                 var dummyQuestion = new ResponseRelevancyMetric.GeneratedQuestion("연회비가 얼마인가요?", 0);
                 dummyResponse = new ResponseRelevancyMetric.GeneratedQuestionsResponse(List.of(dummyQuestion));
-                
-            } else if (responseClass.getSimpleName().equals("RelevanceResponse")) {
+
+            } else if (RelevanceResponse.class.isAssignableFrom(responseClass)) {
                 dummyResponse = new RelevanceResponse(true, "Reasoning is fine");
                 
             } else {
@@ -148,7 +158,7 @@ public class AiChatMock {
                 });
             }
             
-            return List.of(ModelResult.success("gemini-model", dummyResponse, Duration.ZERO, "dummy"));
+            return List.of(ModelResult.success("gemini-model", dummyResponse, FIXED_DURATION, "dummy"));
             
         }).when(mockExecutor).executeLlm(any(), anyString(), any());
 
@@ -194,7 +204,7 @@ public class AiChatMock {
             });
             
             CompletableFuture<ModelResult<Object>> future = CompletableFuture.completedFuture(
-                ModelResult.success(modelId, dummyResponse, Duration.ZERO, "dummy")
+                ModelResult.success(modelId, dummyResponse, FIXED_DURATION, "dummy")
             );
             
             System.out.println(">>> [executeLlmOnModelAsync 반환] CompletableFuture 생성");
@@ -206,7 +216,7 @@ public class AiChatMock {
         float[] dummy = new float[]{0.1f, 0.1f};
         given(mockExecutor.executeEmbeddingsAsync(any())).willReturn(
             CompletableFuture.completedFuture(
-                List.of(ModelResult.success("gemini-model", List.of(dummy, dummy), Duration.ZERO, "dummy"))
+                List.of(ModelResult.success("gemini-model", List.of(dummy, dummy), FIXED_DURATION, "dummy"))
             )
         );
         
