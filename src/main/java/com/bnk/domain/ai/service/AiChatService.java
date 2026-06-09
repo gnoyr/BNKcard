@@ -18,6 +18,7 @@ import com.bnk.domain.ai.dto.AiChatResponse;
 import com.bnk.domain.ai.mapper.AiChatLogMapper;
 import com.bnk.domain.ai.model.AiChatLog;
 import com.bnk.domain.spending.service.CardSearchService;
+import com.bnk.global.log.annotation.Loggable;
 
 import jakarta.validation.Valid;
 
@@ -60,6 +61,7 @@ public class AiChatService {
     }
 	
     @Transactional	
+    @Loggable(eventType = "CHAT_QUERY", targetType = "CHAT", actionDetail = "챗봇질문")
 	public AiChatResponse chat(@Valid AiChatRequest request, Long userId) {
         String userInput = request.getUserInput();
 
