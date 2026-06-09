@@ -137,3 +137,62 @@ CREATE INDEX IDX_WATCHLIST_NAME_BD ON WATCHLIST(name, birth_date_hash);
 --    기존 Watchlist 데이터가 없다면 이 단계 생략.
 
 COMMIT;
+
+
+
+-- log table
+
+-- ① 시퀀스
+CREATE SEQUENCE SEQ_EVENT_LOGS START WITH 1 INCREMENT BY 1;
+
+-- ② 부모 테이블
+CREATE TABLE EVENT_LOGS (
+    log_id        NUMBER PRIMARY KEY,
+    event_type    VARCHAR2(50)  NOT NULL,
+    event_status  VARCHAR2(10)  NOT NULL,  -- SUCCESS / FAILURE
+    user_id       NUMBER,
+    request_ip    VARCHAR2(50),
+    duration_ms   NUMBER,
+    created_at    TIMESTAMP DEFAULT SYSTIMESTAMP,
+    CONSTRAINT fk_evlog_user FOREIGN KEY (user_id) REFERENCES USERS(user_id)
+);
+
+-- 트리거
+CREATE OR REPLACE TRIGGER TRG_EVENT_LOGS_BI
+BEFORE INSERT ON EVENT_LOGS FOR EACH ROW
+WHEN (NEW.log_id IS NULL)
+BEGIN
+    :NEW.log_id := SEQ_EVENT_LOGS.NEXTVAL;
+END;
+/
+
+-- ③ 카드 이벤트 자식 (PK = FK)
+CREATE TABLE CARD_EVENT_LOGS (
+    log_id        NUMBER PRIMARY KEY,
+    card_id       VARCHAR2(20),
+    action_detail VARCHAR2(100),
+    result_code   VARCHAR2(30),
+    error_message VARCHAR2(500),
+    CONSTRAINT fk_card_evlog FOREIGN KEY (log_id) REFERENCES EVENT_LOGS(log_id)
+);
+
+-- ④ 약관 이벤트 자식
+CREATE TABLE TERMS_EVENT_LOGS (
+    log_id        NUMBER PRIMARY KEY,
+    terms_id      NUMBER,
+    action_detail VARCHAR2(100),
+    error_message VARCHAR2(500),
+    CONSTRAINT fk_terms_evlog FOREIGN KEY (log_id) REFERENCES EVENT_LOGS(log_id)
+);
+
+-- ⑤ 챗봇 이벤트 자식
+CREATE TABLE CHAT_EVENT_LOGS (
+    log_id           NUMBER PRIMARY KEY,
+    session_id       VARCHAR2(100),
+    query_text       VARCHAR2(1000),
+    qdrant_hit_count NUMBER,
+    top_score        NUMBER(5,4),
+    used_fallback    CHAR(1) DEFAULT 'N',
+    error_message    VARCHAR2(500),
+    CONSTRAINT fk_chat_evlog FOREIGN KEY (log_id) REFERENCES EVENT_LOGS(log_id)
+);
