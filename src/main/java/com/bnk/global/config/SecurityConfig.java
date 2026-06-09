@@ -191,8 +191,7 @@ public class SecurityConfig {
 
                 // ── 관리자 API — 역할 필수 ───────────────────────────────
                 .requestMatchers("/api/admin/**")
-                    .hasAnyRole("SUPER_ADMIN", "MANAGER", "OPERATOR",
-                                "CARD_MANAGER", "REVIEWER")
+                .hasAnyRole("SUPER_ADMIN", "MANAGER", "OPERATOR")
 
                 // ── 나머지 — 로그인 필수 ────────────────────────────────
                 .anyRequest().authenticated()
