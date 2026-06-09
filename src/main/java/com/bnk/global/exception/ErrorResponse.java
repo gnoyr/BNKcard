@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Getter
@@ -20,12 +21,13 @@ public class ErrorResponse {
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private final LocalDateTime timestamp;
+    private static final ZoneId KST_ZONE = ZoneId.of("Asia/Seoul");
 
     public static ErrorResponse of(ErrorCode errorCode) {
         return ErrorResponse.builder()
                 .code(errorCode.getCode())
                 .message(errorCode.getMessage())
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(KST_ZONE))
                 .build();
     }
 
@@ -34,7 +36,7 @@ public class ErrorResponse {
                 .code(errorCode.getCode())
                 .message(errorCode.getMessage())
                 .detail(detail)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(KST_ZONE))
                 .build();
     }
 
@@ -43,7 +45,7 @@ public class ErrorResponse {
                 .code(ErrorCode.INVALID_INPUT.getCode())
                 .message(ErrorCode.INVALID_INPUT.getMessage())
                 .errors(fieldErrors)
-                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now(KST_ZONE))
                 .build();
     }
 

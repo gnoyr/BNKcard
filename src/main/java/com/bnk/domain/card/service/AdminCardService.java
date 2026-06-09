@@ -1,6 +1,7 @@
 package com.bnk.domain.card.service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -53,13 +54,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * 관리자 카드 서비스 (리팩토링)
- *
- * 변경 이력:
- *  - CardMapper2 의존성 제거 → CardMapper 단일 사용
- *  - CardVersionMapper2 → CardVersionMapper (이름 통일)
- *  - changeCardStatus(): cardMapper2.getCardDetail() → cardMapper.findById()
- *  - createVersionAndApproval(): cardVersionMapper2 → cardVersionMapper
+ * 관리자 카드 서비스
  */
 @Slf4j
 @Service
@@ -77,6 +72,15 @@ public class AdminCardService {
 	private final ObjectMapper objectMapper;
 	private final CardStatusHistoryMapper cardStatusHistoryMapper;
 	private final AuditLogger auditLogger;
+	
+	private static final ZoneId   KST_ZONE                 = ZoneId.of("Asia/Seoul");
+	private static final String   VERSION_STATUS_REVIEW    = "REVIEW";
+	private static final String   APPROVAL_STATUS_PENDING  = "PENDING";
+	private static final String   REQUEST_TYPE_CARD_UPDATE = "CARD_UPDATE";
+	private static final String   MAP_KEY_CARD_ID          = "cardId";
+	private static final String   MAP_KEY_VERSION_ID       = "versionId";
+	private static final String   MAP_KEY_APPROVAL_ID      = "approvalId";
+	private static final String   DEFAULT_CHANGED_REASON   = "관리자 수동 변경";
 
     // ══════════════════════════════════════════════════════════════════
     // B-03 카드 신규 등록
@@ -86,29 +90,7 @@ public class AdminCardService {
     public Map<String, Long> createCard(@Valid CardCreateRequest request, Long adminId) {
     	
         // 1. CARDS INSERT (DRAFT)
-        Card card = Card.builder()
-                .cardCode(request.getCardCode())
-                .cardType(request.getCardType())
-                .cardName(request.getCardName())
-                .companyName(request.getCompanyName())
-                .companyCode(request.getCompanyCode() != null ? request.getCompanyCode() : "01")
-                .brandName(request.getBrandName())
-                .annualFeeDomestic(request.getAnnualFeeDomestic())
-                .annualFeeOverseas(request.getAnnualFeeOverseas())
-                .previousMonthSpend(request.getPreviousMonthSpend() != null
-                        ? request.getPreviousMonthSpend() : 0L)
-                .minimumAge(request.getMinimumAge())
-                .maximumAge(request.getMaximumAge())
-                .creditLimitMin(request.getCreditLimitMin())
-                .creditLimitMax(request.getCreditLimitMax())
-                .targetUser(request.getTargetUser())
-                .summaryDescription(request.getSummaryDescription())
-                .searchableYn(request.getSearchableYn() != null ? request.getSearchableYn() : "Y")
-                .visibleYn(request.getVisibleYn() != null ? request.getVisibleYn() : "Y")
-                .publishStartAt(request.getPublishStartAt())
-                .publishEndAt(request.getPublishEndAt())
-                .createdBy(adminId)
-                .build();
+        Card card = buildNewCard(request, adminId);
 
         cardMapper.insertCard(card);
 
@@ -143,7 +125,7 @@ public class AdminCardService {
         CardVersion version = CardVersion.builder()
                 .cardId(card.getCardId())
                 .versionNo("v1.0")
-                .versionStatus("REVIEW")
+                .versionStatus(VERSION_STATUS_REVIEW)
                 .snapshotJson(snapshotJson)
                 .changeSummary(request.getChangeSummary())
                 .createdBy(adminId)
@@ -164,7 +146,7 @@ public class AdminCardService {
                 .approvalId(approval.getApprovalId())
                 .approverAdminId(1L)
                 .approvalOrder(1)
-                .statusCode("PENDING")
+                .statusCode(APPROVAL_STATUS_PENDING)
                 .build();
         approvalMapper.insertApprovalLine(line);
 
@@ -181,7 +163,7 @@ public class AdminCardService {
         auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.CREATE,
                 adminId, String.valueOf(card.getCardId()),
                 "카드 신규 등록: " + card.getCardName());  // ← 추가
-        return Map.of("cardId", card.getCardId(), "versionId", version.getVersionId(), "approvalId", approval.getApprovalId());
+        return Map.of(MAP_KEY_CARD_ID, card.getCardId(), MAP_KEY_VERSION_ID, version.getVersionId(), MAP_KEY_APPROVAL_ID, approval.getApprovalId());
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -198,42 +180,7 @@ public class AdminCardService {
             throw new BusinessException(ErrorCode.CARD_NOT_FOUND);
         }
 
-        Card updatedSnapshot = Card.builder()
-                .cardId(cardId)
-                .cardCode(existing.getCardCode())
-                .cardType(request.getCardType()   != null ? request.getCardType()   : existing.getCardType())
-                .cardName(request.getCardName()   != null ? request.getCardName()   : existing.getCardName())
-                .companyName(request.getCompanyName() != null ? request.getCompanyName() : existing.getCompanyName())
-                .companyCode(existing.getCompanyCode())
-                .brandName(request.getBrandName() != null ? request.getBrandName() : existing.getBrandName())
-                .annualFeeDomestic(request.getAnnualFeeDomestic() != null
-                        ? request.getAnnualFeeDomestic() : existing.getAnnualFeeDomestic())
-                .annualFeeOverseas(request.getAnnualFeeOverseas() != null
-                        ? request.getAnnualFeeOverseas() : existing.getAnnualFeeOverseas())
-                .previousMonthSpend(request.getPreviousMonthSpend() != null
-                        ? request.getPreviousMonthSpend() : existing.getPreviousMonthSpend())
-                .minimumAge(request.getMinimumAge() != null ? request.getMinimumAge() : existing.getMinimumAge())
-                .maximumAge(request.getMaximumAge() != null ? request.getMaximumAge() : existing.getMaximumAge())
-                .creditLimitMin(request.getCreditLimitMin() != null
-                        ? request.getCreditLimitMin() : existing.getCreditLimitMin())
-                .creditLimitMax(request.getCreditLimitMax() != null
-                        ? request.getCreditLimitMax() : existing.getCreditLimitMax())
-                .targetUser(request.getTargetUser() != null ? request.getTargetUser() : existing.getTargetUser())
-                .summaryDescription(request.getSummaryDescription() != null
-                        ? request.getSummaryDescription() : existing.getSummaryDescription())
-                .searchableYn(request.getSearchableYn() != null ? request.getSearchableYn() : existing.getSearchableYn())
-                .visibleYn(request.getVisibleYn()       != null ? request.getVisibleYn()     : existing.getVisibleYn())
-                .deletedYn(request.getDeletedYn()       != null ? request.getDeletedYn()     : existing.getDeletedYn())
-                .deletedAt(("Y".equals(request.getDeletedYn()) && !"Y".equals(existing.getDeletedYn()))
-                        ? LocalDateTime.now() : existing.getDeletedAt())
-                .cardStatus(request.getCardStatus() != null ? request.getCardStatus() : existing.getCardStatus())
-                .approvalRequiredYn(existing.getApprovalRequiredYn())
-                .applicationCount(existing.getApplicationCount())
-                .createdBy(existing.getCreatedBy())
-                .createdAt(existing.getCreatedAt())
-                .updatedBy(adminId)
-                .updatedAt(LocalDateTime.now())
-                .build();
+        Card updatedSnapshot = applyUpdates(cardId, existing, request, adminId);
 
         // 상태 변경 이력
         String previousStatus = existing.getCardStatus();
@@ -250,48 +197,9 @@ public class AdminCardService {
             );
         }
 
-        List<CardBenefit> benefits = cardBenefitMapper.findByCardId(cardId);
-        List<CardImage>   images   = cardImageMapper.findByCardId(cardId);
+        cardMapper.updateCard(updatedSnapshot);
 
-        CardSnapshot snapshot = CardSnapshot.builder()
-                .card(updatedSnapshot)
-                .benefits(benefits)
-                .images(images)
-                .build();
-        String snapshotJson = toSnapshotJson(snapshot);
-
-        int nextNo = cardVersionMapper.getLatestVersionSeq(cardId) + 1;  
-        CardVersion version = CardVersion.builder()
-                .cardId(cardId)
-                .versionNo("v" + nextNo + ".0")
-                .versionStatus("REVIEW")
-                .snapshotJson(snapshotJson)
-                .changeSummary(request.getChangeSummary())
-                .createdBy(adminId)
-                .build();
-        cardVersionMapper.insertCardVersion(version);
-
-        ApprovalRequest approval = ApprovalRequest.builder()
-                .requestTypeCode("CARD_UPDATE")
-                .requesterAdminId(adminId)
-                .targetId(version.getVersionId())
-                .requestComment(request.getChangeSummary())
-                .build();
-        approvalMapper.insertApprovalRequest(approval);
-
-        ApprovalLine line = ApprovalLine.builder()
-                .approvalId(approval.getApprovalId())
-                .approverAdminId(1L)
-                .approvalOrder(1)
-                .statusCode("PENDING")
-                .build();
-        approvalMapper.insertApprovalLine(line);
-
-        Map<String, Long> result = new HashMap<>();
-        result.put("cardId",     cardId);
-        result.put("versionId",  version.getVersionId());
-        result.put("approvalId", approval.getApprovalId());
-        return result;
+        return createVersionAndApproval(cardId, adminId, request.getChangeSummary(), REQUEST_TYPE_CARD_UPDATE);
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -316,7 +224,7 @@ public class AdminCardService {
             cardBenefitMapper.insertBenefits(benefits);
         }
 
-        return createVersionAndApproval(cardId, adminId, request.getChangeSummary(), "CARD_UPDATE");
+        return createVersionAndApproval(cardId, adminId, request.getChangeSummary(), REQUEST_TYPE_CARD_UPDATE);
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -340,7 +248,7 @@ public class AdminCardService {
             cardImageMapper.insertImages(images);
         }
 
-        return createVersionAndApproval(cardId, adminId, request.getChangeSummary(), "CARD_UPDATE");
+        return createVersionAndApproval(cardId, adminId, request.getChangeSummary(), REQUEST_TYPE_CARD_UPDATE);
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -404,7 +312,7 @@ public class AdminCardService {
                         .changedStatus(newStatus)
                         .changedBy(adminId)
                         .changedReason(request.getChangedReason() != null
-                                ? request.getChangedReason() : "관리자 수동 변경")
+                                ? request.getChangedReason() : DEFAULT_CHANGED_REASON)
                         .build()
         );
         
@@ -538,7 +446,7 @@ public class AdminCardService {
         CardVersion version = CardVersion.builder()
                 .cardId(cardId)
                 .versionNo("v" + nextNo + ".0")
-                .versionStatus("REVIEW")
+                .versionStatus(VERSION_STATUS_REVIEW)
                 .snapshotJson(snapshotJson)
                 .changeSummary(changeSummary)
                 .createdBy(adminId)
@@ -557,14 +465,14 @@ public class AdminCardService {
                 .approvalId(approval.getApprovalId())
                 .approverAdminId(1L)
                 .approvalOrder(1)
-                .statusCode("PENDING")
+                .statusCode(APPROVAL_STATUS_PENDING)
                 .build();
         approvalMapper.insertApprovalLine(line);
 
         Map<String, Long> result = new HashMap<>();
-        result.put("cardId",     cardId);
-        result.put("versionId",  version.getVersionId());
-        result.put("approvalId", approval.getApprovalId());
+        result.put(MAP_KEY_CARD_ID,     cardId);
+        result.put(MAP_KEY_VERSION_ID,  version.getVersionId());
+        result.put(MAP_KEY_APPROVAL_ID, approval.getApprovalId());
         return result;
     }
 
@@ -600,6 +508,67 @@ public class AdminCardService {
                 .imageWidth(i.getImageWidth())
                 .imageHeight(i.getImageHeight())
                 .sortOrder(i.getSortOrder() != null ? i.getSortOrder() : 1)
+                .build();
+    }
+
+    /** createCard(): 신규 카드 엔티티 생성 */
+    private Card buildNewCard(CardCreateRequest request, Long adminId) {
+        return Card.builder()
+                .cardCode(request.getCardCode())
+                .cardType(request.getCardType())
+                .cardName(request.getCardName())
+                .companyName(request.getCompanyName())
+                .companyCode(request.getCompanyCode() != null ? request.getCompanyCode() : "01")
+                .brandName(request.getBrandName())
+                .annualFeeDomestic(request.getAnnualFeeDomestic())
+                .annualFeeOverseas(request.getAnnualFeeOverseas())
+                .previousMonthSpend(request.getPreviousMonthSpend() != null
+                        ? request.getPreviousMonthSpend() : 0L)
+                .minimumAge(request.getMinimumAge())
+                .maximumAge(request.getMaximumAge())
+                .creditLimitMin(request.getCreditLimitMin())
+                .creditLimitMax(request.getCreditLimitMax())
+                .targetUser(request.getTargetUser())
+                .summaryDescription(request.getSummaryDescription())
+                .searchableYn(request.getSearchableYn() != null ? request.getSearchableYn() : "Y")
+                .visibleYn(request.getVisibleYn() != null ? request.getVisibleYn() : "Y")
+                .publishStartAt(request.getPublishStartAt())
+                .publishEndAt(request.getPublishEndAt())
+                .createdBy(adminId)
+                .build();
+    }
+
+    /** updateCard(): Card 필드 병합 — builder 삼항 연산자를 분리해 Cognitive Complexity 감소 */
+    private Card applyUpdates(Long cardId, Card existing, CardUpdateRequest request, Long adminId) {
+        boolean nowDeleted = "Y".equals(request.getDeletedYn()) && !"Y".equals(existing.getDeletedYn());
+        return Card.builder()
+                .cardId(cardId)
+                .cardCode(existing.getCardCode())
+                .cardType(request.getCardType()             != null ? request.getCardType()             : existing.getCardType())
+                .cardName(request.getCardName()             != null ? request.getCardName()             : existing.getCardName())
+                .companyName(request.getCompanyName()       != null ? request.getCompanyName()          : existing.getCompanyName())
+                .companyCode(existing.getCompanyCode())
+                .brandName(request.getBrandName()           != null ? request.getBrandName()            : existing.getBrandName())
+                .annualFeeDomestic(request.getAnnualFeeDomestic()   != null ? request.getAnnualFeeDomestic()   : existing.getAnnualFeeDomestic())
+                .annualFeeOverseas(request.getAnnualFeeOverseas()   != null ? request.getAnnualFeeOverseas()   : existing.getAnnualFeeOverseas())
+                .previousMonthSpend(request.getPreviousMonthSpend() != null ? request.getPreviousMonthSpend()  : existing.getPreviousMonthSpend())
+                .minimumAge(request.getMinimumAge()         != null ? request.getMinimumAge()           : existing.getMinimumAge())
+                .maximumAge(request.getMaximumAge()         != null ? request.getMaximumAge()           : existing.getMaximumAge())
+                .creditLimitMin(request.getCreditLimitMin() != null ? request.getCreditLimitMin()       : existing.getCreditLimitMin())
+                .creditLimitMax(request.getCreditLimitMax() != null ? request.getCreditLimitMax()       : existing.getCreditLimitMax())
+                .targetUser(request.getTargetUser()         != null ? request.getTargetUser()           : existing.getTargetUser())
+                .summaryDescription(request.getSummaryDescription() != null ? request.getSummaryDescription() : existing.getSummaryDescription())
+                .searchableYn(request.getSearchableYn()    != null ? request.getSearchableYn()         : existing.getSearchableYn())
+                .visibleYn(request.getVisibleYn()          != null ? request.getVisibleYn()            : existing.getVisibleYn())
+                .deletedYn(request.getDeletedYn()          != null ? request.getDeletedYn()            : existing.getDeletedYn())
+                .deletedAt(nowDeleted ? LocalDateTime.now(KST_ZONE) : existing.getDeletedAt())
+                .cardStatus(request.getCardStatus()        != null ? request.getCardStatus()           : existing.getCardStatus())
+                .approvalRequiredYn(existing.getApprovalRequiredYn())
+                .applicationCount(existing.getApplicationCount())
+                .createdBy(existing.getCreatedBy())
+                .createdAt(existing.getCreatedAt())
+                .updatedBy(adminId)
+                .updatedAt(LocalDateTime.now(KST_ZONE))
                 .build();
     }
 

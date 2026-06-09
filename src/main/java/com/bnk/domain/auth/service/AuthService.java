@@ -1,5 +1,6 @@
 package com.bnk.domain.auth.service;
 
+import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -83,6 +84,9 @@ public class AuthService {
 
 	private static final int MAX_LOGIN_FAIL = 5;
 	private static final int LOCK_DURATION_MIN = 30;
+	
+	private static final ZoneId KST_ZONE = ZoneId.of("Asia/Seoul");
+	private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
 	// ──────────────────────────────────────────────────────────────────
 	// 이메일 인증코드 발송
@@ -201,7 +205,7 @@ public class AuthService {
 				.filter(t -> request.getAgreedTermsIds().contains(t.getTermsId()))
 				.map(t -> UserTermsAgreement.builder().userId(user.getUserId()).termsId(t.getTermsId()).agreedYn("Y")
 						.agreementAction("AGREE").agreedVersion(t.getVersion()).agreementChannel("WEB")
-						.agreementSource("SIGNUP").agreedAt(LocalDateTime.now(ZoneId.of("Asia/Seoul"))).build())
+						.agreementSource("SIGNUP").agreedAt(LocalDateTime.now(KST_ZONE)).build())
 				.collect(Collectors.toList());
 
 		if (!agreements.isEmpty()) {
@@ -257,7 +261,7 @@ public class AuthService {
 
 		adminUserMapper.insertLoginHistory("USER", user.getUserId(), "SUCCESS", null, ipAddress,
 				request.getDeviceInfo(), userAgent);
-		userMapper.updateLastLoginAt(user.getUserId(), LocalDateTime.now(ZoneId.of("Asia/Seoul")));
+		userMapper.updateLastLoginAt(user.getUserId(), LocalDateTime.now(KST_ZONE));
 		auditLogger.success(AuditLogger.AUTH, AuditLogger.LOGIN,
 				user.getUserId(), null, null);
 
@@ -277,7 +281,7 @@ public class AuthService {
 			throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
 		});
 
-		if (session.getExpiresAt().isBefore(LocalDateTime.now())) {
+		if (session.getExpiresAt().isBefore(LocalDateTime.now(KST_ZONE))) {
 			auditLogger.failure(AuditLogger.AUTH, AuditLogger.TOKEN_REFRESH,
 					session.getUserId(), null, "Refresh Token 만료");
 			throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
@@ -351,7 +355,7 @@ public class AuthService {
 		}
 
 		Long userId = Long.parseLong(userIdStr);
-		userMapper.updatePassword(userId, passwordEncoder.encode(request.getNewPassword()), LocalDateTime.now());
+		userMapper.updatePassword(userId, passwordEncoder.encode(request.getNewPassword()), LocalDateTime.now(KST_ZONE));
 		userMapper.revokeAllSessions(userId);
 		tokenStore.delete(KEY_RESET + request.getToken());
 		auditLogger.success(AuditLogger.AUTH, AuditLogger.PASSWORD_CHANGE,
@@ -379,13 +383,13 @@ public class AuthService {
 			throw new BusinessException(ErrorCode.INVALID_PASSWORD);
 		}
 
-		adminUserMapper.updateLastLoginAt(admin.getAdminId(), LocalDateTime.now());
+		adminUserMapper.updateLastLoginAt(admin.getAdminId(), LocalDateTime.now(KST_ZONE));
 		auditLogger.adminSuccess(AuditLogger.ADMIN, AuditLogger.LOGIN,
 				admin.getAdminId(), null, null);
 
 		String roles = (admin.getRoleCodes() != null && !admin.getRoleCodes().isEmpty())
-				? String.join(",", admin.getRoleCodes())
-				: "ADMIN";
+		        ? String.join(",", admin.getRoleCodes())
+		        : "";
 
 		String accessToken = jwtTokenProvider.generateAdminAccessToken(admin.getAdminId(), roles);
 
@@ -403,7 +407,7 @@ public class AuthService {
 
 		userSessionMapper.insertSession(UserSession.builder().userId(userId).refreshToken(refreshToken)
 				.deviceInfo(deviceInfo).ipAddress(ipAddress).userAgent(userAgent)
-				.expiresAt(LocalDateTime.now().plusSeconds(refreshExpSec)).build());
+				.expiresAt(LocalDateTime.now(KST_ZONE).plusSeconds(refreshExpSec)).build());
 
 		AuthTokenResult result = new AuthTokenResult();
 		result.setAccessCookie(cookieUtil.createAccessCookie(accessToken, jwtTokenProvider.getAccessExpirationSec()));
@@ -412,7 +416,7 @@ public class AuthService {
 	}
 
 	private void validateUserStatus(User user) {
-		if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(LocalDateTime.now()))
+		if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(LocalDateTime.now(KST_ZONE)))
 			throw new BusinessException(ErrorCode.ACCOUNT_LOCKED);
 		String status = user.getStatusCode();
 		if ("SUSPENDED".equals(status))
@@ -425,7 +429,7 @@ public class AuthService {
 		userMapper.incrementLoginFailCount(user.getUserId());
 		int newFailCount = user.getLoginFailCount() + 1;
 		if (newFailCount >= MAX_LOGIN_FAIL) {
-			LocalDateTime lockUntil = LocalDateTime.now().plusMinutes(LOCK_DURATION_MIN);
+			LocalDateTime lockUntil = LocalDateTime.now(KST_ZONE).plusMinutes(LOCK_DURATION_MIN);
 			userMapper.updateLockedUntil(user.getUserId(), lockUntil);
 			auditLogger.failure(AuditLogger.AUTH, AuditLogger.LOGIN,
 					user.getUserId(), null, "비밀번호 " + MAX_LOGIN_FAIL + "회 오류 — 계정 잠금: until=" + lockUntil);
@@ -433,7 +437,7 @@ public class AuthService {
 	}
 
 	private String generateCode() {
-		return String.format("%06d", (int) (Math.random() * 1_000_000));
+		return String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
 	}
 
 	private String resolveClientIp(HttpServletRequest request) {
