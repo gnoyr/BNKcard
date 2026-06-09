@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Locale;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.bnk.global.util.AesCryptoUtil;
 
@@ -68,7 +67,6 @@ public class EncryptionMigrationService {
 		}
 		return new MigrationResult(success, fail);
 	}
-
 	public MigrationResult migrateCiValue() {
 		int total = migrationMapper.countPlainCiValueUsers();
 		log.info("[Migration] ci_value 대상: {}건", total);
@@ -85,7 +83,6 @@ public class EncryptionMigrationService {
 		}
 		return new MigrationResult(success, fail);
 	}
-
 	public MigrationResult migrateBirthDate() {
 		int total = migrationMapper.countPlainBirthDateUsers();
 		log.info("[Migration] birth_date 대상: {}건", total);
@@ -132,8 +129,7 @@ public class EncryptionMigrationService {
 	// ================================================================
 	// Batch 처리 메서드들
 	// ================================================================
-	@Transactional
-	public BatchResult encryptPhoneBatch(List<MigrationUserRow> batch) {
+	private BatchResult encryptPhoneBatch(List<MigrationUserRow> batch) {
 		int success = 0, fail = 0;
 		for (MigrationUserRow row : batch) {
 			try {
@@ -151,8 +147,7 @@ public class EncryptionMigrationService {
 		return new BatchResult(success, fail);
 	}
 
-	@Transactional
-	public BatchResult encryptCiValueBatch(List<MigrationUserRow> batch) {
+	private BatchResult encryptCiValueBatch(List<MigrationUserRow> batch) {
 		int success = 0, fail = 0;
 		for (MigrationUserRow row : batch) {
 			try {
@@ -170,8 +165,7 @@ public class EncryptionMigrationService {
 		return new BatchResult(success, fail);
 	}
 
-	@Transactional
-	public BatchResult encryptBirthDateBatch(List<MigrationUserRow> batch) {
+	private BatchResult encryptBirthDateBatch(List<MigrationUserRow> batch) {
 		int success = 0, fail = 0;
 		for (MigrationUserRow row : batch) {
 			try {
@@ -202,8 +196,7 @@ public class EncryptionMigrationService {
 		return new BatchResult(success, fail);
 	}
 
-	@Transactional
-	public BatchResult recoverPasswordBatch(List<MigrationUserRow> batch) {
+	private BatchResult recoverPasswordBatch(List<MigrationUserRow> batch) {
 		int success = 0, fail = 0;
 		for (MigrationUserRow row : batch) {
 			try {

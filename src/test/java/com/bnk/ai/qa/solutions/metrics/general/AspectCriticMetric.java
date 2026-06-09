@@ -13,6 +13,8 @@ import com.bnk.ai.qa.solutions.metric.AbstractMultiModelMetric;
 import com.bnk.ai.qa.solutions.metric.metadata.AspectCriticMetadata;
 import com.bnk.ai.qa.solutions.sample.Sample;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -57,11 +59,13 @@ public class AspectCriticMetric extends AbstractMultiModelMetric<AspectCriticMet
                     """;
 
     private final String promptTemplate;
+    private final Clock clock;
 
     @Builder(toBuilder = true)
-    protected AspectCriticMetric(final MultiModelExecutor executor, final String promptTemplate) {
+    protected AspectCriticMetric(final MultiModelExecutor executor, final String promptTemplate, Clock clock) {
         super(executor);
         this.promptTemplate = promptTemplate != null ? promptTemplate : DEFAULT_PROMPT_TEMPLATE;
+        this.clock = clock;
     }
 
     @Override
@@ -71,7 +75,7 @@ public class AspectCriticMetric extends AbstractMultiModelMetric<AspectCriticMet
 
     @Override
     public CompletableFuture<Double> singleTurnScoreAsync(final AspectCriticConfig config, final Sample sample) {
-        final Instant startTime = Instant.now();
+        final Instant startTime = Instant.now(clock);
         final List<String> modelIds =
                 config.models != null && !config.models.isEmpty() ? config.models : executor.getModelIds();
 
@@ -174,7 +178,7 @@ public class AspectCriticMetric extends AbstractMultiModelMetric<AspectCriticMet
             final double aggregatedScore = aggregate(modelScores);
 
             // Notify with full results
-            final Duration duration = Duration.between(startTime, Instant.now());
+            final Duration duration = Duration.between(startTime, Instant.now(clock));
 
             notifier.afterMetricEvaluation(MetricEvaluationResult.builder()
                     .metricName(getName())
