@@ -27,6 +27,7 @@ public class AesCryptoUtil {
 	private static final int GCM_TAG_BITS = 128;
 
 	private final SecretKey secretKey;
+	private final SecureRandom secureRandom = new SecureRandom();
 
 	public AesCryptoUtil(@Value("${aes.secret-key}") String rawKey) {
 		byte[] keyBytes = rawKey.getBytes(StandardCharsets.UTF_8);
@@ -40,7 +41,7 @@ public class AesCryptoUtil {
 			return plainText;
 		try {
 			byte[] iv = new byte[GCM_IV_LEN];
-			new SecureRandom().nextBytes(iv);
+			this.secureRandom.nextBytes(iv);
 			Cipher cipher = Cipher.getInstance(ALGORITHM);
 			cipher.init(Cipher.ENCRYPT_MODE, secretKey, new GCMParameterSpec(GCM_TAG_BITS, iv));
 			byte[] encrypted = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
