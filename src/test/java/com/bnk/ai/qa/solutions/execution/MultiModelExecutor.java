@@ -1,19 +1,22 @@
 package com.bnk.ai.qa.solutions.execution;
 
-import com.bnk.ai.qa.solutions.chatclient.ChatClientStore;
-import com.bnk.ai.qa.solutions.embedding.EmbeddingModelStore;
-import com.bnk.ai.qa.solutions.execution.ratelimit.ProviderRateLimiterRegistry;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
-import lombok.extern.slf4j.Slf4j;
+
+import org.jspecify.annotations.Nullable;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.core.task.AsyncTaskExecutor;
-import org.jspecify.annotations.Nullable;
+
+import com.bnk.ai.qa.solutions.chatclient.ChatClientStore;
+import com.bnk.ai.qa.solutions.embedding.EmbeddingModelStore;
+import com.bnk.ai.qa.solutions.execution.ratelimit.ProviderRateLimiterRegistry;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Stateless executor for making LLM and embedding calls across multiple models.
@@ -64,6 +67,7 @@ public class MultiModelExecutor {
 
     private final AsyncTaskExecutor metricExecutor;
     private final AsyncTaskExecutor httpExecutor;
+    private final Clock clock;
 
     @Nullable
     private final ProviderRateLimiterRegistry rateLimiterRegistry;
@@ -73,9 +77,11 @@ public class MultiModelExecutor {
      *
      * @param chatClientStore store of configured AI model clients
      * @param taskExecutor    executor for all async operations
+     * @param clock           clock used for duration measurement
      */
-    public MultiModelExecutor(final ChatClientStore chatClientStore, final AsyncTaskExecutor taskExecutor) {
-        this(chatClientStore, null, taskExecutor, taskExecutor);
+    public MultiModelExecutor(final ChatClientStore chatClientStore, final AsyncTaskExecutor taskExecutor,
+            final Clock clock) {
+        this(chatClientStore, null, taskExecutor, taskExecutor, clock);
     }
 
     /**
@@ -84,12 +90,14 @@ public class MultiModelExecutor {
      * @param chatClientStore     store of configured AI model clients
      * @param embeddingModelStore store of configured embedding models (nullable)
      * @param taskExecutor        executor for all async operations
+     * @param clock               clock used for duration measurement
      */
     public MultiModelExecutor(
             final ChatClientStore chatClientStore,
             @Nullable final EmbeddingModelStore embeddingModelStore,
-            final AsyncTaskExecutor taskExecutor) {
-        this(chatClientStore, embeddingModelStore, taskExecutor, taskExecutor);
+            final AsyncTaskExecutor taskExecutor,
+            final Clock clock) {
+        this(chatClientStore, embeddingModelStore, taskExecutor, taskExecutor, clock);
     }
 
     /**
@@ -103,13 +111,15 @@ public class MultiModelExecutor {
      * @param embeddingModelStore store of configured embedding models (nullable)
      * @param metricExecutor      executor for metric-level async operations (runAsync)
      * @param httpExecutor        executor for HTTP/LLM API calls
+     * @param clock               clock used for duration measurement
      */
     public MultiModelExecutor(
-            final ChatClientStore chatClientStore,
-            @Nullable final EmbeddingModelStore embeddingModelStore,
-            final AsyncTaskExecutor metricExecutor,
-            final AsyncTaskExecutor httpExecutor) {
-        this(chatClientStore, embeddingModelStore, metricExecutor, httpExecutor, null);
+            ChatClientStore chatClientStore,
+            @Nullable EmbeddingModelStore embeddingModelStore,
+            AsyncTaskExecutor metricExecutor,
+            AsyncTaskExecutor httpExecutor,
+            Clock clock) {
+        this(chatClientStore, embeddingModelStore, null, metricExecutor, httpExecutor, clock);
     }
 
     /**
@@ -130,18 +140,19 @@ public class MultiModelExecutor {
      * @param rateLimiterRegistry  per-provider rate limiter registry (nullable, no rate limiting if null)
      */
     public MultiModelExecutor(
-            final ChatClientStore chatClientStore,
-            @Nullable final EmbeddingModelStore embeddingModelStore,
-            final AsyncTaskExecutor metricExecutor,
-            final AsyncTaskExecutor httpExecutor,
-            @Nullable final ProviderRateLimiterRegistry rateLimiterRegistry) {
-        this.chatClientStore = Objects.requireNonNull(chatClientStore, "chatClientStore");
+            ChatClientStore chatClientStore,
+            @Nullable EmbeddingModelStore embeddingModelStore,
+            @Nullable ProviderRateLimiterRegistry rateLimiterRegistry,
+            AsyncTaskExecutor metricExecutor,
+            AsyncTaskExecutor httpExecutor,
+            Clock clock) {
+        this.chatClientStore = chatClientStore;
         this.embeddingModelStore = embeddingModelStore;
-        this.metricExecutor = Objects.requireNonNull(metricExecutor, "metricExecutor");
-        this.httpExecutor = Objects.requireNonNull(httpExecutor, "httpExecutor");
         this.rateLimiterRegistry = rateLimiterRegistry;
+        this.metricExecutor = metricExecutor;
+        this.httpExecutor = httpExecutor;
+        this.clock = clock;
     }
-
     // ============ LLM Operations - All Models ============
 
     /**
@@ -240,14 +251,14 @@ public class MultiModelExecutor {
                 log.warn("Model {} rate limited: {}", modelId, e.getMessage());
                 return ModelResult.<R>failure(modelId, Duration.ZERO, prompt, e);
             }
-            final Instant start = Instant.now();
+            final Instant start = Instant.now(clock);
             try {
                 final ChatClient client = chatClientStore.get(modelId);
                 final R response = client.prompt(prompt).call().entity(responseType);
-                final Duration duration = Duration.between(start, Instant.now());
+                final Duration duration = Duration.between(start, Instant.now(clock));
                 return ModelResult.success(modelId, response, duration, prompt);
             } catch (Exception e) {
-                final Duration duration = Duration.between(start, Instant.now());
+                final Duration duration = Duration.between(start, Instant.now(clock));
                 
                 System.err.println(">>> 진짜 에러 발생 지점: " + e.getClass().getName());
                 System.err.println(">>> 에러 메시지: " + e.getMessage());
@@ -353,17 +364,17 @@ public class MultiModelExecutor {
                 log.warn("Embedding model {} rate limited: {}", modelId, e.getMessage());
                 return ModelResult.<float[]>failure(modelId, Duration.ZERO, text, e);
             }
-            final Instant start = Instant.now();
+            final Instant start = Instant.now(clock);
             try {
                 if (embeddingModelStore == null) {
                     throw new IllegalStateException("EmbeddingModelStore not configured");
                 }
                 final EmbeddingModel embeddingModel = embeddingModelStore.get(modelId);
                 final float[] embedding = embeddingModel.embed(text);
-                final Duration duration = Duration.between(start, Instant.now());
+                final Duration duration = Duration.between(start, Instant.now(clock));
                 return ModelResult.success(modelId, embedding, duration, text);
             } catch (Exception e) {
-                final Duration duration = Duration.between(start, Instant.now());
+                final Duration duration = Duration.between(start, Instant.now(clock));
                 log.warn("Embedding model {} failed: {}", modelId, e.getMessage());
                 return ModelResult.failure(modelId, duration, text, e);
             }
@@ -398,7 +409,7 @@ public class MultiModelExecutor {
                 log.warn("Embedding model {} rate limited: {}", modelId, e.getMessage());
                 return ModelResult.<List<float[]>>failure(modelId, Duration.ZERO, request, e);
             }
-            final Instant start = Instant.now();
+            final Instant start = Instant.now(clock);
             try {
                 if (embeddingModelStore == null) {
                     throw new IllegalStateException("EmbeddingModelStore not configured");
@@ -408,10 +419,10 @@ public class MultiModelExecutor {
                 for (final String text : texts) {
                     embeddings.add(embeddingModel.embed(text));
                 }
-                final Duration duration = Duration.between(start, Instant.now());
+                final Duration duration = Duration.between(start, Instant.now(clock));
                 return ModelResult.success(modelId, embeddings, duration, request);
             } catch (Exception e) {
-                final Duration duration = Duration.between(start, Instant.now());
+                final Duration duration = Duration.between(start, Instant.now(clock));
                 log.warn("Embedding model {} failed: {}", modelId, e.getMessage());
                 return ModelResult.failure(modelId, duration, request, e);
             }

@@ -1,6 +1,7 @@
 package com.bnk.domain.terms.service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -38,6 +39,7 @@ public class TermsService {
     private final ObjectStorageService     objectStorageService; 
 
     private static final int BATCH_SIZE = 50;
+    private static final ZoneId KST_ZONE = ZoneId.of("Asia/Seoul");
 
     // ─────────────────────────────────────────────────────────────
     // F-16 | 약관 패키지 조회
@@ -93,7 +95,7 @@ public class TermsService {
                         .agreementAction("Y".equals(item.getAgreedYn()) ? "AGREE" : "DISAGREE")
                         .agreementSource(request.getAgreementSource())
                         .agreementChannel(request.getAgreementChannel())
-                        .agreedAt(LocalDateTime.now())
+                        .agreedAt(LocalDateTime.now(KST_ZONE))
                         .build())
                 .collect(Collectors.toList());
 

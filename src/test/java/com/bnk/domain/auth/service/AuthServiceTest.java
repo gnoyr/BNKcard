@@ -11,11 +11,15 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -77,10 +81,21 @@ class AuthServiceTest {
 	private UserTermsAgreementMapper userTermsAgreementMapper;
 	@Mock
 	private EmailService emailService;
-
+	
+	private final Clock fixedClock = Clock.fixed(
+            Instant.parse("2026-06-09T10:00:00Z"),
+            ZoneId.of("UTC")
+    );
+	
 	@InjectMocks
 	private AuthService authService;
-
+	
+	
+	@BeforeEach
+    void setUp() {
+        ReflectionTestUtils.setField(authService, "clock", fixedClock);
+    }
+	
 	// ── 공통 상수 ──────────────────────────────────────────────────────
 	private static final Long USER_ID = 1L;
 	private static final String EMAIL = "test@bnk.co.kr";
@@ -115,7 +130,7 @@ class AuthServiceTest {
     /** 계정 잠금 상태 (lockedUntil = 30분 후) */
     private User lockedUser() {
         User user = activeUser();
-        ReflectionTestUtils.setField(user, "lockedUntil", LocalDateTime.now().plusMinutes(30));
+        ReflectionTestUtils.setField(user, "lockedUntil", LocalDateTime.now(fixedClock).plusMinutes(30));
         return user;
     }
 
@@ -320,7 +335,7 @@ class AuthServiceTest {
                     .sessionId(10L)
                     .userId(USER_ID)
                     .refreshToken("valid-refresh")
-                    .expiresAt(LocalDateTime.now().plusHours(1))
+                    .expiresAt(LocalDateTime.now(fixedClock).plusHours(1))
                     .build();
         }
 

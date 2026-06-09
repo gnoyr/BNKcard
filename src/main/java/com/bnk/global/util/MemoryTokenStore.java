@@ -1,6 +1,7 @@
 package com.bnk.global.util;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -34,22 +35,23 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class MemoryTokenStore implements TokenStore {
-
+	
+	private static final ZoneId KST_ZONE = ZoneId.of("Asia/Seoul");
+	private final Map<String, TokenWrapper> storage = new ConcurrentHashMap<>();
+	
 	private static class TokenWrapper {
 		final String value;
 		final LocalDateTime expiresAt;
 
 		TokenWrapper(String value, long ttlMinutes) {
 			this.value = value;
-			this.expiresAt = LocalDateTime.now().plusMinutes(ttlMinutes);
+			this.expiresAt = LocalDateTime.now(KST_ZONE).plusMinutes(ttlMinutes);
 		}
 
 		boolean isExpired() {
-			return LocalDateTime.now().isAfter(expiresAt);
+			return LocalDateTime.now(KST_ZONE).isAfter(expiresAt);
 		}
 	}
-
-	private final Map<String, TokenWrapper> storage = new ConcurrentHashMap<>();
 
 	// 데이터 저장 (set)
 	// Redis 전환 시: redisTemplate.opsForValue().set(key, value, ttlMinutes, TimeUnit.MINUTES)

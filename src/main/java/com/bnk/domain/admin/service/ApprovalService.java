@@ -1,6 +1,7 @@
 package com.bnk.domain.admin.service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -50,6 +51,8 @@ public class ApprovalService {
 	private final ObjectMapper objectMapper;
 	private final TermsMapper termsMapper;
 	private final AuditLogger auditLogger;
+	
+	private static final ZoneId KST_ZONE = ZoneId.of("Asia/Seoul");
 
     // ─────────────────────────────────────────────────────────────
     // 결재 목록 조회
@@ -179,7 +182,7 @@ public class ApprovalService {
 
         if (lineId != null) {
             approvalMapper.updateLineStatus(lineId, "APPROVED",
-                    request.getComment(), LocalDateTime.now());
+                    request.getComment(), LocalDateTime.now(KST_ZONE));
         }
 
         // 전체 라인 완료 여부 확인
@@ -198,7 +201,7 @@ public class ApprovalService {
             handleCardApprove(approval, adminId, approvalId);
         }
 
-        approvalMapper.updateRequestStatus(approvalId, "APPROVED", LocalDateTime.now());
+        approvalMapper.updateRequestStatus(approvalId, "APPROVED", LocalDateTime.now(KST_ZONE));
         auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.APPROVAL_APPROVE,
                 adminId, String.valueOf(approvalId), "결재 승인 완료: typeCode=" + typeCode);
     }
@@ -351,7 +354,7 @@ public class ApprovalService {
 
         if (lineId != null) {
             approvalMapper.updateLineStatus(lineId, "REJECTED",
-                    request.getComment(), LocalDateTime.now());
+                    request.getComment(), LocalDateTime.now(KST_ZONE));
         }
 
         // ── 분기: 결재 유형에 따라 처리 ─────────────────────────────────
@@ -363,7 +366,7 @@ public class ApprovalService {
             handleCardReject(approval, adminId, approvalId);
         }
 
-        approvalMapper.updateRequestStatus(approvalId, "REJECTED", LocalDateTime.now());
+        approvalMapper.updateRequestStatus(approvalId, "REJECTED", LocalDateTime.now(KST_ZONE));
         auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.APPROVAL_REJECT,
                 adminId, String.valueOf(approvalId), "결재 반려 완료: typeCode=" + typeCode);
     }
