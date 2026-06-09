@@ -1,6 +1,7 @@
 package com.bnk.domain.card.service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -15,11 +16,11 @@ import org.springframework.validation.annotation.Validated;
 import com.bnk.domain.admin.mapper.ApprovalMapper;
 import com.bnk.domain.admin.model.ApprovalLine;
 import com.bnk.domain.admin.model.ApprovalRequest;
+import com.bnk.domain.card.dto.CardSnapshot;
 import com.bnk.domain.card.dto.request.AdminCardSearchRequest;
 import com.bnk.domain.card.dto.request.BenefitCreateRequest;
 import com.bnk.domain.card.dto.request.BenefitUpdateRequest;
 import com.bnk.domain.card.dto.request.CardCreateRequest;
-import com.bnk.domain.card.dto.request.CardSnapshot;
 import com.bnk.domain.card.dto.request.CardStatusRequest;
 import com.bnk.domain.card.dto.request.CardUpdateRequest;
 import com.bnk.domain.card.dto.request.ContentUpdateRequest;
@@ -43,6 +44,7 @@ import com.bnk.domain.terms.mapper.TermsMapper;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.response.PageResponse;
+import com.bnk.global.util.audit.AuditLogger;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -56,16 +58,18 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class AdminCardService {
 
-
-    private final CardMapper             cardMapper;
-    private final CardVersionMapper      cardVersionMapper;
-    private final CardBenefitMapper      cardBenefitMapper;
-    private final CardImageMapper        cardImageMapper;
-    private final CardContentMapper      cardContentMapper;
-    private final TermsMapper            termsMapper;
-    private final ApprovalMapper         approvalMapper;
-    private final ObjectMapper           objectMapper;
-    private final CardStatusHistoryMapper cardStatusHistoryMapper;
+	private final CardMapper cardMapper;
+	private final CardVersionMapper cardVersionMapper;
+	private final CardBenefitMapper cardBenefitMapper;
+	private final CardImageMapper cardImageMapper;
+	private final CardContentMapper cardContentMapper;
+	private final TermsMapper termsMapper;
+	private final ApprovalMapper approvalMapper;
+	private final ObjectMapper objectMapper;
+	private final CardStatusHistoryMapper cardStatusHistoryMapper;
+	private final AuditLogger auditLogger;
+	
+	private static final ZoneId KST_ZONE = ZoneId.of("Asia/Seoul");
 
     // ══════════════════════════════════════════════════════════════════
     // B-03 카드 신규 등록
@@ -165,11 +169,10 @@ public class AdminCardService {
                         .build()
         );
 
-        Map<String, Long> result = new HashMap<>();
-        result.put("cardId",     card.getCardId());
-        result.put("versionId",  version.getVersionId());
-        result.put("approvalId", approval.getApprovalId());
-        return result;
+        auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.CREATE,
+                adminId, String.valueOf(card.getCardId()),
+                "카드 신규 등록: " + card.getCardName());  // ← 추가
+        return Map.of("cardId", card.getCardId(), "versionId", version.getVersionId(), "approvalId", approval.getApprovalId());
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -180,6 +183,8 @@ public class AdminCardService {
 
         Card existing = cardMapper.findById(cardId);
         if (existing == null) {
+            auditLogger.adminFailure(AuditLogger.CARD, AuditLogger.UPDATE,
+                    adminId, String.valueOf(cardId), "카드 없음");
             throw new BusinessException(ErrorCode.CARD_NOT_FOUND);
         }
 
@@ -210,14 +215,14 @@ public class AdminCardService {
                 .visibleYn(request.getVisibleYn()       != null ? request.getVisibleYn()     : existing.getVisibleYn())
                 .deletedYn(request.getDeletedYn()       != null ? request.getDeletedYn()     : existing.getDeletedYn())
                 .deletedAt(("Y".equals(request.getDeletedYn()) && !"Y".equals(existing.getDeletedYn()))
-                        ? LocalDateTime.now() : existing.getDeletedAt())
+                        ? LocalDateTime.now(KST_ZONE) : existing.getDeletedAt())
                 .cardStatus(request.getCardStatus() != null ? request.getCardStatus() : existing.getCardStatus())
                 .approvalRequiredYn(existing.getApprovalRequiredYn())
                 .applicationCount(existing.getApplicationCount())
                 .createdBy(existing.getCreatedBy())
                 .createdAt(existing.getCreatedAt())
                 .updatedBy(adminId)
-                .updatedAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now(KST_ZONE))
                 .build();
 
         // 상태 변경 이력
@@ -285,7 +290,11 @@ public class AdminCardService {
     @Transactional
     public Map<String, Long> saveCardBenefits(Long cardId, @Valid BenefitUpdateRequest request, Long adminId) {
         Card existing = cardMapper.findById(cardId);
-        if (existing == null) throw new BusinessException(ErrorCode.CARD_NOT_FOUND);
+        if (existing == null) {
+            auditLogger.adminFailure(AuditLogger.CARD, AuditLogger.UPDATE,
+                    adminId, String.valueOf(cardId), "카드 없음 (혜택 수정)");
+            throw new BusinessException(ErrorCode.CARD_NOT_FOUND);
+        }
 
         cardBenefitMapper.deleteByCardId(cardId);
 
@@ -305,7 +314,11 @@ public class AdminCardService {
     @Transactional
     public Map<String, Long> saveCardImages(Long cardId, @Valid ImageUpdateRequest request, Long adminId) {
         Card existing = cardMapper.findById(cardId);
-        if (existing == null) throw new BusinessException(ErrorCode.CARD_NOT_FOUND);
+        if (existing == null) {
+            auditLogger.adminFailure(AuditLogger.CARD, AuditLogger.UPDATE,
+                    adminId, String.valueOf(cardId), "카드 없음 (이미지 수정)");
+            throw new BusinessException(ErrorCode.CARD_NOT_FOUND);
+        }
 
         cardImageMapper.deleteByCardId(cardId);
 
@@ -325,7 +338,11 @@ public class AdminCardService {
     @Transactional
     public void saveCardContents(Long cardId, @Valid ContentUpdateRequest request, Long adminId) {
         Card existing = cardMapper.findById(cardId);
-        if (existing == null) throw new BusinessException(ErrorCode.CARD_NOT_FOUND);
+        if (existing == null) {
+            auditLogger.adminFailure(AuditLogger.CARD, AuditLogger.UPDATE,
+                    adminId, String.valueOf(cardId), "카드 없음 (콘텐츠 수정)");
+            throw new BusinessException(ErrorCode.CARD_NOT_FOUND);
+        }
 
         cardContentMapper.deleteByCardId(cardId);
 
@@ -354,6 +371,8 @@ public class AdminCardService {
         // ← cardMapper2.getCardDetail() 대신 cardMapper.findById() 사용
         Card card = cardMapper.findById(cardId);
         if (card == null) {
+            auditLogger.adminFailure(AuditLogger.CARD, AuditLogger.STATUS_CHANGE,
+                    adminId, String.valueOf(cardId), "카드 없음");
             throw new BusinessException(ErrorCode.CARD_NOT_FOUND);
         }
 
@@ -376,6 +395,10 @@ public class AdminCardService {
                                 ? request.getChangedReason() : "관리자 수동 변경")
                         .build()
         );
+        
+        auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.STATUS_CHANGE,
+                adminId, String.valueOf(cardId),
+                "카드 상태 변경: " + previousStatus + " → " + newStatus);
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -441,10 +464,10 @@ public class AdminCardService {
                 .applicationCount(card.getApplicationCount())
                 .createdBy(card.getCreatedBy())
                 .createdAt(card.getCreatedAt())
-                .updateBy(card.getUpdatedBy())
-                .updateAt(card.getUpdatedAt())
+                .updatedBy(card.getUpdatedBy())
+                .updatedAt(card.getUpdatedAt())
                 .deletedYn(card.getDeletedYn())
-                .deleteAt(card.getDeletedAt())
+                .deletedAt(card.getDeletedAt())
                 // ── 연관 데이터 ────────────────────────────────────────
                 .benefits(benefits)
                 .images(images.stream()
@@ -572,7 +595,8 @@ public class AdminCardService {
         try {
             return objectMapper.writeValueAsString(snapshot);
         } catch (JsonProcessingException e) {
-            log.error("[스냅샷] 직렬화 실패", e);
+            auditLogger.adminFailure(AuditLogger.CARD, AuditLogger.CREATE,
+                    null, null, "스냅샷 직렬화 실패: " + e.getMessage());
             throw new BusinessException(ErrorCode.INTERNAL_ERROR, "스냅샷 생성 실패");
         }
     }

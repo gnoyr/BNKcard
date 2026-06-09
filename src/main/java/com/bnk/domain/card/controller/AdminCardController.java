@@ -23,7 +23,9 @@ import com.bnk.domain.card.dto.request.CardUpdateRequest;
 import com.bnk.domain.card.dto.request.ContentUpdateRequest;
 import com.bnk.domain.card.dto.request.ImageUpdateRequest;
 import com.bnk.domain.card.dto.response.CardDetailResponse;
+import com.bnk.domain.card.mapper.CardCategoryMapper;
 import com.bnk.domain.card.mapper.CardVersionMapper;
+import com.bnk.domain.card.model.CardCategory;
 import com.bnk.domain.card.model.CardVersion;
 import com.bnk.domain.card.service.AdminCardService;
 import com.bnk.global.auth.CustomAdminDetails;
@@ -38,33 +40,27 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AdminCardController {
 
-    private final AdminCardService adminCardService;
+    private final AdminCardService  adminCardService;
     private final CardVersionMapper cardVersionMapper;
-    /**
-     * 관리자 카드 목록 다중조건 검색 (RQ-B13).
-     * MyBatis <if> 동적 SQL. 페이지네이션 + 정렬.
-     */
+    private final CardCategoryMapper cardCategoryMapper;  // 추가
+
+    /** 관리자 카드 목록 다중조건 검색 (RQ-B13) */
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<?>>> getAdminCardList(
             @ModelAttribute AdminCardSearchRequest request,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         return ApiResponse.toOk(adminCardService.getAdminCardList(request, ad.getAdminId()));
     }
-    
-    /**
-     * 관리자 카드 상세 조회.
-     */
+
+    /** 관리자 카드 상세 조회 */
     @GetMapping("/{cardId}")
     public ResponseEntity<ApiResponse<CardDetailResponse>> getCardDetail(
-    		@PathVariable Long cardId,
+            @PathVariable Long cardId,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         return ApiResponse.toOk(adminCardService.getAdminCardDetail(cardId));
     }
 
-    /**
-     * 카드 신규 등록 (RQ-B04).
-     * CARDS INSERT(DRAFT) + CARD_VERSIONS INSERT(snapshot) + APPROVAL_REQUESTS INSERT — @Transactional
-     */
+    /** 카드 신규 등록 (RQ-B04) */
     @PostMapping
     public ResponseEntity<ApiResponse<Map<String, Long>>> createCard(
             @RequestBody @Valid CardCreateRequest request,
@@ -72,66 +68,69 @@ public class AdminCardController {
         return ApiResponse.toCreated(adminCardService.createCard(request, ad.getAdminId()));
     }
 
-    /**
-     * 카드 기본정보 수정 (RQ-B05).
-     * 기존 CARDS 직접 수정 금지. CARD_VERSIONS snapshot + APPROVAL_REQUESTS 신규 생성.
-     */
+    /** 카드 기본정보 수정 (RQ-B05) */
     @PutMapping("/{cardId}")
     public ResponseEntity<ApiResponse<Map<String, Long>>> updateCard(
-    		@PathVariable Long cardId,
+            @PathVariable Long cardId,
             @RequestBody @Valid CardUpdateRequest request,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         return ApiResponse.toOk(adminCardService.updateCard(cardId, request, ad.getAdminId()));
     }
-    
-    // 혜택 등록/수정
+
+    /** 혜택 등록/수정 */
     @PutMapping("/{cardId}/benefits")
     public ResponseEntity<ApiResponse<Map<String, Long>>> saveCardBenefits(
-    		@PathVariable Long cardId,
+            @PathVariable Long cardId,
             @RequestBody @Valid BenefitUpdateRequest request,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         return ApiResponse.toOk(adminCardService.saveCardBenefits(cardId, request, ad.getAdminId()));
     }
 
-    // 이미지 등록/수정
+    /** 이미지 등록/수정 */
     @PutMapping("/{cardId}/images")
     public ResponseEntity<ApiResponse<Map<String, Long>>> saveCardImages(
-    		@PathVariable Long cardId,
+            @PathVariable Long cardId,
             @RequestBody @Valid ImageUpdateRequest request,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         return ApiResponse.toOk(adminCardService.saveCardImages(cardId, request, ad.getAdminId()));
     }
-    
-    // 콘텐츠 등록/수정
+
+    /** 콘텐츠 등록/수정 */
     @PutMapping("/{cardId}/contents")
     public ResponseEntity<ApiResponse<Void>> saveCardContents(
-    		@PathVariable Long cardId,
+            @PathVariable Long cardId,
             @RequestBody @Valid ContentUpdateRequest request,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         adminCardService.saveCardContents(cardId, request, ad.getAdminId());
         return ApiResponse.toOk(null);
     }
-    
+
     /**
-     * 카드 상태 강제 변경 (APPROVED→PUBLISHED, PUBLISHED→STOPPED 등).
-     * 스케줄러 외 수동 처리 및 긴급 중지에 사용.
-     * 허용 상태: APPROVED, PUBLISHED, STOPPED, EXPIRED
+     * 카드 상태 강제 변경.
      */
     @PatchMapping("/{cardId}/status")
     public ResponseEntity<ApiResponse<Void>> changeCardStatus(
-    		@PathVariable Long cardId,
+            @PathVariable Long cardId,
             @RequestBody @Valid CardStatusRequest request,
             @AuthenticationPrincipal CustomAdminDetails ad) {
         adminCardService.changeCardStatus(cardId, request, ad.getAdminId());
         return ApiResponse.toOk(null);
     }
-    
+
     /** 카드 버전 히스토리 조회 */
     @GetMapping("/{cardId}/versions")
     public ResponseEntity<ApiResponse<List<CardVersion>>> getCardVersions(
             @PathVariable Long cardId,
             @AuthenticationPrincipal CustomAdminDetails ad) {
-        List<CardVersion> versions = cardVersionMapper.findByCardId(cardId);
-        return ApiResponse.toOk(versions);
+        return ApiResponse.toOk(cardVersionMapper.findByCardId(cardId));
+    }
+
+    /**
+     * 혜택 카테고리 목록 조회 — 카드 등록/수정 화면 필터 버튼용.
+     */
+    @GetMapping("/categories")
+    public ResponseEntity<ApiResponse<List<CardCategory>>> getCardCategories(
+            @AuthenticationPrincipal CustomAdminDetails ad) {
+        return ApiResponse.toOk(cardCategoryMapper.getAllCategories());
     }
 }

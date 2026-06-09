@@ -12,6 +12,8 @@ import com.bnk.ai.qa.solutions.metric.Metric.MetricConfiguration;
 import com.bnk.ai.qa.solutions.metric.metadata.ContextEntityRecallMetadata;
 import com.bnk.ai.qa.solutions.sample.Sample;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -74,12 +76,14 @@ public class ContextEntityRecallMetric
                     """;
 
     private final String entityExtractionPrompt;
+    private final Clock clock;
 
     @Builder(toBuilder = true)
-    protected ContextEntityRecallMetric(final MultiModelExecutor executor, final String entityExtractionPrompt) {
+    protected ContextEntityRecallMetric(final MultiModelExecutor executor, final String entityExtractionPrompt, Clock clock) {
         super(executor);
         this.entityExtractionPrompt =
                 entityExtractionPrompt != null ? entityExtractionPrompt : DEFAULT_ENTITY_EXTRACTION_PROMPT;
+        this.clock = clock;
     }
 
     /**
@@ -122,7 +126,7 @@ public class ContextEntityRecallMetric
             return CompletableFuture.completedFuture(0.0);
         }
 
-        final Instant startTime = Instant.now();
+        final Instant startTime = Instant.now(clock);
         final List<String> modelIds =
                 config.models != null && !config.models.isEmpty() ? config.models : executor.getModelIds();
 
@@ -287,7 +291,7 @@ public class ContextEntityRecallMetric
             }
 
             // Notify with full results
-            final Duration duration = Duration.between(startTime, Instant.now());
+            final Duration duration = Duration.between(startTime, Instant.now(clock));
             notifier.afterMetricEvaluation(MetricEvaluationResult.builder()
                     .metricName(getName())
                     .sample(sample)

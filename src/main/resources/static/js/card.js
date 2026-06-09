@@ -26,9 +26,17 @@ if (!cardId) {
 async function api(url) {
     try {
         const res = await fetch(url, { credentials: 'include' });
-        if (!res.ok) return null;
-        return (await res.json())?.data ?? null;
-    } catch { return null; }
+        if (!res.ok) {
+            console.error(`[card.js] API 오류: ${url} → ${res.status}`);
+            return null;
+        }
+        const json = await res.json();
+        console.log(`[card.js] API 응답: ${url}`, json);   
+        return json?.data ?? json ?? null;
+    } catch (e) {
+        console.error(`[card.js] API 예외: ${url}`, e);
+        return null;
+    }
 }
 
 function fmtFee(v) {
@@ -50,11 +58,25 @@ function benefitTypeLabel(t) {
 //  카드 상세 데이터 로드
 // ══════════════════════════════════════════════
 async function loadCard() {
-    const card = await api(`/api/cards/${cardId}`);
+    const res = await fetch(`/api/cards/${cardId}`, { credentials: 'include' });
+    
+    if (!res.ok) {
+        document.getElementById('main-wrap').innerHTML =
+            `<div class="loading-wrap">
+               <p>카드 정보를 불러올 수 없습니다. (${res.status})</p>
+               <br><a href="/">메인으로</a>
+             </div>`;
+        console.error(`[카드 상세] API 오류 status=${res.status}`);
+        return;
+    }
+
+    const json = await res.json();
+    const card = json?.data ?? null;
 
     if (!card) {
         document.getElementById('main-wrap').innerHTML =
             '<div class="loading-wrap"><p>카드 정보를 불러올 수 없습니다.</p><br><a href="/">메인으로</a></div>';
+        console.error('[카드 상세] data 필드 없음:', json);
         return;
     }
 
@@ -257,9 +279,10 @@ function renderTabTerms(termsWithFiles) {
           
           ${imgFiles.length > 0 ? `
             <div class="terms-preview" style="display: none; margin-top: 12px; gap: 8px; flex-wrap: wrap;">
-              ${imgFiles.map(img => `
-                <img src="${img.filePath}" alt="약관 이미지" onclick="openImgModal('${img.filePath}')">
-              `).join('')}
+				${imgFiles.map((img, i) => `
+				    <img src="${img.filePath}" alt="약관 이미지"
+				         onclick="openImgModal('${img.filePath}', [${imgFiles.map(f => `'${f.filePath}'`).join(',')}])">
+				`).join('')}
             </div>
           ` : ''}
         </div>
@@ -288,12 +311,46 @@ function switchTab(btn, tabId) {
     document.getElementById(tabId)?.classList.add('active');
 }
 
-function openImgModal(src) {
-    document.getElementById('img-modal-src').src = src;
+// ── 이미지 모달 (슬라이드 포함) ──────────────────────────────
+let _modalImages = [];   // 현재 모달에 표시 중인 이미지 목록
+let _modalIdx    = 0;    // 현재 이미지 인덱스
+
+function openImgModal(src, allSrcs) {
+    // allSrcs: 같은 그룹의 이미지 배열 (없으면 단일 이미지)
+    _modalImages = allSrcs?.length ? allSrcs : [src];
+    _modalIdx    = _modalImages.indexOf(src);
+    if (_modalIdx < 0) _modalIdx = 0;
+
+    _renderModalImg();
     document.getElementById('img-modal').classList.add('open');
+    document.body.style.overflow = 'hidden';
 }
+
+function _renderModalImg() {
+    document.getElementById('img-modal-src').src = _modalImages[_modalIdx];
+
+    // 이미지 2개 이상일 때만 화살표 표시
+    const showArrow = _modalImages.length > 1;
+    const prev = document.getElementById('img-modal-prev');
+    const next = document.getElementById('img-modal-next');
+    if (prev) prev.style.display = showArrow ? 'flex' : 'none';
+    if (next) next.style.display = showArrow ? 'flex' : 'none';
+}
+
+function imgModalSlide(direction) {
+    if (!_modalImages.length) return;
+    _modalIdx = (_modalIdx + direction + _modalImages.length) % _modalImages.length;
+    _renderModalImg();
+}
+
 function closeImgModal() {
     document.getElementById('img-modal').classList.remove('open');
+    document.body.style.overflow = '';
+}
+
+function handleImgModalClick(e) {
+    // 배경 클릭 시 닫기 (이미지·버튼 클릭은 무시)
+    if (e.target === document.getElementById('img-modal')) closeImgModal();
 }
 
 function applyCard(cardId) {
