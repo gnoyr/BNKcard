@@ -1,3 +1,4 @@
+/// <reference path="./global.d.ts" />
 /**
  * utils.js  |  BNK 부산은행 공통 유틸리티
  * ─────────────────────────────────────────────────────────────
@@ -192,7 +193,7 @@ window.BNK = Object.freeze({
       (auth.js / mypage.js / header.js 에서 BnkAPI 등 직접 참조)
 ════════════════════════════════════════════════════════════ */
 window.BnkAPI   = _BnkAPI;
-window._BnkError = _BnkError;
+window.BnkError = _BnkError;
 window.BnkToast = _BnkToast;
 window.BnkDOM   = _BnkDOM;
 

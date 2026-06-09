@@ -213,5 +213,20 @@
     "name": "ci.salt",
     "type": "java.lang.String",
     "description": "CI 생성용 Salt"
+  },
+  {
+    "name": "migration.encrypt.enabled",
+    "type": "java.lang.String",
+    "description": "DB에 잘못 저장된 값 일괄 교체 하기 위한 마이그레이션 사용 여부"
+  },
+  {
+    "name": "springdoc.api-docs.enabled",
+    "type": "java.lang.Boolean",
+    "description": "OpenAPI(Swagger) 명세 파일(/v3/api-docs) 생성 기능을 활성화합니다."
+  },
+  {
+    "name": "springdoc.swagger-ui.enabled",
+    "type": "java.lang.Boolean",
+    "description": "API 엔드포인트를 시각화하고 테스트할 수 있는 웹 화면(Swagger UI)을 활성화합니다."
   }
 ]}

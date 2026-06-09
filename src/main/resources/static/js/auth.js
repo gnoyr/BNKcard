@@ -186,7 +186,11 @@
             }
 
             const terms = res.data?.data?.terms ?? [];
-            const extraTerms = terms.filter(t => (t.requiredYn ?? t.required) === 'Y' || t.required === true);
+			const STATIC_TERMS_IDS = [1, 2]; // signup.html에 하드코딩된 약관 ID
+			const extraTerms = terms.filter(t => {
+			    const id = t.id ?? t.termsId ?? t.termsMasterId;
+			    return !STATIC_TERMS_IDS.includes(Number(id));
+			});
 
             if (!extraTerms.length) return;
 
@@ -216,20 +220,26 @@
                 });
 
                 document.getElementById('btnStep1Next')?.addEventListener('click', () => {
-                    const requiredCbs = document.querySelectorAll('[data-required]:not([data-id])') ??
-                        document.querySelectorAll('input[type="checkbox"][required]');
-                    if (![...requiredCbs].every(cb => cb.checked)) {
-                        authToast.error('필수 약관에 모두 동의해 주세요.');
-                        return;
-                    }
-                    _agreedTermsIds = [...document.querySelectorAll('[data-id]:checked')]
-                        .map(cb => Number(cb.dataset.id))
-                        .filter(id => id > 0);
+					const requiredCbs = document.querySelectorAll(
+					    'input[type="checkbox"][data-required="Y"], input[type="checkbox"][data-required="true"]'
+					);
+					if (![...requiredCbs].every(cb => cb.checked)) {
+					    authToast.error('필수 약관에 모두 동의해 주세요.');
+					    return;
+					}
+					_agreedTermsIds = [...document.querySelectorAll('[data-id]:checked')]
+					    .map(cb => Number(cb.dataset.id))
+					    .filter(id => id > 0);
 
-                    if (_agreedTermsIds.length === 0) {
-                        authToast.error('약관 정보를 불러올 수 없습니다. 페이지를 새로고침 해주세요.');
-                        return;
-                    }
+					// 필수 약관 ID 존재 여부로 체크 (선택 약관 미체크는 허용)
+					const requiredCheckedIds = [...document.querySelectorAll(
+					    'input[type="checkbox"][data-required="Y"]:checked, input[type="checkbox"][data-required="true"]:checked'
+					)].map(cb => Number(cb.dataset.id)).filter(id => id > 0);
+
+					if (requiredCheckedIds.length === 0) {
+					    authToast.error('약관 정보를 불러올 수 없습니다. 페이지를 새로고침 해주세요.');
+					    return;
+					}
                     showView('view-step2');
                     _updateStepBar(2);
                 });

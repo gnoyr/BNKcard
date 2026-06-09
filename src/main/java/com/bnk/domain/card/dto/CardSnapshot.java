@@ -1,4 +1,4 @@
-package com.bnk.domain.card.dto.request;
+package com.bnk.domain.card.dto;
 
 import com.bnk.domain.card.model.Card;
 import com.bnk.domain.card.model.CardBenefit;

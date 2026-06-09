@@ -8,43 +8,48 @@ import lombok.Getter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+/**
+ * 사용자 정보 응답 DTO.
+ *
+ * [birthDate 타입 주의]
+ *   User 모델의 birthDate는 step1_ddl.sql에서 DATE → VARCHAR2(200)로 마이그레이션 완료.
+ *   따라서 String으로 받아 앞 4자리(년도)만 마스킹 처리.
+ *   ex) "1990-07-15" → "1990-**-**"
+ */
 @Getter
 @Builder
 public class UserResponse {
 
-    private Long userId;
-    private String name;
+	private Long userId;
+	private String name;
+	private String maskedName; // 홍*동
+	private String email;
+	private String maskedEmail; // ab***@domain.com
+	private String phone;
+	private String maskedPhone; // 010-****-5678
+	private String maskedBirthDate; // 1990-**-**
 
-    // ── 원본 (마이페이지 본인 확인용) ──────────────
-    private String email;           // 추가: 원본 이메일
-    private String phone;           // 추가: 원본 전화번호
-
-    // ── 마스킹 (아이디 찾기 등 외부 노출용) ────────
-    private String maskedEmail;     // ab***@domain.com
-    private String maskedPhone;     // 010-****-5678
-
-    private LocalDate birthDate;
-    private String job;
-    private String incomeLevelCode;
-    private Integer creditScore;
-    private String statusCode;
-    private String isEmailVerified;
-    private String isPhoneVerified;
-    private String pushEnabled;
-    private String marketingAgree;
-    private LocalDateTime lastLoginAt;
-    private LocalDateTime createdAt;
-    // password_hash · ci_value 필드 없음
+	private String job;
+	private String incomeLevelCode;
+	private Integer creditScore;
+	private String statusCode;
+	private String isEmailVerified;
+	private String isPhoneVerified;
+	private String pushEnabled;
+	private String marketingAgree;
+	private LocalDateTime lastLoginAt;
+	private LocalDateTime createdAt;
 
     public static UserResponse from(User user) {
         return UserResponse.builder()
                 .userId(user.getUserId())
                 .name(user.getName())
-                .email(user.getEmail())                          // 추가
-                .phone(user.getPhone())                          // 추가
+                .maskedName(MaskingUtil.maskName(user.getName()))
+                .email(user.getEmail())
                 .maskedEmail(MaskingUtil.maskEmail(user.getEmail()))
+                .phone(user.getPhone())
                 .maskedPhone(MaskingUtil.maskPhone(user.getPhone()))
-                .birthDate(user.getBirthDate())
+                .maskedBirthDate(maskBirthDate(user.getBirthDate()))
                 .job(user.getJob())
                 .incomeLevelCode(user.getIncomeLevelCode())
                 .creditScore(user.getCreditScore())
@@ -56,5 +61,17 @@ public class UserResponse {
                 .lastLoginAt(user.getLastLoginAt())
                 .createdAt(user.getCreatedAt())
                 .build();
+    }
+
+    /**
+     * birthDate: "1990-07-15" 또는 "19900715" 형태 모두 처리.
+     * 앞 4자리 년도만 남기고 나머지 마스킹.
+     * "1990-07-15" → "1990-**-**"
+     * "19900715"   → "1990-**-**"
+     */
+    private static String maskBirthDate(LocalDate birthDate) {
+        if (birthDate == null) return null;         
+        String str = birthDate.toString();         
+        return str.substring(0, 4) + "-**-**";
     }
 }

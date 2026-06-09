@@ -240,12 +240,17 @@ async function initMain() {
     try {
         const user = await API.get('/api/users/me');
 
-        const $set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+        const $set = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = val;
+        };
 
         $set('profileInitial', nameInitial(user.name));
         $set('profileName', (user.name ?? '사용자') + ' 님');
-        $set('profileMeta', [JOB_LABEL[user.job] ?? '', user.lastLoginAt ? '최근 로그인: ' + fmtDate(user.lastLoginAt) : '']
-            .filter(Boolean).join(' · '));
+        $set('profileMeta', [
+            JOB_LABEL[user.job] ?? '',
+            user.lastLoginAt ? '최근 로그인: ' + fmtDate(user.lastLoginAt) : ''
+        ].filter(Boolean).join(' · '));
         $set('profileScore', user.creditScore != null ? String(user.creditScore) : '—');
 
         const infoList = document.getElementById('infoList');
@@ -255,17 +260,22 @@ async function initMain() {
                 { label: '연락처', value: user.phone ?? '미등록' },
                 { label: '직업', value: JOB_LABEL[user.job] ?? '—' },
                 { label: '소득구간', value: INCOME_LABEL[user.incomeLevelCode] ?? '—' },
+                { label: '신용점수', value: user.creditScore != null ? user.creditScore + '점' : '—' },
             ].map(({ label, value }) =>
                 `<li class="info-item">
-                   <span class="info-item__label">${label}</span>
-                   <span class="info-item__value">${value ?? '—'}</span>
-                 </li>`,
+			       <span class="info-label">${label}</span>
+			       <span class="info-value">${value ?? '—'}</span>
+			     </li>`
             ).join('');
         }
     } catch (err) {
-        if (err.status !== 403 && err.status < 500) Toast.error('내 정보를 불러오지 못했습니다.');
+        if (err.status === 403) {
+            Toast.error('접근 권한이 없습니다. 다시 로그인해 주세요.');
+            setTimeout(() => location.replace(LOGIN_URL), 1500);
+        } else if (err.status < 500) {
+            Toast.error('내 정보를 불러오지 못했습니다.');
+        }
     }
-
     /* [2] 보유 카드 / 신청 현황 탭 */
     const ownedTab = document.getElementById('tab-owned');
     const appliedTab = document.getElementById('tab-applied');
@@ -382,10 +392,10 @@ async function initEdit() {
         document.getElementById('currentPhone').textContent = user.phone ?? '미등록';
         document.getElementById('job').value = user.job ?? '';
         document.getElementById('incomeLevelCode').value = user.incomeLevelCode ?? '';
-
         const creditScoreEl = document.getElementById('creditScore');
-        if (creditScoreEl) creditScoreEl.value = user.creditScore != null ? String(user.creditScore) : '';
-
+        if (creditScoreEl && user.creditScore != null) {
+            creditScoreEl.value = user.creditScore;
+        }
         const pushEl = document.getElementById('pushEnabled');
         if (pushEl) pushEl.checked = user.pushEnabled === 'Y' || user.pushEnabled === true;
         const mktEl = document.getElementById('marketingAgree');
@@ -393,7 +403,7 @@ async function initEdit() {
 
         _original = {
             name: user.name ?? '',
-            phone: '',                                         // 새 번호 입력칸 초기값
+            phone: '',
             job: user.job ?? '',
             incomeLevelCode: user.incomeLevelCode ?? '',
             creditScore: user.creditScore != null ? String(user.creditScore) : '',
@@ -436,22 +446,25 @@ async function initEdit() {
     function collectBody(currentPassword) {
         const pushEl = document.getElementById('pushEnabled');
         const mktEl = document.getElementById('marketingAgree');
-        const score = document.getElementById('creditScore')?.value?.trim();
-        const phone = document.getElementById('phone').value.trim();
-        const name = document.getElementById('name').value.trim();
-        const job = document.getElementById('job').value;
-        const incomeCode = document.getElementById('incomeLevelCode').value;
 
         const body = {};
 
         if (currentPassword) body.currentPassword = currentPassword;
-        if (name) body.name = name;
-        if (phone) body.phone = phone;
-        if (job) body.job = job;
-        if (incomeCode) body.incomeLevelCode = incomeCode;
-        if (score) body.creditScore = Number(score);
 
-        // 체크박스는 null 개념 없이 항상 현재 상태 전송
+        const name = document.getElementById('name').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+        const job = document.getElementById('job').value;
+        const incomeCode = document.getElementById('incomeLevelCode').value;
+        const score = document.getElementById('creditScore')?.value?.trim();
+
+        if (name !== _original.name) body.name = name;
+        if (phone !== _original.phone) body.phone = phone;
+        if (job !== _original.job) body.job = job;
+        if (incomeCode !== _original.incomeLevelCode) body.incomeLevelCode = incomeCode;
+		if (score !== _original.creditScore) body.creditScore = score ? Number(score) : null;
+
+
+        // 알림 설정은 항상 현재 상태 전송
         body.pushEnabled = pushEl?.checked ?? false;
         body.marketingAgree = mktEl?.checked ?? false;
 

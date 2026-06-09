@@ -16,6 +16,7 @@ import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.beans.factory.annotation.Qualifier;
 
+import java.time.Clock;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -25,7 +26,7 @@ import org.jspecify.annotations.Nullable;
 public class RagasEvaluationConfig {
 
 	@Bean
-    public ChatClientStore chatClientStore(ChatClient.Builder builder) {
+    ChatClientStore chatClientStore(ChatClient.Builder builder) {
 
         ChatClient myChatClient = builder.build();
 
@@ -36,7 +37,7 @@ public class RagasEvaluationConfig {
     }
 
 	@Bean(name = "metricExecutor")
-    public AsyncTaskExecutor metricExecutor() {
+    AsyncTaskExecutor metricExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(1); 
         executor.setMaxPoolSize(1);
@@ -46,7 +47,7 @@ public class RagasEvaluationConfig {
     }
 
     @Bean(name = "httpExecutor")
-    public AsyncTaskExecutor httpExecutor() {
+    AsyncTaskExecutor httpExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(1);
         executor.setThreadNamePrefix("Http-");
@@ -55,50 +56,52 @@ public class RagasEvaluationConfig {
     }
 
     @Bean
-    public MultiModelExecutor multiModelExecutor(
+    MultiModelExecutor multiModelExecutor(
             ChatClientStore chatClientStore,
             @Nullable EmbeddingModelStore embeddingModelStore,
             @Qualifier("metricExecutor") AsyncTaskExecutor metricExecutor,
-            @Qualifier("httpExecutor") AsyncTaskExecutor httpExecutor) {
+            @Qualifier("httpExecutor") AsyncTaskExecutor httpExecutor,
+            Clock clock) {
         
         return new MultiModelExecutor(
-            chatClientStore, 
-            embeddingModelStore, 
-            metricExecutor, 
-            httpExecutor
+            chatClientStore,
+            embeddingModelStore,
+            metricExecutor,
+            httpExecutor,
+            clock
         );
     }
     
     @Bean
-    public AspectCriticMetric aspectCriticMetric(MultiModelExecutor multiModelExecutor) {
+    AspectCriticMetric aspectCriticMetric(MultiModelExecutor multiModelExecutor) {
         return AspectCriticMetric.builder()
                 .executor(multiModelExecutor)
                 .build();
     }
     
     @Bean
-    public ContextRecallMetric contextRecallMetric(MultiModelExecutor multiModelExecutor) {
+    ContextRecallMetric contextRecallMetric(MultiModelExecutor multiModelExecutor) {
         return ContextRecallMetric.builder()
                 .executor(multiModelExecutor)
                 .build();
     }
     
     @Bean
-    public ResponseRelevancyMetric responseRelevancyMetric(MultiModelExecutor multiModelExecutor) {
+    ResponseRelevancyMetric responseRelevancyMetric(MultiModelExecutor multiModelExecutor) {
         return ResponseRelevancyMetric.builder()
                 .executor(multiModelExecutor)
                 .build();
     }
 
     @Bean
-    public FaithfulnessMetric faithfulnessMetric(MultiModelExecutor multiModelExecutor) {
+    FaithfulnessMetric faithfulnessMetric(MultiModelExecutor multiModelExecutor) {
         return FaithfulnessMetric.builder()
                 .executor(multiModelExecutor)
                 .build();
     }
 
     @Bean
-    public ContextPrecisionMetric contextPrecisionMetric(MultiModelExecutor multiModelExecutor) {
+    ContextPrecisionMetric contextPrecisionMetric(MultiModelExecutor multiModelExecutor) {
         return ContextPrecisionMetric.builder()
                 .executor(multiModelExecutor)
                 .build();

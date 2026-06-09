@@ -1,5 +1,6 @@
 package com.bnk.domain.user.dto.response;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import lombok.Builder;
@@ -37,6 +38,6 @@ public class CardStatusResponse {
 		private String cardImageUrl; // CARD_IMAGES.image_url (image_type='THUMBNAIL')
 		/** REQUESTED | REVIEWING | APPROVED | REJECTED */
 		private String applicationStatus;
-		private String appliedAt;
+		private LocalDateTime appliedAt;
 	}
 }

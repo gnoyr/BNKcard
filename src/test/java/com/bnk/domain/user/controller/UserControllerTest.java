@@ -41,6 +41,7 @@ import com.bnk.global.auth.CustomUserDetails;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.exception.GlobalExceptionHandler;
+import com.bnk.global.util.audit.AuditLogger;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("UserController 단위 테스트")
@@ -48,6 +49,9 @@ class UserControllerTest {
 
     @Mock private UserService     userService;
     @InjectMocks private UserController userController;
+
+    // [수정] GlobalExceptionHandler 생성자에 AuditLogger 필요 → @Mock 추가
+    @Mock private AuditLogger auditLogger;
 
     private MockMvc mvc;
     private CustomUserDetails mockUserDetails;
@@ -57,8 +61,6 @@ class UserControllerTest {
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
 
-        // stub을 @BeforeEach에 두지 않음 → UnnecessaryStubbingException 방지
-        //    (Bean Validation이 컨트롤러 진입 전에 막는 테스트에서 getUserId() 미호출)
         mockUserDetails = Mockito.mock(CustomUserDetails.class);
 
         HandlerMethodArgumentResolver resolver = new HandlerMethodArgumentResolver() {
@@ -71,10 +73,11 @@ class UserControllerTest {
             }
         };
 
+        // [수정] new GlobalExceptionHandler() → new GlobalExceptionHandler(auditLogger)
         mvc = MockMvcBuilders.standaloneSetup(userController)
                 .setValidator(validator)
                 .setCustomArgumentResolvers(resolver)
-                .setControllerAdvice(new GlobalExceptionHandler())
+                .setControllerAdvice(new GlobalExceptionHandler(auditLogger))
                 .build();
     }
 
@@ -93,7 +96,7 @@ class UserControllerTest {
 
             UserResponse response = UserResponse.builder()
                     .userId(1L)
-                    .name("홍길동")
+                    .maskedName("홍길동")
                     .maskedEmail("te**@test.com")
                     .maskedPhone("010-****-5678")
                     .build();
@@ -105,8 +108,6 @@ class UserControllerTest {
                     .andExpect(jsonPath("$.data.userId").value(1))
                     .andExpect(jsonPath("$.data.maskedEmail").value("te**@test.com"));
         }
-
-        // ── [신규] 실패 케이스 ────────────────────────────────────
 
         @Test
         @DisplayName("[실패] 존재하지 않는 유저 → 404 + code=U001")
@@ -121,62 +122,61 @@ class UserControllerTest {
         }
     }
 
- // ════════════════════════════════════════════════════════════════
-    // F-25 | 내 정보 수정
-    // 정책: 어떤 필드든 변경 시 currentPassword 검증 필수
     // ════════════════════════════════════════════════════════════════
- 
+    // F-25 | 내 정보 수정
+    // ════════════════════════════════════════════════════════════════
+
     @Nested
     @DisplayName("내 정보 수정 API [PUT /api/users/me]")
     class UpdateMyInfo {
- 
+
         @Test
         @DisplayName("[정상] 이름 + 비밀번호 재확인 → 200 OK")
         void 정상_200() throws Exception {
             given(mockUserDetails.getUserId()).willReturn(1L);
             willDoNothing().given(userService).updateMyInfo(anyLong(), any());
- 
+
             mvc.perform(put("/api/users/me")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{\"name\":\"이순신\",\"currentPassword\":\"Current123!\"}"))
                     .andExpect(status().isOk());
         }
- 
+
         @Test
         @DisplayName("[실패] 존재하지 않는 유저 → 404 + code=U001")
         void 실패_사용자없음_404() throws Exception {
             given(mockUserDetails.getUserId()).willReturn(1L);
             willThrow(new BusinessException(ErrorCode.USER_NOT_FOUND))
                     .given(userService).updateMyInfo(anyLong(), any());
- 
+
             mvc.perform(put("/api/users/me")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{\"name\":\"이순신\",\"currentPassword\":\"Current123!\"}"))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value("U001"));
         }
- 
+
         @Test
         @DisplayName("[실패] currentPassword 누락 → 400 + code=C001")
         void 실패_비밀번호누락_400() throws Exception {
             given(mockUserDetails.getUserId()).willReturn(1L);
             willThrow(new BusinessException(ErrorCode.INVALID_INPUT))
                     .given(userService).updateMyInfo(anyLong(), any());
- 
+
             mvc.perform(put("/api/users/me")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{\"name\":\"이순신\"}"))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("C001"));
         }
- 
+
         @Test
         @DisplayName("[실패] 비밀번호 불일치 → 400 + code=U003")
         void 실패_비밀번호불일치_400() throws Exception {
             given(mockUserDetails.getUserId()).willReturn(1L);
             willThrow(new BusinessException(ErrorCode.INVALID_PASSWORD))
                     .given(userService).updateMyInfo(anyLong(), any());
- 
+
             mvc.perform(put("/api/users/me")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{\"name\":\"이순신\",\"currentPassword\":\"WrongPw!\"}"))
@@ -244,7 +244,6 @@ class UserControllerTest {
         @Test
         @DisplayName("[실패] currentPassword 누락(@NotBlank) → 400")
         void 실패_현재비밀번호누락_400() throws Exception {
-            // ✅ @NotBlank 검증이 컨트롤러 진입 전에 막음 → getUserId() 미호출 → stub 불필요
             mvc.perform(patch("/api/users/me/password")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{\"newPassword\":\"" + NEW_PW + "\",\"newPasswordConfirm\":\"" + NEW_PW + "\"}"))
@@ -253,7 +252,7 @@ class UserControllerTest {
     }
 
     // ════════════════════════════════════════════════════════════════
-    // [신규] RQ-F17 | 보유 카드 및 신청 현황
+    // RQ-F17 | 보유 카드 및 신청 현황
     // ════════════════════════════════════════════════════════════════
 
     @Nested

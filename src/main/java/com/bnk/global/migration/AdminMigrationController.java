@@ -47,6 +47,13 @@ public class AdminMigrationController {
         MigrationResult result = migrationService.migrateCiValue();
         return ResponseEntity.ok(ApiResponse.ok(toSummary(result, "ci_value")));
     }
+    
+    @PostMapping("/recover-password")
+    public ResponseEntity<ApiResponse<MigrationSummary>> recoverPassword() {
+        log.info("[Migration API] password_hash 이중 암호화 복구 수동 트리거");
+        MigrationResult result = migrationService.recoverDoubleEncryptedPasswords();
+        return ResponseEntity.ok(ApiResponse.ok(toSummary(result, "password_hash 복구")));
+    }
 
     private MigrationSummary toSummary(MigrationResult result, String target) {
         return new MigrationSummary(

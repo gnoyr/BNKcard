@@ -12,6 +12,8 @@ import com.bnk.ai.qa.solutions.metric.AbstractMultiModelMetric;
 import com.bnk.ai.qa.solutions.metric.metadata.ContextRecallMetadata;
 import com.bnk.ai.qa.solutions.sample.Sample;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -65,11 +67,13 @@ public class ContextRecallMetric extends AbstractMultiModelMetric<ContextRecallM
 					The very first character of your output MUST be an open curly brace and the very last character MUST be a close curly brace.                    """;
 
     private final String contextRecallPrompt;
+    private final Clock clock;
 
     @Builder(toBuilder = true)
-    protected ContextRecallMetric(final MultiModelExecutor executor, final String contextRecallPrompt) {
+    protected ContextRecallMetric(final MultiModelExecutor executor, final String contextRecallPrompt, Clock clock) {
         super(executor);
         this.contextRecallPrompt = contextRecallPrompt != null ? contextRecallPrompt : DEFAULT_CONTEXT_RECALL_PROMPT;
+        this.clock = clock;
     }
 
     @Override
@@ -79,7 +83,7 @@ public class ContextRecallMetric extends AbstractMultiModelMetric<ContextRecallM
 
     @Override
     public CompletableFuture<Double> singleTurnScoreAsync(final ContextRecallConfig config, final Sample sample) {
-        final Instant startTime = Instant.now();
+        final Instant startTime = Instant.now(clock);
         final List<String> modelIds =
                 config.models != null && !config.models.isEmpty() ? config.models : executor.getModelIds();
 
@@ -182,7 +186,7 @@ public class ContextRecallMetric extends AbstractMultiModelMetric<ContextRecallM
             }
 
             // Notify with full results
-            final Duration duration = Duration.between(startTime, Instant.now());
+            final Duration duration = Duration.between(startTime, Instant.now(clock));
             final List<String> excludedModels = results.stream()
                     .filter(ModelResult::isFailure)
                     .map(ModelResult::modelId)

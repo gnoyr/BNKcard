@@ -12,6 +12,8 @@ import com.bnk.ai.qa.solutions.metric.Metric.MetricConfiguration;
 import com.bnk.ai.qa.solutions.metric.metadata.NoiseSensitivityMetadata;
 import com.bnk.ai.qa.solutions.sample.Sample;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -115,18 +117,21 @@ public class NoiseSensitivityMetric extends AbstractMultiModelMetric<NoiseSensit
 
     private final String statementGeneratorPrompt;
     private final String statementFaithfulnessPrompt;
+    private final Clock clock;
 
     @Builder(toBuilder = true)
     protected NoiseSensitivityMetric(
             final MultiModelExecutor executor,
             final String statementGeneratorPrompt,
-            final String statementFaithfulnessPrompt) {
+            final String statementFaithfulnessPrompt,
+            Clock clock) {
         super(executor);
         this.statementGeneratorPrompt =
                 statementGeneratorPrompt != null ? statementGeneratorPrompt : DEFAULT_STATEMENT_GENERATOR_PROMPT;
         this.statementFaithfulnessPrompt = statementFaithfulnessPrompt != null
                 ? statementFaithfulnessPrompt
                 : DEFAULT_STATEMENT_FAITHFULNESS_PROMPT;
+        this.clock = clock;
     }
 
     /**
@@ -169,7 +174,7 @@ public class NoiseSensitivityMetric extends AbstractMultiModelMetric<NoiseSensit
             return CompletableFuture.completedFuture(0.0);
         }
 
-        final Instant startTime = Instant.now();
+        final Instant startTime = Instant.now(clock);
         final List<String> modelIds =
                 config.models != null && !config.models.isEmpty() ? config.models : executor.getModelIds();
 
@@ -513,7 +518,7 @@ public class NoiseSensitivityMetric extends AbstractMultiModelMetric<NoiseSensit
             }
 
             // Notify with full results
-            final Duration duration = Duration.between(startTime, Instant.now());
+            final Duration duration = Duration.between(startTime, Instant.now(clock));
             notifier.afterMetricEvaluation(MetricEvaluationResult.builder()
                     .metricName(getName())
                     .sample(sample)
