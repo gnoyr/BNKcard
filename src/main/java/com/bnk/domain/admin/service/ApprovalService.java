@@ -1,6 +1,7 @@
 package com.bnk.domain.admin.service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -51,6 +52,27 @@ public class ApprovalService {
 	private final ObjectMapper objectMapper;
 	private final TermsMapper termsMapper;
 	private final AuditLogger auditLogger;
+
+	private static final ZoneId KST_ZONE = ZoneId.of("Asia/Seoul");
+
+	// ── 결재 상태 코드 ────────────────────────────────────────────────
+	private static final String STATUS_PENDING = "PENDING";
+	private static final String STATUS_APPROVED = "APPROVED";
+	private static final String STATUS_REJECTED = "REJECTED";
+	private static final String STATUS_ARCHIVED = "ARCHIVED";
+
+	// ── 카드/약관 상태 코드 ───────────────────────────────────────────
+	private static final String CARD_STATUS_DRAFT = "DRAFT";
+	private static final String CARD_STATUS_REVIEW = "REVIEW";
+	private static final String CARD_STATUS_APPROVED = "APPROVED";
+	private static final String TERMS_STATUS_DRAFT = "DRAFT";
+	private static final String TERMS_STATUS_PUBLISHED = "PUBLISHED";
+
+	// ── 결재 유형 코드 ────────────────────────────────────────────────
+	private static final String TYPE_TERMS_PUBLISH = "TERMS_PUBLISH";
+	private static final String TYPE_CARD_PUBLISH = "CARD_PUBLISH";
+	private static final String TYPE_CARD_UPDATE = "CARD_UPDATE";
+	private static final String TYPE_CARD_PREFIX = "CARD_";
 
     // ─────────────────────────────────────────────────────────────
     // 결재 목록 조회
@@ -114,7 +136,7 @@ public class ApprovalService {
                                 .commentText(l.getCommentText())
                                 .approvedAt(l.getApprovedAt())
                                 .isCurrentUser(adminId.equals(l.getApproverAdminId())
-                                        && "PENDING".equals(l.getStatusCode()))
+                                        && STATUS_PENDING.equals(l.getStatusCode()))
                                 .build())
                         .collect(Collectors.toList())
                 : Collections.emptyList();
@@ -123,7 +145,7 @@ public class ApprovalService {
         CardSnapshot snapshotInfo = null;
         if (approval.getTargetId() != null
                 && approval.getRequestTypeCode() != null
-                && approval.getRequestTypeCode().startsWith("CARD_")) {
+                && approval.getRequestTypeCode().startsWith(TYPE_CARD_PREFIX)) {
             CardVersion cardVersion = cardVersionMapper.getCardVersion(approval.getTargetId());
             if (cardVersion != null && cardVersion.getSnapshotJson() != null) {
                 try {
@@ -165,7 +187,7 @@ public class ApprovalService {
                     throw new BusinessException(ErrorCode.APPROVAL_NOT_FOUND);
                 });
 
-        if (!"PENDING".equals(approval.getStatusCode())) {
+        if (!STATUS_PENDING.equals(approval.getStatusCode())) {
             auditLogger.adminFailure(AuditLogger.CARD, AuditLogger.APPROVAL_APPROVE,
                     adminId, String.valueOf(approvalId), "이미 처리된 결재");
             throw new BusinessException(ErrorCode.APPROVAL_ALREADY_DONE);
@@ -174,14 +196,14 @@ public class ApprovalService {
         // 내 결재 라인 승인 처리
         Long lineId = approval.getLines().stream()
                 .filter(l -> adminId.equals(l.getApproverAdminId())
-                        && "PENDING".equals(l.getStatusCode()))
+                        && STATUS_PENDING.equals(l.getStatusCode()))
                 .map(ApprovalLine::getApprovalLineId)
                 .findFirst()
                 .orElse(null);
 
         if (lineId != null) {
-            approvalMapper.updateLineStatus(lineId, "APPROVED",
-                    request.getComment(), LocalDateTime.now());
+            approvalMapper.updateLineStatus(lineId, STATUS_APPROVED,
+                    request.getComment(), LocalDateTime.now(KST_ZONE));
         }
 
         // 전체 라인 완료 여부 확인
@@ -194,13 +216,13 @@ public class ApprovalService {
         // ── 분기: 결재 유형에 따라 처리 ─────────────────────────────────
         String typeCode = approval.getRequestTypeCode();
 
-        if ("TERMS_PUBLISH".equals(typeCode)) {
+        if (TYPE_TERMS_PUBLISH.equals(typeCode)) {
             handleTermsApprove(approval, adminId);
-        } else if ("CARD_PUBLISH".equals(typeCode) || "CARD_UPDATE".equals(typeCode)) {
+        } else if (TYPE_CARD_PUBLISH.equals(typeCode) || TYPE_CARD_UPDATE.equals(typeCode)) {
             handleCardApprove(approval, adminId, approvalId);
         }
 
-        approvalMapper.updateRequestStatus(approvalId, "APPROVED", LocalDateTime.now());
+        approvalMapper.updateRequestStatus(approvalId, STATUS_APPROVED, LocalDateTime.now(KST_ZONE));
         auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.APPROVAL_APPROVE,
                 adminId, String.valueOf(approvalId), "결재 승인 완료: typeCode=" + typeCode);
     }
@@ -220,11 +242,11 @@ public class ApprovalService {
         String previousStatus = terms.getStatus();
         
         // 1. TERMS status → PUBLISHED
-        termsMapper.updateTermsStatus(termsId, "PUBLISHED", adminId);
+        termsMapper.updateTermsStatus(termsId, TERMS_STATUS_PUBLISHED, adminId);
 
         // 2. TERMS_STATUS_HISTORY INSERT
         termsMapper.insertStatusHistory(
-                termsId, previousStatus, "PUBLISHED", adminId,
+                termsId, previousStatus, TERMS_STATUS_PUBLISHED, adminId,
                 "결재 승인 완료: approvalId=" + approval.getApprovalId());
 
         // 3. 같은 terms_master_id의 기존 PUBLISHED → SUPERSEDED 처리
@@ -261,7 +283,7 @@ public class ApprovalService {
 
             String previousStatus = Optional.ofNullable(cardMapper.findById(cardId))
                     .map(Card::getCardStatus)
-                    .orElse("DRAFT");
+                    .orElse(CARD_STATUS_DRAFT);
 
             Card approvedCard = Card.builder()
                     .cardId(snapshotCard.getCardId())
@@ -286,23 +308,23 @@ public class ApprovalService {
                             ? snapshotCard.getVisibleYn() : "Y")
                     .approvalRequiredYn(snapshotCard.getApprovalRequiredYn() != null
                             ? snapshotCard.getApprovalRequiredYn() : "Y")
-                    .cardStatus("APPROVED")
+                    .cardStatus(CARD_STATUS_APPROVED)
                     .publishStartAt(snapshotCard.getPublishStartAt())
                     .publishEndAt(snapshotCard.getPublishEndAt())
                     .updatedBy(adminId)
                     .build();
 
             cardMapper.updateCard(approvedCard);
-            cardMapper.updateCardStatus(cardId, "APPROVED");
+            cardMapper.updateCardStatus(cardId, CARD_STATUS_APPROVED);
 
             cardVersionMapper.updateVersionStatus(
-                    cardVersion.getVersionId(), "APPROVED", adminId);
+                    cardVersion.getVersionId(), STATUS_APPROVED, adminId);
 
             cardStatusHistoryMapper.insertCardStatusHistory(
                     CardStatusHistory.builder()
                             .cardId(cardId)
                             .previousStatus(previousStatus)
-                            .changedStatus("APPROVED")
+                            .changedStatus(CARD_STATUS_APPROVED)
                             .changedBy(adminId)
                             .changedReason("결재 승인 완료: approvalId=" + approvalId)
                             .build());
@@ -338,7 +360,7 @@ public class ApprovalService {
                     throw new BusinessException(ErrorCode.APPROVAL_NOT_FOUND);
                 });
 
-        if (!"PENDING".equals(approval.getStatusCode())) {
+        if (!STATUS_PENDING.equals(approval.getStatusCode())) {
             auditLogger.adminFailure(AuditLogger.CARD, AuditLogger.APPROVAL_REJECT,
                     adminId, String.valueOf(approvalId), "이미 처리된 결재");
             throw new BusinessException(ErrorCode.APPROVAL_ALREADY_DONE);
@@ -347,26 +369,26 @@ public class ApprovalService {
         // 내 결재 라인 반려 처리
         Long lineId = approval.getLines().stream()
                 .filter(l -> adminId.equals(l.getApproverAdminId())
-                        && "PENDING".equals(l.getStatusCode()))
+                        && STATUS_PENDING.equals(l.getStatusCode()))
                 .map(ApprovalLine::getApprovalLineId)
                 .findFirst()
                 .orElse(null);
 
         if (lineId != null) {
-            approvalMapper.updateLineStatus(lineId, "REJECTED",
-                    request.getComment(), LocalDateTime.now());
+            approvalMapper.updateLineStatus(lineId, STATUS_REJECTED,
+                    request.getComment(), LocalDateTime.now(KST_ZONE));
         }
 
         // ── 분기: 결재 유형에 따라 처리 ─────────────────────────────────
         String typeCode = approval.getRequestTypeCode();
 
-        if ("TERMS_PUBLISH".equals(typeCode)) {
+        if (TYPE_TERMS_PUBLISH.equals(typeCode)) {
             handleTermsReject(approval, adminId);
-        } else if ("CARD_PUBLISH".equals(typeCode) || "CARD_UPDATE".equals(typeCode)) {
+        } else if (TYPE_CARD_PUBLISH.equals(typeCode) || TYPE_CARD_UPDATE.equals(typeCode)) {
             handleCardReject(approval, adminId, approvalId);
         }
 
-        approvalMapper.updateRequestStatus(approvalId, "REJECTED", LocalDateTime.now());
+        approvalMapper.updateRequestStatus(approvalId, STATUS_REJECTED, LocalDateTime.now(KST_ZONE));
         auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.APPROVAL_REJECT,
                 adminId, String.valueOf(approvalId), "결재 반려 완료: typeCode=" + typeCode);
     }
@@ -382,10 +404,10 @@ public class ApprovalService {
         String previousStatus = terms.getStatus();
 
         // REJECTED → DRAFT (반려 시 재검토 상태로)
-        termsMapper.updateTermsStatus(termsId, "DRAFT", adminId);
+        termsMapper.updateTermsStatus(termsId, TERMS_STATUS_DRAFT, adminId);
 
         termsMapper.insertStatusHistory(
-                termsId, previousStatus, "DRAFT", adminId,
+                termsId, previousStatus, TERMS_STATUS_DRAFT, adminId,
                 "결재 반려: approvalId=" + approval.getApprovalId());
 
         auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.APPROVAL_REJECT,
@@ -399,22 +421,22 @@ public class ApprovalService {
         CardVersion cardVersion = approvalMapper.findVersionByApprovalId(approvalId);
 
         // CARD_VERSIONS → ARCHIVED
-        cardVersionMapper.updateVersionStatus(approval.getTargetId(), "ARCHIVED", adminId);
+        cardVersionMapper.updateVersionStatus(approval.getTargetId(), STATUS_ARCHIVED, adminId);
 
         if (cardVersion != null && cardVersion.getCardId() != null) {
             String previousStatus = Optional.ofNullable(
                     cardMapper.findById(cardVersion.getCardId()))
                     .map(Card::getCardStatus)
-                    .orElse("REVIEW"); 
+                    .orElse(CARD_STATUS_REVIEW); 
 
             // CARDS → REVIEW
-            cardMapper.updateCardStatus(cardVersion.getCardId(), "REVIEW");
+            cardMapper.updateCardStatus(cardVersion.getCardId(), CARD_STATUS_REVIEW);
 
             cardStatusHistoryMapper.insertCardStatusHistory(
                     CardStatusHistory.builder()
                             .cardId(cardVersion.getCardId())
                             .previousStatus(previousStatus)
-                            .changedStatus("REVIEW")
+                            .changedStatus(CARD_STATUS_REVIEW)
                             .changedBy(adminId)
                             .changedReason("결재 반려: approvalId=" + approvalId)
                             .build());
