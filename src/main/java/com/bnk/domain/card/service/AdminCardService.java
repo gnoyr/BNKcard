@@ -43,6 +43,7 @@ import com.bnk.domain.card.model.CardVersion;
 import com.bnk.domain.terms.mapper.TermsMapper;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
+import com.bnk.global.log.annotation.Loggable;
 import com.bnk.global.response.PageResponse;
 import com.bnk.global.util.audit.AuditLogger;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -85,6 +86,7 @@ public class AdminCardService {
     // B-03 카드 신규 등록
     // ══════════════════════════════════════════════════════════════════
     @Transactional
+    @Loggable(eventType = "ADMIN_CARD_CREATE", targetType = "CARD", actionDetail = "카드등록")
     public Map<String, Long> createCard(@Valid CardCreateRequest request, Long adminId) {
     	
         // 1. CARDS INSERT (DRAFT)
@@ -168,6 +170,7 @@ public class AdminCardService {
     // B-04 카드 기본정보 수정
     // ══════════════════════════════════════════════════════════════════
     @Transactional
+    @Loggable(eventType = "ADMIN_CARD_UPDATE", targetType = "CARD", actionDetail = "카드수정")
     public Map<String, Long> updateCard(Long cardId, @Valid CardUpdateRequest request, Long adminId) {
 
         Card existing = cardMapper.findById(cardId);
@@ -203,6 +206,7 @@ public class AdminCardService {
     // 혜택 등록/수정
     // ══════════════════════════════════════════════════════════════════
     @Transactional
+    @Loggable(eventType = "ADMIN_BENEFIT_UPDATE", targetType = "CARD", actionDetail = "혜택수정")
     public Map<String, Long> saveCardBenefits(Long cardId, @Valid BenefitUpdateRequest request, Long adminId) {
         Card existing = cardMapper.findById(cardId);
         if (existing == null) {
@@ -282,6 +286,7 @@ public class AdminCardService {
     // 카드 상태 강제 변경
     // ══════════════════════════════════════════════════════════════════
     @Transactional
+    @Loggable(eventType = "ADMIN_CARD_STATUS", targetType = "CARD", actionDetail = "상태변경")
     public void changeCardStatus(Long cardId, @Valid CardStatusRequest request, Long adminId) {
         // ← cardMapper2.getCardDetail() 대신 cardMapper.findById() 사용
         Card card = cardMapper.findById(cardId);

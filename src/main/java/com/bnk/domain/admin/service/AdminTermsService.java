@@ -24,6 +24,7 @@ import com.bnk.domain.terms.model.TermsMaster;
 import com.bnk.domain.terms.service.PdfConvertService;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
+import com.bnk.global.log.annotation.Loggable;
 import com.bnk.global.util.FileStorageService;
 import com.bnk.global.util.FileStorageService.UploadResult;
 import com.bnk.global.util.ObjectStorageService;
@@ -46,6 +47,7 @@ public class AdminTermsService {
     // 약관 신규 등록 + 결재 신청
     // ════════════════════════════════════════════════════════════
     @Transactional
+    @Loggable(eventType = "ADMIN_TERMS_CREATE", targetType = "TERMS", actionDetail = "약관등록")
     public java.util.Map<String, Long> registerTermsWithApproval(
             TermsCreateRequest request,
             MultipartFile pdfFile,
@@ -152,6 +154,7 @@ public class AdminTermsService {
     // 약관 상태 변경
     // ════════════════════════════════════════════════════════════
     @Transactional
+    @Loggable(eventType = "ADMIN_TERMS_STATUS", targetType = "TERMS", actionDetail = "약관상태변경")
     public void changeTermsStatus(Long termsId, TermsStatusRequest request, Long adminId) {
         Terms terms = termsMapper.findById(termsId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TERMS_NOT_FOUND));

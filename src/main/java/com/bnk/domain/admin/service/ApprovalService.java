@@ -29,6 +29,7 @@ import com.bnk.domain.terms.mapper.TermsMapper;
 import com.bnk.domain.terms.model.Terms;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
+import com.bnk.global.log.annotation.Loggable;
 import com.bnk.global.response.PageResponse;
 import com.bnk.global.util.audit.AuditLogger;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -176,6 +177,7 @@ public class ApprovalService {
     // 결재 승인
     // ─────────────────────────────────────────────────────────────
     @Transactional
+    @Loggable(eventType = "APPROVAL_APPROVE", targetType = "APPROVAL", actionDetail = "결재승인")
     public void approve(Long approvalId, @Valid ApprovalActionRequest request, Long adminId) {
 
         ApprovalRequest approval = approvalMapper.findById(approvalId)
@@ -342,6 +344,7 @@ public class ApprovalService {
     // 결재 반려
     // ─────────────────────────────────────────────────────────────
     @Transactional
+    @Loggable(eventType = "APPROVAL_REJECT", targetType = "APPROVAL", actionDetail = "결재반려")
     public void reject(Long approvalId, @Valid ApprovalActionRequest request, Long adminId) {
 
         if (request.getComment() == null || request.getComment().isBlank()) {

@@ -32,6 +32,7 @@ import com.bnk.domain.search.mapper.SearchLogMapper;
 import com.bnk.domain.search.model.SearchLog;
 import com.bnk.domain.spending.mapper.SpendingPatternMapper;
 import com.bnk.domain.terms.mapper.TermsMapper;
+import com.bnk.global.log.annotation.Loggable;
 import com.bnk.global.response.PageResponse;
 
 import jakarta.validation.Valid;
@@ -100,6 +101,7 @@ public class CardService {
     // 카드 목록 + 검색 (페이징)
     // ────────────────────────────────────────────────────────────────
     @Transactional
+    @Loggable(eventType = "CARD_SEARCH", targetType = "CARD", actionDetail = "카드검색")
     public PageResponse<CardListResponse> getCardList(@Valid CardSearchRequest request, Long userId) {
 
         long totalCount = cardMapper.countAll(request);
@@ -231,6 +233,7 @@ public class CardService {
     // 카드 상세 조회 + 조회수 증가
     // ────────────────────────────────────────────────────────────────
     @Transactional
+    @Loggable(eventType = "CARD_VIEW", targetType = "CARD", actionDetail = "상세조회")
     public CardDetailResponse getCardDetail(Long cardId) {
 
         Card card = cardMapper.findById(cardId);
@@ -302,6 +305,7 @@ public class CardService {
     // 카드 비교 (2~3개)
     // ────────────────────────────────────────────────────────────────
     @Transactional(readOnly = true)
+    @Loggable(eventType = "CARD_COMPARE", targetType = "CARD", actionDetail = "카드비교")
     public List<CardCompareResponse> compareCards(@Valid CardCompareRequest request) {
 
         List<Long> cardIds = request.getCardIds();

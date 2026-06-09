@@ -50,6 +50,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
+	
+	implementation 'org.aspectj:aspectjweaver:1.9.22'
 
 	// ── JDBC (명시적 버전 고정 — Spring Boot BOM 버전과 다를 경우 충돌 방지) ──
 	implementation("org.springframework.boot:spring-boot-starter-jdbc:4.1.0-RC1")
