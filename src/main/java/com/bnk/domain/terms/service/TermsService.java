@@ -21,6 +21,7 @@ import com.bnk.domain.terms.model.TermsFile;
 import com.bnk.domain.terms.model.UserTermsAgreement;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
+import com.bnk.global.log.annotation.Loggable;
 import com.bnk.global.util.ObjectStorageService;
 
 import jakarta.validation.Valid;
@@ -64,6 +65,7 @@ public class TermsService {
     // F-17 | 약관 동의 처리
     // ─────────────────────────────────────────────────────────────
     @Transactional
+    @Loggable(eventType = "TERMS_AGREE", targetType = "TERMS", actionDetail = "약관동의")
     public List<Long> agreeTerms(@Valid TermsAgreementRequest request, Long userId) {
 
         Set<Long> agreedIds = request.getAgreedTerms().stream()
