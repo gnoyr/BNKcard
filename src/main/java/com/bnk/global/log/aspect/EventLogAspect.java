@@ -91,7 +91,7 @@ public class EventLogAspect {
             }
         }
     }
-
+    // 실시리시리시ㅣ
     // ─── 실패 로그 ───
     private void saveFailure(Loggable loggable, ProceedingJoinPoint pjp,
                              Exception e, Long userId, String ip, long duration) {
