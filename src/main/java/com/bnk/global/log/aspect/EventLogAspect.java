@@ -49,17 +49,23 @@ public class EventLogAspect {
         EventLog parent = buildParent(loggable.eventType(), "SUCCESS", userId, ip, duration);
 
         switch (loggable.targetType()) {
-            case "CARD" -> {
-                String cardId = extractArg(pjp, String.class);
-                CardEventLog child = CardEventLog.builder()
-                        .cardId(cardId)
-                        .actionDetail(loggable.actionDetail())
-                        .resultCode("SUCCESS")
-                        .build();
-                eventLogService.saveCardLog(parent, child);
-            }
+	        case "CARD" -> {
+	            // cardIdParam이 비어있으면 cardId 추출 시도 안 함
+	            String cardId = null;
+	            if (!loggable.cardIdParam().isEmpty()) {
+	                cardId = extractByName(pjp, loggable.cardIdParam());
+	            }
+	            CardEventLog child = CardEventLog.builder()
+	                    .cardId(cardId)
+	                    .actionDetail(loggable.actionDetail())
+	                    .resultCode("SUCCESS")
+	                    .build();
+	            eventLogService.saveCardLog(parent, child);
+	        }
             case "TERMS" -> {
-                Long termsId = extractArg(pjp, Long.class);
+                // termsId 파라미터 이름으로 찾기
+                String termsIdStr = extractByName(pjp, "termsId");
+                Long termsId = termsIdStr != null ? Long.valueOf(termsIdStr) : null;
                 TermsEventLog child = TermsEventLog.builder()
                         .termsId(termsId)
                         .actionDetail(loggable.actionDetail())
@@ -67,52 +73,62 @@ public class EventLogAspect {
                 eventLogService.saveTermsLog(parent, child);
             }
             case "CHAT" -> {
-                // AiChatResponse에서 상세 정보 꺼내기
+                // query 또는 message 파라미터 이름으로 찾기
+                String queryText = extractByName(pjp, "query");
+                if (queryText == null) queryText = extractByName(pjp, "message");
+
                 ChatEventLog child = ChatEventLog.builder()
                         .usedFallback("N")
                         .build();
                 if (result instanceof AiChatResponse res) {
                     child.setSessionId(res.getSessionId());
-                    child.setQueryText(extractArg(pjp, String.class));
                 }
+                child.setQueryText(truncate(queryText, 2000));
                 eventLogService.saveChatLog(parent, child);
             }
             case "APPROVAL" -> {
-                // 자식 테이블 없음 — 부모만 저장
                 eventLogService.saveParentOnly(parent);
             }
         }
     }
-
+    // 실시리시리시ㅣㅁㄹㄴㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇ
     // ─── 실패 로그 ───
     private void saveFailure(Loggable loggable, ProceedingJoinPoint pjp,
                              Exception e, Long userId, String ip, long duration) {
         EventLog parent = buildParent(loggable.eventType(), "FAILURE", userId, ip, duration);
 
         switch (loggable.targetType()) {
-            case "CARD" -> {
-                String cardId = extractArg(pjp, String.class);
-                CardEventLog child = CardEventLog.builder()
-                        .cardId(cardId)
-                        .actionDetail(loggable.actionDetail())
-                        .resultCode("SYSTEM_ERROR")
-                        .errorMessage(truncate(e.getMessage()))
-                        .build();
-                eventLogService.saveCardLog(parent, child);
-            }
+	        case "CARD" -> {
+	            String cardId = null;
+	            if (!loggable.cardIdParam().isEmpty()) {
+	                cardId = extractByName(pjp, loggable.cardIdParam());
+	            }
+	            CardEventLog child = CardEventLog.builder()
+	                    .cardId(cardId)
+	                    .actionDetail(loggable.actionDetail())
+	                    .resultCode("SYSTEM_ERROR")
+	                    .errorMessage(truncate(e.getMessage(), 1000))
+	                    .build();
+	            eventLogService.saveCardLog(parent, child);
+	        }
             case "TERMS" -> {
                 TermsEventLog child = TermsEventLog.builder()
                         .actionDetail(loggable.actionDetail())
-                        .errorMessage(truncate(e.getMessage()))
+                        .errorMessage(truncate(e.getMessage(), 1000))
                         .build();
                 eventLogService.saveTermsLog(parent, child);
             }
             case "CHAT" -> {
+                String queryText = extractByName(pjp, "query");
+                if (queryText == null) queryText = extractByName(pjp, "message");
                 ChatEventLog child = ChatEventLog.builder()
-                        .queryText(extractArg(pjp, String.class))
-                        .errorMessage(truncate(e.getMessage()))
+                        .queryText(truncate(queryText, 2000))
+                        .errorMessage(truncate(e.getMessage(), 1000))
                         .build();
                 eventLogService.saveChatLog(parent, child);
+            }
+            case "APPROVAL" -> {
+                eventLogService.saveParentOnly(parent);
             }
         }
     }
@@ -129,6 +145,22 @@ public class EventLogAspect {
                 .build();
     }
 
+    /**
+     * 파라미터 이름으로 값 찾기 — Long/String 모두 String으로 반환
+     * 타입 기반 extractArg 대신 이걸로 통일
+     */
+    private String extractByName(ProceedingJoinPoint pjp, String paramName) {
+        MethodSignature sig = (MethodSignature) pjp.getSignature();
+        String[] names = sig.getParameterNames();
+        Object[] args  = pjp.getArgs();
+        for (int i = 0; i < names.length; i++) {
+            if (paramName.equals(names[i]) && args[i] != null) {
+                return String.valueOf(args[i]);
+            }
+        }
+        return null;
+    }
+
     private Long getCurrentUserId() {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -143,20 +175,16 @@ public class EventLogAspect {
 
     private String getClientIp() {
         String xff = request.getHeader("X-Forwarded-For");
-        return (xff != null && !xff.isBlank())
+        String ip = (xff != null && !xff.isBlank())
                 ? xff.split(",")[0].trim()
                 : request.getRemoteAddr();
+        // 100자 초과 방지
+        return ip != null && ip.length() > 100 ? ip.substring(0, 100) : ip;
     }
 
-    private <T> T extractArg(ProceedingJoinPoint pjp, Class<T> type) {
-        for (Object arg : pjp.getArgs()) {
-            if (arg != null && type.isInstance(arg)) return type.cast(arg);
-        }
-        return null;
-    }
-
-    private String truncate(String msg) {
+    // 길이 제한 truncate — 컬럼별 다른 길이 적용
+    private String truncate(String msg, int maxLen) {
         if (msg == null) return null;
-        return msg.length() > 500 ? msg.substring(0, 500) : msg;
+        return msg.length() > maxLen ? msg.substring(0, maxLen) : msg;
     }
 }
