@@ -4,6 +4,8 @@ import lombok.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import com.bnk.domain.user.dto.request.UserUpdateRequest;
+
 @Getter
 @Builder
 @NoArgsConstructor
@@ -35,4 +37,40 @@ public class User {
 	private LocalDateTime updatedAt;
 	private String deletedYn;
 	private String cddStatusCode; // PENDING / VERIFIED / ENHANCED / REJECTED
+	
+	public User applyUpdate(UserUpdateRequest request) {
+	    return User.builder()
+	            .userId(this.userId)
+	            .email(this.email)
+	            .passwordHash(this.passwordHash)
+	            .name(request.getName() != null ? request.getName() : this.name)
+	            .phone(request.getPhone() != null ? request.getPhone() : this.phone)
+	            .birthDate(this.birthDate)
+	            .ciValue(this.ciValue)
+	            .job(request.getJob() != null ? request.getJob() : this.job)
+	            .incomeLevelCode(request.getIncomeLevelCode() != null ? request.getIncomeLevelCode() : this.incomeLevelCode)
+	            .creditScore(request.getCreditScore() != null ? request.getCreditScore() : this.creditScore)
+	            .statusCode(this.statusCode)
+	            .loginFailCount(this.loginFailCount)
+	            .lockedUntil(this.lockedUntil)
+	            .lastLoginAt(this.lastLoginAt)
+	            .lastPasswordChangedAt(this.lastPasswordChangedAt)
+	            .isEmailVerified(this.isEmailVerified)
+	            .isPhoneVerified(this.isPhoneVerified)
+	            // ★ Boolean → "Y"/"N" 변환
+	            .pushEnabled(request.getPushEnabled() != null
+	                    ? (request.getPushEnabled() ? "Y" : "N")
+	                    : this.pushEnabled)
+	            .marketingAgree(request.getMarketingAgree() != null
+	                    ? (request.getMarketingAgree() ? "Y" : "N")
+	                    : this.marketingAgree)
+	            .privacyAgree(this.privacyAgree)
+	            .dormantAt(this.dormantAt)
+	            .withdrawnAt(this.withdrawnAt)
+	            .createdAt(this.createdAt)
+	            .updatedAt(this.updatedAt)
+	            .deletedYn(this.deletedYn)
+	            .cddStatusCode(this.cddStatusCode)
+	            .build();
+	}
 }
