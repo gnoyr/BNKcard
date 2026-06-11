@@ -120,6 +120,14 @@ AI 챗봇 카드 안내
 
 ---
 
+## 화면 구성
+
+| 메인화면 | 카드 비교 | 카드 상세 |
+|:---:|:---:|:---:|
+| ![screen1](https://github.com/user-attachments/assets/1b584a02-0353-48fc-99e9-f050cf678071) | ![screen2](https://github.com/user-attachments/assets/08a38d4f-d7ea-49cb-b8fe-5735715a4713) | ![screen3](https://github.com/user-attachments/assets/f2f0edfc-c8ab-4cc7-b0a1-5b5bc7ab32da) |
+
+---
+
 ## 프로젝트 보고서 및 발표자료
 
 [최종 보고서](https://drive.google.com/file/d/13p_4iO5GwN-gU1dv0EqyotF48-BJtDcC/view?usp=sharing)  
