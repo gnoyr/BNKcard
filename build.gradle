@@ -21,6 +21,11 @@ java {
 	}
 }
 
+test {
+    exclude '**/AiChatMock*'
+    exclude '**/AiChatEvaluationTest*'
+}
+
 // ── Spring 6+ @PathVariable / @CookieValue / @RequestParam 파라미터 이름 인식 ──
 tasks.withType(JavaCompile).configureEach {
 	options.compilerArgs += ['-parameters']

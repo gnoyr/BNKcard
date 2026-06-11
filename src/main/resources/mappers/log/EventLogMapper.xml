@@ -3,58 +3,62 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.bnk.global.log.mapper.EventLogMapper">
 
-	<!-- 부모 테이블 -->
-	<insert id="insertParent" parameterType="com.bnk.global.log.model.EventLog">
-	    <selectKey keyProperty="logId" resultType="long" order="BEFORE">
-	        SELECT SEQ_EVENT_LOGS.NEXTVAL FROM DUAL
-	    </selectKey>
-	    INSERT INTO EVENT_LOGS (log_id, event_type, event_status, user_id, request_ip, duration_ms)
-	    VALUES (
-	        #{logId},
-	        #{eventType},
-	        #{eventStatus},
-	        #{userId,       jdbcType=NUMERIC},
-	        #{requestIp,    jdbcType=VARCHAR},
-	        #{durationMs,   jdbcType=NUMERIC}
-	    )
+	<insert id="insertParent"
+		parameterType="com.bnk.global.log.model.EventLog">
+		<selectKey keyProperty="logId" resultType="long"
+			order="BEFORE">
+			SELECT SEQ_EVENT_LOGS.NEXTVAL FROM DUAL
+		</selectKey>
+		INSERT INTO EVENT_LOGS (log_id, event_type, event_status, user_id,
+		request_ip, duration_ms)
+		VALUES (
+		#{logId, jdbcType=BIGINT},
+		#{eventType, jdbcType=VARCHAR},
+		#{eventStatus, jdbcType=VARCHAR},
+		#{userId, jdbcType=BIGINT},
+		#{requestIp, jdbcType=VARCHAR},
+		#{durationMs, jdbcType=BIGINT}
+		)
 	</insert>
-	
-	<!-- 카드 자식 -->
-	<insert id="insertCardLog" parameterType="com.bnk.global.log.model.CardEventLog">
-	    INSERT INTO CARD_EVENT_LOGS (log_id, card_id, action_detail, result_code, error_message)
-	    VALUES (
-	        #{logId},
-	        #{cardId,       jdbcType=VARCHAR},
-	        #{actionDetail, jdbcType=VARCHAR},
-	        #{resultCode,   jdbcType=VARCHAR},
-	        #{errorMessage, jdbcType=VARCHAR}
-	    )
+
+	<insert id="insertCardLog"
+		parameterType="com.bnk.global.log.model.CardEventLog">
+		INSERT INTO CARD_EVENT_LOGS (log_id, card_id, action_detail, result_code,
+		error_message)
+		VALUES (
+		#{logId, jdbcType=BIGINT},
+		#{cardId, jdbcType=VARCHAR},
+		#{actionDetail, jdbcType=VARCHAR},
+		#{resultCode, jdbcType=VARCHAR},
+		#{errorMessage, jdbcType=VARCHAR}
+		)
 	</insert>
-	
-	<!-- 약관 자식 -->
-	<insert id="insertTermsLog" parameterType="com.bnk.global.log.model.TermsEventLog">
-	    INSERT INTO TERMS_EVENT_LOGS (log_id, terms_id, action_detail, error_message)
-	    VALUES (
-	        #{logId},
-	        #{termsId,      jdbcType=NUMERIC},
-	        #{actionDetail, jdbcType=VARCHAR},
-	        #{errorMessage, jdbcType=VARCHAR}
-	    )
+
+	<insert id="insertTermsLog"
+		parameterType="com.bnk.global.log.model.TermsEventLog">
+		INSERT INTO TERMS_EVENT_LOGS (log_id, terms_id, action_detail,
+		error_message)
+		VALUES (
+		#{logId, jdbcType=BIGINT},
+		#{termsId, jdbcType=BIGINT},
+		#{actionDetail, jdbcType=VARCHAR},
+		#{errorMessage, jdbcType=VARCHAR}
+		)
 	</insert>
-	
-	<!-- 챗봇 자식 -->
-	<insert id="insertChatLog" parameterType="com.bnk.global.log.model.ChatEventLog">
-	    INSERT INTO CHAT_EVENT_LOGS (log_id, session_id, query_text,
-	                                 qdrant_hit_count, top_score, used_fallback, error_message)
-	    VALUES (
-	        #{logId},
-	        #{sessionId,       jdbcType=VARCHAR},
-	        #{queryText,       jdbcType=VARCHAR},
-	        #{qdrantHitCount,  jdbcType=NUMERIC},
-	        #{topScore,        jdbcType=NUMERIC},
-	        #{usedFallback,    jdbcType=VARCHAR},
-	        #{errorMessage,    jdbcType=VARCHAR}
-	    )
+
+	<insert id="insertChatLog"
+		parameterType="com.bnk.global.log.model.ChatEventLog">
+		INSERT INTO CHAT_EVENT_LOGS (log_id, session_id, query_text,
+		qdrant_hit_count, top_score, used_fallback, error_message)
+		VALUES (
+		#{logId, jdbcType=BIGINT},
+		#{sessionId, jdbcType=VARCHAR},
+		#{queryText, jdbcType=VARCHAR},
+		#{qdrantHitCount, jdbcType=INTEGER},
+		#{topScore, jdbcType=DOUBLE},
+		#{usedFallback, jdbcType=VARCHAR},
+		#{errorMessage, jdbcType=VARCHAR}
+		)
 	</insert>
 
 </mapper>

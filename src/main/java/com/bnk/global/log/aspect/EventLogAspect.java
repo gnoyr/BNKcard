@@ -1,12 +1,5 @@
 package com.bnk.global.log.aspect;
 
-import com.bnk.domain.ai.dto.AiChatResponse;
-import com.bnk.global.log.annotation.Loggable;
-import com.bnk.global.log.model.*;
-import com.bnk.global.log.service.EventLogService;
-import jakarta.servlet.http.HttpServletRequest;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -14,6 +7,18 @@ import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+
+import com.bnk.domain.ai.dto.AiChatResponse;
+import com.bnk.global.log.annotation.Loggable;
+import com.bnk.global.log.model.CardEventLog;
+import com.bnk.global.log.model.ChatEventLog;
+import com.bnk.global.log.model.EventLog;
+import com.bnk.global.log.model.TermsEventLog;
+import com.bnk.global.log.service.EventLogService;
+
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Aspect

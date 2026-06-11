@@ -84,9 +84,10 @@ const V = (() => {
             ? '' : '올바른 휴대폰 번호를 입력해주세요.',
         password: v => {
             if (!v || v.length < 8) return '8자 이상 입력해주세요.';
+            if (v.length > 50) return '50자 이하로 입력해주세요.';
             if (!/[A-Za-z]/.test(v)) return '영문을 포함해주세요.';
             if (!/\d/.test(v)) return '숫자를 포함해주세요.';
-            if (!/[@$!%*#?&]/.test(v)) return '특수문자를 포함해주세요.';
+            if (!/[@$!%*#?&]/.test(v)) return '특수문자(@$!%*#?&)를 포함해주세요.';
             return '';
         },
         match: (a, b) => a === b ? '' : '비밀번호가 일치하지 않습니다.',
@@ -271,8 +272,8 @@ async function initMain() {
     } catch (err) {
         if (err.status === 403) {
             Toast.error('접근 권한이 없습니다. 다시 로그인해 주세요.');
-            setTimeout(() => location.replace(LOGIN_URL), 1500);
-        } else if (err.status < 500) {
+            setTimeout(() => location.replace('/auth/login'), 1500);
+        } else if (err.status > 0 && err.status < 500) {
             Toast.error('내 정보를 불러오지 못했습니다.');
         }
     }
@@ -343,7 +344,7 @@ async function initMain() {
                 ? list.map(c => renderCardItem(c, type)).join('')
                 : `<p class="empty-text">${type === 'owned' ? '보유한 카드가 없습니다.' : '신청 내역이 없습니다.'}</p>`;
         } catch (err) {
-            if (err.status !== 403 && err.status < 500)
+            if (err.status > 0 && err.status !== 403 && err.status < 500)
                 cardSection.innerHTML = `<p class="error-text">${err.message}</p>`;
         }
     }
@@ -367,7 +368,7 @@ async function initMain() {
         if (totalEl) totalEl.textContent = fmtMoney(total);
         renderDonut('donutChart', items, total);
     } catch (err) {
-        if (err.status !== 403 && err.status < 500) Toast.warning('소비 패턴 데이터를 불러오지 못했습니다.');
+        if (err.status > 0 && err.status !== 403 && err.status < 500) Toast.warning('소비 패턴 데이터를 불러오지 못했습니다.');
     }
 }
 
@@ -383,12 +384,14 @@ async function initEdit() {
     const confirmBtn = document.getElementById('modalConfirmBtn');
 
     let _original = {};
+    let _phoneChanged = false; // phone input에 실제로 값을 입력했는지 추적
 
     /* ① 사용자 정보 로드 */
     try {
         const user = await API.get('/api/users/me');
 
         document.getElementById('name').value = user.name ?? '';
+        // 마스킹된 번호는 currentPhone(표시용)에만 노출, phone input은 빈 상태 유지
         document.getElementById('currentPhone').textContent = user.phone ?? '미등록';
         document.getElementById('job').value = user.job ?? '';
         document.getElementById('incomeLevelCode').value = user.incomeLevelCode ?? '';
@@ -403,7 +406,6 @@ async function initEdit() {
 
         _original = {
             name: user.name ?? '',
-            phone: '',
             job: user.job ?? '',
             incomeLevelCode: user.incomeLevelCode ?? '',
             creditScore: user.creditScore != null ? String(user.creditScore) : '',
@@ -411,14 +413,14 @@ async function initEdit() {
             marketingAgree: mktEl?.checked ?? false,
         };
     } catch (err) {
-        if (err.status !== 403 && err.status < 500) Toast.error('내 정보를 불러오지 못했습니다.');
+        if (err.status > 0 && err.status !== 403 && err.status < 500) Toast.error('내 정보를 불러오지 못했습니다.');
     }
 
     /* ② 변경 감지 — 개인정보 / 알림설정 분리 */
     function hasPersonalInfoChange() {
         return (
             document.getElementById('name').value.trim() !== _original.name ||
-            document.getElementById('phone').value.trim() !== _original.phone ||
+            _phoneChanged ||   // phone은 input 이벤트 플래그로 감지 (마스킹 값 비교 불가)
             document.getElementById('job').value !== _original.job ||
             document.getElementById('incomeLevelCode').value !== _original.incomeLevelCode ||
             (document.getElementById('creditScore')?.value ?? '') !== _original.creditScore
@@ -458,11 +460,11 @@ async function initEdit() {
         const score = document.getElementById('creditScore')?.value?.trim();
 
         if (name !== _original.name) body.name = name;
-        if (phone !== _original.phone) body.phone = phone;
+        // phone은 플래그로만 판단 — 빈 값이면 phone 필드 미포함
+        if (_phoneChanged && phone) body.phone = phone;
         if (job !== _original.job) body.job = job;
         if (incomeCode !== _original.incomeLevelCode) body.incomeLevelCode = incomeCode;
-		if (score !== _original.creditScore) body.creditScore = score ? Number(score) : null;
-
+        if (score !== _original.creditScore) body.creditScore = score ? Number(score) : null;
 
         // 알림 설정은 항상 현재 상태 전송
         body.pushEnabled = pushEl?.checked ?? false;
@@ -481,13 +483,13 @@ async function initEdit() {
         } catch (err) {
             if (err instanceof ApiError && err.applyFieldErrors(V.setErr)) {
                 // 필드별 에러 표시됨
-            } else if (err.code === 'U003' || err.message?.includes('비밀번호')) {
-                // 비밀번호 불일치 → 모달 재오픈
+            } else if (err.code === 'U003' || err.code === 'C001' || err.message?.includes('비밀번호')) {
+                // 비밀번호 불일치 또는 누락 → 모달 재오픈
                 if (pwInput) pwInput.value = '';
                 if (pwErr) { pwErr.textContent = '비밀번호가 올바르지 않습니다. 다시 입력해주세요.'; pwErr.classList.add('show'); }
                 modal?.classList.add('open');
                 setTimeout(() => pwInput?.focus(), 150);
-            } else if (err.status !== 403 && err.status < 500) {
+            } else if (err.status > 0 && err.status !== 403 && err.status < 500) {
                 Toast.error(err.message || '수정 중 오류가 발생했습니다.');
             }
         } finally {
@@ -542,7 +544,10 @@ async function initEdit() {
     });
 
     pwInput?.addEventListener('keydown', e => { if (e.key === 'Enter') confirmBtn?.click(); });
-    document.getElementById('phone')?.addEventListener('input', () => V.setErr('phone', ''));
+    document.getElementById('phone')?.addEventListener('input', () => {
+        _phoneChanged = true;  // 한 글자라도 입력하면 변경으로 간주
+        V.setErr('phone', '');
+    });
 }
 
 /* ================================================================
@@ -582,9 +587,12 @@ async function initPassword() {
         } catch (err) {
             if (err instanceof ApiError && err.applyFieldErrors(V.setErr)) {
                 // 필드별 에러 표시됨
-            } else if (err.message?.includes('비밀번호') || err.message?.includes('password')) {
+            } else if (err.code === 'U009') {
+                // 새 비밀번호 확인 불일치 (서버 검증)
+                V.setErr('confirmPw', '새 비밀번호와 확인이 일치하지 않습니다.');
+            } else if (err.code === 'U003' || err.message?.includes('비밀번호') || err.message?.includes('password')) {
                 V.setErr('currentPw', err.message);
-            } else if (err.status !== 403 && err.status < 500) {
+            } else if (err.status > 0 && err.status !== 403 && err.status < 500) {
                 Toast.error(err.message || '변경 중 오류가 발생했습니다.');
             }
         } finally {
@@ -616,14 +624,14 @@ async function initSpending() {
 
         if (cats.status === 'fulfilled') {
             allCategories = Array.isArray(cats.value) ? cats.value : [];
-        } else if (cats.reason?.status !== 403 && cats.reason?.status < 500) {
+        } else if (cats.reason?.status > 0 && cats.reason?.status !== 403 && cats.reason?.status < 500) {
             Toast.error('카테고리를 불러오지 못했습니다.');
         }
 
         if (spending.status === 'fulfilled') {
             const items = Array.isArray(spending.value) ? spending.value : (spending.value?.items ?? []);
             items.forEach(i => { existingAmounts[i.categoryId] = i.monthlyAmount ?? 0; });
-        } else if (spending.reason?.status !== 403 && spending.reason?.status < 500) {
+        } else if (spending.reason?.status > 0 && spending.reason?.status !== 403 && spending.reason?.status < 500) {
             Toast.warning('기존 소비 패턴을 불러오지 못했습니다. 새로 입력해주세요.');
         }
     } catch {
@@ -683,7 +691,7 @@ async function initSpending() {
             Toast.success('소비 패턴이 저장되었습니다.');
             setTimeout(() => { window.location.href = '/mypage'; }, 1000);
         } catch (err) {
-            if (err.status !== 403 && err.status < 500)
+            if (err.status > 0 && err.status !== 403 && err.status < 500)
                 Toast.error(err.message || '저장 중 오류가 발생했습니다.');
         } finally {
             btnLoading(submitBtn, false);

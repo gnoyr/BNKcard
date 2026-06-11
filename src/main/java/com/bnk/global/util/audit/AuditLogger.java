@@ -65,6 +65,7 @@ public class AuditLogger {
 	public static final String PASSWORD_CHANGE = "PASSWORD_CHANGE";
 	public static final String EMAIL_VERIFY = "EMAIL_VERIFY";
 	public static final String TOKEN_REFRESH = "TOKEN_REFRESH";
+	public static final String SYSTEM_ERROR = "SYSTEM_ERROR";
 
 	public static final String APPLY = "APPLY";
 	public static final String APPLY_CANCEL = "APPLY_CANCEL";

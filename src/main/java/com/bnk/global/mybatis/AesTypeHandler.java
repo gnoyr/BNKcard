@@ -8,8 +8,6 @@ import java.sql.SQLException;
 import org.apache.ibatis.type.Alias;
 import org.apache.ibatis.type.BaseTypeHandler;
 import org.apache.ibatis.type.JdbcType;
-import org.apache.ibatis.type.MappedJdbcTypes;
-import org.apache.ibatis.type.MappedTypes;
 
 import com.bnk.global.util.AesCryptoUtil;
 
@@ -19,12 +17,13 @@ import com.bnk.global.util.AesCryptoUtil;
  * MyBatisConfig에서 Spring Bean으로 생성 후 registry에 직접 등록. XML에서 기본 생성자로 new 하지 않으므로
  * NoSuchMethodException 없음.
  *
+ * ※ @MappedTypes / @MappedJdbcTypes 제거 — 자동 적용 방지.
+ *   암호화가 필요한 컬럼은 XML에서 typeHandler=aesTypeHandler 로 명시할 것.
+ *
  * XML 사용법: resultMap: typeHandler="aesTypeHandler" parameter: #{phone,
  * typeHandler=aesTypeHandler}
  */
 @Alias("aesTypeHandler")
-@MappedTypes(String.class)
-@MappedJdbcTypes(JdbcType.VARCHAR)
 public class AesTypeHandler extends BaseTypeHandler<String> {
 
 	private final AesCryptoUtil aesCryptoUtil;
