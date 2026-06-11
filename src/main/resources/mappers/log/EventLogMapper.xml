@@ -3,6 +3,18 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.bnk.global.log.mapper.EventLogMapper">
 
+	<!-- 카드 자식 -->
+	<insert id="insertCardLog" parameterType="com.bnk.global.log.model.CardEventLog">
+	    INSERT INTO CARD_EVENT_LOGS (log_id, card_id, action_detail, result_code, error_message)
+	    VALUES (
+	        #{logId},
+	        #{cardId,       jdbcType=VARCHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler},
+	        #{actionDetail, jdbcType=VARCHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler},
+	        #{resultCode,   jdbcType=VARCHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler},
+	        #{errorMessage, jdbcType=VARCHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler}
+	    )
+	</insert>
+	
 	<!-- 부모 테이블 -->
 	<insert id="insertParent" parameterType="com.bnk.global.log.model.EventLog">
 	    <selectKey keyProperty="logId" resultType="long" order="BEFORE">
@@ -11,23 +23,11 @@
 	    INSERT INTO EVENT_LOGS (log_id, event_type, event_status, user_id, request_ip, duration_ms)
 	    VALUES (
 	        #{logId},
-	        #{eventType},
-	        #{eventStatus},
+	        #{eventType,    jdbcType=VARCHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler},
+	        #{eventStatus,  jdbcType=VARCHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler},
 	        #{userId,       jdbcType=NUMERIC},
-	        #{requestIp,    jdbcType=VARCHAR},
+	        #{requestIp,    jdbcType=VARCHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler},
 	        #{durationMs,   jdbcType=NUMERIC}
-	    )
-	</insert>
-	
-	<!-- 카드 자식 -->
-	<insert id="insertCardLog" parameterType="com.bnk.global.log.model.CardEventLog">
-	    INSERT INTO CARD_EVENT_LOGS (log_id, card_id, action_detail, result_code, error_message)
-	    VALUES (
-	        #{logId},
-	        #{cardId,       jdbcType=VARCHAR},
-	        #{actionDetail, jdbcType=VARCHAR},
-	        #{resultCode,   jdbcType=VARCHAR},
-	        #{errorMessage, jdbcType=VARCHAR}
 	    )
 	</insert>
 	
@@ -37,8 +37,8 @@
 	    VALUES (
 	        #{logId},
 	        #{termsId,      jdbcType=NUMERIC},
-	        #{actionDetail, jdbcType=VARCHAR},
-	        #{errorMessage, jdbcType=VARCHAR}
+	        #{actionDetail, jdbcType=VARCHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler},
+	        #{errorMessage, jdbcType=VARCHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler}
 	    )
 	</insert>
 	
@@ -48,12 +48,12 @@
 	                                 qdrant_hit_count, top_score, used_fallback, error_message)
 	    VALUES (
 	        #{logId},
-	        #{sessionId,       jdbcType=VARCHAR},
-	        #{queryText,       jdbcType=VARCHAR},
+	        #{sessionId,       jdbcType=VARCHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler},
+	        #{queryText,       jdbcType=VARCHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler},
 	        #{qdrantHitCount,  jdbcType=NUMERIC},
 	        #{topScore,        jdbcType=NUMERIC},
-	        #{usedFallback,    jdbcType=VARCHAR},
-	        #{errorMessage,    jdbcType=VARCHAR}
+	        #{usedFallback,    jdbcType=VARCHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler},
+	        #{errorMessage,    jdbcType=VARCHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler}
 	    )
 	</insert>
 

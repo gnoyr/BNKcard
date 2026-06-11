@@ -18,6 +18,7 @@ import com.bnk.domain.admin.dto.response.ApprovalListResponse;
 import com.bnk.domain.admin.mapper.ApprovalMapper;
 import com.bnk.domain.admin.model.ApprovalLine;
 import com.bnk.domain.admin.model.ApprovalRequest;
+import com.bnk.domain.ai.service.CardVectorService;
 import com.bnk.domain.card.dto.CardSnapshot;
 import com.bnk.domain.card.mapper.CardMapper;
 import com.bnk.domain.card.mapper.CardStatusHistoryMapper;
@@ -52,7 +53,7 @@ public class ApprovalService {
 	private final ObjectMapper objectMapper;
 	private final TermsMapper termsMapper;
 	private final AuditLogger auditLogger;
-
+	private final CardVectorService cardVectorService;
 	private static final ZoneId KST_ZONE = ZoneId.of("Asia/Seoul");
 
 	// ── 결재 상태 코드 ────────────────────────────────────────────────

@@ -46,32 +46,53 @@ public class EventLogAspect {
     // ─── 성공 로그 ───
     private void saveSuccess(Loggable loggable, ProceedingJoinPoint pjp,
                              Object result, Long userId, String ip, long duration) {
-        EventLog parent = buildParent(loggable.eventType(), "SUCCESS", userId, ip, duration);
+        
+    	// 임시 디버그
+        log.warn("[DEBUG-SAVE] eventType={}, targetType={}, actionDetail={}",
+            loggable.eventType(), loggable.targetType(), loggable.actionDetail());
+    	
+    	
+    	EventLog parent = buildParent(loggable.eventType(), "SUCCESS", userId, ip, duration);
 
         switch (loggable.targetType()) {
 	        case "CARD" -> {
-	            // cardIdParam이 비어있으면 cardId 추출 시도 안 함
 	            String cardId = null;
 	            if (!loggable.cardIdParam().isEmpty()) {
 	                cardId = extractByName(pjp, loggable.cardIdParam());
 	            }
+	
+	            // CARD_COMPARE일 때 비교 카드 목록을 actionDetail에 추가
+	            String actionDetail = loggable.actionDetail();
+	            if ("CARD_COMPARE".equals(loggable.eventType())) {
+	                String compareIds = extractCompareCardIds(pjp);
+	                if (compareIds != null) {
+	                    actionDetail = "카드비교: " + compareIds;  // 예: "카드비교: [10101001, 10201001]"
+	                }
+	            }
+	
 	            CardEventLog child = CardEventLog.builder()
 	                    .cardId(cardId)
-	                    .actionDetail(loggable.actionDetail())
+	                    .actionDetail(actionDetail)
 	                    .resultCode("SUCCESS")
 	                    .build();
 	            eventLogService.saveCardLog(parent, child);
 	        }
-            case "TERMS" -> {
-                // termsId 파라미터 이름으로 찾기
-                String termsIdStr = extractByName(pjp, "termsId");
-                Long termsId = termsIdStr != null ? Long.valueOf(termsIdStr) : null;
-                TermsEventLog child = TermsEventLog.builder()
-                        .termsId(termsId)
-                        .actionDetail(loggable.actionDetail())
-                        .build();
-                eventLogService.saveTermsLog(parent, child);
-            }
+	        case "TERMS" -> {
+	            // termsId 파라미터 직접 없으면 request 안에서 첫 번째 termsId 추출
+	            String termsIdStr = extractByName(pjp, "termsId");
+	            Long termsId = null;
+	            if (termsIdStr != null) {
+	                termsId = Long.valueOf(termsIdStr);
+	            } else {
+	                // TermsAgreementRequest에서 첫 번째 termsId 꺼내기
+	                termsId = extractTermsIdFromRequest(pjp);
+	            }
+	            TermsEventLog child = TermsEventLog.builder()
+	                    .termsId(termsId)
+	                    .actionDetail(loggable.actionDetail())
+	                    .build();
+	            eventLogService.saveTermsLog(parent, child);
+	        }
             case "CHAT" -> {
                 // query 또는 message 파라미터 이름으로 찾기
                 String queryText = extractByName(pjp, "query");
@@ -150,12 +171,29 @@ public class EventLogAspect {
      * 타입 기반 extractArg 대신 이걸로 통일
      */
     private String extractByName(ProceedingJoinPoint pjp, String paramName) {
+        if (paramName == null || paramName.isEmpty()) return null;
+        
         MethodSignature sig = (MethodSignature) pjp.getSignature();
         String[] names = sig.getParameterNames();
         Object[] args  = pjp.getArgs();
+        
+        // 임시 디버그 로그
+        log.warn("[DEBUG] 메서드: {}, 파라미터이름배열: {}", 
+            sig.getMethod().getName(), 
+            names == null ? "NULL" : String.join(", ", names));
+        
+        if (names == null) return null;
+        
         for (int i = 0; i < names.length; i++) {
             if (paramName.equals(names[i]) && args[i] != null) {
-                return String.valueOf(args[i]);
+                Object arg = args[i];
+                log.warn("[DEBUG-EXTRACT] 파라미터명={}, 값타입={}, 값={}",
+                    names[i], arg.getClass().getSimpleName(), arg);
+                if (arg instanceof String || arg instanceof Long || arg instanceof Integer) {
+                    return String.valueOf(arg);
+                } else {
+                    log.warn("[DEBUG-EXTRACT] 객체타입 차단됨: {}", arg.getClass().getSimpleName());
+                }
             }
         }
         return null;
@@ -186,5 +224,45 @@ public class EventLogAspect {
     private String truncate(String msg, int maxLen) {
         if (msg == null) return null;
         return msg.length() > maxLen ? msg.substring(0, maxLen) : msg;
+    }
+    
+    private String extractCompareCardIds(ProceedingJoinPoint pjp) {
+        MethodSignature sig = (MethodSignature) pjp.getSignature();
+        String[] names = sig.getParameterNames();
+        Object[] args  = pjp.getArgs();
+        if (names == null) return null;
+        for (int i = 0; i < names.length; i++) {
+            // CardCompareRequest 타입 파라미터 찾기
+            if (args[i] != null && args[i].getClass().getSimpleName().equals("CardCompareRequest")) {
+                try {
+                    // getCardIds() 리플렉션으로 호출
+                    Object cardIds = args[i].getClass()
+                            .getMethod("getCardIds")
+                            .invoke(args[i]);
+                    return String.valueOf(cardIds);  // "[10101001, 10201001]"
+                } catch (Exception ignored) {}
+            }
+        }
+        return null;
+    }
+    
+    private Long extractTermsIdFromRequest(ProceedingJoinPoint pjp) {
+        for (Object arg : pjp.getArgs()) {
+            if (arg == null) continue;
+            try {
+                // getAgreedTerms().get(0).getTermsId() 시도
+                Object agreedTerms = arg.getClass()
+                        .getMethod("getAgreedTerms")
+                        .invoke(arg);
+                if (agreedTerms instanceof java.util.List<?> list && !list.isEmpty()) {
+                    Object firstItem = list.get(0);
+                    Object termsId = firstItem.getClass()
+                            .getMethod("getTermsId")
+                            .invoke(firstItem);
+                    if (termsId instanceof Long l) return l;
+                }
+            } catch (Exception ignored) {}
+        }
+        return null;
     }
 }
