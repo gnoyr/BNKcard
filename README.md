@@ -1,4 +1,4 @@
-# BNK 부산은행 금융 상품 플랫폼
+<img width="903" height="457" alt="image" src="https://github.com/user-attachments/assets/9b59d9eb-1492-493c-a572-8f564a39bee5" /># BNK 부산은행 금융 상품 플랫폼
 
 ![Java](https://img.shields.io/badge/Java-21-007396?logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.x-6DB33F?logo=springboot&logoColor=white)
@@ -83,6 +83,11 @@ AI 챗봇 카드 안내
 | AI | Google AI, Ollama, Qdrant VectorStore |
 
 ---
+
+## 시스템 아키텍처
+
+<img width="903" height="457" alt="시스템 아키텍처" src="https://github.com/user-attachments/assets/6bd0fdd1-89bb-4a5c-b291-d540c9fef0ad" />
+
 
 ## ERD
 
