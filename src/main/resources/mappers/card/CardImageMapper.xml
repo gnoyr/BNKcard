@@ -4,109 +4,113 @@
 
 <mapper namespace="com.bnk.domain.card.mapper.CardImageMapper">
 
-	<resultMap id="cardImageMap"
-		type="com.bnk.domain.card.model.CardImage">
-		<id property="imageId" column="image_id" />
-		<result property="cardId" column="card_id" />
-		<result property="imageType" column="image_type"
-			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
-		<result property="imageUrl" column="image_url"
-			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
-		<result property="originalName" column="original_name"
-			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
-		<result property="storedName" column="stored_name"
-			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
-		<result property="fileSize" column="file_size" />
-		<result property="mimeType" column="mime_type"
-			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
-		<result property="imageWidth" column="image_width" />
-		<result property="imageHeight" column="image_height" />
-		<result property="sortOrder" column="sort_order" />
-		<result property="createdAt" column="created_at" />
-	</resultMap>
+    <resultMap id="cardImageMap" type="com.bnk.domain.card.model.CardImage">
+        <id property="imageId" column="image_id" />
+        <result property="cardId" column="card_id" />
+        <result property="imageType" column="image_type" />
+        <result property="imageUrl" column="image_url" />
+        <result property="originalName" column="original_name" />
+        <result property="storedName" column="stored_name" />
+        <result property="fileSize" column="file_size" />
+        <result property="mimeType" column="mime_type" />
+        <result property="imageWidth" column="image_width" />
+        <result property="imageHeight" column="image_height" />
+        <result property="sortOrder" column="sort_order" />
+        <result property="createdAt" column="created_at" />
+    </resultMap>
 
-	<!-- 카드 단건 이미지 전체 조회 -->
-	<select id="findByCardId" resultMap="cardImageMap">
-		SELECT * FROM CARD_IMAGES
-		WHERE card_id = #{cardId}
-		ORDER BY sort_order ASC NULLS LAST
-	</select>
+    <!-- 카드 단건 이미지 전체 조회 -->
+    <select id="findByCardId" resultMap="cardImageMap">
+        SELECT IMAGE_ID, CARD_ID, IMAGE_TYPE, IMAGE_URL,
+               ORIGINAL_NAME, STORED_NAME, FILE_SIZE, MIME_TYPE,
+               IMAGE_WIDTH, IMAGE_HEIGHT, SORT_ORDER, CREATED_AT
+        FROM CARD_IMAGES
+        WHERE CARD_ID = #{cardId}
+        ORDER BY SORT_ORDER ASC NULLS LAST
+    </select>
 
-	<!-- 카드 단건 특정 타입 이미지 조회 -->
+    <!-- 카드 단건 특정 타입 이미지 조회 -->
 	<select id="findByCardIdAndType" resultMap="cardImageMap">
-		SELECT * FROM CARD_IMAGES
-		WHERE card_id = #{cardId}
-		AND image_type = #{imageType}
-		ORDER BY sort_order ASC NULLS LAST
+		SELECT IMAGE_ID, CARD_ID, IMAGE_TYPE, IMAGE_URL,
+		ORIGINAL_NAME, STORED_NAME, FILE_SIZE, MIME_TYPE,
+		IMAGE_WIDTH, IMAGE_HEIGHT, SORT_ORDER, CREATED_AT
+		FROM CARD_IMAGES
+		WHERE CARD_ID = #{cardId}
+		AND IMAGE_TYPE = #{imageType,
+		typeHandler=org.apache.ibatis.type.StringTypeHandler}
+		ORDER BY SORT_ORDER ASC NULLS LAST
 		FETCH FIRST 1 ROWS ONLY
 	</select>
 
-	<!-- 여러 카드의 FRONT 이미지 한 번에 조회 -->
-	<select id="findFrontImagesByCardIds" resultMap="cardImageMap">
-        SELECT * FROM CARD_IMAGES
-        WHERE  card_id IN
+    <!-- 여러 카드의 FRONT 이미지 한 번에 조회 -->
+    <select id="findFrontImagesByCardIds" resultMap="cardImageMap">
+        SELECT IMAGE_ID, CARD_ID, IMAGE_TYPE, IMAGE_URL,
+               ORIGINAL_NAME, STORED_NAME, FILE_SIZE, MIME_TYPE,
+               IMAGE_WIDTH, IMAGE_HEIGHT, SORT_ORDER, CREATED_AT
+        FROM CARD_IMAGES
+        WHERE CARD_ID IN
         <foreach collection="list" item="id" open="(" separator="," close=")">
             #{id}
         </foreach>
-          AND  image_type = 'FRONT'
-        ORDER  BY sort_order ASC NULLS LAST
+        AND IMAGE_TYPE = 'FRONT'
+        ORDER BY SORT_ORDER ASC NULLS LAST
     </select>
 
-	<!-- 여러 카드 + 특정 타입 이미지 조회 -->
-	<select id="findByCardIdsAndType" resultMap="cardImageMap">
-        SELECT * FROM CARD_IMAGES
-        WHERE  card_id IN
+    <!-- 여러 카드 + 특정 타입 이미지 조회 -->
+    <select id="findByCardIdsAndType" resultMap="cardImageMap">
+        SELECT IMAGE_ID, CARD_ID, IMAGE_TYPE, IMAGE_URL,
+               ORIGINAL_NAME, STORED_NAME, FILE_SIZE, MIME_TYPE,
+               IMAGE_WIDTH, IMAGE_HEIGHT, SORT_ORDER, CREATED_AT
+        FROM CARD_IMAGES
+        WHERE CARD_ID IN
         <foreach collection="cardIds" item="id" open="(" separator="," close=")">
             #{id}
         </foreach>
-          AND  image_type = #{imageType}
-        ORDER  BY sort_order ASC NULLS LAST
+        AND IMAGE_TYPE = #{imageType, typeHandler=org.apache.ibatis.type.StringTypeHandler}
+        ORDER BY SORT_ORDER ASC NULLS LAST
     </select>
 
-	<!-- 배치 INSERT -->
-	<insert id="insertImages">
-		INSERT INTO CARD_IMAGES (
-		card_id, image_type, image_url,
-		original_name, stored_name, file_size,
-		mime_type, image_width, image_height, sort_order, created_at
-		)
-		<foreach collection="imageList" item="img"
-			separator=" UNION ALL ">
-			SELECT
-			#{img.cardId},
-			#{img.imageType, typeHandler=org.apache.ibatis.type.StringTypeHandler},
-			#{img.imageUrl, typeHandler=org.apache.ibatis.type.StringTypeHandler},
-			#{img.originalName, jdbcType=VARCHAR},
-			#{img.storedName, jdbcType=VARCHAR},
-			#{img.fileSize, jdbcType=NUMERIC},
-			#{img.mimeType, jdbcType=VARCHAR},
-			#{img.imageWidth, jdbcType=NUMERIC},
-			#{img.imageHeight, jdbcType=NUMERIC},
-			NVL(#{img.sortOrder, jdbcType=NUMERIC}, 1),
-			SYSTIMESTAMP
-			FROM DUAL
-		</foreach>
-	</insert>
+    <!-- 배치 INSERT -->
+    <insert id="insertImages">
+        INSERT INTO CARD_IMAGES (
+            card_id, image_type, image_url,
+            original_name, stored_name, file_size,
+            mime_type, image_width, image_height, sort_order, created_at
+        )
+        <foreach collection="imageList" item="img" separator=" UNION ALL ">
+            SELECT
+                #{img.cardId},
+                #{img.imageType, typeHandler=org.apache.ibatis.type.StringTypeHandler},
+                #{img.imageUrl, typeHandler=org.apache.ibatis.type.StringTypeHandler},
+                #{img.originalName, jdbcType=VARCHAR},
+                #{img.storedName, jdbcType=VARCHAR},
+                #{img.fileSize, jdbcType=NUMERIC},
+                #{img.mimeType, jdbcType=VARCHAR},
+                #{img.imageWidth, jdbcType=NUMERIC},
+                #{img.imageHeight, jdbcType=NUMERIC},
+                NVL(#{img.sortOrder, jdbcType=NUMERIC}, 1),
+                SYSTIMESTAMP
+            FROM DUAL
+        </foreach>
+    </insert>
 
-	<!-- 단건 UPDATE -->
-	<update id="updateImage">
-		UPDATE CARD_IMAGES
-		SET image_type = #{imageType,
-		typeHandler=org.apache.ibatis.type.StringTypeHandler},
-		image_url = #{imageUrl, typeHandler=org.apache.ibatis.type.StringTypeHandler},
-		original_name = #{originalName, jdbcType=VARCHAR},
-		sort_order = #{sortOrder, jdbcType=NUMERIC}
-		WHERE image_id = #{imageId}
-	</update>
+    <!-- 단건 UPDATE -->
+    <update id="updateImage">
+        UPDATE CARD_IMAGES
+        SET image_type = #{imageType, typeHandler=org.apache.ibatis.type.StringTypeHandler},
+            image_url = #{imageUrl, typeHandler=org.apache.ibatis.type.StringTypeHandler},
+            original_name = #{originalName, jdbcType=VARCHAR},
+            sort_order = #{sortOrder, jdbcType=NUMERIC}
+        WHERE image_id = #{imageId}
+    </update>
 
-
-	<!-- 단건 DELETE -->
-	<delete id="deleteImage">
+    <!-- 단건 DELETE -->
+    <delete id="deleteImage">
         DELETE FROM CARD_IMAGES WHERE image_id = #{imageId}
     </delete>
 
-	<!-- 카드 전체 이미지 DELETE -->
-	<delete id="deleteByCardId">
+    <!-- 카드 전체 이미지 DELETE -->
+    <delete id="deleteByCardId">
         DELETE FROM CARD_IMAGES WHERE card_id = #{cardId}
     </delete>
 
