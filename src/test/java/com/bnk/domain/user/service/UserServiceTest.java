@@ -147,13 +147,12 @@ class UserServiceTest {
     @DisplayName("내 정보 수정")
     class UpdateMyInfo {
 
-        @Test
+    	@Test
         @DisplayName("[정상] phone 변경 + 비밀번호 검증 통과 → updateUser 호출")
         void 정상_phone변경_비밀번호검증통과() {
             given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
             given(passwordEncoder.matches(CURRENT, ENC_PW)).willReturn(true);
 
-            // ▼ 수정: 원래 코드가 changePassword를 호출했으나, 올바른 updateMyInfo 호출로 교체
             userService.updateMyInfo(USER_ID, updateReq(null, "010-9999-8888", CURRENT));
 
             then(userMapper).should().updateUser(any());
@@ -210,7 +209,7 @@ class UserServiceTest {
         @DisplayName("[실패] phone 변경 시 currentPassword null → INVALID_PASSWORD")
         void 실패_phone변경_비밀번호누락() {
             given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
-            // currentPassword=null이면 matches(null, ...) → false
+            
             given(passwordEncoder.matches(null, ENC_PW)).willReturn(false);
 
             assertThatThrownBy(() ->
@@ -234,6 +233,7 @@ class UserServiceTest {
         @DisplayName("[실패] phone 변경 시 currentPassword 빈값 → INVALID_PASSWORD")
         void 실패_phone변경_비밀번호빈값() {
             given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
+            
             given(passwordEncoder.matches("", ENC_PW)).willReturn(false);
 
             assertThatThrownBy(() ->
