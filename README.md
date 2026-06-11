@@ -73,14 +73,14 @@ AI 챗봇 카드 안내
 
 | 분류 | 기술 |
 |------|------|
-| Language | Java 21 |
-| Framework | Spring Boot 4.0.6, Spring Security, Spring Validation |
-| ORM | MyBatis 4.0.1 |
-| Database | Oracle, Redis |
-| AI | Spring AI (Google GenAI, Embedding), Ollama |
-| 인증 | JWT, 이메일 인증 (Spring Mail) |
-| 빌드 | Gradle |
-| 테스트 | JUnit 5, Mockito, H2 (인메모리) |
+| Backend | Java 21, Spring Boot 4.x |
+| Frontend | HTML5, CSS3 |
+| Database | Oracle Database, Redis |
+| ORM | MyBatis Framework |
+| 인증·보안 | Spring Security, JWT |
+| 인프라 | Oracle Cloud Infrastructure (OCI), OCI Object Storage |
+| 배포 | Docker, Nginx, GitHub Actions |
+| AI | Google AI, Ollama, Qdrant VectorStore |
 
 ---
 
