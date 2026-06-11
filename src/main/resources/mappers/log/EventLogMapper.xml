@@ -3,6 +3,7 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.bnk.global.log.mapper.EventLogMapper">
 
+
 	<insert id="insertParent"
 		parameterType="com.bnk.global.log.model.EventLog">
 		<selectKey keyProperty="logId" resultType="long"
@@ -67,6 +68,7 @@
 		#{usedFallback, jdbcType=VARCHAR},
 		#{errorMessage, jdbcType=VARCHAR}
 		)
+
 	</insert>
 
 </mapper>

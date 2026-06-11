@@ -215,4 +215,28 @@ public class CardVectorService {
         }
         return String.format("%,d", amount.longValue());
     }
+    
+ // CardVectorService.java 에 추가
+    /**
+     * 카드 단건 Qdrant upsert — PUBLISHED 전환 시 호출
+     */
+    public void upsertCard(Long cardId) {
+        CardVector card = cardVectorMapper.findCardWithBenefitsById(cardId);
+        if (card == null) {
+            log.warn("[CardVector] upsert 대상 카드 없음: cardId={}", cardId);
+            return;
+        }
+        Document doc = toDocument(card);
+        vectorStore.add(List.of(doc));
+        log.info("[CardVector] 카드 upsert 완료: cardId={}, cardName={}", cardId, card.getCardName());
+    }
+
+    /**
+     * 카드 Qdrant에서 삭제 — 카드 삭제/비활성화 시 호출
+     */
+    public void deleteCard(Long cardId) {
+        String docId = String.valueOf(cardId);
+        vectorStore.delete(List.of(docId));
+        log.info("[CardVector] 카드 벡터 삭제: cardId={}", cardId);
+    }
 }
