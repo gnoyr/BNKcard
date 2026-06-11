@@ -1,13 +1,14 @@
 package com.bnk.global.exception;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
+import com.bnk.global.util.TimeConstants;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
+
 import lombok.Builder;
 import lombok.Getter;
-
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.List;
 
 @Getter
 @Builder
@@ -21,13 +22,12 @@ public class ErrorResponse {
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private final LocalDateTime timestamp;
-    private static final ZoneId KST_ZONE = ZoneId.of("Asia/Seoul");
 
     public static ErrorResponse of(ErrorCode errorCode) {
         return ErrorResponse.builder()
                 .code(errorCode.getCode())
                 .message(errorCode.getMessage())
-                .timestamp(LocalDateTime.now(KST_ZONE))
+                .timestamp(LocalDateTime.now(TimeConstants.KST))
                 .build();
     }
 
@@ -36,7 +36,7 @@ public class ErrorResponse {
                 .code(errorCode.getCode())
                 .message(errorCode.getMessage())
                 .detail(detail)
-                .timestamp(LocalDateTime.now(KST_ZONE))
+                .timestamp(LocalDateTime.now(TimeConstants.KST))
                 .build();
     }
 
@@ -45,7 +45,7 @@ public class ErrorResponse {
                 .code(ErrorCode.INVALID_INPUT.getCode())
                 .message(ErrorCode.INVALID_INPUT.getMessage())
                 .errors(fieldErrors)
-                .timestamp(LocalDateTime.now(KST_ZONE))
+                .timestamp(LocalDateTime.now(TimeConstants.KST))
                 .build();
     }
 

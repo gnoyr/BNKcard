@@ -1,7 +1,6 @@
 package com.bnk.domain.admin.service;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +30,7 @@ import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.log.annotation.Loggable;
 import com.bnk.global.response.PageResponse;
+import com.bnk.global.util.TimeConstants;
 import com.bnk.global.util.audit.AuditLogger;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -52,8 +52,6 @@ public class ApprovalService {
 	private final ObjectMapper objectMapper;
 	private final TermsMapper termsMapper;
 	private final AuditLogger auditLogger;
-
-	private static final ZoneId KST_ZONE = ZoneId.of("Asia/Seoul");
 
 	// ── 결재 상태 코드 ────────────────────────────────────────────────
 	private static final String STATUS_PENDING = "PENDING";
@@ -203,7 +201,7 @@ public class ApprovalService {
 
         if (lineId != null) {
             approvalMapper.updateLineStatus(lineId, STATUS_APPROVED,
-                    request.getComment(), LocalDateTime.now(KST_ZONE));
+                    request.getComment(), LocalDateTime.now(TimeConstants.KST));
         }
 
         // 전체 라인 완료 여부 확인
@@ -222,7 +220,7 @@ public class ApprovalService {
             handleCardApprove(approval, adminId, approvalId);
         }
 
-        approvalMapper.updateRequestStatus(approvalId, STATUS_APPROVED, LocalDateTime.now(KST_ZONE));
+        approvalMapper.updateRequestStatus(approvalId, STATUS_APPROVED, LocalDateTime.now(TimeConstants.KST));
         auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.APPROVAL_APPROVE,
                 adminId, String.valueOf(approvalId), "결재 승인 완료: typeCode=" + typeCode);
     }
@@ -376,7 +374,7 @@ public class ApprovalService {
 
         if (lineId != null) {
             approvalMapper.updateLineStatus(lineId, STATUS_REJECTED,
-                    request.getComment(), LocalDateTime.now(KST_ZONE));
+                    request.getComment(), LocalDateTime.now(TimeConstants.KST));
         }
 
         // ── 분기: 결재 유형에 따라 처리 ─────────────────────────────────
@@ -388,7 +386,7 @@ public class ApprovalService {
             handleCardReject(approval, adminId, approvalId);
         }
 
-        approvalMapper.updateRequestStatus(approvalId, STATUS_REJECTED, LocalDateTime.now(KST_ZONE));
+        approvalMapper.updateRequestStatus(approvalId, STATUS_REJECTED, LocalDateTime.now(TimeConstants.KST));
         auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.APPROVAL_REJECT,
                 adminId, String.valueOf(approvalId), "결재 반려 완료: typeCode=" + typeCode);
     }
