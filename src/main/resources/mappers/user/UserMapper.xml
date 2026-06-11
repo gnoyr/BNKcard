@@ -139,16 +139,13 @@
 		#{email},
 		#{passwordHash},
 		#{name},
-		#{phone, typeHandler=aesTypeHandler}
-		#{ciValue, typeHandler=aesTypeHandler}
-		#{birthDate,
-		typeHandler=aesBirthDateTypeHandler}
-		#{job,
-		jdbcType=VARCHAR},
-		#{incomeLevelCode, jdbcType=VARCHAR},
-		#{creditScore,
-		jdbcType=NUMERIC},
-		#{marketingAgree, jdbcType=VARCHAR},
+		#{phone, typeHandler=aesTypeHandler},
+		#{ciValue, typeHandler=aesTypeHandler},
+		#{birthDate, typeHandler=aesBirthDateTypeHandler},
+		#{job, jdbcType=VARCHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler},
+		#{incomeLevelCode, jdbcType=VARCHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler},
+		#{creditScore, jdbcType=NUMERIC},
+		#{marketingAgree, jdbcType=CHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler},
 		'Y',
 		'ACTIVE',
 		'N', 'N',
@@ -160,15 +157,15 @@
 	<update id="updateUser">
 		UPDATE USERS
 		<set>
-			<if test="name            != null">name = #{name},</if>
+			<if test="name != null">name = #{name},</if>
 			<if test="phone != null">
 				phone = #{phone, typeHandler=aesTypeHandler},
 			</if>
-			<if test="job             != null">job = #{job},</if>
+			<if test="job != null">job = #{job},</if>
 			<if test="incomeLevelCode != null">income_level_code = #{incomeLevelCode},</if>
-			<if test="creditScore     != null">credit_score = #{creditScore},</if>
-			<if test="pushEnabled     != null">push_enabled = #{pushEnabled},</if>
-			<if test="marketingAgree  != null">marketing_agree = #{marketingAgree},</if>
+			<if test="creditScore != null">credit_score = #{creditScore},</if>
+			<if test="pushEnabled != null">push_enabled = #{pushEnabled},</if>
+			<if test="marketingAgree != null">marketing_agree = #{marketingAgree, jdbcType=CHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler},</if>
 			updated_at = SYSTIMESTAMP
 		</set>
 		WHERE user_id = #{userId}
@@ -259,15 +256,13 @@
 		actor_type_code, actor_id,
 		action_type_code,
 		target_type_code, target_id, description,
-		ip_address,
-		created_at
+		ip_address, created_at
 		) VALUES (
 		#{actorType}, #{actorId}, #{actionType},
 		#{targetType},
 		#{targetId, jdbcType=NUMERIC},
-		#{description,
-		jdbcType=VARCHAR},
-		#{ipAddress, jdbcType=VARCHAR},
+		#{description, jdbcType=VARCHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler},
+		#{ipAddress, jdbcType=VARCHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler},
 		SYSTIMESTAMP
 		)
 	</insert>
@@ -294,11 +289,9 @@
 		#{userId}
 		AND history_id NOT IN (
 		SELECT history_id
-		FROM
-		USER_PASSWORD_HISTORIES
+		FROM USER_PASSWORD_HISTORIES
 		WHERE user_id = #{userId}
-		ORDER BY created_at
-		DESC
+		ORDER BY created_at DESC
 		FETCH FIRST 5 ROWS ONLY
 		)
 	</delete>
@@ -318,11 +311,14 @@
 		ci.image_url AS card_image_url,
 		TO_CHAR(uc.issued_at, 'YYYY-MM-DD') AS issued_at
 		FROM USER_CARDS uc
-		INNER JOIN CARDS c ON uc.card_id = c.card_id
-		LEFT JOIN CARD_IMAGES ci ON ci.card_id = c.card_id
+		INNER JOIN CARDS c ON
+		uc.card_id = c.card_id
+		LEFT JOIN CARD_IMAGES ci ON ci.card_id =
+		c.card_id
 		AND ci.image_type = 'FRONT'
 		WHERE uc.user_id = #{userId}
-		AND uc.deleted_yn = 'N'
+		AND
+		uc.deleted_yn = 'N'
 		ORDER BY uc.issued_at DESC
 	</select>
 
@@ -337,7 +333,8 @@
 		FROM CARD_APPLICATIONS ca
 		INNER JOIN CARDS c ON ca.card_id = c.card_id
 		LEFT JOIN CARD_IMAGES ci ON ci.card_id = c.card_id
-		AND ci.image_type = 'THUMBNAIL'
+		AND ci.image_type =
+		'THUMBNAIL'
 		WHERE ca.user_id = #{userId}
 		ORDER BY ca.applied_at DESC
 	</select>
@@ -349,10 +346,27 @@
 		usp.monthly_amount,
 		cc.icon_code
 		FROM USER_SPENDING_PATTERNS usp
-		INNER JOIN CARD_CATEGORIES cc ON usp.category_id = cc.category_id
+		INNER JOIN CARD_CATEGORIES cc ON
+		usp.category_id = cc.category_id
 		WHERE usp.user_id = #{userId}
-		ORDER BY usp.monthly_amount DESC
+		ORDER BY
+		usp.monthly_amount DESC
 	</select>
 
+	<update id="upsertSpendingPattern">
+		MERGE INTO USER_SPENDING_PATTERNS usp
+		USING DUAL
+		ON
+		(usp.user_id = #{userId} AND usp.category_id = #{categoryId})
+		WHEN
+		MATCHED THEN
+		UPDATE SET
+		monthly_amount = #{monthlyAmount},
+		source = #{source},
+		updated_at = SYSDATE
+		WHEN NOT MATCHED THEN
+		INSERT (user_id, category_id, monthly_amount, source, updated_at)
+		VALUES (#{userId}, #{categoryId}, #{monthlyAmount}, #{source}, SYSDATE)
+	</update>
 
 </mapper>

@@ -21,15 +21,14 @@
 
     const IS_ADMIN_LOGIN = path === '/admin/login';
     const IS_ADMIN = path.startsWith('/admin') && !IS_ADMIN_LOGIN;
-    const IS_AUTH = [
-        '/login', '/signup', '/find-id', '/reset-password', '/admin/login',
-        '/auth/login.html', '/auth/signup.html',
-        '/auth/find-id.html', '/auth/reset-password.html',
-    ].includes(path);
+	const IS_AUTH = [
+	    '/login', '/signup', '/find-id', '/reset-password',
+	    '/admin/login',
+	].includes(path);
     const IS_MYPAGE = path.startsWith('/mypage');
     const NEED_AUTH = IS_ADMIN || IS_MYPAGE;
 
-    const REDIRECT_IF_LOGGED_IN = ['/login', '/signup'];
+	const REDIRECT_IF_LOGGED_IN = ['/login', '/signup'];
 
     const LOGIN_URL = '/login';
     const ADMIN_LOGIN_URL = '/admin/login';
@@ -224,7 +223,7 @@
         if (loggedIn) {
             nav.innerHTML = `
         <span class="header-nav__username">${esc(name)}님</span>
-        <a href="/mypage/index.html">마이페이지</a>
+        <a href="/mypage">마이페이지</a>
         <span class="header-nav__timer" id="hdrTokenTimer" title="Access Token 남은 시간">--:--:--</span>
         <button class="header-nav__btn" id="hdrRefresh">토큰 재발급</button>
         <button class="header-nav__btn" id="hdrLogout">로그아웃</button>`;
@@ -234,8 +233,8 @@
             startTokenTimer();
         } else {
             nav.innerHTML = `
-        <a href="/auth/login.html" class="nav-login">로그인</a>
-        <a href="/auth/signup.html" class="nav-signup">회원가입</a>`;
+        <a href="/login" class="nav-login">로그인</a>
+        <a href="/signup" class="nav-signup">회원가입</a>`;
         }
 
         markActiveLink(nav);
@@ -266,13 +265,13 @@
         if (loggedIn) {
             footerNav.innerHTML = `
         <a href="/">카드 홈</a>
-        <a href="/mypage/index.html">마이페이지</a>`;
+        <a href="/mypage">마이페이지</a>`;
         } else {
             footerNav.innerHTML = `
         <a href="/">카드 홈</a>
-        <a href="/auth/login.html">로그인</a>
-        <a href="/auth/signup.html">회원가입</a>
-        <a href="/mypage/index.html">마이페이지</a>`;
+        <a href="/login">로그인</a>
+        <a href="/signup">회원가입</a>
+        <a href="/mypage">마이페이지</a>`;
         }
 
         // 정확한 상태 렌더링 후 표시
