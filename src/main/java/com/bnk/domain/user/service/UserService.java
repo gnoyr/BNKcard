@@ -58,16 +58,22 @@ public class UserService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         if (requiresPasswordVerification(request)) {
-            if (request.getCurrentPassword() == null ||
-                    !passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            // 비밀번호 누락 → C001
+            if (request.getCurrentPassword() == null) {
                 auditLogger.failure(AuditLogger.AUTH, AuditLogger.UPDATE,
-                        userId, null, "내 정보 수정 — 비밀번호 검증 실패");
+                        userId, null, "내 정보 수정 — 비밀번호 누락");
+                throw new BusinessException(ErrorCode.INVALID_INPUT);
+            }
+            // 비밀번호 불일치 → U003
+            if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+                auditLogger.failure(AuditLogger.AUTH, AuditLogger.UPDATE,
+                        userId, null, "내 정보 수정 — 비밀번호 불일치");
                 throw new BusinessException(ErrorCode.INVALID_PASSWORD);
             }
         }
 
         if (!hasAnyField(request)) {
-            return;
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
 
         User updated = User.builder()
@@ -84,7 +90,6 @@ public class UserService {
         userMapper.updateUser(updated);
         auditLogger.success(AuditLogger.AUTH, AuditLogger.UPDATE, userId, null, null);
     }
-
     // ================================================================
     // 비밀번호 변경
     // ================================================================
@@ -162,11 +167,7 @@ public class UserService {
     // 헬퍼
     // ================================================================
     private boolean requiresPasswordVerification(UserUpdateRequest request) {
-        return (request.getName() != null && !request.getName().isBlank())
-            || (request.getPhone() != null && !request.getPhone().isBlank())
-            || request.getJob() != null
-            || request.getIncomeLevelCode() != null
-            || request.getCreditScore() != null;
+        return request.getPhone() != null && !request.getPhone().isBlank();
     }
 
     private boolean hasAnyField(UserUpdateRequest request) {

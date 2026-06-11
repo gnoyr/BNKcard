@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.bnk.domain.admin.mapper.WatchlistMapper;
 import com.bnk.domain.admin.model.Watchlist;
 import com.bnk.domain.application.service.CddService;
-import com.bnk.global.auth.CustomUserDetails;
+import com.bnk.global.auth.CustomAdminDetails;
 import com.bnk.global.response.ApiResponse;
 
 import jakarta.validation.Valid;
@@ -49,53 +49,47 @@ public class AdminWatchlistController {
 
 	// ── Watchlist 등록 ───────────────────────────────────────────
 	@PostMapping("/api/admin/watchlist")
-	public ResponseEntity<ApiResponse<Void>> register(
-	        @RequestBody @Valid WatchlistRegisterRequest request,
-	        @AuthenticationPrincipal CustomUserDetails admin) {
+	public ResponseEntity<ApiResponse<Void>> register(@RequestBody @Valid WatchlistRegisterRequest request,
+			@AuthenticationPrincipal CustomAdminDetails admin) {
 
-	    Watchlist raw = Watchlist.builder()
-	            .name(request.getName())
-	            .birthDate(request.getBirthDate())
-	            .ciValue(request.getCiValue())
-	            .reason(request.getReason())
-	            .riskLevel(request.getRiskLevel())
-	            .registeredBy(admin.getUserId())
-	            .build();
+		Watchlist raw = Watchlist.builder().name(request.getName()).birthDate(request.getBirthDate())
+				.ciValue(request.getCiValue()).reason(request.getReason()).riskLevel(request.getRiskLevel())
+				.registeredBy(admin.getAdminId()).build();
 
-	    // 해시 계산 + insert → CddService에서 처리
-	    cddService.registerWatchlist(raw);
+		// 해시 계산 + insert → CddService에서 처리
+		cddService.registerWatchlist(raw);
 
-	    log.info("[Watchlist] 등록 adminId={} name={}", admin.getUserId(), request.getName());
-	    return ResponseEntity.ok(ApiResponse.ok(null));
+		log.info("[Watchlist] 등록 adminId={} name={}", admin.getAdminId(), request.getName());
+		return ResponseEntity.ok(ApiResponse.ok(null));
 	}
 
 	// ── Watchlist 삭제 ───────────────────────────────────────────
 	@DeleteMapping("/api/admin/watchlist/{watchlistId}")
 	public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long watchlistId,
-			@AuthenticationPrincipal CustomUserDetails admin) {
+			@AuthenticationPrincipal CustomAdminDetails admin) {
 
-		watchlistMapper.delete(watchlistId, admin.getUserId());
-		log.info("[Watchlist] 삭제 adminId={} watchlistId={}", admin.getUserId(), watchlistId);
+		watchlistMapper.delete(watchlistId, admin.getAdminId());
+		log.info("[Watchlist] 삭제 adminId={} watchlistId={}", admin.getAdminId(), watchlistId);
 		return ResponseEntity.ok(ApiResponse.ok(null));
 	}
 
 	// ── 회원 CDD 상태 변경 ─────────────────────────────────────
 	@PatchMapping("/api/admin/users/{userId}/cdd")
 	public ResponseEntity<ApiResponse<Void>> updateCddStatus(@PathVariable Long userId,
-			@RequestBody CddStatusRequest request, @AuthenticationPrincipal CustomUserDetails admin) {
+			@RequestBody CddStatusRequest request, @AuthenticationPrincipal CustomAdminDetails admin) {
 
 		cddService.updateCddStatus(userId, request.getCddStatusCode());
-		log.info("[CDD] 관리자 상태변경 adminId={} userId={} → {}", admin.getUserId(), userId, request.getCddStatusCode());
+		log.info("[CDD] 관리자 상태변경 adminId={} userId={} → {}", admin.getAdminId(), userId, request.getCddStatusCode());
 		return ResponseEntity.ok(ApiResponse.ok(null));
 	}
 
 	// ── PEP 지정 (ENHANCED로 격상) ─────────────────────────────
 	@PatchMapping("/api/admin/users/{userId}/pep")
 	public ResponseEntity<ApiResponse<Void>> designatePep(@PathVariable Long userId,
-			@AuthenticationPrincipal CustomUserDetails admin) {
+			@AuthenticationPrincipal CustomAdminDetails admin) {
 
 		cddService.updateCddStatus(userId, "ENHANCED");
-		log.info("[PEP] 지정 adminId={} userId={}", admin.getUserId(), userId);
+		log.info("[PEP] 지정 adminId={} userId={}", admin.getAdminId(), userId);
 		return ResponseEntity.ok(ApiResponse.ok(null));
 	}
 

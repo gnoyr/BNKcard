@@ -56,18 +56,18 @@ async function loadCategories() {
     if (!data?.length) return;
     state.categories = data;
     document.getElementById('category-bar').innerHTML = data.map(c => `
-    <button class="cat-btn" data-id="${c.categoryId}" data-name="${c.categoryName}"
-            onclick="toggleCategory(this,'${c.categoryId}','${c.categoryName}')">
+    <button class="cat-btn" data-id="${c.categoryId}" data-name="${(c.categoryName ?? '').replace(/"/g, '&quot;')}"
+            onclick="toggleCategory(this,'${c.categoryId}')">
       ${CAT_EMOJI[c.categoryCode] ?? '🔹'} ${c.categoryName}
     </button>`).join('');
     document.getElementById('modal-cat-grid').innerHTML = data.slice(0, 12).map(c => `
-    <button class="modal-cat-btn" data-id="${c.categoryId}" data-name="${c.categoryName}"
-            onclick="toggleModalCategory(this,'${c.categoryId}','${c.categoryName}')">
+    <button class="modal-cat-btn" data-id="${c.categoryId}" data-name="${(c.categoryName ?? '').replace(/"/g, '&quot;')}"
+            onclick="toggleModalCategory(this,'${c.categoryId}')">
       <span class="cat-em">${CAT_EMOJI[c.categoryCode] ?? '🔹'}</span>${c.categoryName}
     </button>`).join('');
 }
 
-function toggleCategory(btn, catId, _catName) {
+function toggleCategory(btn, catId) {
     const idx = state.currentCategoryIds.indexOf(catId);
     if (idx === -1) { state.currentCategoryIds.push(catId); btn.classList.add('active'); }
     else { state.currentCategoryIds.splice(idx, 1); btn.classList.remove('active'); }
@@ -151,7 +151,6 @@ async function loadCards(page = 0) {
         `${typeLabel ? typeLabel + ' ' : ''}총 ${(data.totalCount ?? 0).toLocaleString()}개`;
     grid.innerHTML = data.content.map(c => buildFlipCard(c)).join('');
     renderPagination(data.totalCount ?? 0);
-    grid.addEventListener('click', handleCardClick);
 }
 
 // ── 카드 버튼 공통 클릭 핸들러 (이벤트 위임용) ──
@@ -492,7 +491,7 @@ function modalSetKeyword(kw) {
     document.getElementById('modal-search-input').value = kw;
     runModalSearch();
 }
-function toggleModalCategory(btn, catId, _catName) {
+function toggleModalCategory(btn, catId) {
     const idx = state.modalCategoryIds.indexOf(catId);
     if (idx === -1) { state.modalCategoryIds.push(catId); btn.classList.add('active'); }
     else { state.modalCategoryIds.splice(idx, 1); btn.classList.remove('active'); }
@@ -674,6 +673,9 @@ document.getElementById('hero-search').addEventListener('keydown', e => {
     await loadPopularKeywords();
     await loadTop3();
     await loadCards(0);
+
+    // 카드 그리드 이벤트 위임 — 1회만 등록
+    document.getElementById('card-grid')?.addEventListener('click', handleCardClick);
 
     // 비교 카트
     document.getElementById('btn-do-compare').addEventListener('click', () => doCompare());

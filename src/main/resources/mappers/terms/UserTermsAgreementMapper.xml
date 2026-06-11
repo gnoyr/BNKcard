@@ -2,76 +2,86 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.bnk.domain.terms.mapper.UserTermsAgreementMapper">
- 
-    <resultMap id="agreementMap" type="com.bnk.domain.terms.model.UserTermsAgreement">
-        <id     property="agreementId"           column="agreement_id"/>
-        <result property="userId"                column="user_id"/>
-        <result property="termsId"               column="terms_id"/>
-        <result property="agreedYn"              column="agreed_yn"/>
-        <result property="agreementAction"       column="agreement_action"/>
-        <result property="agreedVersion"         column="agreed_version"/>
-        <result property="agreementChannel"      column="agreement_channel"/>
-        <result property="agreementSource"       column="agreement_source"/>
-        <result property="agreedContentSnapshot" column="agreed_content_snapshot"/>
-        <result property="agreedAt"              column="agreed_at"/>
-        <result property="ipAddress"             column="ip_address"/>
-        <result property="userAgent"             column="user_agent"/>
-    </resultMap>
- 
-    <!-- 단건 INSERT — agreement_id 생략 → TRG_USER_TERMS_AGMT_BI 자동 채번 -->
-    <insert id="insertAgreement">
-        <selectKey keyProperty="agreementId" resultType="long" order="AFTER">
-            SELECT SEQ_USER_TERMS_AGREEMENTS.CURRVAL FROM DUAL
-        </selectKey>
-        INSERT INTO USER_TERMS_AGREEMENTS (
-            user_id, terms_id, agreed_yn, agreement_action,
-            agreed_version, agreement_channel, agreement_source,
-            agreed_content_snapshot,
-            agreed_at, ip_address, user_agent
-        ) VALUES (
-            #{userId}, #{termsId}, #{agreedYn}, #{agreementAction},
-            #{agreedVersion},
-            #{agreementChannel,      jdbcType=VARCHAR},
-            #{agreementSource,       jdbcType=VARCHAR},
-            #{agreedContentSnapshot, jdbcType=CLOB},
-            SYSTIMESTAMP,
-            #{ipAddress,             jdbcType=VARCHAR},
-            #{userAgent,             jdbcType=VARCHAR}
-        )
-    </insert>
- 
-    <insert id="insertAgreements">
-        INSERT ALL
-        <foreach collection="agreements" item="a">
-            INTO USER_TERMS_AGREEMENTS (
-                user_id, terms_id, agreed_yn, agreement_action,
-                agreed_version, agreement_channel, agreement_source,
-                agreed_content_snapshot, agreed_at
-            ) VALUES (
-                #{a.userId}, #{a.termsId}, #{a.agreedYn}, #{a.agreementAction},
-                #{a.agreedVersion},
-                #{a.agreementChannel,      jdbcType=VARCHAR},
-                #{a.agreementSource,       jdbcType=VARCHAR},
-                #{a.agreedContentSnapshot, jdbcType=CLOB},
-                SYSTIMESTAMP
-            )
-        </foreach>
-        SELECT 1 FROM DUAL
-    </insert>
- 
-    <select id="findByUserId" resultMap="agreementMap">
-        SELECT * FROM USER_TERMS_AGREEMENTS
-        WHERE  user_id = #{userId}
-        ORDER  BY agreed_at DESC
-    </select>
- 
-    <select id="existsAgreement" resultType="boolean">
-        SELECT CASE WHEN COUNT(1) > 0 THEN 1 ELSE 0 END
-        FROM   USER_TERMS_AGREEMENTS
-        WHERE  user_id   = #{userId}
-          AND  terms_id  = #{termsId}
-          AND  agreed_yn = 'Y'
-    </select>
- 
+<mapper
+	namespace="com.bnk.domain.terms.mapper.UserTermsAgreementMapper">
+
+	<resultMap id="agreementMap"
+		type="com.bnk.domain.terms.model.UserTermsAgreement">
+		<id property="agreementId" column="agreement_id" />
+		<result property="userId" column="user_id" />
+		<result property="termsId" column="terms_id" />
+		<result property="agreedYn" column="agreed_yn" />
+		<result property="agreementAction" column="agreement_action" />
+		<result property="agreedVersion" column="agreed_version" />
+		<result property="agreementChannel" column="agreement_channel" />
+		<result property="agreementSource" column="agreement_source" />
+		<result property="agreedContentSnapshot"
+			column="agreed_content_snapshot" />
+		<result property="agreedAt" column="agreed_at" />
+		<result property="ipAddress" column="ip_address" />
+		<result property="userAgent" column="user_agent" />
+	</resultMap>
+
+	<!-- 단건 INSERT — agreement_id 생략 → TRG_USER_TERMS_AGMT_BI 자동 채번 -->
+	<insert id="insertAgreement">
+		<selectKey keyProperty="agreementId" resultType="long"
+			order="AFTER">
+			SELECT SEQ_USER_TERMS_AGREEMENTS.CURRVAL FROM DUAL
+		</selectKey>
+		INSERT INTO USER_TERMS_AGREEMENTS (
+		user_id, terms_id, agreed_yn, agreement_action,
+		agreed_version, agreement_channel, agreement_source,
+		agreed_content_snapshot,
+		agreed_at, ip_address, user_agent
+		) VALUES (
+		#{userId}, #{termsId}, #{agreedYn}, #{agreementAction},
+		#{agreedVersion},
+		#{agreementChannel, jdbcType=VARCHAR,
+		typeHandler=org.apache.ibatis.type.StringTypeHandler},
+		#{agreementSource, jdbcType=VARCHAR,
+		typeHandler=org.apache.ibatis.type.StringTypeHandler},
+		#{agreedContentSnapshot, jdbcType=CLOB},
+		SYSTIMESTAMP,
+		#{ipAddress, jdbcType=VARCHAR,
+		typeHandler=org.apache.ibatis.type.StringTypeHandler},
+		#{userAgent, jdbcType=VARCHAR,
+		typeHandler=org.apache.ibatis.type.StringTypeHandler}
+		)
+	</insert>
+
+	<insert id="insertAgreements">
+		INSERT ALL
+		<foreach collection="agreements" item="a">
+			INTO USER_TERMS_AGREEMENTS (
+			user_id, terms_id, agreed_yn, agreement_action,
+			agreed_version, agreement_channel, agreement_source,
+			agreed_content_snapshot, agreed_at
+			) VALUES (
+			#{a.userId}, #{a.termsId}, #{a.agreedYn}, #{a.agreementAction},
+			#{a.agreedVersion},
+			#{a.agreementChannel, jdbcType=VARCHAR,
+			typeHandler=org.apache.ibatis.type.StringTypeHandler},
+			#{a.agreementSource, jdbcType=VARCHAR,
+			typeHandler=org.apache.ibatis.type.StringTypeHandler},
+			#{a.agreedContentSnapshot, jdbcType=CLOB},
+			SYSTIMESTAMP
+			)
+		</foreach>
+		SELECT 1 FROM DUAL
+	</insert>
+
+	<select id="findByUserId" resultMap="agreementMap">
+		SELECT * FROM USER_TERMS_AGREEMENTS
+		WHERE user_id = #{userId}
+		ORDER BY agreed_at DESC
+	</select>
+
+	<select id="existsAgreement" resultType="boolean">
+		SELECT CASE WHEN COUNT(1) > 0 THEN 1 ELSE 0 END
+		FROM USER_TERMS_AGREEMENTS
+		WHERE user_id = #{userId}
+		AND terms_id = #{termsId}
+		AND agreed_yn = 'Y'
+	</select>
+
 </mapper>
