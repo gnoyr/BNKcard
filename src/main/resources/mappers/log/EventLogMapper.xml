@@ -9,34 +9,41 @@
 			order="BEFORE">
 			SELECT SEQ_EVENT_LOGS.NEXTVAL FROM DUAL
 		</selectKey>
-		INSERT INTO EVENT_LOGS (log_id, event_type, event_status, user_id,
-		request_ip, duration_ms)
-		VALUES (
+		INSERT INTO EVENT_LOGS (
+		log_id, event_type, event_status,
+		user_id, request_ip, duration_ms, created_at
+		) VALUES (
 		#{logId, jdbcType=BIGINT},
 		#{eventType, jdbcType=VARCHAR},
 		#{eventStatus, jdbcType=VARCHAR},
 		#{userId, jdbcType=BIGINT},
 		#{requestIp, jdbcType=VARCHAR},
-		#{durationMs, jdbcType=BIGINT}
+		#{durationMs, jdbcType=BIGINT},
+		#{createdAt}
 		)
 	</insert>
 
 	<insert id="insertCardLog"
 		parameterType="com.bnk.global.log.model.CardEventLog">
-		INSERT INTO CARD_EVENT_LOGS (log_id, card_id, action_detail, result_code,
+		INSERT INTO CARD_EVENT_LOGS (log_id, card_id,
+		action_detail, result_code,
 		error_message)
 		VALUES (
-		#{logId, jdbcType=BIGINT},
+		#{logId,
+		jdbcType=BIGINT},
 		#{cardId, jdbcType=VARCHAR},
-		#{actionDetail, jdbcType=VARCHAR},
+		#{actionDetail,
+		jdbcType=VARCHAR},
 		#{resultCode, jdbcType=VARCHAR},
-		#{errorMessage, jdbcType=VARCHAR}
+		#{errorMessage,
+		jdbcType=VARCHAR}
 		)
 	</insert>
 
 	<insert id="insertTermsLog"
 		parameterType="com.bnk.global.log.model.TermsEventLog">
-		INSERT INTO TERMS_EVENT_LOGS (log_id, terms_id, action_detail,
+		INSERT INTO TERMS_EVENT_LOGS (log_id, terms_id,
+		action_detail,
 		error_message)
 		VALUES (
 		#{logId, jdbcType=BIGINT},
@@ -48,7 +55,8 @@
 
 	<insert id="insertChatLog"
 		parameterType="com.bnk.global.log.model.ChatEventLog">
-		INSERT INTO CHAT_EVENT_LOGS (log_id, session_id, query_text,
+		INSERT INTO CHAT_EVENT_LOGS (log_id, session_id,
+		query_text,
 		qdrant_hit_count, top_score, used_fallback, error_message)
 		VALUES (
 		#{logId, jdbcType=BIGINT},
