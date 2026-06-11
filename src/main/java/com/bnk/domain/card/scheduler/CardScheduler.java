@@ -1,9 +1,11 @@
 package com.bnk.domain.card.scheduler;
 
-import com.bnk.domain.card.mapper.CardMapper;   // ← CardMapper2 → CardMapper
-import com.bnk.domain.card.model.Card;          // ← model2.Card → model.Card
+import com.bnk.domain.ai.service.CardVectorService;
+import com.bnk.domain.card.mapper.CardMapper;
+import com.bnk.domain.card.model.Card;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,36 +13,25 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * 카드 상태 자동 전환 스케줄러 (리팩토링)
- *
- * 변경 이력:
- *  - CardMapper2 → CardMapper (단일 Mapper)
- *  - model2.Card → model.Card
- *  - 메서드명 변경:
- *      getApprovedReadyCards() → findApprovedReadyCards()
- *      publishCards()          → publishCards()           (동일)
- *      publishCardVersions()   → publishCardVersions()    (동일)
- *      getExpiredCards()       → findExpiredCards()
- *      expireCards()           → expireCards()            (동일)
- *      expireCardVersion()     → expireCardVersions()     (복수형 통일)
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class CardScheduler {
 
-    private final CardMapper cardMapper;   // ← CardMapper2 대체
+    private final CardMapper cardMapper;
+
+    // ai.enabled=false 환경에서는 빈이 없으므로 @Autowired(required=false)
+    @Autowired(required = false)
+    private CardVectorService cardVectorService;
 
     /**
-     * APPROVED → PUBLISHED 자동 전환
-     * publish_start_at <= SYSTIMESTAMP && APPROVED 상태 카드를 PUBLISHED로 전환
+     * APPROVED → PUBLISHED 자동 전환 + Qdrant upsert
      * 매 5분마다 실행
      */
     @Scheduled(fixedDelay = 300_000)
     @Transactional
     public void publishApprovedCards() {
-        List<Card> readyCards = cardMapper.findApprovedReadyCards();   // ← getApprovedReadyCards()
+        List<Card> readyCards = cardMapper.findApprovedReadyCards();
 
         if (readyCards.isEmpty()) {
             return;
@@ -50,22 +41,36 @@ public class CardScheduler {
                 .map(Card::getCardId)
                 .collect(Collectors.toList());
 
+        // 기존 로직 — 그대로 유지
         cardMapper.publishCards(cardIds);
         cardMapper.publishCardVersions(cardIds);
 
         log.info("[스케줄러] APPROVED → PUBLISHED 전환 완료: {}건, cardIds={}",
                 cardIds.size(), cardIds);
+
+        // ↓ 추가: PUBLISHED된 카드를 Qdrant에 upsert
+        if (cardVectorService != null) {
+            for (Long cardId : cardIds) {
+                try {
+                    cardVectorService.upsertCard(cardId);
+                } catch (Exception e) {
+                    // Qdrant 실패해도 메인 트랜잭션 롤백 안 함
+                    log.warn("[스케줄러] Qdrant upsert 실패 (무시): cardId={}, error={}",
+                            cardId, e.getMessage());
+                }
+            }
+            log.info("[스케줄러] Qdrant upsert 완료: {}건", cardIds.size());
+        }
     }
 
     /**
-     * PUBLISHED → EXPIRED 자동 만료
-     * publish_end_at < SYSTIMESTAMP && PUBLISHED 상태 카드를 EXPIRED로 전환
+     * PUBLISHED → EXPIRED 자동 만료 + Qdrant 삭제
      * 매 10분마다 실행
      */
     @Scheduled(fixedDelay = 600_000)
     @Transactional
     public void expirePublishedCards() {
-        List<Card> expiredCards = cardMapper.findExpiredCards();       // ← getExpiredCards()
+        List<Card> expiredCards = cardMapper.findExpiredCards();
 
         if (expiredCards.isEmpty()) {
             return;
@@ -75,10 +80,24 @@ public class CardScheduler {
                 .map(Card::getCardId)
                 .collect(Collectors.toList());
 
+        // 기존 로직 — 그대로 유지
         cardMapper.expireCards(cardIds);
-        cardMapper.expireCardVersions(cardIds);                        // ← expireCardVersion() (복수형)
+        cardMapper.expireCardVersions(cardIds);
 
         log.info("[스케줄러] PUBLISHED → EXPIRED 전환 완료: {}건, cardIds={}",
                 cardIds.size(), cardIds);
+
+        // ↓ 추가: EXPIRED된 카드를 Qdrant에서 삭제
+        if (cardVectorService != null) {
+            for (Long cardId : cardIds) {
+                try {
+                    cardVectorService.deleteCard(cardId);
+                } catch (Exception e) {
+                    log.warn("[스케줄러] Qdrant 삭제 실패 (무시): cardId={}, error={}",
+                            cardId, e.getMessage());
+                }
+            }
+            log.info("[스케줄러] Qdrant 삭제 완료: {}건", cardIds.size());
+        }
     }
 }

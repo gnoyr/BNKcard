@@ -9,4 +9,6 @@ import com.bnk.domain.ai.model.CardVector;
 @Mapper
 public interface CardVectorMapper {
 	List<CardVector> findAllCardsWithBenefits();
+	// CardVectorMapper.java 에 추가
+	CardVector findCardWithBenefitsById(Long cardId);
 }
