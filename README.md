@@ -42,7 +42,7 @@ AI 챗봇 카드 안내
 |------|------|
 | Backend | Java 21, Spring Boot 4.x |
 | Frontend | HTML5, CSS3 |
-| Database | Oracle Database |
+| Database | Oracle Database, Redis |
 | ORM | MyBatis Framework |
 | 인증·보안 | Spring Security, JWT |
 | 인프라 | Oracle Cloud Infrastructure (OCI), OCI Object Storage |
