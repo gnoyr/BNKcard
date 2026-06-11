@@ -228,5 +228,10 @@
     "name": "springdoc.swagger-ui.enabled",
     "type": "java.lang.Boolean",
     "description": "API 엔드포인트를 시각화하고 테스트할 수 있는 웹 화면(Swagger UI)을 활성화합니다."
-  }
+  },
+  {
+  "name": "spring.task.scheduling.enabled",
+  "type": "java.lang.Boolean",
+  "description": "스케줄러(@Scheduled) 전체 활성화 여부. false 설정 시 모든 @Scheduled 작업이 실행되지 않습니다. 테스트 환경에서 CardScheduler 등 DB 의존 스케줄러의 즉시 실행을 방지하기 위해 false로 설정"
+}
 ]}

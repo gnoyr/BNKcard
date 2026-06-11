@@ -23,7 +23,7 @@
 		#{targetId, jdbcType=NUMERIC},
 		#{description, jdbcType=VARCHAR},
 		#{ipAddress, jdbcType=VARCHAR},
-		SYSTIMESTAMP
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		)
 	</insert>
 
@@ -41,7 +41,7 @@
 		#{detail, jdbcType=VARCHAR},
 		#{clientIp, jdbcType=VARCHAR},
 		#{requestUri, jdbcType=VARCHAR},
-		SYSTIMESTAMP
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		)
 	</insert>
 
@@ -59,7 +59,7 @@
 		#{detail, jdbcType=VARCHAR},
 		#{clientIp, jdbcType=VARCHAR},
 		#{requestUri, jdbcType=VARCHAR},
-		SYSTIMESTAMP
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		)
 	</insert>
 

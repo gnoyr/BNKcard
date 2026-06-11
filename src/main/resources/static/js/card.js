@@ -31,7 +31,6 @@ async function api(url) {
             return null;
         }
         const json = await res.json();
-        console.log(`[card.js] API 응답: ${url}`, json);   
         return json?.data ?? json ?? null;
     } catch (e) {
         console.error(`[card.js] API 예외: ${url}`, e);
@@ -354,8 +353,13 @@ function handleImgModalClick(e) {
 }
 
 function applyCard(cardId) {
-    const ok = confirm('카드 발급을 신청하시겠습니까?\n로그인이 필요합니다.');
-    if (ok) location.href = `/login?next=${encodeURIComponent(`/card/${cardId}`)}`;
+    const isLoggedIn = !!sessionStorage.getItem('bnk_login_at');
+    if (isLoggedIn) {
+        location.href = `/card/${cardId}/apply`;
+    } else {
+        const ok = confirm('카드 발급 신청을 위해 로그인이 필요합니다.\n로그인 페이지로 이동하시겠습니까?');
+        if (ok) location.href = `/auth/login?next=${encodeURIComponent(`/card/${cardId}`)}`;
+    }
 }
 
 // ── 이미지 슬라이더 ──
