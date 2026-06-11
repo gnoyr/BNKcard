@@ -115,13 +115,6 @@
 
             if (res.ok) {
                 sessionStorage.setItem('bnk_login_at', String(Date.now()));
-                try {
-                    const me = await API.get('/api/users/me');
-                    const name = me.data?.data?.name ?? me.data?.name ?? '회원';
-                    sessionStorage.setItem('bnk_user_name', name);
-                } catch {
-                    sessionStorage.setItem('bnk_user_name', '회원');
-                }
                 const next = new URLSearchParams(location.search).get('next');
                 const safeNext = next?.startsWith('/') && !next.startsWith('//') ? next : '/';
                 location.href = safeNext;
@@ -145,7 +138,7 @@
     ════════════════════════════════════════════ */
     const signup = (() => {
         let _agreedTermsIds = [];
-		let _ivDone = false;
+        let _ivDone = false;
         let _emailVerified = false;
         let _codeTimer = null;
 
@@ -162,84 +155,46 @@
 
         function syncAllCheck() {
             const form = document.getElementById('termsForm');
-            const allCbs = form?.querySelectorAll('input[type="checkbox"][data-id], input[type="checkbox"][data-required]') ?? [];
-            const allChecked = [...allCbs].length > 0 && [...allCbs].every(cb => cb.checked);
+            // data-required="false"인 선택 약관은 전체동의 판단에서 제외
+            const allCbs = [...(form?.querySelectorAll('input[type="checkbox"][data-id], input[type="checkbox"][data-required]') ?? [])]
+                .filter(cb => cb.dataset.required !== 'false');
+            const allChecked = allCbs.length > 0 && allCbs.every(cb => cb.checked);
             const allCb = document.getElementById('terms-all');
             if (allCb) allCb.checked = allChecked;
         }
 
-        async function _loadTerms() {
-            const loading = document.getElementById('terms-loading');
-            const errEl = document.getElementById('terms-error');
-            const extraWrap = document.getElementById('extra-terms-wrap');
-            if (!extraWrap) return;
-
-            const res = await API.get('/api/terms/packages/SIGNUP');
-            loading?.classList.add('is-hidden');
-
-            if (!res.ok) {
-                if (errEl) {
-                    errEl.style.display = 'block';
-                    errEl.textContent = '추가 약관을 불러오지 못했습니다. 필수 약관은 위에 표시된 내용으로 진행합니다.';
-                }
-                return;
-            }
-
-            const terms = res.data?.data?.terms ?? [];
-			const STATIC_TERMS_IDS = [1, 2]; // signup.html에 하드코딩된 약관 ID
-			const extraTerms = terms.filter(t => {
-			    const id = t.id ?? t.termsId ?? t.termsMasterId;
-			    return !STATIC_TERMS_IDS.includes(Number(id));
-			});
-
-            if (!extraTerms.length) return;
-
-            extraWrap.innerHTML = extraTerms.map(t => `
-            <div class="terms-item">
-                <label class="terms-label">
-                    <input type="checkbox" data-id="${t.id}" data-required="true">
-                    <span>[필수] ${t.title}</span>
-                </label>
-                ${t.content ? `<details class="terms-detail"><summary>내용 보기</summary><pre>${t.content}</pre></details>` : ''}
-            </div>`).join('');
-
-            extraWrap.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                cb.addEventListener('change', syncAllCheck);
-            });
-        }
-
         return {
             init() {
-                _loadTerms();
-
                 const allCb = document.getElementById('terms-all');
                 allCb?.addEventListener('change', () => {
                     const form = document.getElementById('termsForm');
-                    const allCbs = form?.querySelectorAll('input[type="checkbox"][data-id], input[type="checkbox"][data-required]') ?? [];
+                    // data-required="false"인 선택 약관은 전체동의 토글에서 제외
+                    const allCbs = [...(form?.querySelectorAll('input[type="checkbox"][data-id], input[type="checkbox"][data-required]') ?? [])]
+                        .filter(cb => cb.dataset.required !== 'false');
                     allCbs.forEach(cb => { cb.checked = allCb.checked; });
                 });
 
                 document.getElementById('btnStep1Next')?.addEventListener('click', () => {
-					const requiredCbs = document.querySelectorAll(
-					    'input[type="checkbox"][data-required="Y"], input[type="checkbox"][data-required="true"]'
-					);
-					if (![...requiredCbs].every(cb => cb.checked)) {
-					    authToast.error('필수 약관에 모두 동의해 주세요.');
-					    return;
-					}
-					_agreedTermsIds = [...document.querySelectorAll('[data-id]:checked')]
-					    .map(cb => Number(cb.dataset.id))
-					    .filter(id => id > 0);
+                    const requiredCbs = document.querySelectorAll(
+                        'input[type="checkbox"][data-required="Y"], input[type="checkbox"][data-required="true"]'
+                    );
+                    if (![...requiredCbs].every(cb => cb.checked)) {
+                        authToast.error('필수 약관에 모두 동의해 주세요.');
+                        return;
+                    }
+                    _agreedTermsIds = [...document.querySelectorAll('[data-id]:checked')]
+                        .map(cb => Number(cb.dataset.id))
+                        .filter(id => id > 0);
 
-					// 필수 약관 ID 존재 여부로 체크 (선택 약관 미체크는 허용)
-					const requiredCheckedIds = [...document.querySelectorAll(
-					    'input[type="checkbox"][data-required="Y"]:checked, input[type="checkbox"][data-required="true"]:checked'
-					)].map(cb => Number(cb.dataset.id)).filter(id => id > 0);
+                    // 필수 약관 ID 존재 여부로 체크 (선택 약관 미체크는 허용)
+                    const requiredCheckedIds = [...document.querySelectorAll(
+                        'input[type="checkbox"][data-required="Y"]:checked, input[type="checkbox"][data-required="true"]:checked'
+                    )].map(cb => Number(cb.dataset.id)).filter(id => id > 0);
 
-					if (requiredCheckedIds.length === 0) {
-					    authToast.error('약관 정보를 불러올 수 없습니다. 페이지를 새로고침 해주세요.');
-					    return;
-					}
+                    if (requiredCheckedIds.length === 0) {
+                        authToast.error('약관 정보를 불러올 수 없습니다. 페이지를 새로고침 해주세요.');
+                        return;
+                    }
                     showView('view-step2');
                     _updateStepBar(2);
                 });
@@ -249,6 +204,11 @@
 
                 const pwInput = document.getElementById('password');
                 const pwConfirm = document.getElementById('passwordConfirm');
+
+                // 브라우저 자동완성 차단: readonly → focus 시 제거
+                [pwInput, pwConfirm].forEach(el => {
+                    el?.addEventListener('focus', () => el.removeAttribute('readonly'));
+                });
 
                 document.getElementById('btnPwToggle1')?.addEventListener('click', (e) => togglePw('password', e.currentTarget));
                 document.getElementById('btnPwToggle2')?.addEventListener('click', (e) => togglePw('passwordConfirm', e.currentTarget));
@@ -263,45 +223,45 @@
                     showView('view-step1');
                     _updateStepBar(1);
                 });
-				
-				//본인 인증 버튼
-				document.getElementById('btnIdentityVerify')?.addEventListener('click', () => {
-				       IdentityVerify.open({
-				           onSuccess: (result) => {
-				               // 이름, 생년월일 자동 입력
-				               const nameEl = document.getElementById('name');
-				               const bdEl   = document.getElementById('birthDate');
-				               if (nameEl) nameEl.value = result.name      || '';
-				               if (bdEl)   bdEl.value   = result.birthDate || '';
 
-				               // 숨겨진 필드 저장
-				               const set = (id, val) => {
-				                   const el = document.getElementById(id);
-				                   if (el) el.value = val || '';
-				               };
-				               set('iv-resident-front', result.residentFront);
-				               set('iv-address',        result.address);
-				               set('iv-address-detail', result.addressDetail);
-				               set('iv-zip-code',       result.zipCode);
+                //본인 인증 버튼
+                document.getElementById('btnIdentityVerify')?.addEventListener('click', () => {
+                    IdentityVerify.open({
+                        onSuccess: (result) => {
+                            // 이름, 생년월일 자동 입력
+                            const nameEl = document.getElementById('name');
+                            const bdEl = document.getElementById('birthDate');
+                            if (nameEl) nameEl.value = result.name || '';
+                            if (bdEl) bdEl.value = result.birthDate || '';
 
-				               // 완료 UI 업데이트 — 클래스로만 처리 (인라인 CSS 없음)
-				               const msg = document.getElementById('iv-done-msg');
-				               if (msg) {
-				                   msg.textContent = '✓ 본인인증이 완료되었습니다.';
-				                   msg.classList.add('iv-complete-msg');  // display: block 트리거
-				                   msg.style.display = 'block';           // CSS display:none 덮어쓰기용
-				               }
+                            // 숨겨진 필드 저장
+                            const set = (id, val) => {
+                                const el = document.getElementById(id);
+                                if (el) el.value = val || '';
+                            };
+                            set('iv-resident-front', result.residentFront);
+                            set('iv-address', result.address);
+                            set('iv-address-detail', result.addressDetail);
+                            set('iv-zip-code', result.zipCode);
 
-				               const btn = document.getElementById('btnIdentityVerify');
-				               if (btn) {
-				                   btn.textContent = '✓ 본인인증 완료';
-				                   btn.classList.add('is-done');
-				               }
+                            // 완료 UI 업데이트 — 클래스로만 처리 (인라인 CSS 없음)
+                            const msg = document.getElementById('iv-done-msg');
+                            if (msg) {
+                                msg.textContent = '✓ 본인인증이 완료되었습니다.';
+                                msg.classList.add('iv-complete-msg');  // display: block 트리거
+                                msg.style.display = 'block';           // CSS display:none 덮어쓰기용
+                            }
 
-				               _ivDone = true;
-				           }
-				       });
-				   });
+                            const btn = document.getElementById('btnIdentityVerify');
+                            if (btn) {
+                                btn.textContent = '✓ 본인인증 완료';
+                                btn.classList.add('is-done');
+                            }
+
+                            _ivDone = true;
+                        }
+                    });
+                });
 
                 pwInput?.addEventListener('input', () => {
                     const v = pwInput.value;
@@ -310,6 +270,7 @@
                     wrap?.classList.remove('is-hidden');
                     renderStrengthBar(calcPwScore(v), 'signup-strength-bar', 'signup-strength-label');
                     renderPwRules(v);
+                    hideError(document.getElementById('signup-error'));
                 });
 
                 pwConfirm?.addEventListener('input', () => {
@@ -319,20 +280,37 @@
                     if (!c) { msg.textContent = ''; return; }
                     msg.textContent = pwInput.value === c ? '비밀번호가 일치합니다.' : '비밀번호가 일치하지 않습니다.';
                     msg.className = pwInput.value === c ? 'helper ok' : 'helper error';
+                    hideError(document.getElementById('signup-error'));
+                });
+
+                // 입력 시 에러 메시지 자동 클리어 — 필드별 + 공통
+                const errClearMap = {
+                    'name':            ['name-err', 'signup-error'],
+                    'phone':           ['phone-err', 'signup-error'],
+                    'email':           ['email-err', 'signup-error'],
+                    'verifyCode':      ['verifyCode-err'],
+                    'creditScore':     ['creditScore-err'],
+                    'birthDate':       ['birthDate-err'],
+                };
+                Object.entries(errClearMap).forEach(([fieldId, errIds]) => {
+                    document.getElementById(fieldId)?.addEventListener('input', () => {
+                        errIds.forEach(id => hideError(document.getElementById(id)));
+                    });
                 });
 
                 document.getElementById('btnStep2Submit')?.addEventListener('click', () => this._submitSignup());
             },
 
             async _sendVerifyCode() {
-                const email = document.getElementById('signupEmail')?.value.trim();
+                const email = document.getElementById('email')?.value.trim();
                 const err = document.getElementById('email-err');
                 if (!email) { showError(err, '이메일을 입력해 주세요.'); return; }
                 hideError(err);
 
-                const res = await API.post('/api/auth/verify-email', { email });
+                const res = await API.post('/api/auth/send-verify-code', { email });
                 if (res.ok) {
                     authToast.success('인증 코드가 발송되었습니다. 메일함을 확인해 주세요.');
+                    document.getElementById('code-sent-msg')?.classList.remove('is-hidden');
                     this._startCodeTimer();
                 } else {
                     BnkError.handle(res, err, {
@@ -344,7 +322,7 @@
 
             _startCodeTimer() {
                 _clearCodeTimer();
-                let remaining = 180;
+                let remaining = 600;   // ← 180 → 600
                 const timerEl = document.getElementById('code-timer');
                 function tick() {
                     if (!timerEl) { _clearCodeTimer(); return; }
@@ -354,7 +332,11 @@
                     if (remaining-- <= 0) {
                         _clearCodeTimer();
                         timerEl.textContent = '만료됨';
-                        _emailVerified = false;
+                        // _emailVerified 건드리지 않음 — 서버 코드는 아직 유효
+                        document.getElementById('code-sent-msg')
+                            ?.querySelector('.timer-text')
+                            ?.closest('.helper')
+                            ?.classList.add('is-hidden');
                     }
                 }
                 tick();
@@ -362,18 +344,19 @@
             },
 
             async _verifyCode() {
-                const email = document.getElementById('signupEmail')?.value.trim();
+                const email = document.getElementById('email')?.value.trim();
                 const code = document.getElementById('verifyCode')?.value.trim();
-                const err = document.getElementById('code-err');
+                const err = document.getElementById('verifyCode-err');
                 if (!code) { showError(err, '인증 코드를 입력해 주세요.'); return; }
 
-                const res = await API.post('/api/auth/verify-email/confirm', { email, code });
+                const res = await API.post('/api/auth/verify-email', { email, code });
                 if (res.ok) {
                     _emailVerified = true;
                     _clearCodeTimer();
                     authToast.success('이메일 인증이 완료되었습니다.');
                     document.getElementById('verifyCode')?.setAttribute('disabled', '');
                     document.getElementById('btnVerifyCode')?.setAttribute('disabled', '');
+                    document.getElementById('verify-success')?.classList.remove('is-hidden');
                 } else {
                     BnkError.handle(res, err, {
                         400: '인증 코드가 올바르지 않습니다.',
@@ -382,55 +365,56 @@
                 }
             },
 
-			async _submitSignup() {
-			        if (!_emailVerified) { authToast.error('이메일 인증을 완료해 주세요.'); return; }
-			        if (!_ivDone)        { authToast.error('본인인증을 완료해 주세요.'); return; }
-			 
-			        const email     = document.getElementById('signupEmail')?.value.trim();
-			        const name      = document.getElementById('name')?.value.trim();
-			        const phone     = document.getElementById('phone')?.value.trim().replace(/-/g, '');
-			        const password  = document.getElementById('password')?.value ?? '';
-			        const pwConfirm = document.getElementById('passwordConfirm')?.value ?? '';
-			        const birthDate = document.getElementById('birthDate')?.value ?? '';
-			        const err       = document.getElementById('step2-err');
-			 
-			        if (!name)    { showError(err, '이름을 입력해 주세요.'); return; }
-			        if (!phone)   { showError(err, '휴대전화 번호를 입력해 주세요.'); return; }
-			        if (password !== pwConfirm) { showError(err, '비밀번호가 일치하지 않습니다.'); return; }
-			        if (!renderPwRules(password)) { showError(err, '비밀번호 조건을 확인해 주세요.'); return; }
-			        hideError(err);
-			 
-			        const btn = document.getElementById('btnStep2Submit');
-			        BnkDOM.btnLoading(btn, true, '가입 중...');
-			 
-			        const res = await API.post('/api/auth/signup', {
-			            email,
-			            name,
-			            phone,
-			            password,
-			            passwordConfirm: pwConfirm,
-			            birthDate,
-			            agreedTermsIds:  _agreedTermsIds,
-			            residentFront:   document.getElementById('iv-resident-front')?.value || '',
-			        });
-			 
-			        BnkDOM.btnLoading(btn, false);
-			 
-			        if (res.ok) {
-			            showView('view-step3');
-			            _updateStepBar(3);
-			            return;
-			        }
-			        if (res.status === 0 || res.status >= 500) return;
-			        BnkError.handle(res, err, {
-			            403: '서비스 이용이 제한된 계정입니다. 고객센터에 문의해 주세요.',
-			            409: res.data?.message?.includes('phone')
-			                ? '이미 가입된 휴대폰 번호입니다.'
-			                : '이미 가입된 이메일입니다. 로그인 페이지에서 로그인해 주세요.',
-			            429: '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.',
-			        });
-			    },
-			};
+            async _submitSignup() {
+                if (!_emailVerified) { authToast.error('이메일 인증을 완료해 주세요.'); return; }
+                if (!_ivDone) { authToast.error('본인인증을 완료해 주세요.'); return; }
+				const marketingAgree = document.getElementById('chk-marketing')?.checked ?? false;
+                const email = document.getElementById('email')?.value.trim();  // ① signupEmail → email
+                const name = document.getElementById('name')?.value.trim();
+                const phone = document.getElementById('phone')?.value.trim().replace(/-/g, '');
+                const password = document.getElementById('password')?.value ?? '';
+                const pwConfirm = document.getElementById('passwordConfirm')?.value ?? '';
+                const birthDate = document.getElementById('birthDate')?.value ?? '';
+                const err = document.getElementById('signup-error');  // ② step2-err → signup-error
+
+                if (!name) { showError(err, '이름을 입력해 주세요.'); return; }
+                if (!phone) { showError(err, '휴대전화 번호를 입력해 주세요.'); return; }
+                if (password !== pwConfirm) { showError(err, '비밀번호가 일치하지 않습니다.'); return; }
+                if (!renderPwRules(password)) { showError(err, '비밀번호 조건을 확인해 주세요.'); return; }
+                hideError(err);
+
+                const btn = document.getElementById('btnStep2Submit');
+                BnkDOM.btnLoading(btn, true, '가입 중...');
+
+                const res = await API.post('/api/auth/signup', {
+                    email, name, phone, password,
+                    passwordConfirm: pwConfirm,
+                    birthDate,
+					marketingAgree,
+                    agreedTermsIds: _agreedTermsIds,
+                    residentFront: document.getElementById('iv-resident-front')?.value || '',
+                });
+
+                BnkDOM.btnLoading(btn, false);
+
+                if (res.ok) {
+                    // ③ 완료 화면 이름·이메일 채우기 추가
+                    document.getElementById('done-name').textContent = name;
+                    document.getElementById('done-email-display').textContent = email;
+                    showView('view-step3');
+                    _updateStepBar(3);
+                    return;
+                }
+                if (res.status === 0 || res.status >= 500) return;
+                BnkError.handle(res, err, {
+                    403: '서비스 이용이 제한된 계정입니다. 고객센터에 문의해 주세요.',
+                    409: res.data?.message?.includes('phone')
+                        ? '이미 가입된 휴대폰 번호입니다.'
+                        : '이미 가입된 이메일입니다. 로그인 페이지에서 로그인해 주세요.',
+                    429: '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.',
+                });
+            },
+        };
     })();
 
     /* ════════════════════════════════════════════
@@ -468,7 +452,7 @@
 
             if (res.status === 0 || res.status >= 500) return;
             BnkError.handle(res, err, {
-                404: '이름 또는 이메일이 일치하지 않습니다. 입력 정보를 다시 확인해 주세요.',
+                404: '이름 또는 휴대전화 번호가 일치하지 않습니다. 입력 정보를 다시 확인해 주세요.',
                 429: '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.',
             });
         },
@@ -555,6 +539,10 @@
             const btn = document.querySelector('#resetPwForm [type="submit"]');
 
             if (pw.length < 8) { showError(err, '비밀번호는 8자 이상 입력해 주세요.'); return; }
+            if (!/^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,50}$/.test(pw)) {
+                showError(err, '비밀번호는 영문, 숫자, 특수문자(@$!%*#?&)를 포함한 8~50자여야 합니다.');
+                return;
+            }
             if (pw !== pwc) { showError(err, '비밀번호가 일치하지 않습니다.'); return; }
             hideError(err);
 
@@ -568,7 +556,7 @@
 
             if (res.ok) {
                 authToast.success('비밀번호가 변경되었습니다. 로그인 페이지로 이동합니다.');
-                setTimeout(() => { location.href = '/login'; }, 2000);
+                setTimeout(() => { location.href = '/auth/login'; }, 2000);
                 return;
             }
             if (res.status === 0 || res.status >= 500) return;

@@ -1,29 +1,22 @@
 /**
  * identity-verify.js
  * 가상 본인인증 모달 — BNK 부산은행
- * 위치: src/main/resources/static/js/identity-verify.js
  *
- * 사용법:
- *   IdentityVerify.open({
- *     onSuccess: (result) => {
- *       // result.name        이름
- *       // result.birthDate   생년월일 "YYYY-MM-DD"
- *       // result.residentFront 주민번호 앞 6자리
- *       // result.address     도로명 주소
- *       // result.addressDetail 상세 주소
- *       // result.zipCode     우편번호
- *     }
- *   });
- *
- * 의존:
- *   - identity-verify.css
- *   - 카카오 우편번호 API (자동 로드)
+ * [수정 내역]
+ *  1. 카카오 주소 API: open() 팝업 → embed 방식 (팝업 차단 / CSP 우회)
+ *  2. 주민번호 뒷자리: 7자리 전체 → 성별코드 1자리만 입력
+ *     - dot 표시: 7개 → 1개
+ *     - 검증: _back.length !== 7 → !== 1
+ *     - 키패드: 1자리 입력 즉시 자동 닫힘
+ *  3. 모달 재사용 시 _back 초기화 누락 버그 수정
+ *  4. 카카오 스크립트: //t1... → https://t1... (mixed-content 차단 방지)
+ *  5. 스크립트 로드 실패 시 onerror 처리 추가
  */
 const IdentityVerify = (() => {
     'use strict';
 
     let _onSuccess = null;
-    let _back = '';         // 주민번호 뒷자리
+    let _back = '';         // 주민번호 뒷자리 성별코드 (1자리만)
     let _addrData = null;   // 카카오 주소 결과
 
     // ── 카카오 우편번호 API 로드 ──────────────────────────────────
@@ -33,16 +26,58 @@ const IdentityVerify = (() => {
             return;
         }
         const script = document.createElement('script');
-        script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+        // ① https 명시 — 로컬 http 환경에서 mixed-content 차단 방지
+        script.src = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
         script.onload = callback;
+        // ⑤ 로드 실패 시 사용자 안내
+        script.onerror = () => {
+            alert('주소 검색 서비스를 불러오지 못했습니다.\n네트워크 연결을 확인해 주세요.');
+        };
         document.head.appendChild(script);
     }
 
-    // ── 주소 검색 팝업 ────────────────────────────────────────────
+    // ── 주소 검색 (② embed 방식 — 팝업 차단 / CSP 우회) ─────────
     function _openAddrSearch() {
         _loadKakaoPost(() => {
+            // 기존 embed 컨테이너 제거 후 재생성
+            document.getElementById('iv-addr-embed')?.remove();
+
+            const wrap = document.createElement('div');
+            wrap.id = 'iv-addr-embed';
+            wrap.style.cssText = [
+                'position:fixed', 'inset:0', 'z-index:99999',
+                'background:rgba(0,0,0,.55)',
+                'display:flex', 'align-items:center', 'justify-content:center',
+            ].join(';');
+
+            const inner = document.createElement('div');
+            inner.style.cssText = [
+                'width:min(500px,95vw)', 'height:530px',
+                'background:#fff', 'border-radius:12px', 'overflow:hidden',
+                'position:relative',
+            ].join(';');
+
+            // 닫기 버튼
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = '✕';
+            closeBtn.type = 'button';
+            closeBtn.style.cssText = [
+                'position:absolute', 'top:8px', 'right:12px', 'z-index:1',
+                'background:none', 'border:none', 'font-size:22px',
+                'cursor:pointer', 'color:#52525b', 'line-height:1',
+            ].join(';');
+            closeBtn.addEventListener('click', () => wrap.remove());
+
+            // 오버레이 클릭 닫기
+            wrap.addEventListener('click', e => { if (e.target === wrap) wrap.remove(); });
+
+            inner.appendChild(closeBtn);
+            wrap.appendChild(inner);
+            document.body.appendChild(wrap);
+
             new daum.Postcode({
                 oncomplete: (data) => {
+                    wrap.remove();
                     const road = data.roadAddress || data.jibunAddress;
                     document.getElementById('iv-addr').value = `[${data.zonecode}] ${road}`;
                     document.getElementById('iv-detail').value = '';
@@ -53,16 +88,19 @@ const IdentityVerify = (() => {
                     };
                     _showErr('err-addr', false);
                 },
+                // ② embed: 팝업 대신 inner 컨테이너에 렌더링
+                embed: true,
+                autoClose: false,
                 width: '100%',
                 height: '100%',
-            }).open();
+            }).embed(inner);
         });
     }
 
     // ── 키패드 (셔플) ─────────────────────────────────────────────
     function _buildKeypad() {
         const nums = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-        for (let i = nums.length - 1;i > 0;i--) {
+        for (let i = nums.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [nums[i], nums[j]] = [nums[j], nums[i]];
         }
@@ -88,10 +126,12 @@ const IdentityVerify = (() => {
                 btn.className = 'iv-key';
                 btn.textContent = k;
                 btn.addEventListener('click', () => {
-                    if (_back.length < 7) {
+                    // ③ 1자리만 받음 (성별코드)
+                    if (_back.length < 1) {
                         _back += k;
                         _updateDots();
-                        if (_back.length === 7) _closeKeypad();
+                        // 1자리 입력 즉시 키패드 닫기
+                        if (_back.length === 1) _closeKeypad();
                     }
                 });
             }
@@ -99,11 +139,10 @@ const IdentityVerify = (() => {
         });
     }
 
+    // ③ dot 업데이트 — 1자리 기준
     function _updateDots() {
-        for (let i = 0;i < 7;i++) {
-            const d = document.getElementById(`iv-d${i}`);
-            if (d) d.classList.toggle('filled', i < _back.length);
-        }
+        const d = document.getElementById('iv-d0');
+        if (d) d.classList.toggle('filled', _back.length >= 1);
     }
 
     function _closeKeypad() {
@@ -117,7 +156,7 @@ const IdentityVerify = (() => {
         if (el) el.classList.toggle('show', show);
     }
 
-    // ── 모달 HTML ─────────────────────────────────────────────────
+    // ── 모달 HTML (주민번호 dot 1개로 축소) ───────────────────────
     function _buildHTML() {
         return `
 <div class="iv-overlay" id="iv-overlay" role="dialog" aria-modal="true" aria-label="본인인증">
@@ -145,7 +184,7 @@ const IdentityVerify = (() => {
           <div class="iv-err" id="err-name">이름을 입력해주세요.</div>
         </div>
 
-        <!-- 주민번호 -->
+        <!-- 주민번호 — 앞 6자리 + 성별코드 1자리 -->
         <div class="iv-group">
           <label class="iv-label">주민등록번호 <span class="req">*</span></label>
           <div class="iv-res-wrap">
@@ -153,21 +192,17 @@ const IdentityVerify = (() => {
               placeholder="앞 6자리" maxlength="6" inputmode="numeric">
             <span class="iv-res-dash">-</span>
             <div class="iv-res-back-wrap">
-              <div class="iv-res-back" id="iv-res-back" tabindex="0" role="button" aria-label="뒷자리 클릭 입력">
+              <!-- ③ dot 1개만 표시 (성별코드) + 나머지는 ● 고정 텍스트 -->
+              <div class="iv-res-back" id="iv-res-back" tabindex="0" role="button" aria-label="뒷자리 성별코드 입력">
                 <span class="iv-dot" id="iv-d0"></span>
-                <span class="iv-dot" id="iv-d1"></span>
-                <span class="iv-dot" id="iv-d2"></span>
-                <span class="iv-dot" id="iv-d3"></span>
-                <span class="iv-dot" id="iv-d4"></span>
-                <span class="iv-dot" id="iv-d5"></span>
-                <span class="iv-dot" id="iv-d6"></span>
+                <span style="color:#a1a1aa;font-size:13px;letter-spacing:3px">●●●●●●</span>
               </div>
               <div class="iv-keypad" id="iv-keypad">
                 <div class="iv-kgrid" id="iv-kgrid"></div>
               </div>
             </div>
           </div>
-          <div class="iv-err" id="err-res">주민번호를 정확히 입력해주세요.</div>
+          <div class="iv-err" id="err-res">주민번호 앞 6자리와 성별코드(뒷자리 첫 번째)를 입력해주세요.</div>
         </div>
 
         <!-- 주소 -->
@@ -254,11 +289,12 @@ const IdentityVerify = (() => {
             ['err-name', 'err-res', 'err-addr'].forEach(id => _showErr(id, false));
 
             if (!name) { _showErr('err-name', true); ok = false; }
-            if (front.length !== 6 || _back.length !== 7) { _showErr('err-res', true); ok = false; }
+            // ③ 뒷자리: 7자리 전체 → 1자리(성별코드)만 검증
+            if (front.length !== 6 || _back.length !== 1) { _showErr('err-res', true); ok = false; }
             if (!addr) { _showErr('err-addr', true); ok = false; }
             if (!ok) return;
 
-            // 생년월일 계산 (주민번호 앞 6자리 + 뒷자리 첫 번째 성별코드)
+            // 생년월일 계산 (주민번호 앞 6자리 + 성별코드)
             const genderCode = _back[0];
             const century = ['3', '4', '7', '8'].includes(genderCode) ? '20' : '19';
             const birthDate = `${century}${front.slice(0, 2)}-${front.slice(2, 4)}-${front.slice(4, 6)}`;
@@ -320,6 +356,7 @@ const IdentityVerify = (() => {
     // ── 열기 ─────────────────────────────────────────────────────
     function _open(opts = {}) {
         _onSuccess = opts.onSuccess || null;
+        // ④ 재사용 시 상태 완전 초기화
         _back = '';
         _addrData = null;
         _pendingResult = null;
@@ -331,7 +368,7 @@ const IdentityVerify = (() => {
             _buildKeypad();
             _bindEvents();
         } else {
-            // 재사용 시 초기화
+            // 재사용 시 폼 필드 초기화
             document.getElementById('iv-name').value = '';
             document.getElementById('iv-front').value = '';
             document.getElementById('iv-addr').value = '';
