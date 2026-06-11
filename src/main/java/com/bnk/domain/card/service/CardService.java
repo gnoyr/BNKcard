@@ -37,10 +37,12 @@ import com.bnk.global.response.PageResponse;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Validated
 @RequiredArgsConstructor
+@Slf4j
 public class CardService {
 
     private final CardMapper cardMapper;
@@ -77,15 +79,12 @@ public class CardService {
                 .map(Card::getCardId)
                 .collect(Collectors.toList());
 
-        List<CardImage> frontImages = cardImageMapper.findByCardIdsAndType(cardIds, "FRONT");
-
-        // cardId → imageUrl Map
-        Map<Long, String> imageUrlMap = frontImages.stream()
-                .collect(Collectors.toMap(
-                        CardImage::getCardId,
-                        CardImage::getImageUrl,
-                        (existing, replacement) -> existing   // 중복이면 첫 번째 유지
-                ));
+        // FRONT 이미지 단건 조회 (배치 조회 대신 안전하게 단건 루프)
+        Map<Long, String> imageUrlMap = new HashMap<>();
+        for (Long cid : cardIds) {
+            CardImage img = cardImageMapper.findByCardIdAndType(cid, "FRONT");
+            if (img != null) imageUrlMap.put(cid, img.getImageUrl());
+        }
 
         return cards.stream()
                 .map(card -> BannerDto.builder()
@@ -123,19 +122,14 @@ public class CardService {
                 .map(Card::getCardId)
                 .collect(Collectors.toList());
 
-        // THUMBNAIL 이미지 한 번에 조회
-        List<CardImage> thumbnails = cardImageMapper.findByCardIdsAndType(cardIds, "THUMBNAIL");
-        Map<Long, String> thumbnailMap = new HashMap<>(thumbnails.stream()
-                .collect(Collectors.toMap(CardImage::getCardId, CardImage::getImageUrl, (e, r) -> e)));
-
-        // THUMBNAIL이 없는 카드는 FRONT 이미지로 보완
-        List<Long> noThumbnailIds = cardIds.stream()
-                .filter(id -> !thumbnailMap.containsKey(id))
-                .collect(Collectors.toList());
-
-        if (!noThumbnailIds.isEmpty()) {
-            List<CardImage> frontImages = cardImageMapper.findByCardIdsAndType(noThumbnailIds, "FRONT");
-            frontImages.forEach(img -> thumbnailMap.putIfAbsent(img.getCardId(), img.getImageUrl()));
+        // 이미지 조회: THUMBNAIL 우선, 없으면 FRONT 폴백 (단건 루프)
+        Map<Long, String> thumbnailMap = new HashMap<>();
+        for (Long cid : cardIds) {
+            log.info("=== 이미지 조회 시도 cardId: {}", cid);
+            CardImage img = cardImageMapper.findByCardIdAndType(cid, "THUMBNAIL");
+            if (img == null) img = cardImageMapper.findByCardIdAndType(cid, "FRONT");
+            log.info("=== 조회 결과: {}", img != null ? img.getImageUrl() : "NULL");
+            if (img != null) thumbnailMap.put(cid, img.getImageUrl());
         }
 
         // display_order = 1인 혜택 한 번에 조회 (새 Mapper 메서드 필요 - 아래 설명)
@@ -199,16 +193,12 @@ public class CardService {
         // THUMBNAIL 이미지 한 번에 조회
         List<Long> cardIds = cards.stream().map(Card::getCardId).collect(Collectors.toList());
         
-        List<CardImage> thumbnails = cardImageMapper.findByCardIdsAndType(cardIds, "THUMBNAIL");
-        Map<Long, String> thumbnailMap = new HashMap<>(thumbnails.stream()
-                .collect(Collectors.toMap(CardImage::getCardId, CardImage::getImageUrl, (e, r) -> e)));
-        
-        List<Long> noThumbnailIds = cardIds.stream()
-                .filter(id -> !thumbnailMap.containsKey(id))
-                .collect(Collectors.toList());
-        if (!noThumbnailIds.isEmpty()) {
-            List<CardImage> frontImages = cardImageMapper.findByCardIdsAndType(noThumbnailIds, "FRONT");
-            frontImages.forEach(img -> thumbnailMap.putIfAbsent(img.getCardId(), img.getImageUrl()));
+        // 이미지 조회: THUMBNAIL 우선, 없으면 FRONT 폴백 (단건 루프)
+        Map<Long, String> thumbnailMap = new HashMap<>();
+        for (Long cid : cardIds) {
+            CardImage img = cardImageMapper.findByCardIdAndType(cid, "THUMBNAIL");
+            if (img == null) img = cardImageMapper.findByCardIdAndType(cid, "FRONT");
+            if (img != null) thumbnailMap.put(cid, img.getImageUrl());
         }
         // display_order = 1인 혜택
         List<CardBenefit> topBenefits = cardBenefitMapper.findTop1ByCardIds(cardIds);
@@ -318,18 +308,12 @@ public class CardService {
         Map<Long, List<CardBenefit>> benefitMap = allBenefits.stream()
                 .collect(Collectors.groupingBy(CardBenefit::getCardId));
 
-        // ② 썸네일 이미지 한 번에 조회 (THUMBNAIL → 없으면 FRONT 폴백)
-        List<CardImage> thumbnails = cardImageMapper.findByCardIdsAndType(cardIds, "THUMBNAIL");
-        Map<Long, String> thumbnailMap = new HashMap<>(thumbnails.stream()
-                .collect(Collectors.toMap(
-                        CardImage::getCardId, CardImage::getImageUrl, (e, r) -> e)));
-
-        List<Long> noThumbnailIds = cardIds.stream()
-                .filter(id -> !thumbnailMap.containsKey(id))
-                .collect(Collectors.toList());
-        if (!noThumbnailIds.isEmpty()) {
-            cardImageMapper.findByCardIdsAndType(noThumbnailIds, "FRONT")
-                    .forEach(img -> thumbnailMap.putIfAbsent(img.getCardId(), img.getImageUrl()));
+        // ② 썸네일 이미지 (THUMBNAIL 우선, 없으면 FRONT 폴백, 단건 루프)
+        Map<Long, String> thumbnailMap = new HashMap<>();
+        for (Long cid : cardIds) {
+            CardImage img = cardImageMapper.findByCardIdAndType(cid, "THUMBNAIL");
+            if (img == null) img = cardImageMapper.findByCardIdAndType(cid, "FRONT");
+            if (img != null) thumbnailMap.put(cid, img.getImageUrl());
         }
 
         return cardIds.stream()
