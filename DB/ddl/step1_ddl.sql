@@ -196,3 +196,5 @@ CREATE TABLE CHAT_EVENT_LOGS (
     error_message    VARCHAR2(500),
     CONSTRAINT fk_chat_evlog FOREIGN KEY (log_id) REFERENCES EVENT_LOGS(log_id)
 );
+
+ALTER TABLE EVENT_LOGS MODIFY (event_status VARCHAR2(200));

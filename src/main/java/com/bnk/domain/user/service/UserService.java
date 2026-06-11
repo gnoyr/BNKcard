@@ -1,13 +1,13 @@
 package com.bnk.domain.user.service;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 
 import com.bnk.domain.user.dto.query.CardApplicationRow;
@@ -20,6 +20,7 @@ import com.bnk.domain.user.mapper.UserMapper;
 import com.bnk.domain.user.model.User;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
+import com.bnk.global.util.TimeConstants;
 import com.bnk.global.util.audit.AuditLogger;
 
 import jakarta.validation.Valid;
@@ -35,8 +36,6 @@ public class UserService {
 	private final UserMapper userMapper;
 	private final PasswordEncoder passwordEncoder;
 	private final AuditLogger auditLogger;
-	
-	private static final ZoneId KST_ZONE = ZoneId.of("Asia/Seoul");
 
     // ================================================================
     // 내 정보 조회
@@ -53,38 +52,45 @@ public class UserService {
     // 내 정보 수정
     // ================================================================
     @Transactional
-    public void updateMyInfo(Long userId, @Valid UserUpdateRequest request) {
+    public void updateMyInfo(Long userId, UserUpdateRequest request) {
+
+        // 1. 사용자 조회
         User user = userMapper.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        if (requiresPasswordVerification(request)) {
-            if (request.getCurrentPassword() == null ||
-                    !passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
-                auditLogger.failure(AuditLogger.AUTH, AuditLogger.UPDATE,
-                        userId, null, "내 정보 수정 — 비밀번호 검증 실패");
+        // 2. 어떤 종류의 변경인지 판단
+        boolean hasPersonalChange = request.getName() != null
+                || request.getPhone() != null
+                || request.getJob() != null
+                || request.getIncomeLevelCode() != null
+                || request.getCreditScore() != null;
+
+        boolean hasNotifChange    = request.getPushEnabled() != null
+                                 || request.getMarketingAgree() != null;
+
+        // ① — 변경 필드가 하나도 없으면 no-op 얼리 리턴
+        //   (정상_변경없음_noOp 통과)
+        if (!hasPersonalChange && !hasNotifChange) {
+            return;
+        }
+
+        // ② — 개인정보(name/phone) 변경 시에만 비밀번호 검증
+        //   (정상_알림설정만변경은 이 블록을 타지 않아야 함)
+        if (hasPersonalChange) {
+
+            // ③ — null/blank를 passwordEncoder에 넘기기 전에 차단
+            //   (실패_phone변경_비밀번호누락, 실패_현재비밀번호불일치 통과)
+            String current = request.getCurrentPassword();
+            if (!StringUtils.hasText(current)
+                    || !passwordEncoder.matches(current, user.getPasswordHash())) {
                 throw new BusinessException(ErrorCode.INVALID_PASSWORD);
             }
         }
 
-        if (!hasAnyField(request)) {
-            return;
-        }
-
-        User updated = User.builder()
-                .userId(userId)
-                .name(request.getName() != null ? request.getName() : user.getName())
-                .phone(request.getPhone() != null ? request.getPhone() : user.getPhone())
-                .job(request.getJob() != null ? request.getJob() : user.getJob())
-                .incomeLevelCode(request.getIncomeLevelCode() != null ? request.getIncomeLevelCode() : user.getIncomeLevelCode())
-                .creditScore(request.getCreditScore() != null ? request.getCreditScore() : user.getCreditScore())
-                .pushEnabled(request.getPushEnabled() != null ? (request.getPushEnabled() ? "Y" : "N") : user.getPushEnabled())
-                .marketingAgree(request.getMarketingAgree() != null ? (request.getMarketingAgree() ? "Y" : "N") : user.getMarketingAgree())
-                .build();
-
+        // 3. 변경 적용 후 저장
+        User updated = user.applyUpdate(request);
         userMapper.updateUser(updated);
-        auditLogger.success(AuditLogger.AUTH, AuditLogger.UPDATE, userId, null, null);
     }
-
     // ================================================================
     // 비밀번호 변경
     // ================================================================
@@ -115,7 +121,7 @@ public class UserService {
         }
 
         String newHash = passwordEncoder.encode(request.getNewPassword());
-        userMapper.updatePassword(userId, newHash, LocalDateTime.now(KST_ZONE));
+        userMapper.updatePassword(userId, newHash, LocalDateTime.now(TimeConstants.KST));
         userMapper.insertPasswordHistory(userId, newHash);
         userMapper.deleteOldPasswordHistories(userId);
         userMapper.revokeAllSessions(userId);
@@ -156,22 +162,5 @@ public class UserService {
                 .ownedCards(ownedDtos)
                 .applications(appDtos)
                 .build();
-    }
-
-    // ================================================================
-    // 헬퍼
-    // ================================================================
-    private boolean requiresPasswordVerification(UserUpdateRequest request) {
-        return (request.getName() != null && !request.getName().isBlank())
-            || (request.getPhone() != null && !request.getPhone().isBlank())
-            || request.getJob() != null
-            || request.getIncomeLevelCode() != null
-            || request.getCreditScore() != null;
-    }
-
-    private boolean hasAnyField(UserUpdateRequest request) {
-        return requiresPasswordVerification(request)
-                || request.getPushEnabled() != null
-                || request.getMarketingAgree() != null;
     }
 }

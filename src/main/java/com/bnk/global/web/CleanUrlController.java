@@ -52,6 +52,11 @@ public class CleanUrlController {
         return "forward:/mypage/spending.html";
     }
 
+    @GetMapping("/copy-code")
+    public String copyCode() {
+        return "forward:/auth/copy-code.html";
+    }
+
     @GetMapping("/card/{cardId:\\d+}")
     public String cardDetail(@PathVariable String cardId) {
         return "forward:/card/index.html";

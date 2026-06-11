@@ -1,5 +1,6 @@
 package com.bnk.global.util.audit;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -12,80 +13,71 @@ import org.springframework.stereotype.Component;
  *   2) category에 따라 DB 테이블 자동 라우팅 INSERT
  *
  * ── 테이블 라우팅 ─────────────────────────────────────────────────────
- *   AUTH                          → AUDIT_LOGS         (기존 테이블)
- *   CARD_APPLY / TERMS / FILE     → USER_ACTIVITY_LOG  (신규)
- *   CARD / CDD / ADMIN / EXTERNAL_API → ADMIN_ACTIVITY_LOG (신규)
+ *   AUTH                               → AUDIT_LOGS         (기존 테이블)
+ *   CARD_APPLY / TERMS / FILE / USER   → USER_ACTIVITY_LOG  (신규)
+ *   CARD / CDD / ADMIN / EXTERNAL_API  → ADMIN_ACTIVITY_LOG (신규)
  *
- * ── 기존 코드와의 관계 ────────────────────────────────────────────────
- *   UserMapper.insertAuditLog()      기존 유지 (AUDIT_LOGS 직접 INSERT)
- *   AdminUserMapper.insertAuditLog() 기존 유지 (AUDIT_LOGS 직접 INSERT)
- *   → 신규 코드부터 AuditLogger 사용으로 점진 전환
- *
- * ── 로그 포맷 예시 ────────────────────────────────────────────────────
- *   [AUDIT] SUCCESS | CARD_APPLY | APPLY            | userId=3  | target=101 | -
- *   [AUDIT] FAILURE | AUTH       | LOGIN            | userId=-  | target=-   | 비밀번호 불일치
- *   [AUDIT] SUCCESS | CARD       | APPROVAL_APPROVE | adminId=2 | target=5   | -
- *
- * ── 사용법 ───────────────────────────────────────────────────────────
- *   private final AuditLogger auditLogger;  // @RequiredArgsConstructor
- *
- *   auditLogger.success(AuditLogger.AUTH, AuditLogger.LOGIN, userId, null, null);
- *   auditLogger.failure(AuditLogger.AUTH, AuditLogger.LOGIN, null, null, "비밀번호 불일치");
- *   auditLogger.success(AuditLogger.CARD_APPLY, AuditLogger.APPLY, userId, String.valueOf(cardId), null);
- *   auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.APPROVAL_APPROVE, adminId, String.valueOf(approvalId), null);
+ * ── 변경 이력 ────────────────────────────────────────────────────────
+ *   - USER 카테고리 추가 (관리자에 의한 회원 관리 행위 → ADMIN_ACTIVITY_LOG)
+ *   - HttpServletRequest 주입 → clientIp, requestUri 자동 수집
+ *   - WATCHLIST 카테고리 추가 → ADMIN_ACTIVITY_LOG 라우팅
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class AuditLogger {
 
-	private final AuditLogMapper auditLogMapper;
+    private final AuditLogMapper    auditLogMapper;
+    private final HttpServletRequest httpRequest;   // ✅ IP/URI 자동 수집용
 
-	// ── 카테고리 상수 ─────────────────────────────────────────────────
+    // ── 카테고리 상수 ─────────────────────────────────────────────────
 
-	/** 보안 이벤트 → AUDIT_LOGS (기존 테이블) */
-	public static final String AUTH = "AUTH";
+    /** 보안 이벤트 → AUDIT_LOGS */
+    public static final String AUTH = "AUTH";
 
-	/** 사용자 행위 → USER_ACTIVITY_LOG */
-	public static final String CARD_APPLY = "CARD_APPLY";
-	public static final String TERMS = "TERMS";
-	public static final String FILE = "FILE";
+    /** 사용자 행위 → USER_ACTIVITY_LOG */
+    public static final String CARD_APPLY = "CARD_APPLY";
+    public static final String TERMS      = "TERMS";
+    public static final String FILE       = "FILE";
 
-	/** 관리자 행위 → ADMIN_ACTIVITY_LOG */
-	public static final String CARD = "CARD";
-	public static final String CDD = "CDD";
-	public static final String ADMIN = "ADMIN";
-	public static final String EXTERNAL_API = "EXTERNAL_API";
+    /** 관리자 행위 → ADMIN_ACTIVITY_LOG */
+    public static final String CARD         = "CARD";
+    public static final String CDD          = "CDD";
+    public static final String ADMIN        = "ADMIN";
+    public static final String EXTERNAL_API = "EXTERNAL_API";
+    public static final String USER         = "USER";   
+    public static final String WATCHLIST    = "WATCHLIST"; 
 
-	// ── 액션 상수 ─────────────────────────────────────────────────────
-	public static final String LOGIN = "LOGIN";
-	public static final String LOGOUT = "LOGOUT";
-	public static final String SIGNUP = "SIGNUP";
-	public static final String WITHDRAW = "WITHDRAW";
-	public static final String PASSWORD_CHANGE = "PASSWORD_CHANGE";
-	public static final String EMAIL_VERIFY = "EMAIL_VERIFY";
-	public static final String TOKEN_REFRESH = "TOKEN_REFRESH";
+    // ── 액션 상수 ─────────────────────────────────────────────────────
+    public static final String LOGIN           = "LOGIN";
+    public static final String LOGOUT          = "LOGOUT";
+    public static final String SIGNUP          = "SIGNUP";
+    public static final String WITHDRAW        = "WITHDRAW";
+    public static final String PASSWORD_CHANGE = "PASSWORD_CHANGE";
+    public static final String EMAIL_VERIFY    = "EMAIL_VERIFY";
+    public static final String TOKEN_REFRESH   = "TOKEN_REFRESH";
+    public static final String SYSTEM_ERROR    = "SYSTEM_ERROR";
 
-	public static final String APPLY = "APPLY";
-	public static final String APPLY_CANCEL = "APPLY_CANCEL";
-	public static final String AGREE = "AGREE";
-	public static final String UPLOAD = "UPLOAD";
-	public static final String DOWNLOAD = "DOWNLOAD";
+    public static final String APPLY        = "APPLY";
+    public static final String APPLY_CANCEL = "APPLY_CANCEL";
+    public static final String AGREE        = "AGREE";
+    public static final String UPLOAD       = "UPLOAD";
+    public static final String DOWNLOAD     = "DOWNLOAD";
 
-	public static final String CREATE = "CREATE";
-	public static final String UPDATE = "UPDATE";
-	public static final String STATUS_CHANGE = "STATUS_CHANGE";
-	public static final String APPROVAL_REQUEST = "APPROVAL_REQUEST";
-	public static final String APPROVAL_APPROVE = "APPROVAL_APPROVE";
-	public static final String APPROVAL_REJECT = "APPROVAL_REJECT";
-	public static final String API_CALL = "API_CALL";
-	public static final String CDD_STATUS_CHANGE = "CDD_STATUS_CHANGE";
-	public static final String WATCHLIST_REGISTER = "WATCHLIST_REGISTER";
-	public static final String WATCHLIST_REMOVE = "WATCHLIST_REMOVE";
+    public static final String CREATE           = "CREATE";
+    public static final String UPDATE           = "UPDATE";
+    public static final String STATUS_CHANGE    = "STATUS_CHANGE";
+    public static final String APPROVAL_REQUEST = "APPROVAL_REQUEST";
+    public static final String APPROVAL_APPROVE = "APPROVAL_APPROVE";
+    public static final String APPROVAL_REJECT  = "APPROVAL_REJECT";
+    public static final String API_CALL         = "API_CALL";
+    public static final String CDD_STATUS_CHANGE   = "CDD_STATUS_CHANGE";
+    public static final String WATCHLIST_REGISTER  = "WATCHLIST_REGISTER";
+    public static final String WATCHLIST_REMOVE    = "WATCHLIST_REMOVE";
 
-	// ─────────────────────────────────────────────────────────────────
-	// 편의 메서드
-	// ─────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
+    // 편의 메서드
+    // ─────────────────────────────────────────────────────────────────
 
     /** 사용자 성공 로그 */
     public void success(String category, String action,
@@ -132,18 +124,21 @@ public class AuditLogger {
         if ("S".equals(result)) log.info(msg);
         else                    log.warn(msg);
 
+        // IP, URI 자동 수집
+        String clientIp  = resolveClientIp();
+        String requestUri = resolveRequestUri();
+
         // ② DB INSERT — 실패해도 본 비즈니스 로직에 영향 없도록 try-catch
         try {
             if (AUTH.equals(category)) {
-                // 보안 이벤트 → 기존 AUDIT_LOGS
                 Long   actorId   = adminId != null ? adminId : userId;
                 String actorType = adminId != null ? "ADMIN" : "USER";
                 auditLogMapper.insertSecurityLog(
                         actorType, actorId, action,
-                        null, null, detail, null);
+                        null, null, detail, clientIp);
 
             } else if (isAdminCategory(category)) {
-                // 관리자 행위 → ADMIN_ACTIVITY_LOG
+                // USER, WATCHLIST 포함한 관리자 행위 → ADMIN_ACTIVITY_LOG
                 auditLogMapper.insertAdminActivity(
                         AdminActivityLog.builder()
                                 .adminId(adminId)
@@ -151,6 +146,8 @@ public class AuditLogger {
                                 .result(result)
                                 .targetId(targetId)
                                 .detail(detail)
+                                .clientIp(clientIp)
+                                .requestUri(requestUri)
                                 .build());
             } else {
                 // 사용자 행위 → USER_ACTIVITY_LOG
@@ -161,6 +158,8 @@ public class AuditLogger {
                                 .result(result)
                                 .targetId(targetId)
                                 .detail(detail)
+                                .clientIp(clientIp)
+                                .requestUri(requestUri)
                                 .build());
             }
         } catch (Exception e) {
@@ -168,10 +167,39 @@ public class AuditLogger {
         }
     }
 
+    /**
+     * USER, WATCHLIST 카테고리 추가
+     * - USER     : 관리자가 회원 상태 변경, 잠금 해제 등 회원 관리 시
+     * - WATCHLIST: 요주의 인물 등록/삭제 시
+     */
     private boolean isAdminCategory(String category) {
         return CARD.equals(category)
             || CDD.equals(category)
             || ADMIN.equals(category)
-            || EXTERNAL_API.equals(category);
+            || EXTERNAL_API.equals(category)
+            || USER.equals(category)
+            || WATCHLIST.equals(category);
+    }
+
+    /**
+     * server.forward-headers-strategy=framework 설정으로
+     *    Spring이 XFF를 이미 처리 → getRemoteAddr()만 사용
+     */
+    private String resolveClientIp() {
+        try {
+            String ip = httpRequest.getRemoteAddr();
+            return ip != null && ip.length() > 100 ? ip.substring(0, 100) : ip;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private String resolveRequestUri() {
+        try {
+            String uri = httpRequest.getRequestURI();
+            return uri != null && uri.length() > 200 ? uri.substring(0, 200) : uri;
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 }

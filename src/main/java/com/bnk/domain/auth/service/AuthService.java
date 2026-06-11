@@ -3,7 +3,6 @@ package com.bnk.domain.auth.service;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
@@ -41,6 +40,7 @@ import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.util.CiValueGenerator;
 import com.bnk.global.util.CookieUtil;
 import com.bnk.global.util.MaskingUtil;
+import com.bnk.global.util.TimeConstants;
 import com.bnk.global.util.TokenSecurityService;
 import com.bnk.global.util.TokenStore;
 import com.bnk.global.util.audit.AuditLogger;
@@ -78,20 +78,19 @@ public class AuthService {
 	private static final String KEY_VERIFIED = "email:verified:";
 	private static final String KEY_RESET = "pw:reset:";
 
-	private static final long TTL_VERIFY_CODE_SEC = 600L; // 10분 (이메일 본문 안내와 일치)
-	private static final long TTL_VERIFIED_FLAG_SEC = 1800L; // 30분 (회원가입 완료 전까지 유효)
-	private static final long TTL_PW_RESET_SEC = 1800L; // 30분 (이메일 본문 안내와 일치)
+	private static final long TTL_VERIFY_CODE_MIN = 10L; // 10분 (이메일 본문 안내와 일치)
+	private static final long TTL_VERIFIED_FLAG_MIN = 30L; // 30분 (회원가입 완료 전까지 유효)
+	private static final long TTL_PW_RESET_MIN = 30L; // 30분 (이메일 본문 안내와 일치)
 
 	private static final int MAX_LOGIN_FAIL = 5;
 	private static final int LOCK_DURATION_MIN = 30;
 	
-	private static final ZoneId KST_ZONE = ZoneId.of("Asia/Seoul");
 	private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
 	// ──────────────────────────────────────────────────────────────────
 	// 이메일 인증코드 발송
 	// ──────────────────────────────────────────────────────────────────
-	@Transactional(readOnly = true)
+	@Transactional
 	public void sendVerifyCode(SendVerifyCodeRequest request) {
 		if (userMapper.existsByEmail(request.getEmail()) > 0) {
 			auditLogger.failure(AuditLogger.AUTH, AuditLogger.EMAIL_VERIFY,
@@ -101,7 +100,7 @@ public class AuthService {
 
 		String code = generateCode();
 
-		tokenStore.set(KEY_VERIFY + request.getEmail(), code, TTL_VERIFY_CODE_SEC);
+		tokenStore.set(KEY_VERIFY + request.getEmail(), code, TTL_VERIFY_CODE_MIN);
 		mailService.sendVerificationEmail(request.getEmail(), code);
 		auditLogger.success(AuditLogger.AUTH, AuditLogger.EMAIL_VERIFY,
 				null, null, "인증코드 발송: " + request.getEmail());
@@ -122,7 +121,7 @@ public class AuthService {
 
 		// 사용된 인증코드 삭제 후 인증 완료 플래그를 별도 KEY_VERIFIED 키에 저장
 		tokenStore.delete(KEY_VERIFY + request.getEmail());
-		tokenStore.set(KEY_VERIFIED + request.getEmail(), "Y", TTL_VERIFIED_FLAG_SEC);
+		tokenStore.set(KEY_VERIFIED + request.getEmail(), "Y", TTL_VERIFIED_FLAG_MIN);
 		auditLogger.success(AuditLogger.AUTH, AuditLogger.EMAIL_VERIFY,
 				null, null, "이메일 인증 완료: " + request.getEmail());
 	}
@@ -175,10 +174,13 @@ public class AuthService {
 			birthDateStr = birthDate.toString(); // "YYYY-MM-DD"
 		}
 
-		// ⑥ CI값 생성 (이름 + 생년월일 + 전화번호 조합 → SHA-256 Mock CI)
-		String ciValue = ciValueGenerator.generate(request.getName(), birthDateStr, formattedPhone);
+		// ⑥ CI값 생성 — birthDate null 허용 (선택 필드)
+		String ciValue = null;
+		if (birthDateStr != null) {
+			ciValue = ciValueGenerator.generate(request.getName(), birthDateStr, formattedPhone);
+		}
 
-		// ⑦ Watchlist 대조 (미가입 요주의 인물 차단)
+		// ⑦ Watchlist 대조 (ciValue가 있을 때만 CI 기반 대조 수행)
 		cddService.checkWatchlist(ciValue, request.getName(), birthDateStr);
 
 		// ⑧ marketingAgree 변환
@@ -205,7 +207,7 @@ public class AuthService {
 				.filter(t -> request.getAgreedTermsIds().contains(t.getTermsId()))
 				.map(t -> UserTermsAgreement.builder().userId(user.getUserId()).termsId(t.getTermsId()).agreedYn("Y")
 						.agreementAction("AGREE").agreedVersion(t.getVersion()).agreementChannel("WEB")
-						.agreementSource("SIGNUP").agreedAt(LocalDateTime.now(KST_ZONE)).build())
+						.agreementSource("SIGNUP").agreedAt(LocalDateTime.now(TimeConstants.KST)).build())
 				.collect(Collectors.toList());
 
 		if (!agreements.isEmpty()) {
@@ -261,7 +263,7 @@ public class AuthService {
 
 		adminUserMapper.insertLoginHistory("USER", user.getUserId(), "SUCCESS", null, ipAddress,
 				request.getDeviceInfo(), userAgent);
-		userMapper.updateLastLoginAt(user.getUserId(), LocalDateTime.now(KST_ZONE));
+		userMapper.updateLastLoginAt(user.getUserId(), LocalDateTime.now(TimeConstants.KST));
 		auditLogger.success(AuditLogger.AUTH, AuditLogger.LOGIN,
 				user.getUserId(), null, null);
 
@@ -281,7 +283,7 @@ public class AuthService {
 			throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
 		});
 
-		if (session.getExpiresAt().isBefore(LocalDateTime.now(KST_ZONE))) {
+		if (session.getExpiresAt().isBefore(LocalDateTime.now(TimeConstants.KST))) {
 			auditLogger.failure(AuditLogger.AUTH, AuditLogger.TOKEN_REFRESH,
 					session.getUserId(), null, "Refresh Token 만료");
 			throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
@@ -323,14 +325,14 @@ public class AuthService {
 	// ──────────────────────────────────────────────────────────────────
 	// 비밀번호 재설정 링크 발송
 	// ──────────────────────────────────────────────────────────────────
-	@Transactional(readOnly = true)
+	@Transactional
 	public void findPassword(FindPasswordRequest request) {
 		User user = userMapper.findByEmailAndName(request.getEmail(), request.getName())
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
 		String token = generateCode() + generateCode();
 
-		tokenStore.set(KEY_RESET + token, String.valueOf(user.getUserId()), TTL_PW_RESET_SEC);
+		tokenStore.set(KEY_RESET + token, String.valueOf(user.getUserId()), TTL_PW_RESET_MIN);
 		mailService.sendPasswordResetEmail(user.getEmail(), token);
 		auditLogger.success(AuditLogger.AUTH, AuditLogger.PASSWORD_CHANGE,
 				user.getUserId(), null, "비밀번호 재설정 링크 발송");
@@ -355,7 +357,7 @@ public class AuthService {
 		}
 
 		Long userId = Long.parseLong(userIdStr);
-		userMapper.updatePassword(userId, passwordEncoder.encode(request.getNewPassword()), LocalDateTime.now(KST_ZONE));
+		userMapper.updatePassword(userId, passwordEncoder.encode(request.getNewPassword()), LocalDateTime.now(TimeConstants.KST));
 		userMapper.revokeAllSessions(userId);
 		tokenStore.delete(KEY_RESET + request.getToken());
 		auditLogger.success(AuditLogger.AUTH, AuditLogger.PASSWORD_CHANGE,
@@ -383,7 +385,7 @@ public class AuthService {
 			throw new BusinessException(ErrorCode.INVALID_PASSWORD);
 		}
 
-		adminUserMapper.updateLastLoginAt(admin.getAdminId(), LocalDateTime.now(KST_ZONE));
+		adminUserMapper.updateLastLoginAt(admin.getAdminId(), LocalDateTime.now(TimeConstants.KST));
 		auditLogger.adminSuccess(AuditLogger.ADMIN, AuditLogger.LOGIN,
 				admin.getAdminId(), null, null);
 
@@ -407,7 +409,7 @@ public class AuthService {
 
 		userSessionMapper.insertSession(UserSession.builder().userId(userId).refreshToken(refreshToken)
 				.deviceInfo(deviceInfo).ipAddress(ipAddress).userAgent(userAgent)
-				.expiresAt(LocalDateTime.now(KST_ZONE).plusSeconds(refreshExpSec)).build());
+				.expiresAt(LocalDateTime.now(TimeConstants.KST).plusSeconds(refreshExpSec)).build());
 
 		AuthTokenResult result = new AuthTokenResult();
 		result.setAccessCookie(cookieUtil.createAccessCookie(accessToken, jwtTokenProvider.getAccessExpirationSec()));
@@ -416,20 +418,19 @@ public class AuthService {
 	}
 
 	private void validateUserStatus(User user) {
-		if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(LocalDateTime.now(KST_ZONE)))
-			throw new BusinessException(ErrorCode.ACCOUNT_LOCKED);
-		String status = user.getStatusCode();
-		if ("SUSPENDED".equals(status))
-			throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED);
-		if ("WITHDRAWN".equals(status))
-			throw new BusinessException(ErrorCode.ACCOUNT_WITHDRAWN);
+	    if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(LocalDateTime.now(TimeConstants.KST)))
+	        throw new BusinessException(ErrorCode.ACCOUNT_LOCKED);
+	    String status = user.getStatusCode();
+	    if ("SUSPENDED".equals(status)) throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED);
+	    if ("WITHDRAWN".equals(status)) throw new BusinessException(ErrorCode.ACCOUNT_WITHDRAWN);
+	    if ("DORMANT".equals(status))   throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED);
 	}
 
 	private void handleLoginFail(User user) {
 		userMapper.incrementLoginFailCount(user.getUserId());
 		int newFailCount = user.getLoginFailCount() + 1;
 		if (newFailCount >= MAX_LOGIN_FAIL) {
-			LocalDateTime lockUntil = LocalDateTime.now(KST_ZONE).plusMinutes(LOCK_DURATION_MIN);
+			LocalDateTime lockUntil = LocalDateTime.now(TimeConstants.KST).plusMinutes(LOCK_DURATION_MIN);
 			userMapper.updateLockedUntil(user.getUserId(), lockUntil);
 			auditLogger.failure(AuditLogger.AUTH, AuditLogger.LOGIN,
 					user.getUserId(), null, "비밀번호 " + MAX_LOGIN_FAIL + "회 오류 — 계정 잠금: until=" + lockUntil);
@@ -441,9 +442,6 @@ public class AuthService {
 	}
 
 	private String resolveClientIp(HttpServletRequest request) {
-		String xForwardedFor = request.getHeader("X-Forwarded-For");
-		if (xForwardedFor != null && !xForwardedFor.isBlank())
-			return xForwardedFor.split(",")[0].trim();
-		return request.getRemoteAddr();
+	    return request.getRemoteAddr();
 	}
 }

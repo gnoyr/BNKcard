@@ -8,26 +8,25 @@ import java.sql.SQLException;
 import org.apache.ibatis.type.Alias;
 import org.apache.ibatis.type.BaseTypeHandler;
 import org.apache.ibatis.type.JdbcType;
-import org.apache.ibatis.type.MappedJdbcTypes;
-import org.apache.ibatis.type.MappedTypes;
 
 import com.bnk.global.util.AesCryptoUtil;
 
 /**
  * AES-256-GCM 암호화/복호화 TypeHandler.
  *
- * MyBatisConfig에서 Spring Bean으로 생성 후 registry에 직접 등록. XML에서 기본 생성자로 new 하지 않으므로
- * NoSuchMethodException 없음.
+ * ※ @MappedTypes / @MappedJdbcTypes 제거 — 자동 적용 방지.
+ *   암호화가 필요한 컬럼은 XML에서 typeHandler=aesTypeHandler 로 명시할 것.
  *
- * XML 사용법: resultMap: typeHandler="aesTypeHandler" parameter: #{phone,
- * typeHandler=aesTypeHandler}
+ * XML 사용법:
+ *   resultMap:  typeHandler="aesTypeHandler"
+ *   parameter:  #{phone, typeHandler=aesTypeHandler}
  */
 @Alias("aesTypeHandler")
-@MappedTypes(String.class)
-@MappedJdbcTypes(JdbcType.VARCHAR)
 public class AesTypeHandler extends BaseTypeHandler<String> {
 
-	private final AesCryptoUtil aesCryptoUtil;
+	private AesCryptoUtil aesCryptoUtil;
+
+	public AesTypeHandler() {}
 
 	public AesTypeHandler(AesCryptoUtil aesCryptoUtil) {
 		this.aesCryptoUtil = aesCryptoUtil;
@@ -41,16 +40,38 @@ public class AesTypeHandler extends BaseTypeHandler<String> {
 
 	@Override
 	public String getNullableResult(ResultSet rs, String columnName) throws SQLException {
-		return aesCryptoUtil.decrypt(rs.getString(columnName));
+	    String value = rs.getString(columnName);
+	    if (value == null) return null;
+	    // aesCryptoUtil이 null이거나 암호화된 값이 아니면 원본 반환
+	    if (aesCryptoUtil == null) return value;
+	    try {
+	        return aesCryptoUtil.decrypt(value);
+	    } catch (Exception e) {
+	        return value; // 복호화 실패 시 원본값 반환
+	    }
 	}
 
 	@Override
 	public String getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
-		return aesCryptoUtil.decrypt(rs.getString(columnIndex));
+	    String value = rs.getString(columnIndex);
+	    if (value == null) return null;
+	    if (aesCryptoUtil == null) return value;
+	    try {
+	        return aesCryptoUtil.decrypt(value);
+	    } catch (Exception e) {
+	        return value;
+	    }
 	}
 
 	@Override
 	public String getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
-		return aesCryptoUtil.decrypt(cs.getString(columnIndex));
+	    String value = cs.getString(columnIndex);
+	    if (value == null) return null;
+	    if (aesCryptoUtil == null) return value;
+	    try {
+	        return aesCryptoUtil.decrypt(value);
+	    } catch (Exception e) {
+	        return value;
+	    }
 	}
 }

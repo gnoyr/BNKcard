@@ -5,7 +5,6 @@ import java.time.LocalDate;
 import javax.sql.DataSource;
 
 import org.apache.ibatis.session.SqlSessionFactory;
-import org.apache.ibatis.type.JdbcType;
 import org.mybatis.spring.SqlSessionFactoryBean;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.context.annotation.Bean;
@@ -36,32 +35,29 @@ public class MyBatisConfig {
 
 	@Bean
 	SqlSessionFactory sqlSessionFactory(DataSource dataSource) throws Exception {
-		SqlSessionFactoryBean factoryBean = new SqlSessionFactoryBean();
-		factoryBean.setDataSource(dataSource);
-		factoryBean.setMapperLocations(
-				new PathMatchingResourcePatternResolver().getResources("classpath:mappers/**/*.xml"));
+	    SqlSessionFactoryBean factoryBean = new SqlSessionFactoryBean();
+	    factoryBean.setDataSource(dataSource);
 
-		org.apache.ibatis.session.Configuration config = new org.apache.ibatis.session.Configuration();
-		config.setMapUnderscoreToCamelCase(true);
-		config.setDefaultStatementTimeout(30);
-		config.setCacheEnabled(false);
+	    org.apache.ibatis.session.Configuration config = new org.apache.ibatis.session.Configuration();
+	    config.setMapUnderscoreToCamelCase(true);
+	    config.setDefaultStatementTimeout(30);
+	    config.setCacheEnabled(false);
 
-		// ── TypeHandler 인스턴스를 registry에 직접 등록 ──────────────
-		// Spring Bean으로 만든 인스턴스를 주입하므로 MyBatis가
-		// new AesTypeHandler() 기본 생성자를 호출하지 않음.
-		AesTypeHandler aesHandler = aesTypeHandler();
-		AesBirthDateTypeHandler aesBirthHandler = aesBirthDateTypeHandler();
+	    AesTypeHandler aesHandler = aesTypeHandler();
+	    AesBirthDateTypeHandler aesBirthHandler = aesBirthDateTypeHandler();
 
-		config.getTypeHandlerRegistry().register(String.class, JdbcType.VARCHAR, aesHandler);
-		config.getTypeHandlerRegistry().register(LocalDate.class, aesBirthHandler);
+	    config.getTypeHandlerRegistry().register(aesHandler);
+	    config.getTypeHandlerRegistry().register(aesBirthHandler);
+	    config.getTypeHandlerRegistry().register(LocalDate.class, aesBirthHandler);
 
-		// ── XML에서 alias로 참조할 수 있도록 TypeAliasRegistry에도 등록 ──
-		// XML: typeHandler="aesTypeHandler" 로 참조 가능해짐
-		config.getTypeAliasRegistry().registerAlias("aesTypeHandler", AesTypeHandler.class);
-		config.getTypeAliasRegistry().registerAlias("aesBirthDateTypeHandler", AesBirthDateTypeHandler.class);
+	    config.getTypeAliasRegistry().registerAlias("aesTypeHandler", AesTypeHandler.class);
+	    config.getTypeAliasRegistry().registerAlias("aesBirthDateTypeHandler", AesBirthDateTypeHandler.class);
 
-		factoryBean.setConfiguration(config);
-		return factoryBean.getObject();
+	    factoryBean.setConfiguration(config);
+	    factoryBean.setMapperLocations(
+	            new PathMatchingResourcePatternResolver().getResources("classpath:mappers/**/*.xml"));
+
+	    return factoryBean.getObject();
 	}
 
 	@Bean
