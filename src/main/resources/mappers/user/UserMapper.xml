@@ -80,7 +80,8 @@
 
 	<select id="findByEmail" resultMap="userMap">
 		SELECT * FROM USERS WHERE
-		email = #{email} AND deleted_yn = 'N'
+		email = #{email, typeHandler=org.apache.ibatis.type.StringTypeHandler}
+		AND deleted_yn = 'N'
 	</select>
 
 	<select id="findById" resultMap="userMap">
@@ -90,17 +91,24 @@
 
 	<select id="findByName" resultMap="userMap">
 		SELECT * FROM USERS WHERE name
-		= #{name} AND deleted_yn = 'N'
+		= #{name, typeHandler=org.apache.ibatis.type.StringTypeHandler} AND
+		deleted_yn = 'N'
 	</select>
 
 	<select id="findByEmailAndName" resultMap="userMap">
 		SELECT * FROM USERS
-		WHERE email = #{email} AND name = #{name} AND deleted_yn = 'N'
+		WHERE email = #{email,
+		typeHandler=org.apache.ibatis.type.StringTypeHandler}
+		AND name =
+		#{name, typeHandler=org.apache.ibatis.type.StringTypeHandler}
+		AND
+		deleted_yn = 'N'
 	</select>
 
 	<select id="existsByEmail" resultType="int">
 		SELECT COUNT(1) FROM USERS
-		WHERE email = #{email}
+		WHERE email = #{email,
+		typeHandler=org.apache.ibatis.type.StringTypeHandler}
 	</select>
 
 	<!-- phone 암호화로 WHERE phone = 불가 → 전체 조회 후 Service에서 중복 판단 -->

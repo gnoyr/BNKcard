@@ -40,16 +40,38 @@ public class AesTypeHandler extends BaseTypeHandler<String> {
 
 	@Override
 	public String getNullableResult(ResultSet rs, String columnName) throws SQLException {
-		return aesCryptoUtil.decrypt(rs.getString(columnName));
+	    String value = rs.getString(columnName);
+	    if (value == null) return null;
+	    // aesCryptoUtil이 null이거나 암호화된 값이 아니면 원본 반환
+	    if (aesCryptoUtil == null) return value;
+	    try {
+	        return aesCryptoUtil.decrypt(value);
+	    } catch (Exception e) {
+	        return value; // 복호화 실패 시 원본값 반환
+	    }
 	}
 
 	@Override
 	public String getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
-		return aesCryptoUtil.decrypt(rs.getString(columnIndex));
+	    String value = rs.getString(columnIndex);
+	    if (value == null) return null;
+	    if (aesCryptoUtil == null) return value;
+	    try {
+	        return aesCryptoUtil.decrypt(value);
+	    } catch (Exception e) {
+	        return value;
+	    }
 	}
 
 	@Override
 	public String getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
-		return aesCryptoUtil.decrypt(cs.getString(columnIndex));
+	    String value = cs.getString(columnIndex);
+	    if (value == null) return null;
+	    if (aesCryptoUtil == null) return value;
+	    try {
+	        return aesCryptoUtil.decrypt(value);
+	    } catch (Exception e) {
+	        return value;
+	    }
 	}
 }

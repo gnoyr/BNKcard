@@ -61,17 +61,17 @@ public class AesBirthDateTypeHandler extends BaseTypeHandler<LocalDate> {
 	}
 
 	private LocalDate decrypt(String value) {
-		if (value == null || value.isBlank())
-			return null;
+	    if (value == null || value.isBlank()) return null;
 
-		if (aesCryptoUtil.isEncrypted(value)) {
-			String decrypted = aesCryptoUtil.decrypt(value);
-			if (decrypted == null || decrypted.isBlank())
-				return null;
-			return parseFlexible(decrypted);
-		}
+	    if (aesCryptoUtil == null) return parseFlexible(value);
 
-		return parseFlexible(value);
+	    if (aesCryptoUtil.isEncrypted(value)) {
+	        String decrypted = aesCryptoUtil.decrypt(value);
+	        if (decrypted == null || decrypted.isBlank()) return null;
+	        return parseFlexible(decrypted);
+	    }
+
+	    return parseFlexible(value);
 	}
 
 	private LocalDate parseFlexible(String text) {
