@@ -13,11 +13,11 @@
 		<result property="name" column="name"
 			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
 		<result property="phone" column="phone"
-			typeHandler="com.bnk.global.mybatis.AesTypeHandler" />
+			typeHandler="aesTypeHandler" />
 		<result property="ciValue" column="ci_value"
-			typeHandler="com.bnk.global.mybatis.AesTypeHandler" />
+			typeHandler="aesTypeHandler" />
 		<result property="birthDate" column="birth_date"
-			typeHandler="com.bnk.global.mybatis.AesBirthDateTypeHandler" />
+			typeHandler="aesBirthDateTypeHandler" />
 		<result property="job" column="job"
 			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
 		<result property="incomeLevelCode" column="income_level_code"
@@ -79,32 +79,23 @@
 	</resultMap>
 
 	<select id="findByEmail" resultMap="userMap">
-		SELECT * FROM USERS
-		WHERE
-		email = #{email}
-		AND deleted_yn = 'N'
+		SELECT * FROM USERS WHERE
+		email = #{email} AND deleted_yn = 'N'
 	</select>
 
 	<select id="findById" resultMap="userMap">
-		SELECT * FROM USERS
-		WHERE user_id
-		= #{userId}
-		AND deleted_yn = 'N'
+		SELECT * FROM USERS WHERE
+		user_id = #{userId} AND deleted_yn = 'N'
 	</select>
 
-	<!-- phone 암호화로 WHERE phone = 불가 → 이름으로만 조회 후 Service에서 phone 비교 -->
 	<select id="findByName" resultMap="userMap">
-		SELECT * FROM USERS
-		WHERE name
-		= #{name}
-		AND deleted_yn = 'N'
+		SELECT * FROM USERS WHERE name
+		= #{name} AND deleted_yn = 'N'
 	</select>
 
 	<select id="findByEmailAndName" resultMap="userMap">
 		SELECT * FROM USERS
-		WHERE email = #{email}
-		AND name = #{name}
-		AND deleted_yn = 'N'
+		WHERE email = #{email} AND name = #{name} AND deleted_yn = 'N'
 	</select>
 
 	<select id="existsByEmail" resultType="int">
@@ -114,11 +105,9 @@
 
 	<!-- phone 암호화로 WHERE phone = 불가 → 전체 조회 후 Service에서 중복 판단 -->
 	<select id="findAllPhones" resultMap="userMap">
-		SELECT user_id, phone
-		FROM
+		SELECT user_id, phone FROM
 		USERS
-		WHERE phone IS NOT NULL
-		AND deleted_yn = 'N'
+		WHERE phone IS NOT NULL AND deleted_yn = 'N'
 	</select>
 
 	<insert id="insertUser">
@@ -128,9 +117,9 @@
 		</selectKey>
 		INSERT INTO USERS (
 		email, password_hash, name,
-		phone,
-		ci_value,
-		birth_date, job, income_level_code, credit_score,
+		phone, ci_value,
+		birth_date,
+		job, income_level_code, credit_score,
 		marketing_agree,
 		privacy_agree,
 		status_code, is_email_verified, is_phone_verified,
@@ -141,16 +130,21 @@
 		#{name},
 		#{phone, typeHandler=aesTypeHandler},
 		#{ciValue, typeHandler=aesTypeHandler},
-		#{birthDate, typeHandler=aesBirthDateTypeHandler},
-		#{job, jdbcType=VARCHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler},
-		#{incomeLevelCode, jdbcType=VARCHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler},
-		#{creditScore, jdbcType=NUMERIC},
-		#{marketingAgree, jdbcType=CHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler},
+		#{birthDate,
+		typeHandler=aesBirthDateTypeHandler},
+		#{job, jdbcType=VARCHAR,
+		typeHandler=org.apache.ibatis.type.StringTypeHandler},
+		#{incomeLevelCode, jdbcType=VARCHAR,
+		typeHandler=org.apache.ibatis.type.StringTypeHandler},
+		#{creditScore,
+		jdbcType=NUMERIC},
+		#{marketingAgree, jdbcType=CHAR,
+		typeHandler=org.apache.ibatis.type.StringTypeHandler},
 		'Y',
 		'ACTIVE',
 		'N', 'N',
 		'Y', 0,
-		SYSTIMESTAMP, 'N'
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul', 'N'
 		)
 	</insert>
 
@@ -158,25 +152,24 @@
 		UPDATE USERS
 		<set>
 			<if test="name != null">name = #{name},</if>
-			<if test="phone != null">
-				phone = #{phone, typeHandler=aesTypeHandler},
-			</if>
+			<if test="phone != null">phone = #{phone, typeHandler=aesTypeHandler},</if>
 			<if test="job != null">job = #{job},</if>
 			<if test="incomeLevelCode != null">income_level_code = #{incomeLevelCode},</if>
 			<if test="creditScore != null">credit_score = #{creditScore},</if>
 			<if test="pushEnabled != null">push_enabled = #{pushEnabled},</if>
-			<if test="marketingAgree != null">marketing_agree = #{marketingAgree, jdbcType=CHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler},</if>
-			updated_at = SYSTIMESTAMP
+			<if test="marketingAgree != null">marketing_agree = #{marketingAgree, jdbcType=CHAR,
+				typeHandler=org.apache.ibatis.type.StringTypeHandler},
+			</if>
+			updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		</set>
-		WHERE user_id = #{userId}
-		AND deleted_yn = 'N'
+		WHERE user_id = #{userId} AND deleted_yn = 'N'
 	</update>
 
 	<update id="updateEmailVerified">
 		UPDATE USERS
 		SET is_email_verified =
 		#{isEmailVerified},
-		updated_at = SYSTIMESTAMP
+		updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		WHERE user_id = #{userId}
 	</update>
 
@@ -184,7 +177,7 @@
 		UPDATE USERS
 		SET is_phone_verified =
 		#{isPhoneVerified},
-		updated_at = SYSTIMESTAMP
+		updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		WHERE user_id = #{userId}
 	</update>
 
@@ -193,15 +186,13 @@
 		SET password_hash = #{passwordHash},
 		last_password_changed_at = #{lastPasswordChangedAt},
 		updated_at =
-		SYSTIMESTAMP
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		WHERE user_id = #{userId}
 	</update>
 
 	<update id="incrementLoginFailCount">
-		UPDATE USERS
-		SET login_fail_count = login_fail_count +
-		1
-		WHERE user_id = #{userId}
+		UPDATE USERS SET login_fail_count = login_fail_count
+		+ 1 WHERE user_id = #{userId}
 	</update>
 
 	<select id="getLoginFailCount" resultType="int">
@@ -210,45 +201,36 @@
 	</select>
 
 	<update id="resetLoginFailCount">
-		UPDATE USERS
-		SET login_fail_count = 0,
-		locked_until =
-		NULL
-		WHERE user_id = #{userId}
+		UPDATE USERS SET login_fail_count = 0, locked_until =
+		NULL WHERE user_id = #{userId}
 	</update>
 
 	<update id="updateLockedUntil">
-		UPDATE USERS
-		SET locked_until = #{lockedUntil}
-		WHERE
+		UPDATE USERS SET locked_until = #{lockedUntil} WHERE
 		user_id = #{userId}
 	</update>
 
 	<update id="updateLastLoginAt">
-		UPDATE USERS
-		SET last_login_at = #{lastLoginAt}
-		WHERE
+		UPDATE USERS SET last_login_at = #{lastLoginAt} WHERE
 		user_id = #{userId}
 	</update>
 
 	<update id="revokeOtherSessions">
 		UPDATE USER_SESSIONS
-		SET revoked_yn = 'Y',
-		revoked_at =
-		SYSTIMESTAMP
+		SET revoked_yn = 'Y', revoked_at
+		= SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		WHERE user_id = #{userId}
-		AND session_id !=
-		#{currentSessionId}
+		AND
+		session_id != #{currentSessionId}
 		AND revoked_yn = 'N'
 	</update>
 
 	<update id="revokeAllSessions">
 		UPDATE USER_SESSIONS
-		SET revoked_yn = 'Y',
-		revoked_at =
-		SYSTIMESTAMP
-		WHERE user_id = #{userId}
-		AND revoked_yn = 'N'
+		SET revoked_yn = 'Y', revoked_at
+		= SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+		WHERE user_id = #{userId} AND
+		revoked_yn = 'N'
 	</update>
 
 	<insert id="insertAuditLog">
@@ -256,14 +238,20 @@
 		actor_type_code, actor_id,
 		action_type_code,
 		target_type_code, target_id, description,
-		ip_address, created_at
+		ip_address,
+		created_at
 		) VALUES (
 		#{actorType}, #{actorId}, #{actionType},
 		#{targetType},
 		#{targetId, jdbcType=NUMERIC},
-		#{description, jdbcType=VARCHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler},
-		#{ipAddress, jdbcType=VARCHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler},
-		SYSTIMESTAMP
+		#{description,
+		jdbcType=VARCHAR,
+		typeHandler=org.apache.ibatis.type.StringTypeHandler},
+		#{ipAddress,
+		jdbcType=VARCHAR,
+		typeHandler=org.apache.ibatis.type.StringTypeHandler},
+		SYSTIMESTAMP AT
+		TIME ZONE 'Asia/Seoul'
 		)
 	</insert>
 
@@ -271,7 +259,7 @@
 		INSERT INTO USER_PASSWORD_HISTORIES (user_id,
 		password_hash, created_at)
 		VALUES (#{userId}, #{passwordHash},
-		SYSTIMESTAMP)
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul')
 	</insert>
 
 	<select id="findRecentPasswordHashes" resultType="string">
@@ -288,10 +276,11 @@
 		WHERE user_id =
 		#{userId}
 		AND history_id NOT IN (
-		SELECT history_id
-		FROM USER_PASSWORD_HISTORIES
+		SELECT history_id FROM
+		USER_PASSWORD_HISTORIES
 		WHERE user_id = #{userId}
-		ORDER BY created_at DESC
+		ORDER BY created_at
+		DESC
 		FETCH FIRST 5 ROWS ONLY
 		)
 	</delete>
@@ -299,41 +288,36 @@
 	<update id="updateCddStatus">
 		UPDATE USERS
 		SET cdd_status_code = #{cddStatusCode},
-		updated_at = SYSTIMESTAMP
-		WHERE user_id = #{userId}
-		AND deleted_yn = 'N'
+		updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+		WHERE user_id =
+		#{userId}
 	</update>
 
 	<select id="selectOwnedCards" resultMap="ownedCardRowMap">
 		SELECT uc.user_card_id,
-		uc.card_id,
-		c.card_name,
-		ci.image_url AS card_image_url,
-		TO_CHAR(uc.issued_at, 'YYYY-MM-DD') AS issued_at
+		uc.card_id, c.card_name,
+		ci.image_url AS card_image_url, uc.issued_at
 		FROM USER_CARDS uc
-		INNER JOIN CARDS c ON
-		uc.card_id = c.card_id
-		LEFT JOIN CARD_IMAGES ci ON ci.card_id =
-		c.card_id
-		AND ci.image_type = 'FRONT'
+		INNER JOIN CARDS c
+		ON uc.card_id = c.card_id
+		LEFT JOIN
+		CARD_IMAGES ci ON c.card_id =
+		ci.card_id AND ci.image_type =
+		'THUMBNAIL'
 		WHERE uc.user_id = #{userId}
-		AND
-		uc.deleted_yn = 'N'
 		ORDER BY uc.issued_at DESC
 	</select>
 
 	<select id="selectCardApplications"
 		resultMap="cardApplicationRowMap">
-		SELECT ca.application_id,
-		ca.card_id,
-		c.card_name,
+		SELECT ca.application_id, ca.card_id, c.card_name,
 		ci.image_url AS card_image_url,
-		ca.application_status,
-		ca.applied_at
+		ca.application_status, ca.applied_at
 		FROM CARD_APPLICATIONS ca
-		INNER JOIN CARDS c ON ca.card_id = c.card_id
-		LEFT JOIN CARD_IMAGES ci ON ci.card_id = c.card_id
-		AND ci.image_type =
+		INNER JOIN CARDS c ON
+		ca.card_id = c.card_id
+		LEFT JOIN CARD_IMAGES ci ON c.card_id =
+		ci.card_id AND ci.image_type =
 		'THUMBNAIL'
 		WHERE ca.user_id = #{userId}
 		ORDER BY ca.applied_at DESC
@@ -341,32 +325,33 @@
 
 	<select id="selectSpendingPatterns"
 		resultMap="spendingPatternRowMap">
-		SELECT usp.category_id,
-		cc.category_name,
-		usp.monthly_amount,
-		cc.icon_code
+		SELECT usp.category_id, cc.category_name,
+		usp.monthly_amount, cc.icon_code
 		FROM USER_SPENDING_PATTERNS usp
-		INNER JOIN CARD_CATEGORIES cc ON
-		usp.category_id = cc.category_id
-		WHERE usp.user_id = #{userId}
-		ORDER BY
-		usp.monthly_amount DESC
+		INNER
+		JOIN CARD_CATEGORIES cc ON usp.category_id = cc.category_id
+		WHERE
+		usp.user_id = #{userId}
+		ORDER BY usp.monthly_amount DESC
 	</select>
 
-	<update id="upsertSpendingPattern">
+	<insert id="upsertSpendingPattern">
 		MERGE INTO USER_SPENDING_PATTERNS usp
 		USING DUAL
 		ON
 		(usp.user_id = #{userId} AND usp.category_id = #{categoryId})
 		WHEN
 		MATCHED THEN
-		UPDATE SET
-		monthly_amount = #{monthlyAmount},
-		source = #{source},
-		updated_at = SYSDATE
-		WHEN NOT MATCHED THEN
-		INSERT (user_id, category_id, monthly_amount, source, updated_at)
-		VALUES (#{userId}, #{categoryId}, #{monthlyAmount}, #{source}, SYSDATE)
-	</update>
+		UPDATE SET monthly_amount = #{monthlyAmount}, source =
+		#{source},
+		updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+		WHEN NOT
+		MATCHED THEN
+		INSERT (user_id, category_id, monthly_amount, source,
+		created_at)
+		VALUES (#{userId}, #{categoryId}, #{monthlyAmount},
+		#{source},
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul')
+	</insert>
 
 </mapper>

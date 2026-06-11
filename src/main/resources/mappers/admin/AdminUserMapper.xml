@@ -16,7 +16,7 @@
 		<result property="email" column="email"
 			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
 		<result property="phone" column="phone"
-			typeHandler="com.bnk.global.mybatis.AesTypeHandler" />
+			typeHandler="aesTypeHandler" />
 		<result property="statusCode" column="status_code"
 			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
 		<result property="loginFailCount" column="login_fail_count" />
@@ -29,15 +29,15 @@
 			select="findRoleCodesByAdminId" column="admin_id" />
 	</resultMap>
 
-	<!-- ★ 수정: phone, birth_date에 TypeHandler 추가 — 없으면 암호화 원문이 그대로 노출됨 -->
+	<!-- 관리자 화면에서 회원 목록/상세 조회용 userMap -->
 	<resultMap id="userMap" type="com.bnk.domain.user.model.User">
 		<id property="userId" column="user_id" />
 		<result property="name" column="name" />
 		<result property="email" column="email" />
 		<result property="phone" column="phone"
-			typeHandler="com.bnk.global.mybatis.AesTypeHandler" />
+			typeHandler="aesTypeHandler" />
 		<result property="birthDate" column="birth_date"
-			typeHandler="com.bnk.global.mybatis.AesBirthDateTypeHandler" />
+			typeHandler="aesBirthDateTypeHandler" />
 		<result property="statusCode" column="status_code" />
 		<result property="creditScore" column="credit_score" />
 		<result property="job" column="job" />
@@ -45,7 +45,8 @@
 		<result property="loginFailCount" column="login_fail_count" />
 		<result property="lockedUntil" column="locked_until" />
 		<result property="lastLoginAt" column="last_login_at" />
-		<result property="lastPasswordChangedAt" column="last_password_changed_at" />
+		<result property="lastPasswordChangedAt"
+			column="last_password_changed_at" />
 		<result property="isEmailVerified" column="is_email_verified" />
 		<result property="isPhoneVerified" column="is_phone_verified" />
 		<result property="pushEnabled" column="push_enabled" />
@@ -76,7 +77,8 @@
 		type="com.bnk.domain.admin.mapper.AdminUserMapper$ApplicationRow">
 		<result column="card_id" property="cardId" />
 		<result column="card_name" property="cardName" />
-		<result column="application_status" property="applicationStatus" />
+		<result column="application_status"
+			property="applicationStatus" />
 		<result column="applied_at" property="appliedAt" />
 	</resultMap>
 
@@ -95,23 +97,26 @@
 
 	<select id="findById" resultMap="adminMap">
 		SELECT * FROM ADMIN_USERS
-		WHERE admin_id = #{adminId}
+		WHERE
+		admin_id = #{adminId}
 		AND deleted_yn = 'N'
 	</select>
 
 	<select id="findRoleCodesByAdminId" resultType="string">
-		SELECT ar.role_code
+		SELECT
+		ar.role_code
 		FROM ADMIN_USER_ROLES aur
-		INNER JOIN ADMIN_ROLES ar ON aur.role_id = ar.role_id
+		INNER JOIN ADMIN_ROLES ar ON
+		aur.role_id = ar.role_id
 		WHERE aur.admin_id = #{adminId}
-		AND aur.deleted_yn = 'N'
+		AND
+		aur.deleted_yn = 'N'
 	</select>
 
 	<!-- RQ-B14: 관리자 회원 목록 다중 조건 동적 검색 -->
 	<select id="findUsers" resultMap="userMap">
 		SELECT user_id, name, email, phone,
-		birth_date, status_code,
-		credit_score,
+		birth_date, status_code, credit_score,
 		last_login_at, created_at
 		FROM USERS
 		WHERE deleted_yn = 'N'
@@ -121,7 +126,6 @@
 		<if test="email != null and email != ''">
 			AND email LIKE '%' || #{email} || '%'
 		</if>
-		<!-- phone 암호화로 LIKE 검색 불가 -->
 		<if test="statusCode != null and statusCode != ''">
 			AND status_code = #{statusCode}
 		</if>
@@ -132,7 +136,8 @@
 			AND birth_date &lt;= #{birthDateTo}
 		</if>
 		ORDER BY created_at DESC
-		OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+		OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS
+		ONLY
 	</select>
 
 	<select id="countUsers" resultType="long">
@@ -163,14 +168,14 @@
 
 	<update id="incrementLoginFailCount">
 		UPDATE ADMIN_USERS
-		SET login_fail_count = login_fail_count + 1
+		SET login_fail_count =
+		login_fail_count + 1
 		WHERE admin_id = #{adminId}
 	</update>
 
 	<select id="getLoginFailCount" resultType="int">
-		SELECT login_fail_count
-		FROM ADMIN_USERS
-		WHERE admin_id = #{adminId}
+		SELECT
+		login_fail_count FROM ADMIN_USERS WHERE admin_id = #{adminId}
 	</select>
 
 	<update id="resetLoginFailCount">
@@ -181,58 +186,51 @@
 	</update>
 
 	<update id="updateLockedUntil">
-		UPDATE ADMIN_USERS
-		SET locked_until = #{lockedUntil}
+		UPDATE ADMIN_USERS SET locked_until = #{lockedUntil}
 		WHERE admin_id = #{adminId}
 	</update>
 
 	<update id="updateLastLoginAt">
-		UPDATE ADMIN_USERS
-		SET last_login_at = #{lastLoginAt}
+		UPDATE ADMIN_USERS SET last_login_at = #{lastLoginAt}
 		WHERE admin_id = #{adminId}
 	</update>
 
 	<update id="unlockUser">
 		UPDATE USERS
-		SET locked_until = NULL,
-		login_fail_count = 0,
-		updated_at = SYSTIMESTAMP
-		WHERE user_id = #{userId}
-		AND deleted_yn = 'N'
+		SET locked_until = NULL, login_fail_count
+		= 0, updated_at = SYSTIMESTAMP
+		WHERE user_id = #{userId} AND deleted_yn
+		= 'N'
 	</update>
 
 	<update id="updateUserStatus">
 		UPDATE USERS
 		SET status_code = #{statusCode},
 		updated_at = SYSTIMESTAMP
-		WHERE user_id = #{userId}
-		AND deleted_yn = 'N'
+		WHERE user_id = #{userId} AND deleted_yn =
+		'N'
 	</update>
 
 	<insert id="insertAuditLog">
 		INSERT INTO AUDIT_LOGS (
-		actor_type_code, actor_id,
-		action_type_code,
+		actor_type_code, actor_id, action_type_code,
 		target_type_code, target_id, description,
-		ip_address,
-		created_at
+		ip_address, created_at
 		) VALUES (
 		#{actorType}, #{actorId}, #{actionType},
 		#{targetType},
 		#{targetId, jdbcType=NUMERIC},
 		#{description, jdbcType=VARCHAR},
 		#{ipAddress, jdbcType=VARCHAR},
-		SYSTIMESTAMP
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		)
 	</insert>
 
 	<insert id="insertLoginHistory">
 		INSERT INTO LOGIN_HISTORIES (
-		history_id,
-		user_type_code, user_id,
+		history_id, user_type_code, user_id,
 		login_result_code, fail_reason,
-		ip_address, device_info, user_agent,
-		login_at
+		ip_address, device_info, user_agent, login_at
 		) VALUES (
 		SEQ_LOGIN_HISTORIES.NEXTVAL,
 		#{userTypeCode}, #{userId},
@@ -241,13 +239,15 @@
 		#{ipAddress, jdbcType=VARCHAR},
 		#{deviceInfo, jdbcType=VARCHAR},
 		#{userAgent, jdbcType=VARCHAR},
-		SYSTIMESTAMP
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		)
 	</insert>
 
-	<select id="findLoginHistoriesByUserId" resultMap="loginHistoryRowMap">
+	<select id="findLoginHistoriesByUserId"
+		resultMap="loginHistoryRowMap">
 		SELECT login_at, login_result_code, ip_address
-		FROM LOGIN_HISTORIES
+		FROM
+		LOGIN_HISTORIES
 		WHERE user_type_code = 'USER'
 		AND user_id = #{userId}
 		ORDER BY login_at DESC
@@ -255,46 +255,58 @@
 	</select>
 
 	<select id="findAgreementsByUserId" resultMap="agreementRowMap">
-		SELECT terms_id, agreed_yn, agreed_at
+		SELECT terms_id,
+		agreed_yn, agreed_at
 		FROM USER_TERMS_AGREEMENTS
-		WHERE user_id = #{userId}
+		WHERE user_id =
+		#{userId}
 		ORDER BY agreed_at DESC
 	</select>
 
-	<select id="findApplicationsByUserId" resultMap="applicationRowMap">
-		SELECT ca.card_id, c.card_name, ca.application_status, ca.applied_at
+	<select id="findApplicationsByUserId"
+		resultMap="applicationRowMap">
+		SELECT ca.card_id, c.card_name, ca.application_status,
+		ca.applied_at
 		FROM CARD_APPLICATIONS ca
-		INNER JOIN CARDS c ON ca.card_id = c.card_id
+		INNER JOIN CARDS c ON ca.card_id
+		= c.card_id
 		WHERE ca.user_id = #{userId}
 		ORDER BY ca.applied_at DESC
 	</select>
 
 	<select id="findRecentAdminLogins" resultMap="adminLoginRowMap">
-		SELECT au.name AS admin_name, lh.login_at, lh.ip_address
+		SELECT au.name AS
+		admin_name, lh.login_at, lh.ip_address
 		FROM LOGIN_HISTORIES lh
-		INNER JOIN ADMIN_USERS au ON lh.user_id = au.admin_id
-		WHERE lh.user_type_code = 'ADMIN'
+		INNER
+		JOIN ADMIN_USERS au ON lh.user_id = au.admin_id
+		WHERE lh.user_type_code
+		= 'ADMIN'
 		AND lh.login_result_code = 'SUCCESS'
 		ORDER BY lh.login_at DESC
 		FETCH FIRST #{limit} ROWS ONLY
 	</select>
 
 	<select id="countCardsByStatus" resultType="long">
-		SELECT COUNT(1) FROM CARDS WHERE status_code = #{cardStatus}
+		SELECT COUNT(1) FROM
+		CARDS WHERE status_code = #{cardStatus}
 	</select>
 
 	<select id="countUsersByStatus" resultType="long">
-		SELECT COUNT(1) FROM USERS WHERE status_code = #{statusCode} AND deleted_yn = 'N'
+		SELECT COUNT(1) FROM
+		USERS WHERE status_code = #{statusCode} AND deleted_yn = 'N'
 	</select>
 
 	<select id="countTodaySignups" resultType="long">
-		SELECT COUNT(1) FROM USERS
+		SELECT COUNT(1) FROM
+		USERS
 		WHERE TRUNC(created_at) = TRUNC(SYSDATE)
 		AND deleted_yn = 'N'
 	</select>
 
 	<select id="countTermsByStatus" resultType="long">
-		SELECT COUNT(1) FROM TERMS WHERE status = #{status}
+		SELECT COUNT(1) FROM
+		TERMS WHERE status = #{status}
 	</select>
 
 </mapper>
