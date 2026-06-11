@@ -1,7 +1,6 @@
 package com.bnk.domain.user.service;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -21,6 +20,7 @@ import com.bnk.domain.user.mapper.UserMapper;
 import com.bnk.domain.user.model.User;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
+import com.bnk.global.util.TimeConstants;
 import com.bnk.global.util.audit.AuditLogger;
 
 import jakarta.validation.Valid;
@@ -36,8 +36,6 @@ public class UserService {
 	private final UserMapper userMapper;
 	private final PasswordEncoder passwordEncoder;
 	private final AuditLogger auditLogger;
-	
-	private static final ZoneId KST_ZONE = ZoneId.of("Asia/Seoul");
 
     // ================================================================
     // 내 정보 조회
@@ -123,7 +121,7 @@ public class UserService {
         }
 
         String newHash = passwordEncoder.encode(request.getNewPassword());
-        userMapper.updatePassword(userId, newHash, LocalDateTime.now(KST_ZONE));
+        userMapper.updatePassword(userId, newHash, LocalDateTime.now(TimeConstants.KST));
         userMapper.insertPasswordHistory(userId, newHash);
         userMapper.deleteOldPasswordHistories(userId);
         userMapper.revokeAllSessions(userId);

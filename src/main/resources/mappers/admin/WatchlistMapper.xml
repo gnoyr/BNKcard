@@ -7,7 +7,8 @@
 	<resultMap id="watchlistMap"
 		type="com.bnk.domain.admin.model.Watchlist">
 		<id property="watchlistId" column="watchlist_id" />
-		<result property="name" column="name" />
+		<result property="name" column="name"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
 
 		<result property="ciValue" column="ci_value"
 			typeHandler="aesTypeHandler" />
@@ -17,11 +18,14 @@
 		<result property="ciValueHash" column="ci_value_hash" />
 		<result property="birthDateHash" column="birth_date_hash" />
 
-		<result property="reason" column="reason" />
-		<result property="riskLevel" column="risk_level" />
+		<result property="reason" column="reason"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="riskLevel" column="risk_level"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
 		<result property="registeredAt" column="registered_at" />
 		<result property="registeredBy" column="registered_by" />
-		<result property="deletedYn" column="deleted_yn" />
+		<result property="deletedYn" column="deleted_yn"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
 	</resultMap>
 
 	<!-- CI값 해시로 단건 조회 — 평문 해시 컬럼 직접 비교 -->
@@ -78,7 +82,7 @@
 		#{riskLevel,
 		jdbcType=VARCHAR},
 		#{registeredBy},
-		SYSTIMESTAMP,
+		#{registeredAt},
 		'N'
 		)
 	</insert>
