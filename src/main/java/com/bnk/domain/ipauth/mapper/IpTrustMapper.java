@@ -37,7 +37,7 @@ public interface IpTrustMapper {
 
     /**
      * INSERT
-     * ip_address      → typeHandler=aesTypeHandler (XML 명시) : AES 암호화
+     * ip_address      → typeHandler=AesTypeHandler (XML 명시) : AES 암호화
      * ip_address_hash → TypeHandler 없음                      : SHA-256 평문 저장
      */
     int insert(UserTrustedIp model);

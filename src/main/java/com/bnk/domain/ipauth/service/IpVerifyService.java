@@ -77,7 +77,7 @@ public class IpVerifyService {
 
     /**
      * CI 값 검증.
-     * UserMapper resultMap → typeHandler=aesTypeHandler → ciValue 자동 복호화.
+     * UserMapper resultMap → typeHandler=AesTypeHandler → ciValue 자동 복호화.
      */
     public void verifyCi(Long userId, String residentFront, String genderCode,
                          IpTrustService ipTrustService) {

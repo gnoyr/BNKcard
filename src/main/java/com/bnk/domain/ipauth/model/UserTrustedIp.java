@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
  *
  * [암호화 컬럼]
  * ipAddress     : AES-256-GCM 암호화 저장
- *                 IpTrustMapper.xml resultMap → typeHandler=aesTypeHandler → 조회 시 자동 복호화
+ *                 IpTrustMapper.xml resultMap → typeHandler=AesTypeHandler → 조회 시 자동 복호화
  * ipAddressHash : SHA-256(평문 IP) hex — TypeHandler 없음, 평문 저장/조회
  *                 WHERE 조건 및 UNIQUE 제약 사용 (Watchlist.ciValueHash 패턴 동일)
  */

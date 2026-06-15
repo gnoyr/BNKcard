@@ -54,8 +54,8 @@ public class MyBatisConfig {
         config.setDefaultStatementTimeout(30);
         config.setCacheEnabled(false);
 
-        config.getTypeAliasRegistry().registerAlias("aesTypeHandler",          AesTypeHandler.class);
-        config.getTypeAliasRegistry().registerAlias("aesBirthDateTypeHandler", AesBirthDateTypeHandler.class);
+        config.getTypeHandlerRegistry().register(aesTypeHandler());
+        config.getTypeHandlerRegistry().register(aesBirthDateTypeHandler());
 
         factoryBean.setConfiguration(config);
         factoryBean.setMapperLocations(

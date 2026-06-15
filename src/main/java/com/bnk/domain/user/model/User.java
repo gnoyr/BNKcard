@@ -49,7 +49,6 @@ public class User {
 	            .ciValue(this.ciValue)
 	            .job(request.getJob() != null ? request.getJob() : this.job)
 	            .incomeLevelCode(request.getIncomeLevelCode() != null ? request.getIncomeLevelCode() : this.incomeLevelCode)
-	            .creditScore(request.getCreditScore() != null ? request.getCreditScore() : this.creditScore)
 	            .statusCode(this.statusCode)
 	            .loginFailCount(this.loginFailCount)
 	            .lockedUntil(this.lockedUntil)
