@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  TrustedIpMigrationMapper.xml
+  TypeHandler 없이 평문 그대로 읽고 암호화 값 그대로 씀.
+  ip_address 평문 예시: "127.0.0.1", "192.168.1.100" → 콜론 없음
+  AES 암호문: Base64(IV):Base64(암호문) → 콜론 정확히 1개
+-->
+<mapper namespace="com.bnk.global.migration.TrustedIpMigrationMapper">
+
+    <select id="countPlainIpAddresses" resultType="int">
+        SELECT COUNT(1) FROM USER_TRUSTED_IPS
+        WHERE ip_address IS NOT NULL
+          AND deleted_yn = 'N'
+          AND REGEXP_COUNT(ip_address, ':') != 1
+    </select>
+
+    <select id="findPlainIpAddresses"
+            resultType="com.bnk.global.migration.TrustedIpMigrationRow">
+        SELECT trust_id AS trustId, ip_address AS ipAddress
+        FROM USER_TRUSTED_IPS
+        WHERE ip_address IS NOT NULL
+          AND deleted_yn = 'N'
+          AND REGEXP_COUNT(ip_address, ':') != 1
+        ORDER BY trust_id
+        OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
+    </select>
+
+    <update id="updateIpAddress">
+        UPDATE USER_TRUSTED_IPS
+        SET ip_address = #{encryptedIpAddress}
+        WHERE trust_id = #{trustId}
+    </update>
+
+</mapper>

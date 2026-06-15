@@ -35,7 +35,7 @@ public class MyBatisConfig {
 
     @Bean
     AesTypeHandler aesTypeHandler() {
-        return new AesTypeHandler(aesCryptoUtil);
+        return new AesTypeHandler(aesCryptoUtil);  // aesCryptoUtil 주입된 인스턴스
     }
 
     @Bean
@@ -54,10 +54,13 @@ public class MyBatisConfig {
         config.setDefaultStatementTimeout(30);
         config.setCacheEnabled(false);
 
-        config.getTypeHandlerRegistry().register(aesTypeHandler());
-        config.getTypeHandlerRegistry().register(aesBirthDateTypeHandler());
+        config.getTypeAliasRegistry().registerAlias("aesTypeHandler",          AesTypeHandler.class);
+        config.getTypeAliasRegistry().registerAlias("aesBirthDateTypeHandler", AesBirthDateTypeHandler.class);
 
         factoryBean.setConfiguration(config);
+
+        factoryBean.setTypeHandlers(aesTypeHandler(), aesBirthDateTypeHandler());
+
         factoryBean.setMapperLocations(
                 new PathMatchingResourcePatternResolver()
                         .getResources("classpath:mappers/**/*.xml"));
