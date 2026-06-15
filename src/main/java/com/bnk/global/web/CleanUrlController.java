@@ -81,4 +81,9 @@ public class CleanUrlController {
     public String adminApprovalDetail(@PathVariable String approvalId) {
         return "forward:/admin/approvalManage.html";
     }
+    @GetMapping("/auth/ip-verify")
+    public String ipVerify() {
+        return "forward:/auth/ip-verify.html";
+    }
+
 }

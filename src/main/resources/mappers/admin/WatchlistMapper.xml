@@ -74,8 +74,8 @@
 		) VALUES (
 		#{name},
 		#{birthDate,
-		typeHandler=aesTypeHandler},
-		#{ciValue, typeHandler=aesTypeHandler},
+		typeHandler=AesTypeHandler},
+		#{ciValue, typeHandler=AesTypeHandler},
 		#{ciValueHash},
 		#{birthDateHash},
 		#{reason, jdbcType=VARCHAR},
