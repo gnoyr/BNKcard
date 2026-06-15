@@ -42,6 +42,7 @@ public class AdminEncryptionMigrationService {
     // ================================================================
     // ADMIN_USERS.phone 마이그레이션
     // ================================================================
+    @Transactional
     public MigrationResult migrateAdminPhone() {
         int total   = adminMigrationMapper.countPlainPhoneAdmins();
         log.info("[AdminMigration] phone 평문 대상: {}건", total);
@@ -77,7 +78,7 @@ public class AdminEncryptionMigrationService {
         return new MigrationResult(success, fail);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.MANDATORY)
     public void updateAdminPhoneSingleTx(Long adminId, String encryptedPhone) {
         adminMigrationMapper.updateAdminPhone(adminId, encryptedPhone);
     }

@@ -1,5 +1,19 @@
 package com.bnk.ai.config;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.jspecify.annotations.Nullable;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.AsyncTaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
 import com.bnk.ai.qa.solutions.chatclient.ChatClientStore;
 import com.bnk.ai.qa.solutions.embedding.EmbeddingModelStore;
 import com.bnk.ai.qa.solutions.execution.MultiModelExecutor;
@@ -9,26 +23,13 @@ import com.bnk.ai.qa.solutions.metrics.retrieval.ContextRecallMetric;
 import com.bnk.ai.qa.solutions.metrics.retrieval.FaithfulnessMetric;
 import com.bnk.ai.qa.solutions.metrics.retrieval.ResponseRelevancyMetric;
 
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.core.task.AsyncTaskExecutor;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import org.springframework.beans.factory.annotation.Qualifier;
-
-import java.time.Clock;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
-import org.jspecify.annotations.Nullable;
-
 @Configuration
 public class RagasEvaluationConfig {
 
-    @Bean
-    Clock clock() {
-        return Clock.systemDefaultZone();
-    }
+	@Bean
+	Clock clock() {
+	    return Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
+	}
 
     @Bean
     ChatClientStore chatClientStore(ChatClient.Builder builder) {
