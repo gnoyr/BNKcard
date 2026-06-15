@@ -55,18 +55,21 @@
     
 	<!-- CardVectorMapper.xml 에 추가 -->
 	<!-- findAllCardsWithBenefits 쿼리와 동일 구조, WHERE 조건만 추가 -->
-	<select id="findCardWithBenefitsById" resultMap="CardVectorResultMap">
-	    SELECT c.card_id, c.card_name, c.card_type, c.company_name,
-	           c.annual_fee_domestic, c.annual_fee_overseas,
-	           c.previous_month_spend, c.target_user, c.summary_description,
-	           cb.benefit_id, cb.benefit_title, cb.display_text,
-	           cb.discount_rate, cb.cashback_rate, cb.point_rate
-	    FROM CARDS c
-	    LEFT JOIN CARD_BENEFITS cb ON c.card_id = cb.card_id
-	    WHERE c.card_id = #{cardId}
-	      AND c.card_status = 'PUBLISHED'
-	      AND c.visible_yn  = 'Y'
-	      AND c.deleted_yn  = 'N'
+	<select id="findCardWithBenefitsById" resultMap="CardVectorMap">
+		SELECT
+		c.card_id, c.card_name, c.card_type, c.company_name,
+		c.brand_name,                          <!-- CardVectorMap에 있음 -->
+		c.annual_fee_domestic, c.annual_fee_overseas,
+		c.previous_month_spend, c.target_user, c.summary_description,
+		cb.benefit_title, cb.benefit_type,
+		cb.discount_rate, cb.cashback_rate, cb.point_rate,
+		cb.display_text
+		FROM CARDS c
+		LEFT JOIN CARD_BENEFITS cb ON c.card_id = cb.card_id
+		WHERE c.card_id = #{cardId}
+		AND c.card_status = 'PUBLISHED'
+		AND c.visible_yn = 'Y'
+		AND c.deleted_yn = 'N'
 	</select>
     
     
