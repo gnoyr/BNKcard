@@ -237,4 +237,15 @@ public class EmailService {
             "</td></tr></table>" +
             "</body></html>";
     }
+    
+    @Async
+    public void sendIpVerifyCode(String to, String code) {
+        send(to,
+             "[BNK카드] IP 기기 인증 코드",
+             buildIpVerifyHtml(code));
+    }
+
+    private String buildIpVerifyHtml(String code) {
+        return buildVerificationHtml(code);
+    }
 }
