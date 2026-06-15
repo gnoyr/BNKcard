@@ -39,54 +39,51 @@ public class AesBirthDateTypeHandler extends BaseTypeHandler<LocalDate> {
 		this.aesCryptoUtil = aesCryptoUtil;
 	}
 
+	// ── Write (암호화) ────────────────────────────────────────────────────────
 	@Override
 	public void setNonNullParameter(PreparedStatement ps, int i, LocalDate parameter, JdbcType jdbcType)
 			throws SQLException {
 		ps.setString(i, aesCryptoUtil.encrypt(parameter.format(ISO_FMT)));
 	}
 
+	// ── Read (복호화) ─────────────────────────────────────────────────────────
 	@Override
 	public LocalDate getNullableResult(ResultSet rs, String columnName) throws SQLException {
-		return decrypt(rs.getString(columnName));
+		return decryptAndParse(rs.getString(columnName));
 	}
 
 	@Override
 	public LocalDate getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
-		return decrypt(rs.getString(columnIndex));
+		return decryptAndParse(rs.getString(columnIndex));
 	}
 
 	@Override
 	public LocalDate getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
-		return decrypt(cs.getString(columnIndex));
+		return decryptAndParse(cs.getString(columnIndex));
 	}
 
-	private LocalDate decrypt(String value) {
-	    if (value == null || value.isBlank()) return null;
+	// ── 내부 헬퍼 ─────────────────────────────────────────────────────────────
+	/**
+	 * 암호문이면 복호화 후 파싱, 평문이면 바로 파싱.
+	 * isEncrypted() 판별을 AesCryptoUtil에 위임하여 단일 기준 유지.
+	 */
+	private LocalDate decryptAndParse(String value) {
+		if (value == null || value.isBlank()) return null;
 
-	    if (aesCryptoUtil == null) return parseFlexible(value);
+		if (aesCryptoUtil != null && aesCryptoUtil.isEncrypted(value)) {
+			String decrypted = aesCryptoUtil.decrypt(value);
+			if (decrypted == null || decrypted.isBlank()) return null;
+			return parseFlexible(decrypted);
+		}
 
-	    if (aesCryptoUtil.isEncrypted(value)) {
-	        String decrypted = aesCryptoUtil.decrypt(value);
-	        if (decrypted == null || decrypted.isBlank()) return null;
-	        return parseFlexible(decrypted);
-	    }
-
-	    return parseFlexible(value);
+		// 평문(미암호화 레거시 데이터, 마이그레이션 전 데이터 등)
+		return parseFlexible(value);
 	}
 
 	private LocalDate parseFlexible(String text) {
-		try {
-			return LocalDate.parse(text, ISO_FMT);
-		} catch (Exception ignored) {}
-
-		try {
-			return LocalDate.parse(text, ORACLE_TS_FMT);
-		} catch (Exception ignored) {}
-
-		try {
-			return LocalDate.parse(text, ORACLE_DATE_FMT);
-		} catch (Exception ignored) {}
-
+		try { return LocalDate.parse(text, ISO_FMT);       } catch (Exception ignored) {}
+		try { return LocalDate.parse(text, ORACLE_TS_FMT); } catch (Exception ignored) {}
+		try { return LocalDate.parse(text, ORACLE_DATE_FMT);} catch (Exception ignored) {}
 		return null;
 	}
 }
