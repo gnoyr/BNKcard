@@ -60,7 +60,15 @@ public enum ErrorCode {
 
 	// 관리자
 	ADMIN_NOT_FOUND("AD001", "관리자 계정을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
-	ADMIN_ACCOUNT_LOCKED("AD002", "관리자 계정이 잠겼습니다.", HttpStatus.LOCKED);
+	ADMIN_ACCOUNT_LOCKED("AD002", "관리자 계정이 잠겼습니다.", HttpStatus.LOCKED),
+	
+	//IP 인증
+	IP_CHALLENGE_EXPIRED      ("IP001", "인증 세션이 만료되었습니다. 다시 로그인해 주세요.",   HttpStatus.BAD_REQUEST),
+    CI_MISMATCH               ("IP002", "본인 정보가 일치하지 않습니다.",                    HttpStatus.BAD_REQUEST),
+    CI_LOCKED                 ("IP003", "CI 인증 실패 횟수를 초과하였습니다. 잠시 후 다시 시도해 주세요.", HttpStatus.TOO_MANY_REQUESTS),
+    IP_INITIAL_DELETE_FORBIDDEN("IP004","최초 등록 기기는 삭제할 수 없습니다.",               HttpStatus.BAD_REQUEST),
+    IP_ALREADY_TRUSTED        ("IP005", "이미 등록된 IP입니다.",                           HttpStatus.CONFLICT),
+    IP_MAX_LIMIT_EXCEEDED     ("IP006", "신뢰 IP는 최대 10개까지 등록할 수 있습니다.",        HttpStatus.BAD_REQUEST);
 
 	private final String code;
 	private final String message;

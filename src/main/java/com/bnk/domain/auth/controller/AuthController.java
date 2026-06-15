@@ -24,6 +24,10 @@ import com.bnk.global.auth.CustomUserDetails;
 import com.bnk.global.response.ApiResponse;
 import com.bnk.global.util.CookieUtil;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -59,8 +63,13 @@ public class AuthController {
 	 * 회원가입 — 이메일 인증 완료 후 호출
 	 */
 	@PostMapping("/signup")
-	public ResponseEntity<ApiResponse<Long>> signup(@RequestBody @Valid SignupRequest request) {
-		return ApiResponse.toCreated(authService.signup(request));
+	public ResponseEntity<ApiResponse<Long>> signup(
+			@RequestBody @Valid SignupRequest request,
+			HttpServletRequest httpRequest) {
+		Long userId = authService.signup(request);
+		// 회원가입 완료 후 최초 접속 IP 자동 등록
+		authService.registerInitialIp(userId, httpRequest.getRemoteAddr());
+		return ApiResponse.toCreated(userId);
 	}
 
 	/**
@@ -68,13 +77,31 @@ public class AuthController {
 	 * / user_agent 를 LOGIN_HISTORIES 에 기록.
 	 */
 	@PostMapping("/login")
-	public ResponseEntity<ApiResponse<Void>> login(
+	public ResponseEntity<ApiResponse<?>> login(
 	        @RequestBody @Valid LoginRequest request,
 	        HttpServletRequest httpRequest,
 	        HttpServletResponse response) {
 
 	    AuthTokenResult result = authService.login(request, httpRequest);
 
+	    // IP 챌린지 체크 — result에서 userId를 꺼내기 위해 AccessCookie의 subject 대신
+	    // login()이 이미 user.getUserId()를 사용하므로, AuthService에 위임
+	    String clientIp = httpRequest.getRemoteAddr();
+	    // AuthTokenResult에 userId가 없으므로 이메일로 userId 재조회
+	    // (login() 내부에서 이미 조회한 user 객체를 재활용하지 않으므로 최소 비용으로 재조회)
+	    Long userId = authService.findUserIdByEmail(request.getEmail());
+
+	    Optional<String> challengeOpt = authService.checkIpChallenge(userId, clientIp);
+	    if (challengeOpt.isPresent()) {
+	        // 미등록 IP → 쿠키 미발급, 챌린지 정보 반환
+	        return ResponseEntity.ok(ApiResponse.ok(Map.of(
+	            "requireIpVerify",   true,
+	            "challengeToken",    challengeOpt.get(),
+	            "availableMethods",  List.of("EMAIL", "CI")
+	        )));
+	    }
+
+	    // 신뢰 IP → 기존 쿠키 발급 흐름
 	    // 신규 쿠키 발급 전, 구버전 path 쿠키 잔류분 강제 삭제
 	    // (CookieUtil path 변경 배포 과도기 대응 — 7일 후 제거 가능)
 	    response.addHeader(HttpHeaders.SET_COOKIE,
