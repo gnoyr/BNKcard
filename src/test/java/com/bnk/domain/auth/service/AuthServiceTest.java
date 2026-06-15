@@ -12,7 +12,10 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.Mockito.never;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -94,6 +97,7 @@ class AuthServiceTest {
     @Mock private CddService               cddService;
     @Mock private TokenSecurityService     tokenSecurityService;
     @Mock private AuditLogger              auditLogger;
+    @Mock private Clock clock;
 
     @InjectMocks
     private AuthService authService;
@@ -216,6 +220,9 @@ class AuthServiceTest {
                 .willReturn(ResponseCookie.from("access_token", "acc-token").build());
         given(cookieUtil.createRefreshCookie("ref-token", 604800L))
                 .willReturn(ResponseCookie.from("refresh_token", "ref-token").build());
+        Instant fixedInstant = Instant.parse("2025-01-01T00:00:00Z");
+        given(clock.instant()).willReturn(fixedInstant);
+        given(clock.getZone()).willReturn(ZoneId.of("Asia/Seoul"));
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -471,12 +478,13 @@ class AuthServiceTest {
     @DisplayName("Access Token 재발급 [refresh]")
     class Refresh {
 
-        @Test
+    	@Test
         @DisplayName("[정상] 유효한 세션 → 새 AccessCookie 반환")
         void 정상_토큰재발급() {
             UserSession session = new UserSession();
             ReflectionTestUtils.setField(session, "userId",    USER_ID);
-            ReflectionTestUtils.setField(session, "expiresAt", LocalDateTime.now().plusDays(7));
+            // 고정된 시계(clock)를 기준으로 7일 뒤를 설정
+            ReflectionTestUtils.setField(session, "expiresAt", LocalDateTime.now(clock).plusDays(7));
 
             given(userSessionMapper.findByRefreshToken("valid-rt")).willReturn(Optional.of(session));
 
@@ -501,7 +509,8 @@ class AuthServiceTest {
         void 실패_세션만료() {
             UserSession expired = new UserSession();
             ReflectionTestUtils.setField(expired, "userId",    USER_ID);
-            ReflectionTestUtils.setField(expired, "expiresAt", LocalDateTime.now().minusDays(1));
+            // 고정된 시계(clock)를 기준으로 어제를 설정
+            ReflectionTestUtils.setField(expired, "expiresAt", LocalDateTime.now(clock).minusDays(1));
 
             given(userSessionMapper.findByRefreshToken("expired-rt")).willReturn(Optional.of(expired));
 
