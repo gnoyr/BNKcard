@@ -7,10 +7,12 @@
  * 구성:
  *   §1. 로컬 별칭 + 마이페이지 전용 유틸
  *   §2. 페이지 감지 + 초기화 진입  (body[data-page])
- *   §3. 메인 대시보드  (mypage-main)
- *   §4. 내 정보 수정   (mypage-edit)
- *   §5. 비밀번호 변경  (mypage-password)
- *   §6. 소비 패턴 관리 (mypage-spending)
+ *   §3. 메인 대시보드      (mypage-main)
+ *   §4. 내 정보 수정       (mypage-edit)
+ *   §5. 비밀번호 변경      (mypage-password)
+ *   §6. 소비 패턴 관리     (mypage-spending)
+ *   §7. 신용점수 조회      (mypage-credit-score)
+ *   §8. 신뢰 기기(IP) 관리 (mypage-trusted-ips)
  */
 
 'use strict';
@@ -228,6 +230,8 @@ document.addEventListener('DOMContentLoaded', () => {
         'mypage-edit': initEdit,
         'mypage-password': initPassword,
         'mypage-spending': initSpending,
+        'mypage-credit-score': initCreditScore,
+        'mypage-trusted-ips': initTrustedIps,
     };
     PAGE_MAP[document.body.dataset.page]?.();
 });
@@ -252,7 +256,6 @@ async function initMain() {
             JOB_LABEL[user.job] ?? '',
             user.lastLoginAt ? '최근 로그인: ' + fmtDate(user.lastLoginAt) : ''
         ].filter(Boolean).join(' · '));
-        $set('profileScore', user.creditScore != null ? String(user.creditScore) : '—');
 
         const infoList = document.getElementById('infoList');
         if (infoList) {
@@ -261,7 +264,6 @@ async function initMain() {
                 { label: '연락처', value: user.phone ?? '미등록' },
                 { label: '직업', value: JOB_LABEL[user.job] ?? '—' },
                 { label: '소득구간', value: INCOME_LABEL[user.incomeLevelCode] ?? '—' },
-                { label: '신용점수', value: user.creditScore != null ? user.creditScore + '점' : '—' },
             ].map(({ label, value }) =>
                 `<li class="info-item">
 			       <span class="info-label">${label}</span>
@@ -394,11 +396,10 @@ async function initEdit() {
         // 마스킹된 번호는 currentPhone(표시용)에만 노출, phone input은 빈 상태 유지
         document.getElementById('currentPhone').textContent = user.phone ?? '미등록';
         document.getElementById('job').value = user.job ?? '';
+        const emailEl = document.getElementById('currentEmail');
+        if (emailEl) emailEl.textContent = user.email ?? '';
+
         document.getElementById('incomeLevelCode').value = user.incomeLevelCode ?? '';
-        const creditScoreEl = document.getElementById('creditScore');
-        if (creditScoreEl && user.creditScore != null) {
-            creditScoreEl.value = user.creditScore;
-        }
         const pushEl = document.getElementById('pushEnabled');
         if (pushEl) pushEl.checked = user.pushEnabled === 'Y' || user.pushEnabled === true;
         const mktEl = document.getElementById('marketingAgree');
@@ -408,7 +409,6 @@ async function initEdit() {
             name: user.name ?? '',
             job: user.job ?? '',
             incomeLevelCode: user.incomeLevelCode ?? '',
-            creditScore: user.creditScore != null ? String(user.creditScore) : '',
             pushEnabled: pushEl?.checked ?? false,
             marketingAgree: mktEl?.checked ?? false,
         };
@@ -422,8 +422,7 @@ async function initEdit() {
             document.getElementById('name').value.trim() !== _original.name ||
             _phoneChanged ||   // phone은 input 이벤트 플래그로 감지 (마스킹 값 비교 불가)
             document.getElementById('job').value !== _original.job ||
-            document.getElementById('incomeLevelCode').value !== _original.incomeLevelCode ||
-            (document.getElementById('creditScore')?.value ?? '') !== _original.creditScore
+            document.getElementById('incomeLevelCode').value !== _original.incomeLevelCode
         );
     }
 
@@ -457,14 +456,12 @@ async function initEdit() {
         const phone = document.getElementById('phone').value.trim();
         const job = document.getElementById('job').value;
         const incomeCode = document.getElementById('incomeLevelCode').value;
-        const score = document.getElementById('creditScore')?.value?.trim();
 
         if (name !== _original.name) body.name = name;
         // phone은 플래그로만 판단 — 빈 값이면 phone 필드 미포함
         if (_phoneChanged && phone) body.phone = phone;
         if (job !== _original.job) body.job = job;
         if (incomeCode !== _original.incomeLevelCode) body.incomeLevelCode = incomeCode;
-        if (score !== _original.creditScore) body.creditScore = score ? Number(score) : null;
 
         // 알림 설정은 항상 현재 상태 전송
         body.pushEnabled = pushEl?.checked ?? false;
@@ -697,4 +694,258 @@ async function initSpending() {
             btnLoading(submitBtn, false);
         }
     });
+}
+async function initCreditScore() {
+    let _scoreData = null;
+
+    document.getElementById('revealBtn')
+        ?.addEventListener('click', revealScore);
+    document.getElementById('lockScreen')
+        ?.querySelector('.btn-hide-score')
+        ?.addEventListener('click', hideScore);
+
+    // btn-hide-score 는 revealScreen 안에 있으므로 별도 바인딩
+    // (onclick 인라인 속성 대신 이벤트 위임 사용)
+    document.addEventListener('click', e => {
+        if (e.target.closest('.btn-hide-score')) hideScore();
+    });
+
+    async function revealScore() {
+        const btn = document.getElementById('revealBtn');
+        btnLoading(btn, true);
+        try {
+            const user = await API.get('/api/users/me');
+            _scoreData = user;
+            renderScore(user.creditScore ?? 0);
+        } catch (err) {
+            if (err.status > 0 && err.status !== 403 && err.status < 500)
+                Toast.error('점수 조회에 실패했습니다.');
+        } finally {
+            btnLoading(btn, false);
+        }
+    }
+
+    function renderScore(score) {
+        document.getElementById('lockScreen')?.classList.add('hidden');
+        document.getElementById('revealScreen')?.classList.add('show');
+
+        const scoreVal = document.getElementById('scoreVal');
+        if (scoreVal) scoreVal.textContent = score;
+
+        const pct = Math.max(0, Math.min(100, ((score - 300) / 600) * 100));
+        setTimeout(() => {
+            const fill = document.getElementById('gaugeFill');
+            if (fill) fill.style.width = pct + '%';
+        }, 80);
+
+        let gradeClass, gradeLabel;
+        if (score >= 820) { gradeClass = 'score-grade--excellent'; gradeLabel = '🏅 최우수'; }
+        else if (score >= 665) { gradeClass = 'score-grade--good'; gradeLabel = '✅ 우수'; }
+        else if (score >= 600) { gradeClass = 'score-grade--fair'; gradeLabel = '⚠️ 일반'; }
+        else { gradeClass = 'score-grade--poor'; gradeLabel = '❗ 주의'; }
+
+        const gradeEl = document.getElementById('scoreGrade');
+        if (gradeEl) { gradeEl.className = 'score-grade ' + gradeClass; gradeEl.textContent = gradeLabel; }
+
+        const pctEl = document.getElementById('scorePercentile');
+        if (pctEl) pctEl.textContent = Math.max(1, Math.round(100 - pct)).toString();
+
+        const updEl = document.getElementById('scoreUpdated');
+        if (updEl) updEl.textContent = '조회 시각: ' + new Date().toLocaleString('ko-KR');
+    }
+
+    function hideScore() {
+        document.getElementById('lockScreen')?.classList.remove('hidden');
+        document.getElementById('revealScreen')?.classList.remove('show');
+        const fill = document.getElementById('gaugeFill');
+        if (fill) fill.style.width = '0%';
+        _scoreData = null;
+    }
+}
+
+
+/* ================================================================
+   §8. 신뢰 기기(IP) 관리 (mypage-trusted-ips)
+   ================================================================ */
+async function initTrustedIps() {
+    let _ipList = [];
+    let _deleteTargetId = null;
+
+    await loadIpList();
+    bindDeleteModal();
+
+    async function loadIpList() {
+        try {
+            const data = await API.get('/api/users/me/trusted-ips');
+            _ipList = Array.isArray(data) ? data : (data?.items ?? data ?? []);
+            renderList();
+        } catch (err) {
+            document.getElementById('ipList').innerHTML = emptyHtml('목록을 불러올 수 없습니다.');
+        }
+    }
+
+    function renderList() {
+        const list = document.getElementById('ipList');
+        const countBadge = document.getElementById('ipCountBadge');
+        const capacityWrap = document.getElementById('ipCapacityWrap');
+        const capacityBar = document.getElementById('ipCapacityBar');
+        const capacityLabel = document.getElementById('ipCapacityLabel');
+
+        const count = _ipList.length;
+        if (countBadge) countBadge.textContent = count + ' / 10';
+        if (capacityWrap) capacityWrap.style.display = 'flex';
+        const pct = (count / 10) * 100;
+        if (capacityBar) { capacityBar.style.width = pct + '%'; capacityBar.className = 'ip-capacity__bar' + (pct >= 100 ? ' full' : pct >= 70 ? ' warn' : ''); }
+        if (capacityLabel) capacityLabel.textContent = count + '/10 사용 중';
+
+        if (!list) return;
+        if (count === 0) { list.innerHTML = emptyHtml('등록된 기기가 없습니다.'); return; }
+        list.innerHTML = _ipList.map(ip => buildIpItem(ip)).join('');
+        attachItemEvents();
+    }
+
+    function emptyHtml(msg) {
+        return `<li class="ip-empty"><p>${msg}</p></li>`;
+    }
+
+    function maskIp(addr) {
+        const parts = addr.split('.');
+        return parts.length === 4
+            ? `${parts[0]}.${parts[1]}.*.${parts[3]}`
+            : addr;
+    }
+
+    function formatVia(via) {
+        return { SIGNUP: '<span class="via-signup">자동 등록</span>', EMAIL_VERIFY: '<span class="via-email">이메일 인증</span>', CI_VERIFY: '<span class="via-ci">CI 인증</span>', ADMIN: '<span class="via-admin">관리자 등록</span>' }[via] ?? via;
+    }
+
+    function fmtTs(ts) {
+        if (!ts) return '—';
+        try { return new Date(ts).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }); }
+        catch { return ts; }
+    }
+
+    function esc(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function buildIpItem(ip) {
+        const isInitial = ip.isInitial === 'Y' || ip.is_initial === 'Y';
+        const isDisabled = (ip.statusCode || ip.status_code) === 'DISABLED';
+        const iconClass = isInitial ? 'ip-icon--initial' : (isDisabled ? 'ip-icon--disabled' : '');
+        const nickname = ip.nickname || '내 기기';
+        const addr = ip.ipAddress || ip.ip_address || '';
+        const via = ip.registeredVia || ip.registered_via || 'SIGNUP';
+        const lastUsed = ip.lastUsedAt || ip.last_used_at;
+        const trustId = ip.trustId || ip.trust_id;
+
+        return `<li class="ip-item" data-trust-id="${trustId}">
+	  <div class="ip-icon ${iconClass}">🖥</div>
+	  <div class="ip-body">
+	    <div class="ip-nickname-row">
+	      <span class="ip-nickname">${esc(nickname)}</span>
+	      <input class="ip-nickname-input" type="text" maxlength="50" value="${esc(nickname)}" placeholder="별명 입력" aria-label="기기 별명" />
+	      ${isInitial ? '<span class="ip-badge-initial">최초 가입 기기</span>' : ''}
+	      ${isDisabled ? '<span class="ip-badge-disabled">비활성</span>' : ''}
+	    </div>
+	    <div class="ip-address">${maskIp(addr)}</div>
+	    <div class="ip-meta">
+	      <span>${lastUsed ? '마지막 접속 ' + fmtTs(lastUsed) : '접속 이력 없음'}</span>
+	      <span>등록: ${formatVia(via)}</span>
+	    </div>
+	  </div>
+	  <div class="ip-actions">
+	    <button class="btn-ip-edit" data-action="edit">수정</button>
+	    <button class="btn-ip-save" data-action="save">저장</button>
+	    <button class="btn-ip-delete" data-action="delete" ${isInitial ? 'disabled title="최초 가입 기기는 삭제할 수 없습니다"' : ''}>삭제</button>
+	  </div>
+	</li>`;
+    }
+
+    function exitEditMode(span, input, editBtn, saveBtn) {
+        span.classList.remove('editing');
+        input.classList.remove('editing');
+        editBtn.style.display = '';
+        saveBtn.classList.remove('editing');
+    }
+
+    function attachItemEvents() {
+        document.querySelectorAll('.ip-item').forEach(item => {
+            const trustId = item.dataset.trustId;
+            const editBtn = item.querySelector('[data-action="edit"]');
+            const saveBtn = item.querySelector('[data-action="save"]');
+            const deleteBtn = item.querySelector('[data-action="delete"]');
+            const nicknameSpan = item.querySelector('.ip-nickname');
+            const nicknameInput = item.querySelector('.ip-nickname-input');
+
+            editBtn?.addEventListener('click', () => {
+                nicknameSpan.classList.add('editing');
+                nicknameInput.classList.add('editing');
+                editBtn.style.display = 'none';
+                saveBtn.classList.add('editing');
+                nicknameInput.focus();
+                nicknameInput.select();
+            });
+
+            saveBtn?.addEventListener('click', () => saveNickname(trustId, nicknameInput, nicknameSpan, editBtn, saveBtn));
+
+            nicknameInput?.addEventListener('keydown', e => {
+                if (e.key === 'Enter') { e.preventDefault(); saveBtn?.click(); }
+                if (e.key === 'Escape') { nicknameInput.value = nicknameSpan.textContent; exitEditMode(nicknameSpan, nicknameInput, editBtn, saveBtn); }
+            });
+
+            deleteBtn?.addEventListener('click', () => {
+                if (deleteBtn.disabled) return;
+                _deleteTargetId = trustId;
+                const nameEl = document.getElementById('deleteTargetName');
+                if (nameEl) nameEl.textContent = nicknameSpan.textContent + '  (' + item.querySelector('.ip-address').textContent + ')';
+                document.getElementById('deleteModal')?.classList.add('open');
+            });
+        });
+    }
+
+    async function saveNickname(trustId, input, span, editBtn, saveBtn) {
+        const newNickname = input.value.trim();
+        if (!newNickname) { Toast.error('별명은 비워둘 수 없습니다.'); input.focus(); return; }
+
+        btnLoading(saveBtn, true);
+        try {
+            await API.patch('/api/users/me/trusted-ips/' + trustId, { nickname: newNickname });
+            span.textContent = newNickname;
+            Toast.success('별명이 수정되었습니다.');
+        } catch (err) {
+            Toast.error(err.message || '수정 중 오류가 발생했습니다.');
+            input.value = span.textContent;
+        } finally {
+            btnLoading(saveBtn, false);
+            exitEditMode(span, input, editBtn, saveBtn);
+        }
+    }
+
+    function bindDeleteModal() {
+        document.getElementById('deleteCancelBtn')?.addEventListener('click', () => {
+            document.getElementById('deleteModal')?.classList.remove('open');
+            _deleteTargetId = null;
+        });
+
+        document.getElementById('deleteConfirmBtn')?.addEventListener('click', async () => {
+            if (!_deleteTargetId) return;
+            const btn = document.getElementById('deleteConfirmBtn');
+            btnLoading(btn, true);
+            try {
+                await API.del('/api/users/me/trusted-ips/' + _deleteTargetId);
+                Toast.success('기기가 삭제되었습니다.');
+                document.getElementById('deleteModal')?.classList.remove('open');
+                _deleteTargetId = null;
+                await loadIpList();
+            } catch (err) {
+                if (err.code === 'IP_INITIAL_DELETE_FORBIDDEN')
+                    Toast.error('최초 가입 기기는 삭제할 수 없습니다.');
+                else
+                    Toast.error(err.message || '삭제 중 오류가 발생했습니다.');
+            } finally {
+                btnLoading(btn, false);
+            }
+        });
+    }
 }

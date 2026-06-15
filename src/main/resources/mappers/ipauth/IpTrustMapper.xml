@@ -6,7 +6,7 @@
 
     <!--
         [암호화 컬럼 처리]
-        ip_address      → typeHandler=aesTypeHandler : 쓰기=AES 암호화, 읽기=AES 복호화
+        ip_address      → typeHandler=AesTypeHandler : 쓰기=AES 암호화, 읽기=AES 복호화
         ip_address_hash → TypeHandler 없음           : SHA-256 hex 평문 그대로
         (WatchlistMapper.xml의 ci_value / ci_value_hash 패턴과 동일)
 
@@ -86,7 +86,7 @@
 
     <!--
         INSERT
-        ip_address      → typeHandler=aesTypeHandler : AES-256-GCM 암호화 후 저장
+        ip_address      → typeHandler=AesTypeHandler : AES-256-GCM 암호화 후 저장
         ip_address_hash → TypeHandler 없음           : SHA-256 hex 평문 저장
         trust_id        → TRG_TRUSTED_IPS_BI 트리거가 SEQ_TRUSTED_IPS로 자동 채번
     -->
@@ -103,7 +103,7 @@
             deleted_yn
         ) VALUES (
             #{userId},
-            #{ipAddress,     typeHandler=aesTypeHandler},
+            #{ipAddress,     typeHandler=AesTypeHandler},
             #{ipAddressHash},
             #{nickname},
             #{isInitial},

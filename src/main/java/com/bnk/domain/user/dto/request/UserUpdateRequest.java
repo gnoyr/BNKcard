@@ -1,7 +1,5 @@
 package com.bnk.domain.user.dto.request;
 
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -22,10 +20,6 @@ public class UserUpdateRequest {
 
     @Size(max = 50)
     private String incomeLevelCode;
-
-    @Min(value = 300, message = "신용점수는 300 이상이어야 합니다.")
-    @Max(value = 900, message = "신용점수는 900 이하여야 합니다.")
-    private Integer creditScore;
 
     private Boolean pushEnabled;
 

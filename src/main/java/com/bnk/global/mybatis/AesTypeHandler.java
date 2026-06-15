@@ -5,7 +5,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-import org.apache.ibatis.type.Alias;
 import org.apache.ibatis.type.BaseTypeHandler;
 import org.apache.ibatis.type.JdbcType;
 
@@ -15,14 +14,13 @@ import com.bnk.global.util.AesCryptoUtil;
  * AES-256-GCM 암호화/복호화 TypeHandler.
  *
  * ※ @MappedTypes / @MappedJdbcTypes 제거 — 자동 적용 방지.
- *   암호화가 필요한 컬럼은 XML에서 typeHandler=aesTypeHandler 로 명시할 것.
+ *   암호화가 필요한 컬럼은 XML에서 typeHandler=AesTypeHandler 로 명시할 것.
  *
  * XML 사용법:
  *   resultMap:  typeHandler="aesTypeHandler"
- *   parameter:  #{phone, typeHandler=aesTypeHandler}
+ *   parameter:  #{phone, typeHandler=AesTypeHandler}
  *
  */
-@Alias("aesTypeHandler")
 public class AesTypeHandler extends BaseTypeHandler<String> {
 
 	private AesCryptoUtil aesCryptoUtil;

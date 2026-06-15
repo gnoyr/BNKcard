@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>추가 인증 | 부산은행</title>
+  <link rel="stylesheet" href="/css/auth.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/teal-theme.css">
+</head>
+<body data-page="ip-verify">
+  <div id="app-header"></div>
+  <main class="page-wrap">
+    <div class="auth-card">
+
+      <h1 class="page-title">추가 인증 필요</h1>
+      <p class="page-desc" style="margin-bottom:24px;">
+        등록되지 않은 기기에서 접속했습니다.<br>
+        아래 방법 중 하나로 본인 확인을 완료해 주세요.
+      </p>
+
+      <!-- VIEW 1: 인증 방법 선택 -->
+      <div id="view-select">
+        <button class="btn btn-primary btn-block" id="btnEmail" style="margin-bottom:10px;">
+          이메일 인증
+        </button>
+        <button class="btn btn-outline btn-block" id="btnCi">
+          주민번호 인증 (CI)
+        </button>
+      </div>
+
+      <!-- VIEW 2: 이메일 인증 -->
+      <div id="view-email" style="display:none;">
+        <p class="page-desc" style="margin-bottom:16px;">
+          가입 시 등록한 이메일로 인증 코드를 발송합니다.
+        </p>
+        <div class="form-group">
+          <label class="form-label" for="emailCode">인증 코드 <span class="required">*</span></label>
+          <div style="display:flex;gap:8px;">
+            <input class="form-input" type="text" id="emailCode"
+                   placeholder="6자리 코드 입력" maxlength="6"
+                   style="flex:1;text-transform:uppercase;letter-spacing:.2em;">
+            <button class="btn btn-outline" id="btnSendCode" style="white-space:nowrap;flex-shrink:0;">
+              코드 발송
+            </button>
+          </div>
+          <p class="helper" id="email-timer" style="display:none;"></p>
+          <div id="email-error" class="alert alert-error" style="display:none;margin-top:8px;"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="emailNickname">기기 별명 (선택)</label>
+          <input class="form-input" type="text" id="emailNickname"
+                 placeholder="예: 집 컴퓨터" maxlength="50">
+        </div>
+        <button class="btn btn-primary btn-block" id="btnEmailConfirm" style="margin-bottom:8px;">인증 완료</button>
+        <button class="btn btn-outline btn-block" id="btnBackFromEmail">← 다른 방법 선택</button>
+      </div>
+
+      <!-- VIEW 3: CI 인증 -->
+      <div id="view-ci" style="display:none;">
+        <p class="page-desc" style="margin-bottom:16px;">
+          회원가입 시 등록한 주민등록번호 앞 6자리와 성별코드를 입력해 주세요.
+        </p>
+        <div class="form-group">
+          <label class="form-label" for="residentFront">주민번호 앞 6자리 <span class="required">*</span></label>
+          <input class="form-input" type="text" id="residentFront"
+                 placeholder="예: 900101" maxlength="6" inputmode="numeric">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="genderCode">성별코드 <span class="required">*</span></label>
+          <input class="form-input" type="text" id="genderCode"
+                 placeholder="남=1, 여=2 (2000년대 이후: 남=3, 여=4)" maxlength="1" inputmode="numeric">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="ciNickname">기기 별명 (선택)</label>
+          <input class="form-input" type="text" id="ciNickname"
+                 placeholder="예: 회사 노트북" maxlength="50">
+        </div>
+        <div id="ci-error" class="alert alert-error" style="display:none;margin-bottom:8px;"></div>
+        <button class="btn btn-primary btn-block" id="btnCiConfirm" style="margin-bottom:8px;">인증 완료</button>
+        <button class="btn btn-outline btn-block" id="btnBackFromCi">← 다른 방법 선택</button>
+      </div>
+
+    </div>
+  </main>
+
+  <div id="toast-container"></div>
+  <script src="/js/utils.js"></script>
+  <script src="/js/header.js"></script>
+  <script src="/js/ip-verify.js"></script>
+</body>
+</html>

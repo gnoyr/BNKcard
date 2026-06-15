@@ -136,10 +136,10 @@
 		#{email},
 		#{passwordHash},
 		#{name},
-		#{phone, typeHandler=aesTypeHandler},
-		#{ciValue, typeHandler=aesTypeHandler},
+		#{phone, typeHandler=AesTypeHandler},
+		#{ciValue, typeHandler=AesTypeHandler},
 		#{birthDate,
-		typeHandler=aesBirthDateTypeHandler},
+		typeHandler=AesBirthDateTypeHandler},
 		#{job, jdbcType=VARCHAR,
 		typeHandler=org.apache.ibatis.type.StringTypeHandler},
 		#{incomeLevelCode, jdbcType=VARCHAR,
@@ -160,7 +160,7 @@
 		UPDATE USERS
 		<set>
 			<if test="name != null">name = #{name},</if>
-			<if test="phone != null">phone = #{phone, typeHandler=aesTypeHandler},</if>
+			<if test="phone != null">phone = #{phone, typeHandler=AesTypeHandler},</if>
 			<if test="job != null">job = #{job},</if>
 			<if test="incomeLevelCode != null">income_level_code = #{incomeLevelCode},</if>
 			<if test="creditScore != null">credit_score = #{creditScore},</if>
