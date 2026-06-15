@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  AdminEncryptionMigrationMapper.xml
+  TypeHandler 없이 평문 그대로 읽고 암호화된 값 그대로 씀.
+
+  평문 판별 기준 (강화된 isEncrypted() 와 동일):
+    - 콜론(':')이 정확히 1개 → 암호문 후보
+    - 그 외(0개 또는 2개 이상) → 평문으로 간주
+  URL(https://...)은 콜론 2개 이상이므로 이 조건에서 제외됨.
+  전화번호(010-xxxx-xxxx)는 콜론 0개 → 평문으로 올바르게 분류.
+-->
+<mapper namespace="com.bnk.global.migration.AdminEncryptionMigrationMapper">
+
+    <!-- 평문 phone 건수: 콜론이 정확히 1개가 아닌 것 = 미암호화 -->
+    <select id="countPlainPhoneAdmins" resultType="int">
+        SELECT COUNT(1)
+        FROM ADMIN_USERS
+        WHERE phone IS NOT NULL
+          AND deleted_yn = 'N'
+          AND REGEXP_COUNT(phone, ':') != 1
+    </select>
+
+    <!-- 평문 phone 배치 조회 — TypeHandler 없이 raw String -->
+    <select id="findPlainPhoneAdmins"
+            resultType="com.bnk.global.migration.AdminMigrationRow">
+        SELECT admin_id, phone
+        FROM ADMIN_USERS
+        WHERE phone IS NOT NULL
+          AND deleted_yn = 'N'
+          AND REGEXP_COUNT(phone, ':') != 1
+        ORDER BY admin_id
+        OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
+    </select>
+
+    <!-- 암호화된 phone으로 UPDATE — TypeHandler 없이 raw String 직접 저장 -->
+    <update id="updateAdminPhone">
+        UPDATE ADMIN_USERS
+        SET phone = #{encryptedPhone}
+        WHERE admin_id = #{adminId}
+    </update>
+
+</mapper>
