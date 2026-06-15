@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  WatchlistMigrationMapper.xml
+  TypeHandler 없이 평문 그대로 읽고 암호화 값 그대로 씀.
+  평문 판별: REGEXP_COUNT(컬럼, ':') != 1 → 콜론이 정확히 1개인 것만 암호문
+-->
+<mapper namespace="com.bnk.global.migration.WatchlistMigrationMapper">
+
+    <!-- ── ci_value ── -->
+    <select id="countPlainCiValueWatchlists" resultType="int">
+        SELECT COUNT(1) FROM WATCHLIST
+        WHERE ci_value IS NOT NULL
+          AND deleted_yn = 'N'
+          AND REGEXP_COUNT(ci_value, ':') != 1
+    </select>
+
+    <select id="findPlainCiValueWatchlists"
+            resultType="com.bnk.global.migration.WatchlistMigrationRow">
+        SELECT watchlist_id AS watchlistId, ci_value AS ciValue
+        FROM WATCHLIST
+        WHERE ci_value IS NOT NULL
+          AND deleted_yn = 'N'
+          AND REGEXP_COUNT(ci_value, ':') != 1
+        ORDER BY watchlist_id
+        OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
+    </select>
+
+    <update id="updateWatchlistCiValue">
+        UPDATE WATCHLIST
+        SET ci_value = #{encryptedCiValue}
+        WHERE watchlist_id = #{watchlistId}
+    </update>
+
+    <!-- ── birth_date ── -->
+    <select id="countPlainBirthDateWatchlists" resultType="int">
+        SELECT COUNT(1) FROM WATCHLIST
+        WHERE birth_date IS NOT NULL
+          AND deleted_yn = 'N'
+          AND REGEXP_COUNT(birth_date, ':') != 1
+    </select>
+
+    <select id="findPlainBirthDateWatchlists"
+            resultType="com.bnk.global.migration.WatchlistMigrationRow">
+        SELECT watchlist_id AS watchlistId, birth_date AS birthDate
+        FROM WATCHLIST
+        WHERE birth_date IS NOT NULL
+          AND deleted_yn = 'N'
+          AND REGEXP_COUNT(birth_date, ':') != 1
+        ORDER BY watchlist_id
+        OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
+    </select>
+
+    <update id="updateWatchlistBirthDate">
+        UPDATE WATCHLIST
+        SET birth_date = #{encryptedBirthDate}
+        WHERE watchlist_id = #{watchlistId}
+    </update>
+
+</mapper>
