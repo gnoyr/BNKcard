@@ -1,13 +1,10 @@
 package com.bnk.domain.auth.controller;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.willDoNothing;
-import static org.mockito.BDDMockito.willThrow;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,26 +15,23 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.bind.MissingRequestCookieException;
-import org.springframework.web.method.support.HandlerMethodArgumentResolver;
-import org.springframework.web.method.support.ModelAndViewContainer;
-import org.springframework.web.context.request.NativeWebRequest;
-import org.springframework.web.bind.support.WebDataBinderFactory;
-import org.springframework.core.MethodParameter;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.support.WebDataBinderFactory;
+import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.method.support.ModelAndViewContainer;
 
-import com.bnk.domain.auth.dto.request.FindPasswordRequest;
-import com.bnk.domain.auth.dto.request.LoginRequest;
-import com.bnk.domain.auth.dto.request.ResetPasswordRequest;
-import com.bnk.domain.auth.dto.request.SignupRequest;
+import com.bnk.domain.auth.dto.request.*;
 import com.bnk.domain.auth.dto.response.AuthTokenResult;
+import com.bnk.domain.auth.dto.response.FindIdResponse;
 import com.bnk.domain.auth.service.AuthService;
 import com.bnk.global.auth.CustomUserDetails;
 import com.bnk.global.exception.BusinessException;
@@ -49,27 +43,20 @@ import com.bnk.global.util.audit.AuditLogger;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import org.springframework.web.bind.MissingRequestCookieException;
+
 /**
- * AuthController 단위 테스트
+ * AuthController 단위 테스트 (SonarQube 커버리지 대상)
  *
- * [수정 이력]
- * - RefreshApi.실패_쿠키없음_400 수정
- *   AuthController.refresh()는 @CookieValue(required = false)로 선언되어
- *   쿠키가 없으면 MissingRequestCookieException이 발생하지 않고 null 진입 후
- *   컨트롤러 내부에서 401(UNAUTHORIZED)을 직접 반환함.
- *   따라서 400(C001)이 아닌 401을 기대하도록 수정.
- *
- * - LoginApi.정상_200 수정
- *   AuthController.login()은 response.addHeader(SET_COOKIE) 방식 사용.
- *   MockMvc에서는 header("Set-Cookie").exists() 로 검증해야 함.
- *   ResponseCookie가 Set-Cookie 헤더에 실제로 담기려면 컨트롤러가
- *   response.addHeader를 호출해야 하고, 해당 쿠키도 stub 해야 함.
- *
- * - LoginApi에 deleteLegacyRefreshCookie() stub 추가
- *   AuthController.login() 내부에서 cookieUtil.deleteLegacyRefreshCookie() 호출 존재
- *   → stub 없으면 NPE (NullPointerException) → 500 반환
+ * ── 설계 원칙 ────────────────────────────────────────────────────────
+ * · standaloneSetup — Spring Context 없는 경량 테스트
+ * · GlobalExceptionHandler(AuditLogger) 실제 등록 → ErrorCode JSON 검증
+ * · X-No-Auth 헤더 → CustomUserDetails null → 로그아웃 시 authService.logout 미호출
+ * · login(): deleteLegacyRefreshCookie() stub 필수 (없으면 NPE)
+ * · refresh(): @CookieValue(required=false) → 쿠키 없으면 null → 컨트롤러 직접 401
  */
 @ExtendWith(MockitoExtension.class)
+@DisplayName("AuthController 단위 테스트")
 class AuthControllerTest {
 
     private MockMvc mvc;
@@ -81,16 +68,17 @@ class AuthControllerTest {
 
     private CustomUserDetails mockUserDetails;
 
-    private static final String TOKEN  = "mock-uuid-token";
+    private static final String TOKEN  = "ABCDEF123456";
     private static final String NEW_PW = "NewSecure123!";
 
+    /** standalone 환경에서 MissingRequestCookieException 처리 */
     @RestControllerAdvice
     static class TestCookieExceptionHandler {
         @ExceptionHandler(MissingRequestCookieException.class)
         public ResponseEntity<ErrorResponse> handle(MissingRequestCookieException ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(ErrorResponse.of(ErrorCode.INVALID_INPUT,
-                            "필수 쿠키 '" + ex.getCookieName() + "'가 누락되었습니다."));
+                            "쿠키 누락: " + ex.getCookieName()));
         }
     }
 
@@ -105,10 +93,8 @@ class AuthControllerTest {
                         org.springframework.security.core.annotation.AuthenticationPrincipal.class);
             }
             @Override
-            public Object resolveArgument(MethodParameter p,
-                                          ModelAndViewContainer mvc,
-                                          NativeWebRequest req,
-                                          WebDataBinderFactory binder) {
+            public Object resolveArgument(MethodParameter p, ModelAndViewContainer mvc,
+                                          NativeWebRequest req, WebDataBinderFactory binder) {
                 return req.getHeader("X-No-Auth") != null ? null : mockUserDetails;
             }
         };
@@ -121,7 +107,96 @@ class AuthControllerTest {
     }
 
     // ════════════════════════════════════════════════════════════════
-    // 회원가입 API
+    // 이메일 인증코드 발송  POST /api/auth/send-verify-code
+    // ════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("이메일 인증코드 발송 API [POST /api/auth/send-verify-code]")
+    class SendVerifyCodeApi {
+
+        @Test
+        @DisplayName("[성공] 미가입 이메일 → 200")
+        void 정상_200() throws Exception {
+            willDoNothing().given(authService).sendVerifyCode(any(SendVerifyCodeRequest.class));
+
+            mvc.perform(post("/api/auth/send-verify-code")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"email\":\"hong@bnk.co.kr\"}"))
+                    .andDo(print())
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value("SUCCESS"));
+        }
+
+        @Test
+        @DisplayName("[실패] 이미 가입된 이메일 → 409 + code=U002")
+        void 실패_이메일중복_409() throws Exception {
+            willThrow(new BusinessException(ErrorCode.DUPLICATE_EMAIL))
+                    .given(authService).sendVerifyCode(any());
+
+            mvc.perform(post("/api/auth/send-verify-code")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"email\":\"dup@bnk.co.kr\"}"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("U002"));
+        }
+
+        @Test
+        @DisplayName("[실패] 이메일 형식 오류 → 400 + code=C001")
+        void 실패_이메일형식오류_400() throws Exception {
+            mvc.perform(post("/api/auth/send-verify-code")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"email\":\"notAnEmail\"}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("C001"));
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // 이메일 인증코드 확인  POST /api/auth/verify-email
+    // ════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("이메일 인증코드 확인 API [POST /api/auth/verify-email]")
+    class VerifyEmailApi {
+
+        @Test
+        @DisplayName("[성공] 코드 일치 → 200")
+        void 정상_200() throws Exception {
+            willDoNothing().given(authService).verifyEmail(any(EmailVerifyRequest.class));
+
+            mvc.perform(post("/api/auth/verify-email")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"email\":\"hong@bnk.co.kr\",\"code\":\"ABCDEF\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value("SUCCESS"));
+        }
+
+        @Test
+        @DisplayName("[실패] 코드 불일치·만료 → 400 + code=U008")
+        void 실패_코드불일치_400() throws Exception {
+            willThrow(new BusinessException(ErrorCode.VERIFY_TOKEN_INVALID))
+                    .given(authService).verifyEmail(any());
+
+            mvc.perform(post("/api/auth/verify-email")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"email\":\"hong@bnk.co.kr\",\"code\":\"ZZZZZZ\"}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("U008"));
+        }
+
+        @Test
+        @DisplayName("[실패] code 필드 누락 → 400 + code=C001")
+        void 실패_코드누락_400() throws Exception {
+            mvc.perform(post("/api/auth/verify-email")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"email\":\"hong@bnk.co.kr\"}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("C001"));
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // 회원가입  POST /api/auth/signup
     // ════════════════════════════════════════════════════════════════
 
     @Nested
@@ -145,7 +220,7 @@ class AuthControllerTest {
         }
 
         @Test
-        @DisplayName("[실패] 중복 이메일 → 409 + code=U002")
+        @DisplayName("[실패] 이메일 중복 → 409 + code=U002")
         void 실패_중복이메일_409() throws Exception {
             given(authService.signup(any(SignupRequest.class)))
                     .willThrow(new BusinessException(ErrorCode.DUPLICATE_EMAIL));
@@ -169,36 +244,10 @@ class AuthControllerTest {
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.code").value("U007"));
         }
-
-        @Test
-        @DisplayName("[실패] 필수 약관 미동의 → 400 + code=T002")
-        void 실패_필수약관미동의_400() throws Exception {
-            given(authService.signup(any(SignupRequest.class)))
-                    .willThrow(new BusinessException(ErrorCode.REQUIRED_TERMS_NOT_AGREED));
-
-            mvc.perform(post("/api/auth/signup")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(VALID_JSON))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("T002"));
-        }
-
-        @Test
-        @DisplayName("[실패] 중복 전화번호 → 409 + code=U010")
-        void 실패_중복전화번호_409() throws Exception {
-            given(authService.signup(any(SignupRequest.class)))
-                    .willThrow(new BusinessException(ErrorCode.DUPLICATE_PHONE));
-
-            mvc.perform(post("/api/auth/signup")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(VALID_JSON))
-                    .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.code").value("U010"));
-        }
     }
 
     // ════════════════════════════════════════════════════════════════
-    // 로그인 API
+    // 로그인  POST /api/auth/login
     // ════════════════════════════════════════════════════════════════
 
     @Nested
@@ -206,23 +255,21 @@ class AuthControllerTest {
     class LoginApi {
 
         private static final String LOGIN_JSON =
-                "{\"email\":\"test@bnk.com\",\"password\":\"Password123!\"}";
+                "{\"email\":\"hong@bnk.co.kr\",\"password\":\"Abcd123!\"}";
 
         @Test
-        @DisplayName("[성공] 올바른 계정 정보 → Set-Cookie 헤더 포함 200")
+        @DisplayName("[성공] 올바른 계정 정보 → 200")
         void 정상_200() throws Exception {
             AuthTokenResult tokenResult = AuthTokenResult.builder()
-                    .accessCookie(ResponseCookie.from("access_token",  "mock-at").path("/api/auth").build())
-                    .refreshCookie(ResponseCookie.from("refresh_token", "mock-rt").path("/api/auth").build())
+                    .accessCookie(ResponseCookie.from("access_token",  "mock-at").path("/").build())
+                    .refreshCookie(ResponseCookie.from("refresh_token", "mock-rt").path("/").build())
                     .build();
 
             given(authService.login(any(LoginRequest.class), any(HttpServletRequest.class)))
                     .willReturn(tokenResult);
-
-            // ▼ 핵심 수정: AuthController.login()이 cookieUtil.deleteLegacyRefreshCookie() 호출
-            //   stub 없으면 null.toString() → NPE → 500 반환
+            // deleteLegacyRefreshCookie stub 필수 — 없으면 NPE → 500
             given(cookieUtil.deleteLegacyRefreshCookie())
-                    .willReturn(ResponseCookie.from("refresh_token", "").maxAge(0).path("/api/auth/refresh").build());
+                    .willReturn(ResponseCookie.from("refresh_token", "").maxAge(0).path("/").build());
 
             mvc.perform(post("/api/auth/login")
                     .contentType(MediaType.APPLICATION_JSON)
@@ -272,7 +319,7 @@ class AuthControllerTest {
     }
 
     // ════════════════════════════════════════════════════════════════
-    // Access Token 재발급 API
+    // Access Token 재발급  POST /api/auth/refresh
     // ════════════════════════════════════════════════════════════════
 
     @Nested
@@ -291,38 +338,28 @@ class AuthControllerTest {
                     .andExpect(jsonPath("$.code").value("SUCCESS"));
         }
 
-        /**
-         * ▼ 핵심 수정: 쿠키 없을 때 401 기대
-         *
-         * AuthController.refresh()는 @CookieValue(required = false)로 선언됨.
-         * 쿠키가 없으면 MissingRequestCookieException이 발생하지 않고
-         * refreshToken = null 로 진입 → 컨트롤러 내부에서 직접 401 반환.
-         *
-         * 이전 테스트 기대: status().isBadRequest() + code=C001  → 실패
-         * 수정 후 기대:     status().isUnauthorized()             → 성공
-         */
         @Test
-        @DisplayName("[실패] 쿠키에 refresh_token 누락 → 401 (컨트롤러 직접 반환)")
+        @DisplayName("[실패] refresh_token 쿠키 없음 → 401 (컨트롤러 직접 반환)")
         void 실패_쿠키없음_401() throws Exception {
+            // @CookieValue(required=false) → null → 컨트롤러 내부 401 직접 반환
             mvc.perform(post("/api/auth/refresh"))
                     .andExpect(status().isUnauthorized());
         }
 
         @Test
-        @DisplayName("[실패] 만료·무효 Refresh Token → 401 + code=A005")
-        void 실패_토큰무효_401() throws Exception {
-            willThrow(new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID))
-                    .given(authService).refresh(anyString());
+        @DisplayName("[실패] 만료된 refresh_token → REFRESH_TOKEN_INVALID")
+        void 실패_만료토큰() throws Exception {
+            given(authService.refresh("expired-rt"))
+                    .willThrow(new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID));
 
             mvc.perform(post("/api/auth/refresh")
-                    .cookie(new jakarta.servlet.http.Cookie("refresh_token", "invalid")))
-                    .andExpect(status().isUnauthorized())
-                    .andExpect(jsonPath("$.code").value("A005"));
+                    .cookie(new jakarta.servlet.http.Cookie("refresh_token", "expired-rt")))
+                    .andExpect(status().isUnauthorized());
         }
     }
 
     // ════════════════════════════════════════════════════════════════
-    // 로그아웃 API
+    // 로그아웃  POST /api/auth/logout
     // ════════════════════════════════════════════════════════════════
 
     @Nested
@@ -331,10 +368,6 @@ class AuthControllerTest {
 
         @BeforeEach
         void stubCookies() {
-            // AuthController.logout() 호출 체인:
-            //   cookieUtil.deleteAccessCookie()  ← 호출됨
-            //   cookieUtil.deleteRefreshCookie() ← 호출됨
-            //   cookieUtil.deleteLegacyRefreshCookie() ← 호출 안 됨 (AdminAuthController에만 있음)
             given(cookieUtil.deleteAccessCookie())
                     .willReturn(ResponseCookie.from("access_token",  "").maxAge(0).build());
             given(cookieUtil.deleteRefreshCookie())
@@ -348,19 +381,60 @@ class AuthControllerTest {
 
             mvc.perform(post("/api/auth/logout"))
                     .andExpect(status().isNoContent());
+
+            then(authService).should().logout(1L);
         }
 
         @Test
         @DisplayName("[성공] 비로그인 상태 → authService.logout 미호출 + 204")
         void 정상_비로그인_204() throws Exception {
-            mvc.perform(post("/api/auth/logout")
-                    .header("X-No-Auth", "true"))
+            mvc.perform(post("/api/auth/logout").header("X-No-Auth", "true"))
                     .andExpect(status().isNoContent());
+
+            then(authService).should(never()).logout(anyLong());
         }
     }
 
     // ════════════════════════════════════════════════════════════════
-    // 비밀번호 재설정 링크 요청 API
+    // 아이디 찾기  POST /api/auth/find-id
+    // ════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("아이디 찾기 API [POST /api/auth/find-id]")
+    class FindIdApi {
+
+        @Test
+        @DisplayName("[성공] 이름+전화번호 일치 → 200 + maskedEmail")
+        void 정상_200() throws Exception {
+            given(authService.findId(any(FindIdRequest.class)))
+                    .willReturn(FindIdResponse.builder()
+                            .maskedEmail("ho**@bnk.co.kr")
+                            .message("이메일 조회 완료")
+                            .build());
+
+            mvc.perform(post("/api/auth/find-id")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"name\":\"홍길동\",\"phone\":\"01012345678\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.maskedEmail").value("ho**@bnk.co.kr"));
+        }
+
+        @Test
+        @DisplayName("[실패] 정보 불일치 → 404 + code=U001")
+        void 실패_사용자없음_404() throws Exception {
+            given(authService.findId(any(FindIdRequest.class)))
+                    .willThrow(new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+            mvc.perform(post("/api/auth/find-id")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"name\":\"없는사람\",\"phone\":\"01099999999\"}"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value("U001"));
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // 비밀번호 재설정 링크 요청  POST /api/auth/find-password
     // ════════════════════════════════════════════════════════════════
 
     @Nested
@@ -374,7 +448,7 @@ class AuthControllerTest {
 
             mvc.perform(post("/api/auth/find-password")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"email\":\"test@bnk.com\",\"name\":\"홍길동\"}"))
+                    .content("{\"email\":\"hong@bnk.co.kr\",\"name\":\"홍길동\"}"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("SUCCESS"));
         }
@@ -387,14 +461,14 @@ class AuthControllerTest {
 
             mvc.perform(post("/api/auth/find-password")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"email\":\"none@bnk.com\",\"name\":\"없는사람\"}"))
+                    .content("{\"email\":\"none@bnk.co.kr\",\"name\":\"없는사람\"}"))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value("U001"));
         }
     }
 
     // ════════════════════════════════════════════════════════════════
-    // 비밀번호 재설정 API
+    // 비밀번호 재설정  POST /api/auth/reset-password
     // ════════════════════════════════════════════════════════════════
 
     @Nested

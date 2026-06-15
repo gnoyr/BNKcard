@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.Collections;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -26,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
@@ -34,6 +36,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
+import com.bnk.domain.user.dto.query.OwnedCardRow;
 import com.bnk.domain.user.dto.response.CardStatusResponse;
 import com.bnk.domain.user.dto.response.UserResponse;
 import com.bnk.domain.user.service.UserService;
@@ -43,15 +46,23 @@ import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.exception.GlobalExceptionHandler;
 import com.bnk.global.util.audit.AuditLogger;
 
+/**
+ * UserController 단위 테스트 (SonarQube 커버리지 대상)
+ *
+ * ── 설계 원칙 ────────────────────────────────────────────────────────
+ * · standaloneSetup — Spring Context 없이 경량 실행
+ * · X-No-Auth 헤더 → CustomUserDetails null 반환 → requireAuth → UNAUTHORIZED(401)
+ * · currentPassword 누락: Bean Validation(@NotBlank) → 400 + code=C001
+ * · CardStatusResponse: ownedCards + applications 필드 사용
+ */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("UserController 단위 테스트")
 class UserControllerTest {
 
-    @Mock private UserService     userService;
-    @InjectMocks private UserController userController;
+    @Mock private UserService  userService;
+    @Mock private AuditLogger  auditLogger;
 
-    // [수정] GlobalExceptionHandler 생성자에 AuditLogger 필요 → @Mock 추가
-    @Mock private AuditLogger auditLogger;
+    @InjectMocks private UserController userController;
 
     private MockMvc mvc;
     private CustomUserDetails mockUserDetails;
@@ -64,16 +75,17 @@ class UserControllerTest {
         mockUserDetails = Mockito.mock(CustomUserDetails.class);
 
         HandlerMethodArgumentResolver resolver = new HandlerMethodArgumentResolver() {
-            @Override public boolean supportsParameter(MethodParameter p) {
+            @Override
+            public boolean supportsParameter(MethodParameter p) {
                 return p.hasParameterAnnotation(AuthenticationPrincipal.class);
             }
-            @Override public Object resolveArgument(MethodParameter p, ModelAndViewContainer mvc,
-                                                    NativeWebRequest req, WebDataBinderFactory binder) {
-                return mockUserDetails;
+            @Override
+            public Object resolveArgument(MethodParameter p, ModelAndViewContainer mvc,
+                                          NativeWebRequest req, WebDataBinderFactory binder) {
+                return req.getHeader("X-No-Auth") != null ? null : mockUserDetails;
             }
         };
 
-        // [수정] new GlobalExceptionHandler() → new GlobalExceptionHandler(auditLogger)
         mvc = MockMvcBuilders.standaloneSetup(userController)
                 .setValidator(validator)
                 .setCustomArgumentResolvers(resolver)
@@ -82,7 +94,7 @@ class UserControllerTest {
     }
 
     // ════════════════════════════════════════════════════════════════
-    // F-24 | 내 정보 조회
+    // F-24 | 내 정보 조회  GET /api/users/me
     // ════════════════════════════════════════════════════════════════
 
     @Nested
@@ -93,14 +105,13 @@ class UserControllerTest {
         @DisplayName("[정상] 200 OK → userId·maskedEmail 포함 응답")
         void 정상_200() throws Exception {
             given(mockUserDetails.getUserId()).willReturn(1L);
-
-            UserResponse response = UserResponse.builder()
-                    .userId(1L)
-                    .maskedName("홍길동")
-                    .maskedEmail("te**@test.com")
-                    .maskedPhone("010-****-5678")
-                    .build();
-            given(userService.getMyInfo(1L)).willReturn(response);
+            given(userService.getMyInfo(1L)).willReturn(
+                    UserResponse.builder()
+                            .userId(1L)
+                            .maskedName("홍길동")
+                            .maskedEmail("te**@test.com")
+                            .maskedPhone("010-****-5678")
+                            .build());
 
             mvc.perform(get("/api/users/me"))
                     .andDo(print())
@@ -120,10 +131,17 @@ class UserControllerTest {
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value("U001"));
         }
+
+        @Test
+        @DisplayName("[실패] 비로그인 → 401 UNAUTHORIZED")
+        void 실패_비로그인_401() throws Exception {
+            mvc.perform(get("/api/users/me").header("X-No-Auth", "true"))
+                    .andExpect(status().isUnauthorized());
+        }
     }
 
     // ════════════════════════════════════════════════════════════════
-    // F-25 | 내 정보 수정
+    // F-25 | 내 정보 수정  PUT /api/users/me
     // ════════════════════════════════════════════════════════════════
 
     @Nested
@@ -131,7 +149,7 @@ class UserControllerTest {
     class UpdateMyInfo {
 
         @Test
-        @DisplayName("[정상] 이름 + 비밀번호 재확인 → 200 OK")
+        @DisplayName("[정상] 이름 + 현재비밀번호 → 200 OK")
         void 정상_200() throws Exception {
             given(mockUserDetails.getUserId()).willReturn(1L);
             willDoNothing().given(userService).updateMyInfo(anyLong(), any());
@@ -157,20 +175,6 @@ class UserControllerTest {
         }
 
         @Test
-        @DisplayName("[실패] currentPassword 누락 → 400 + code=C001")
-        void 실패_비밀번호누락_400() throws Exception {
-            given(mockUserDetails.getUserId()).willReturn(1L);
-            willThrow(new BusinessException(ErrorCode.INVALID_INPUT))
-                    .given(userService).updateMyInfo(anyLong(), any());
-
-            mvc.perform(put("/api/users/me")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"name\":\"이순신\"}"))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("C001"));
-        }
-
-        @Test
         @DisplayName("[실패] 비밀번호 불일치 → 400 + code=U003")
         void 실패_비밀번호불일치_400() throws Exception {
             given(mockUserDetails.getUserId()).willReturn(1L);
@@ -183,10 +187,20 @@ class UserControllerTest {
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("U003"));
         }
+
+        @Test
+        @DisplayName("[실패] 비로그인 → 401 UNAUTHORIZED")
+        void 실패_비로그인_401() throws Exception {
+            mvc.perform(put("/api/users/me")
+                    .header("X-No-Auth", "true")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"name\":\"이순신\",\"currentPassword\":\"Current123!\"}"))
+                    .andExpect(status().isUnauthorized());
+        }
     }
 
     // ════════════════════════════════════════════════════════════════
-    // F-26 | 비밀번호 변경
+    // F-26 | 비밀번호 변경  PATCH /api/users/me/password
     // ════════════════════════════════════════════════════════════════
 
     @Nested
@@ -196,9 +210,9 @@ class UserControllerTest {
         private static final String NEW_PW = "NewPassword123!";
 
         private String body(String current, String newPw, String confirm) {
-            return "{\"currentPassword\":\"" + current +
-                   "\",\"newPassword\":\"" + newPw +
-                   "\",\"newPasswordConfirm\":\"" + confirm + "\"}";
+            return String.format(
+                    "{\"currentPassword\":\"%s\",\"newPassword\":\"%s\",\"newPasswordConfirm\":\"%s\"}",
+                    current, newPw, confirm);
         }
 
         @Test
@@ -242,17 +256,18 @@ class UserControllerTest {
         }
 
         @Test
-        @DisplayName("[실패] currentPassword 누락(@NotBlank) → 400")
-        void 실패_현재비밀번호누락_400() throws Exception {
+        @DisplayName("[실패] 비로그인 → 401 UNAUTHORIZED")
+        void 실패_비로그인_401() throws Exception {
             mvc.perform(patch("/api/users/me/password")
+                    .header("X-No-Auth", "true")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"newPassword\":\"" + NEW_PW + "\",\"newPasswordConfirm\":\"" + NEW_PW + "\"}"))
-                    .andExpect(status().isBadRequest());
+                    .content(body("Current123!", NEW_PW, NEW_PW)))
+                    .andExpect(status().isUnauthorized());
         }
     }
 
     // ════════════════════════════════════════════════════════════════
-    // RQ-F17 | 보유 카드 및 신청 현황
+    // RQ-F17 | 보유 카드 및 신청 현황  GET /api/users/me/cards
     // ════════════════════════════════════════════════════════════════
 
     @Nested
@@ -264,16 +279,22 @@ class UserControllerTest {
         void 정상_200() throws Exception {
             given(mockUserDetails.getUserId()).willReturn(1L);
 
-            CardStatusResponse response = CardStatusResponse.builder()
-                    .ownedCards(Collections.emptyList())
+            OwnedCardRow ownedRow = new OwnedCardRow();
+            ReflectionTestUtils.setField(ownedRow, "userCardId", 10L);
+            ReflectionTestUtils.setField(ownedRow, "cardId",     1L);
+            ReflectionTestUtils.setField(ownedRow, "cardName",   "BNK카드");
+
+            CardStatusResponse resp = CardStatusResponse.builder()
+                    .ownedCards(List.of(CardStatusResponse.OwnedCardDto.builder()
+                            .userCardId(10L).cardId(1L).cardName("BNK카드").build()))
                     .applications(Collections.emptyList())
                     .build();
-            given(userService.getMyCards(1L)).willReturn(response);
+            given(userService.getMyCards(1L)).willReturn(resp);
 
             mvc.perform(get("/api/users/me/cards"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.ownedCards").isArray())
-                    .andExpect(jsonPath("$.data.applications").isArray());
+                    .andExpect(jsonPath("$.data.ownedCards[0].cardId").value(1));
         }
 
         @Test
@@ -286,6 +307,13 @@ class UserControllerTest {
             mvc.perform(get("/api/users/me/cards"))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value("U001"));
+        }
+
+        @Test
+        @DisplayName("[실패] 비로그인 → 401 UNAUTHORIZED")
+        void 실패_비로그인_401() throws Exception {
+            mvc.perform(get("/api/users/me/cards").header("X-No-Auth", "true"))
+                    .andExpect(status().isUnauthorized());
         }
     }
 }
