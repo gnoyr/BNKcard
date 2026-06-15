@@ -87,4 +87,7 @@ public interface CardMapper {
 
     /** EXPIRED 전환 시 CARD_VERSIONS도 ARCHIVED로 일괄 전환 */
     void expireCardVersions(@Param("cardIds") List<Long> cardIds);
+    
+ // CardMapper.java 에 추가
+    List<Card> findByIds(@Param("cardIds") List<Long> cardIds);
 }
