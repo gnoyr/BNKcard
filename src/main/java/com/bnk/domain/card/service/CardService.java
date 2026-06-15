@@ -125,10 +125,10 @@ public class CardService {
         // 이미지 조회: THUMBNAIL 우선, 없으면 FRONT 폴백 (단건 루프)
         Map<Long, String> thumbnailMap = new HashMap<>();
         for (Long cid : cardIds) {
-            log.info("=== 이미지 조회 시도 cardId: {}", cid);
+            //log.info("=== 이미지 조회 시도 cardId: {}", cid);
             CardImage img = cardImageMapper.findByCardIdAndType(cid, "THUMBNAIL");
             if (img == null) img = cardImageMapper.findByCardIdAndType(cid, "FRONT");
-            log.info("=== 조회 결과: {}", img != null ? img.getImageUrl() : "NULL");
+            //log.info("=== 조회 결과: {}", img != null ? img.getImageUrl() : "NULL");
             if (img != null) thumbnailMap.put(cid, img.getImageUrl());
         }
 
