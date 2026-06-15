@@ -56,7 +56,7 @@ public class MyBatisConfig {
 
         config.getTypeAliasRegistry().registerAlias("aesTypeHandler",          AesTypeHandler.class);
         config.getTypeAliasRegistry().registerAlias("aesBirthDateTypeHandler", AesBirthDateTypeHandler.class);
-
+        
         factoryBean.setConfiguration(config);
 
         factoryBean.setTypeHandlers(aesTypeHandler(), aesBirthDateTypeHandler());
