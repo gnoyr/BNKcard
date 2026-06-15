@@ -98,21 +98,24 @@ public class SecurityConfig {
                 .referrerPolicy(referrer -> referrer
                     .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
                 .contentSecurityPolicy(csp -> csp
-                    .policyDirectives(
-                        "default-src 'self'; " +
-                        "script-src 'self' 'unsafe-inline'; " +
-                        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-                        "font-src 'self' https://fonts.gstatic.com; " +
-                        // 카드 이미지가 https://www.busanbank.co.kr 에서 로드되므로 허용
-                        "img-src 'self' data: " +
-                            "https://bnkcard.store " +
-                            "https://www.bnkcard.store " +
-                            "https://objectstorage.ap-chuncheon-1.oraclecloud.com " +
-                            "https://www.busanbank.co.kr " +
-                            "https://busanbank.co.kr; " +
-                        "connect-src 'self'; " +
-                        "frame-ancestors 'none'"
-                    ))
+                	    .policyDirectives(
+                	        "default-src 'self'; " +
+                	        // ↓ 카카오 우편번호 API 스크립트 로드 허용
+                	        "script-src 'self' 'unsafe-inline' https://t1.daumcdn.net; " +
+                	        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+                	        "font-src 'self' https://fonts.gstatic.com; " +
+                	        "img-src 'self' data: " +
+                	            "https://bnkcard.store " +
+                	            "https://www.bnkcard.store " +
+                	            "https://objectstorage.ap-chuncheon-1.oraclecloud.com " +
+                	            "https://www.busanbank.co.kr " +
+                	            "https://busanbank.co.kr; " +
+                	        // ↓ 카카오 embed XHR 허용
+                	        "connect-src 'self' https://t1.daumcdn.net; " +
+                	        // ↓ 카카오 embed iframe 허용
+                	        "frame-src 'self' https://t1.daumcdn.net http://postcode.map.kakao.com https://postcode.map.kakao.com; " +
+                	        "frame-ancestors 'none'"
+                	    ))
             )
 
             .authorizeHttpRequests(auth -> auth
@@ -175,6 +178,7 @@ public class SecurityConfig {
                     "/signup",
                     "/find-id",
                     "/reset-password",
+                    "/copy-code",
                     "/admin/login",
                     "/admin/cards",
                     "/admin/users",
@@ -191,8 +195,7 @@ public class SecurityConfig {
 
                 // ── 관리자 API — 역할 필수 ───────────────────────────────
                 .requestMatchers("/api/admin/**")
-                    .hasAnyRole("SUPER_ADMIN", "MANAGER", "OPERATOR",
-                                "CARD_MANAGER", "REVIEWER")
+                .hasAnyRole("SUPER_ADMIN", "MANAGER", "OPERATOR")
 
                 // ── 나머지 — 로그인 필수 ────────────────────────────────
                 .anyRequest().authenticated()

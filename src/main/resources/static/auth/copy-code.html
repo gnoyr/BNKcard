@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>인증코드 복사 | BNK카드</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: "Apple SD Gothic Neo", "Malgun Gothic", Arial, sans-serif;
+      background: #f0f4f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,103,127,0.13);
+      padding: 48px 40px;
+      text-align: center;
+      max-width: 400px;
+      width: 90%;
+    }
+    .logo {
+      color: #003040;
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 32px;
+    }
+    .label {
+      color: #5C7A83;
+      font-size: 12px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .code {
+      color: #00677F;
+      font-size: 42px;
+      font-weight: 700;
+      letter-spacing: 12px;
+      font-family: "Courier New", Courier, monospace;
+      margin-bottom: 24px;
+    }
+    .status {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      min-height: 24px;
+    }
+    .status.success { color: #00677F; }
+    .status.error   { color: #dc2626; }
+    .btn {
+      display: inline-block;
+      background: #00677F;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 12px 32px;
+      border-radius: 8px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      margin-bottom: 12px;
+    }
+    .btn:hover { background: #004D61; }
+    .guide {
+      margin-top: 20px;
+      color: #5C7A83;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">BNK카드</div>
+    <div class="label">이메일 인증코드</div>
+    <div class="code" id="code">--</div>
+    <div class="status" id="status"></div>
+    <button class="btn" id="copyBtn" style="display:none;" onclick="doCopy()">복사하기</button>
+    <p class="guide">위 코드를 복사하여 인증 창에 붙여넣어 주세요.</p>
+  </div>
+
+  <script>
+    var CODE = '';
+
+    (function () {
+      const params   = new URLSearchParams(location.search);
+      const code     = params.get('code') || '';
+      const statusEl = document.getElementById('status');
+      const codeEl   = document.getElementById('code');
+      const copyBtn  = document.getElementById('copyBtn');
+
+      // 코드가 없거나 형식이 잘못된 경우 차단 (영문+숫자 6자리만 허용)
+      if (!code || !/^[A-Z0-9]{6}$/.test(code)) {
+        statusEl.textContent = '잘못된 접근입니다.';
+        statusEl.className   = 'status error';
+        return;
+      }
+
+      CODE = code;
+      codeEl.textContent = code;
+      copyBtn.style.display = 'inline-block';
+      statusEl.textContent  = '아래 버튼을 눌러 코드를 복사하세요.';
+      statusEl.className    = 'status';
+    })();
+
+    function doCopy() {
+      const statusEl = document.getElementById('status');
+
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(CODE)
+          .then(function () {
+            onSuccess(statusEl);
+          })
+          .catch(function () {
+            fallbackCopy(statusEl);
+          });
+      } else {
+        fallbackCopy(statusEl);
+      }
+    }
+
+    function fallbackCopy(statusEl) {
+      try {
+        var el = document.createElement('textarea');
+        el.value = CODE;
+        el.style.position = 'fixed';
+        el.style.opacity  = '0';
+        document.body.appendChild(el);
+        el.focus();
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        onSuccess(statusEl);
+      } catch (e) {
+        statusEl.textContent = '위 코드를 직접 입력해 주세요.';
+        statusEl.className   = 'status error';
+      }
+    }
+
+    function onSuccess(statusEl) {
+      statusEl.textContent = '✓ 클립보드에 복사되었습니다!';
+      statusEl.className   = 'status success';
+      document.getElementById('copyBtn').textContent = '✓ 복사됨';
+      document.getElementById('copyBtn').disabled = true;
+    }
+  </script>
+</body>
+</html>

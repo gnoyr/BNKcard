@@ -111,18 +111,16 @@ public class GlobalExceptionHandler {
      * 예상치 못한 RuntimeException / Error 전체를 잡는 최후 핸들러.
      */
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleException(Exception ex,
-                                                         HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handleException(Exception ex, HttpServletRequest request) {
         String path = request.getRequestURI();
         String ip   = request.getRemoteAddr();
 
         log.error("예상치 못한 오류 발생: method={} path={} ip={}",
                 request.getMethod(), path, ip, ex);
 
-        // AUTH 카테고리(→ AUDIT_LOGS) 사용: 보안 관점에서 추적 가치가 높은 이벤트
         auditLogger.failure(
                 AuditLogger.AUTH,
-                AuditLogger.LOGIN,
+                AuditLogger.SYSTEM_ERROR,   // ← LOGIN → SYSTEM_ERROR
                 null,
                 ip,
                 "500 예상치 못한 오류: " + request.getMethod() + " " + path

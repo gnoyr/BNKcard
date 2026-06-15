@@ -25,21 +25,23 @@ import org.jspecify.annotations.Nullable;
 @Configuration
 public class RagasEvaluationConfig {
 
-	@Bean
-    ChatClientStore chatClientStore(ChatClient.Builder builder) {
-
-        ChatClient myChatClient = builder.build();
-
-        Map<String, ChatClient> clients = new ConcurrentHashMap<>();
-        clients.put("gemini-model", myChatClient);
-
-        return new ChatClientStore(clients, myChatClient); 
+    @Bean
+    Clock clock() {
+        return Clock.systemDefaultZone();
     }
 
-	@Bean(name = "metricExecutor")
+    @Bean
+    ChatClientStore chatClientStore(ChatClient.Builder builder) {
+        ChatClient myChatClient = builder.build();
+        Map<String, ChatClient> clients = new ConcurrentHashMap<>();
+        clients.put("gemini-model", myChatClient);
+        return new ChatClientStore(clients, myChatClient);
+    }
+
+    @Bean(name = "metricExecutor")
     AsyncTaskExecutor metricExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(1); 
+        executor.setCorePoolSize(1);
         executor.setMaxPoolSize(1);
         executor.setThreadNamePrefix("Metric-");
         executor.initialize();
@@ -62,7 +64,6 @@ public class RagasEvaluationConfig {
             @Qualifier("metricExecutor") AsyncTaskExecutor metricExecutor,
             @Qualifier("httpExecutor") AsyncTaskExecutor httpExecutor,
             Clock clock) {
-        
         return new MultiModelExecutor(
             chatClientStore,
             embeddingModelStore,
@@ -71,39 +72,44 @@ public class RagasEvaluationConfig {
             clock
         );
     }
-    
+
     @Bean
-    AspectCriticMetric aspectCriticMetric(MultiModelExecutor multiModelExecutor) {
+    AspectCriticMetric aspectCriticMetric(MultiModelExecutor multiModelExecutor, Clock clock) {
         return AspectCriticMetric.builder()
                 .executor(multiModelExecutor)
+                .clock(clock)
                 .build();
     }
-    
+
     @Bean
-    ContextRecallMetric contextRecallMetric(MultiModelExecutor multiModelExecutor) {
+    ContextRecallMetric contextRecallMetric(MultiModelExecutor multiModelExecutor, Clock clock) {
         return ContextRecallMetric.builder()
                 .executor(multiModelExecutor)
+                .clock(clock)
                 .build();
     }
-    
+
     @Bean
-    ResponseRelevancyMetric responseRelevancyMetric(MultiModelExecutor multiModelExecutor) {
+    ResponseRelevancyMetric responseRelevancyMetric(MultiModelExecutor multiModelExecutor, Clock clock) {
         return ResponseRelevancyMetric.builder()
                 .executor(multiModelExecutor)
+                .clock(clock)
                 .build();
     }
 
     @Bean
-    FaithfulnessMetric faithfulnessMetric(MultiModelExecutor multiModelExecutor) {
+    FaithfulnessMetric faithfulnessMetric(MultiModelExecutor multiModelExecutor, Clock clock) {
         return FaithfulnessMetric.builder()
                 .executor(multiModelExecutor)
+                .clock(clock)
                 .build();
     }
 
     @Bean
-    ContextPrecisionMetric contextPrecisionMetric(MultiModelExecutor multiModelExecutor) {
+    ContextPrecisionMetric contextPrecisionMetric(MultiModelExecutor multiModelExecutor, Clock clock) {
         return ContextPrecisionMetric.builder()
                 .executor(multiModelExecutor)
+                .clock(clock)
                 .build();
     }
 }
