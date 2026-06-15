@@ -2,311 +2,348 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
+<!--
+  AdminUserMapper.xml
+  ─────────────────────────────────────────────────────────────────
+-->
 <mapper namespace="com.bnk.domain.admin.mapper.AdminUserMapper">
 
-	<resultMap id="adminMap"
-		type="com.bnk.domain.admin.model.AdminUser">
-		<id property="adminId" column="admin_id" />
-		<result property="username" column="username"
-			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
-		<result property="passwordHash" column="password_hash"
-			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
-		<result property="name" column="name"
-			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
-		<result property="email" column="email"
-			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
-		<result property="phone" column="phone"
-			typeHandler="aesTypeHandler" />
-		<result property="statusCode" column="status_code"
-			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
-		<result property="loginFailCount" column="login_fail_count" />
-		<result property="lockedUntil" column="locked_until" />
-		<result property="lastLoginAt" column="last_login_at" />
-		<result property="createdAt" column="created_at" />
-		<result property="deletedYn" column="deleted_yn"
-			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
-		<collection property="roleCodes" ofType="string"
-			select="findRoleCodesByAdminId" column="admin_id" />
-	</resultMap>
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- resultMap: ADMIN_USERS                                     -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <resultMap id="adminMap" type="com.bnk.domain.admin.model.AdminUser">
+        <id     property="adminId"        column="admin_id"   />
+        <result property="username"       column="username"
+                typeHandler="org.apache.ibatis.type.StringTypeHandler"/>
+        <result property="passwordHash"   column="password_hash"
+                typeHandler="org.apache.ibatis.type.StringTypeHandler"/>
+        <result property="name"           column="name"
+                typeHandler="org.apache.ibatis.type.StringTypeHandler"/>
+        <result property="email"          column="email"
+                typeHandler="org.apache.ibatis.type.StringTypeHandler"/>
+        <!-- phone: AES 암호화 저장 → 복호화 필요 -->
+        <result property="phone"          column="phone"
+                typeHandler="aesTypeHandler"/>
+        <result property="statusCode"     column="status_code"
+                typeHandler="org.apache.ibatis.type.StringTypeHandler"/>
+        <result property="loginFailCount" column="login_fail_count"/>
+        <result property="lockedUntil"    column="locked_until"/>
+        <result property="lastLoginAt"    column="last_login_at"/>
+        <result property="createdAt"      column="created_at"/>
+        <result property="deletedYn"      column="deleted_yn"
+                typeHandler="org.apache.ibatis.type.StringTypeHandler"/>
+        <collection property="roleCodes" ofType="string"
+                    select="findRoleCodesByAdminId" column="admin_id"/>
+    </resultMap>
 
-	<!-- 관리자 화면에서 회원 목록/상세 조회용 userMap -->
-	<resultMap id="userMap" type="com.bnk.domain.user.model.User">
-		<id property="userId" column="user_id" />
-		<result property="name" column="name" />
-		<result property="email" column="email" />
-		<result property="phone" column="phone"
-			typeHandler="aesTypeHandler" />
-		<result property="birthDate" column="birth_date"
-			typeHandler="aesBirthDateTypeHandler" />
-		<result property="statusCode" column="status_code" />
-		<result property="creditScore" column="credit_score" />
-		<result property="job" column="job" />
-		<result property="incomeLevelCode" column="income_level_code" />
-		<result property="loginFailCount" column="login_fail_count" />
-		<result property="lockedUntil" column="locked_until" />
-		<result property="lastLoginAt" column="last_login_at" />
-		<result property="lastPasswordChangedAt"
-			column="last_password_changed_at" />
-		<result property="isEmailVerified" column="is_email_verified" />
-		<result property="isPhoneVerified" column="is_phone_verified" />
-		<result property="pushEnabled" column="push_enabled" />
-		<result property="marketingAgree" column="marketing_agree" />
-		<result property="privacyAgree" column="privacy_agree" />
-		<result property="dormantAt" column="dormant_at" />
-		<result property="withdrawnAt" column="withdrawn_at" />
-		<result property="createdAt" column="created_at" />
-		<result property="updatedAt" column="updated_at" />
-		<result property="deletedYn" column="deleted_yn" />
-	</resultMap>
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- resultMap: USERS (관리자 화면 회원 목록/상세)              -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <resultMap id="userMap" type="com.bnk.domain.user.model.User">
+        <id     property="userId"    column="user_id"   />
+        <result property="name"      column="name"      />
+        <result property="email"     column="email"     />
+        <result property="phone"     column="phone"     typeHandler="aesTypeHandler"/>
+        <result property="birthDate" column="birth_date" typeHandler="aesBirthDateTypeHandler"/>
+        <result property="statusCode"            column="status_code"             />
+        <result property="creditScore"           column="credit_score"            />
+        <result property="job"                   column="job"                     />
+        <result property="incomeLevelCode"       column="income_level_code"       />
+        <result property="loginFailCount"        column="login_fail_count"        />
+        <result property="lockedUntil"           column="locked_until"            />
+        <result property="lastLoginAt"           column="last_login_at"           />
+        <result property="lastPasswordChangedAt" column="last_password_changed_at"/>
+        <result property="isEmailVerified"       column="is_email_verified"       />
+        <result property="isPhoneVerified"       column="is_phone_verified"       />
+        <result property="pushEnabled"           column="push_enabled"            />
+        <result property="marketingAgree"        column="marketing_agree"         />
+        <result property="privacyAgree"          column="privacy_agree"           />
+        <result property="dormantAt"             column="dormant_at"              />
+        <result property="withdrawnAt"           column="withdrawn_at"            />
+        <result property="createdAt"             column="created_at"              />
+        <result property="updatedAt"             column="updated_at"              />
+        <result property="deletedYn"             column="deleted_yn"              />
+    </resultMap>
 
-	<resultMap id="loginHistoryRowMap"
-		type="com.bnk.domain.admin.mapper.AdminUserMapper$LoginHistoryRow">
-		<result column="login_at" property="loginAt" />
-		<result column="login_result_code" property="loginResultCode" />
-		<result column="ip_address" property="ipAddress" />
-	</resultMap>
+    <resultMap id="loginHistoryRowMap"
+               type="com.bnk.domain.admin.mapper.AdminUserMapper$LoginHistoryRow">
+        <result column="login_at"           property="loginAt"          />
+        <result column="login_result_code"  property="loginResultCode"  />
+        <result column="ip_address"         property="ipAddress"        />
+    </resultMap>
 
-	<resultMap id="agreementRowMap"
-		type="com.bnk.domain.admin.mapper.AdminUserMapper$AgreementRow">
-		<result column="terms_id" property="termsId" />
-		<result column="agreed_yn" property="agreedYn" />
-		<result column="agreed_at" property="agreedAt" />
-	</resultMap>
+    <resultMap id="agreementRowMap"
+               type="com.bnk.domain.admin.mapper.AdminUserMapper$AgreementRow">
+        <result column="terms_id"  property="termsId"  />
+        <result column="agreed_yn" property="agreedYn" />
+        <result column="agreed_at" property="agreedAt" />
+    </resultMap>
 
-	<resultMap id="applicationRowMap"
-		type="com.bnk.domain.admin.mapper.AdminUserMapper$ApplicationRow">
-		<result column="card_id" property="cardId" />
-		<result column="card_name" property="cardName" />
-		<result column="application_status"
-			property="applicationStatus" />
-		<result column="applied_at" property="appliedAt" />
-	</resultMap>
+    <resultMap id="applicationRowMap"
+               type="com.bnk.domain.admin.mapper.AdminUserMapper$ApplicationRow">
+        <result column="card_id"            property="cardId"            />
+        <result column="card_name"          property="cardName"          />
+        <result column="application_status" property="applicationStatus" />
+        <result column="applied_at"         property="appliedAt"         />
+    </resultMap>
 
-	<resultMap id="adminLoginRowMap"
-		type="com.bnk.domain.admin.mapper.AdminUserMapper$AdminLoginRow">
-		<result column="admin_name" property="adminName" />
-		<result column="login_at" property="loginAt" />
-		<result column="ip_address" property="ipAddress" />
-	</resultMap>
+    <resultMap id="adminLoginRowMap"
+               type="com.bnk.domain.admin.mapper.AdminUserMapper$AdminLoginRow">
+        <result column="admin_name" property="adminName"/>
+        <result column="login_at"   property="loginAt"  />
+        <result column="ip_address" property="ipAddress"/>
+    </resultMap>
 
-	<select id="findByUsername" resultMap="adminMap">
-		SELECT * FROM ADMIN_USERS
-		WHERE username = #{username}
-		AND deleted_yn = 'N'
-	</select>
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 관리자 조회                                                -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <select id="findByUsername" resultMap="adminMap">
+        SELECT * FROM ADMIN_USERS
+        WHERE username = #{username}
+          AND deleted_yn = 'N'
+    </select>
 
-	<select id="findById" resultMap="adminMap">
-		SELECT * FROM ADMIN_USERS
-		WHERE
-		admin_id = #{adminId}
-		AND deleted_yn = 'N'
-	</select>
+    <select id="findById" resultMap="adminMap">
+        SELECT * FROM ADMIN_USERS
+        WHERE admin_id = #{adminId}
+          AND deleted_yn = 'N'
+    </select>
 
-	<select id="findRoleCodesByAdminId" resultType="string">
-		SELECT
-		ar.role_code
-		FROM ADMIN_USER_ROLES aur
-		INNER JOIN ADMIN_ROLES ar ON
-		aur.role_id = ar.role_id
-		WHERE aur.admin_id = #{adminId}
-		AND
-		aur.deleted_yn = 'N'
-	</select>
+    <select id="findRoleCodesByAdminId" resultType="string">
+        SELECT ar.role_code
+        FROM ADMIN_USER_ROLES aur
+        INNER JOIN ADMIN_ROLES ar ON aur.role_id = ar.role_id
+        WHERE aur.admin_id = #{adminId}
+          AND aur.deleted_yn = 'N'
+    </select>
 
-	<!-- RQ-B14: 관리자 회원 목록 다중 조건 동적 검색 -->
-	<select id="findUsers" resultMap="userMap">
-		SELECT user_id, name, email, phone,
-		birth_date, status_code, credit_score,
-		last_login_at, created_at
-		FROM USERS
-		WHERE deleted_yn = 'N'
-		<if test="name != null and name != ''">
-			AND name LIKE '%' || #{name} || '%'
-		</if>
-		<if test="email != null and email != ''">
-			AND email LIKE '%' || #{email} || '%'
-		</if>
-		<if test="statusCode != null and statusCode != ''">
-			AND status_code = #{statusCode}
-		</if>
-		<if test="birthDateFrom != null">
-			AND birth_date &gt;= #{birthDateFrom}
-		</if>
-		<if test="birthDateTo != null">
-			AND birth_date &lt;= #{birthDateTo}
-		</if>
-		ORDER BY created_at DESC
-		OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS
-		ONLY
-	</select>
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 회원 목록/상세 (관리자 화면 → USERS)                       -->
+    <!--                                                           -->
+    <!-- ★ birthDateFrom / birthDateTo 조건 제거:                   -->
+    <!--   USERS.birth_date 는 AES 암호화 VARCHAR2 컬럼이므로        -->
+    <!--   날짜 범위 비교(>=, <=) 불가.                             -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <select id="findUsers" resultMap="userMap">
+        SELECT user_id, name, email, phone,
+               birth_date, status_code, credit_score,
+               last_login_at, created_at
+        FROM USERS
+        WHERE deleted_yn = 'N'
+        <if test="name != null and name != ''">
+            AND name LIKE '%' || #{name} || '%'
+        </if>
+        <if test="email != null and email != ''">
+            AND email LIKE '%' || #{email} || '%'
+        </if>
+        <if test="statusCode != null and statusCode != ''">
+            AND status_code = #{statusCode}
+        </if>
+        ORDER BY created_at DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
 
-	<select id="countUsers" resultType="long">
-		SELECT COUNT(1) FROM USERS
-		WHERE deleted_yn = 'N'
-		<if test="name != null and name != ''">
-			AND name LIKE '%' || #{name} || '%'
-		</if>
-		<if test="email != null and email != ''">
-			AND email LIKE '%' || #{email} || '%'
-		</if>
-		<if test="statusCode != null and statusCode != ''">
-			AND status_code = #{statusCode}
-		</if>
-		<if test="birthDateFrom != null">
-			AND birth_date &gt;= #{birthDateFrom}
-		</if>
-		<if test="birthDateTo != null">
-			AND birth_date &lt;= #{birthDateTo}
-		</if>
-	</select>
+    <select id="countUsers" resultType="long">
+        SELECT COUNT(1) FROM USERS
+        WHERE deleted_yn = 'N'
+        <if test="name != null and name != ''">
+            AND name LIKE '%' || #{name} || '%'
+        </if>
+        <if test="email != null and email != ''">
+            AND email LIKE '%' || #{email} || '%'
+        </if>
+        <if test="statusCode != null and statusCode != ''">
+            AND status_code = #{statusCode}
+        </if>
+    </select>
 
-	<select id="findUserDetailById" resultMap="userMap">
-		SELECT * FROM USERS
-		WHERE user_id = #{userId}
-		AND deleted_yn = 'N'
-	</select>
+    <select id="findUserDetailById" resultMap="userMap">
+        SELECT * FROM USERS
+        WHERE user_id = #{userId}
+          AND deleted_yn = 'N'
+    </select>
 
-	<update id="incrementLoginFailCount">
-		UPDATE ADMIN_USERS
-		SET login_fail_count =
-		login_fail_count + 1
-		WHERE admin_id = #{adminId}
-	</update>
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 로그인 이력                                                -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <update id="incrementLoginFailCount">
+        UPDATE ADMIN_USERS
+        SET login_fail_count = login_fail_count + 1
+        WHERE admin_id = #{adminId}
+    </update>
 
-	<select id="getLoginFailCount" resultType="int">
-		SELECT
-		login_fail_count FROM ADMIN_USERS WHERE admin_id = #{adminId}
-	</select>
+    <select id="getLoginFailCount" resultType="int">
+        SELECT login_fail_count FROM ADMIN_USERS WHERE admin_id = #{adminId}
+    </select>
 
-	<update id="resetLoginFailCount">
-		UPDATE ADMIN_USERS
-		SET login_fail_count = 0,
-		locked_until = NULL
-		WHERE admin_id = #{adminId}
-	</update>
+    <update id="resetLoginFailCount">
+        UPDATE ADMIN_USERS
+        SET login_fail_count = 0, locked_until = NULL
+        WHERE admin_id = #{adminId}
+    </update>
 
-	<update id="updateLockedUntil">
-		UPDATE ADMIN_USERS SET locked_until = #{lockedUntil}
-		WHERE admin_id = #{adminId}
-	</update>
+    <update id="updateLockedUntil">
+        UPDATE ADMIN_USERS SET locked_until = #{lockedUntil}
+        WHERE admin_id = #{adminId}
+    </update>
 
-	<update id="updateLastLoginAt">
-		UPDATE ADMIN_USERS SET last_login_at = #{lastLoginAt}
-		WHERE admin_id = #{adminId}
-	</update>
+    <update id="updateLastLoginAt">
+        UPDATE ADMIN_USERS SET last_login_at = #{lastLoginAt}
+        WHERE admin_id = #{adminId}
+    </update>
 
-	<update id="unlockUser">
-		UPDATE USERS
-		SET locked_until = NULL, login_fail_count
-		= 0, updated_at = SYSTIMESTAMP
-		WHERE user_id = #{userId} AND deleted_yn
-		= 'N'
-	</update>
+    <insert id="insertLoginHistory">
+        INSERT INTO LOGIN_HISTORIES (
+            history_id, user_type_code, user_id,
+            login_result_code, fail_reason,
+            ip_address, device_info, user_agent, login_at
+        ) VALUES (
+            SEQ_LOGIN_HISTORIES.NEXTVAL,
+            #{userTypeCode},
+            #{userId,         jdbcType=NUMERIC},
+            #{loginResultCode},
+            #{failReason,     jdbcType=VARCHAR},
+            #{ipAddress,      jdbcType=VARCHAR},
+            #{deviceInfo,     jdbcType=VARCHAR},
+            #{userAgent,      jdbcType=VARCHAR},
+            SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+        )
+    </insert>
 
-	<update id="updateUserStatus">
-		UPDATE USERS
-		SET status_code = #{statusCode},
-		updated_at = SYSTIMESTAMP
-		WHERE user_id = #{userId} AND deleted_yn =
-		'N'
-	</update>
+    <select id="findLoginHistoriesByUserId" resultMap="loginHistoryRowMap">
+        SELECT login_at, login_result_code, ip_address
+        FROM LOGIN_HISTORIES
+        WHERE user_type_code = 'USER'
+          AND user_id = #{userId}
+        ORDER BY login_at DESC
+        FETCH FIRST #{limit} ROWS ONLY
+    </select>
 
-	<insert id="insertAuditLog">
-		INSERT INTO AUDIT_LOGS (
-		actor_type_code, actor_id, action_type_code,
-		target_type_code, target_id, description,
-		ip_address, created_at
-		) VALUES (
-		#{actorType}, #{actorId}, #{actionType},
-		#{targetType},
-		#{targetId, jdbcType=NUMERIC},
-		#{description, jdbcType=VARCHAR},
-		#{ipAddress, jdbcType=VARCHAR},
-		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
-		)
-	</insert>
+    <select id="findAgreementsByUserId" resultMap="agreementRowMap">
+        SELECT terms_id, agreed_yn, agreed_at
+        FROM USER_TERMS_AGREEMENTS
+        WHERE user_id = #{userId}
+        ORDER BY agreed_at DESC
+    </select>
 
-	<insert id="insertLoginHistory">
-		INSERT INTO LOGIN_HISTORIES (
-		history_id, user_type_code, user_id,
-		login_result_code, fail_reason,
-		ip_address, device_info, user_agent, login_at
-		) VALUES (
-		SEQ_LOGIN_HISTORIES.NEXTVAL,
-		#{userTypeCode}, #{userId},
-		#{loginResultCode},
-		#{failReason, jdbcType=VARCHAR},
-		#{ipAddress, jdbcType=VARCHAR},
-		#{deviceInfo, jdbcType=VARCHAR},
-		#{userAgent, jdbcType=VARCHAR},
-		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
-		)
-	</insert>
+    <select id="findApplicationsByUserId" resultMap="applicationRowMap">
+        SELECT ca.card_id, c.card_name, ca.application_status, ca.applied_at
+        FROM CARD_APPLICATIONS ca
+        INNER JOIN CARDS c ON ca.card_id = c.card_id
+        WHERE ca.user_id = #{userId}
+        ORDER BY ca.applied_at DESC
+    </select>
 
-	<select id="findLoginHistoriesByUserId"
-		resultMap="loginHistoryRowMap">
-		SELECT login_at, login_result_code, ip_address
-		FROM
-		LOGIN_HISTORIES
-		WHERE user_type_code = 'USER'
-		AND user_id = #{userId}
-		ORDER BY login_at DESC
-		FETCH FIRST #{limit} ROWS ONLY
-	</select>
+    <select id="findRecentAdminLogins" resultMap="adminLoginRowMap">
+        SELECT au.name AS admin_name, lh.login_at, lh.ip_address
+        FROM LOGIN_HISTORIES lh
+        INNER JOIN ADMIN_USERS au ON lh.user_id = au.admin_id
+        WHERE lh.user_type_code    = 'ADMIN'
+          AND lh.login_result_code = 'SUCCESS'
+        ORDER BY lh.login_at DESC
+        FETCH FIRST #{limit} ROWS ONLY
+    </select>
 
-	<select id="findAgreementsByUserId" resultMap="agreementRowMap">
-		SELECT terms_id,
-		agreed_yn, agreed_at
-		FROM USER_TERMS_AGREEMENTS
-		WHERE user_id =
-		#{userId}
-		ORDER BY agreed_at DESC
-	</select>
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 대시보드 카운트                                            -->
+    <!--                                                           -->
+    <!-- ★ 핵심 수정: null 전달 시 전체 카운트가 되도록            -->
+    <!--   <if test="... != null"> 조건으로 WHERE 절 제어           -->
+    <!--                                                           -->
+    <!-- 기존 문제:                                                 -->
+    <!--   WHERE status_code = #{cardStatus}                       -->
+    <!--   → null 전달 시 WHERE status_code = null → 0건           -->
+    <!-- ══════════════════════════════════════════════════════════ -->
 
-	<select id="findApplicationsByUserId"
-		resultMap="applicationRowMap">
-		SELECT ca.card_id, c.card_name, ca.application_status,
-		ca.applied_at
-		FROM CARD_APPLICATIONS ca
-		INNER JOIN CARDS c ON ca.card_id
-		= c.card_id
-		WHERE ca.user_id = #{userId}
-		ORDER BY ca.applied_at DESC
-	</select>
+    <!-- 카드 상태별 건수: null → 전체, 'PUBLISHED' → 게시 건수 등 -->
+    <select id="countCardsByStatus" resultType="long">
+        SELECT COUNT(1) FROM CARDS
+        WHERE deleted_yn = 'N'
+        <if test="cardStatus != null">
+            AND card_status = #{cardStatus}
+        </if>
+    </select>
 
-	<select id="findRecentAdminLogins" resultMap="adminLoginRowMap">
-		SELECT au.name AS
-		admin_name, lh.login_at, lh.ip_address
-		FROM LOGIN_HISTORIES lh
-		INNER
-		JOIN ADMIN_USERS au ON lh.user_id = au.admin_id
-		WHERE lh.user_type_code
-		= 'ADMIN'
-		AND lh.login_result_code = 'SUCCESS'
-		ORDER BY lh.login_at DESC
-		FETCH FIRST #{limit} ROWS ONLY
-	</select>
+    <!-- 회원 상태별 건수: null → 전체, 'LOCKED' → 잠금 회원 수 -->
+    <select id="countUsersByStatus" resultType="long">
+        SELECT COUNT(1) FROM USERS
+        WHERE deleted_yn = 'N'
+        <if test="statusCode != null">
+            AND status_code = #{statusCode}
+        </if>
+    </select>
 
-	<select id="countCardsByStatus" resultType="long">
-		SELECT COUNT(1) FROM
-		CARDS WHERE status_code = #{cardStatus}
-	</select>
+    <!-- 오늘 가입 회원 수 -->
+    <select id="countTodaySignups" resultType="long">
+        SELECT COUNT(1) FROM USERS
+        WHERE TRUNC(created_at) = TRUNC(SYSDATE)
+          AND deleted_yn = 'N'
+    </select>
 
-	<select id="countUsersByStatus" resultType="long">
-		SELECT COUNT(1) FROM
-		USERS WHERE status_code = #{statusCode} AND deleted_yn = 'N'
-	</select>
+    <!-- 약관 상태별 건수: null → 전체, 'PUBLISHED' → 게시 건수 -->
+    <select id="countTermsByStatus" resultType="long">
+        SELECT COUNT(1) FROM TERMS
+        <if test="status != null">
+            WHERE status = #{status}
+        </if>
+    </select>
 
-	<select id="countTodaySignups" resultType="long">
-		SELECT COUNT(1) FROM
-		USERS
-		WHERE TRUNC(created_at) = TRUNC(SYSDATE)
-		AND deleted_yn = 'N'
-	</select>
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 회원 계정 관리 (→ USERS 테이블)                            -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <update id="unlockUser">
+        UPDATE USERS
+        SET locked_until = NULL, login_fail_count = 0,
+            updated_at = SYSTIMESTAMP
+        WHERE user_id = #{userId} AND deleted_yn = 'N'
+    </update>
 
-	<select id="countTermsByStatus" resultType="long">
-		SELECT COUNT(1) FROM
-		TERMS WHERE status = #{status}
-	</select>
+    <update id="updateUserStatus">
+        UPDATE USERS
+        SET status_code = #{statusCode}, updated_at = SYSTIMESTAMP
+        WHERE user_id = #{userId} AND deleted_yn = 'N'
+    </update>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- ★ 신규: 관리자 계정 INSERT                                 -->
+    <!--   phone: aesTypeHandler 로 AES 암호화 저장                 -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <insert id="insertAdmin">
+        <selectKey keyProperty="adminId" resultType="long" order="AFTER">
+            SELECT SEQ_ADMIN_USERS.CURRVAL FROM DUAL
+        </selectKey>
+        INSERT INTO ADMIN_USERS (
+            username, password_hash, name, email,
+            phone,
+            status_code, created_at, deleted_yn
+        ) VALUES (
+            #{username},
+            #{passwordHash},
+            #{name},
+            #{email},
+            #{phone, typeHandler=aesTypeHandler},
+            NVL(#{statusCode, jdbcType=VARCHAR}, 'ACTIVE'),
+            SYSTIMESTAMP,
+            'N'
+        )
+    </insert>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 감사 로그 (레거시 — 신규는 AuditLogger 사용)               -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <insert id="insertAuditLog">
+        INSERT INTO AUDIT_LOGS (
+            actor_type_code, actor_id, action_type_code,
+            target_type_code, target_id, description,
+            ip_address, created_at
+        ) VALUES (
+            #{actorType}, #{actorId}, #{actionType},
+            #{targetType},
+            #{targetId,    jdbcType=NUMERIC},
+            #{description, jdbcType=VARCHAR},
+            #{ipAddress,   jdbcType=VARCHAR},
+            SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+        )
+    </insert>
 
 </mapper>
