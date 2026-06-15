@@ -31,7 +31,7 @@ public class CiValueGenerator {
     /** CI 생성 시 사용하는 서버 고유 salt — application.properties에서 주입 */
     private final String ciSalt;
 
-    public CiValueGenerator(@Value("${ci.salt:BNKcard-CI-Salt-2025}") String ciSalt) {
+    public CiValueGenerator(@Value("${ci.salt}") String ciSalt) {
         this.ciSalt = ciSalt;
     }
 

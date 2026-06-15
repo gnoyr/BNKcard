@@ -34,7 +34,6 @@ public class EmailService {
     private static final String TEAL_600 = "#00677F";   // primary / 버튼
     private static final String TEAL_400 = "#3AAFC4";   // 코드박스 border / 버튼 hover
     private static final String TEAL_100 = "#B3E3EC";   // 연한 구분선
-    private static final String TEAL_50  = "#E0F4F7";   // 코드박스 배경
     private static final String BG       = "#f0f4f5";   // 외부 배경 (gray-100 계열)
     private static final String WHITE    = "#ffffff";
     private static final String MUTED    = "#5C7A83";   // gray-600 계열 (본문 보조 텍스트)
@@ -46,49 +45,33 @@ public class EmailService {
     @Async
     public void sendVerificationEmail(String to, String code) {
         send(to,
-             "[BNK\uce74\ub4dc] \uc774\uba54\uc77c \uc778\uc99d \ucf54\ub4dc",
+             "[BNK카드] 이메일 인증 코드",
              buildVerificationHtml(code));
     }
 
     // ──────────────────────────────────────────────────────────────────
-    // 비밀번호 재설정 링크 발송  [F-22 / find-password]
+    // 비밀번호 재설정 이메일 발송
     // ──────────────────────────────────────────────────────────────────
     @Async
-    public void sendPasswordResetEmail(String to, String resetToken) {
-        String resetUrl = baseUrl + "/auth/reset-password.html?token=" + resetToken;
+    public void sendPasswordResetEmail(String to, String token) {
+        String resetUrl = baseUrl + "/reset-password?token=" + token;
         send(to,
-             "[BNK\uce74\ub4dc] \ube44\ubc00\ubc88\ud638 \uc7ac\uc124\uc815 \uc548\ub0b4",
+             "[BNK카드] 비밀번호 재설정",
              buildPasswordResetHtml(resetUrl));
     }
 
     // ──────────────────────────────────────────────────────────────────
-    // 공통 발송 로직
+    // 공통 발송
     // ──────────────────────────────────────────────────────────────────
-    private void send(String to, String subject, String htmlContent) {
+    private void send(String to, String subject, String html) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            // ── 발신자 설정 ──────────────────────────────────────────────
-            // 기존: message.setHeader("From", RFC2047_수동인코딩)
-            //   → Gmail SMTP로 Gmail 수신자에게 발송 시 SPF/DKIM 불일치로 차단됨
-            //   → MimeMessageHelper 가 setFrom 이후 내부에서 재인코딩하여 깨짐 발생
-            //
-            // 수정: InternetAddress(address, personal, charset) 사용
-            //   → JavaMail 이 RFC 2047 인코딩을 직접 처리 → 한글 깨짐 없음
-            //   → helper.setFrom() 경유 → SMTP envelope-From 과 헤더 From 일치
-            //   → SPF/DKIM 검증 통과 → Gmail 수신자에게 정상 전달
-            helper.setFrom(new InternetAddress(fromAddress, FROM_NAME, StandardCharsets.UTF_8.name()));
-
-            // ── Reply-To 추가 ─────────────────────────────────────────────
-            // Gmail은 발신/수신 주소가 같으면 "루프 메일"로 의심해 드롭할 수 있음
-            // Reply-To 를 발신 주소로 명시하면 정상 메일로 인식됨
-            message.setReplyTo(new InternetAddress[]{ new InternetAddress(fromAddress, FROM_NAME, StandardCharsets.UTF_8.name()) });
-
+            MimeMessageHelper helper = new MimeMessageHelper(
+                message, false, StandardCharsets.UTF_8.name());
+            helper.setFrom(new InternetAddress(fromAddress, FROM_NAME, "UTF-8"));
             helper.setTo(to);
             helper.setSubject(subject);
-            helper.setText(htmlContent, true);
-
+            helper.setText(html, true);
             mailSender.send(message);
             log.info("[이메일발송] 성공: to={}, subject={}", to, subject);
         } catch (Exception e) {
@@ -123,9 +106,9 @@ public class EmailService {
             "<tr><td style='background:" + TEAL_900 + ";padding:22px 36px;'>" +
             "<table cellpadding='0' cellspacing='0' border='0' width='100%'><tr>" +
             "<td><span style='color:" + WHITE + ";font-size:18px;font-weight:700;" +
-            "letter-spacing:-0.3px;'>BNK\uce74\ub4dc</span></td>" +
+            "letter-spacing:-0.3px;'>BNK카드</span></td>" +
             "<td align='right'><span style='color:rgba(255,255,255,0.6);" +
-            "font-size:11px;'>BNK\ubd80\uc0b0\uc740\ud589</span></td>" +
+            "font-size:11px;'>BNK부산은행</span></td>" +
             "</tr></table>" +
             "</td></tr>" +
 
@@ -137,32 +120,27 @@ public class EmailService {
 
             // 제목
             "<p style='margin:0 0 6px;color:" + TEAL_800 + ";font-size:20px;font-weight:700;" +
-            "letter-spacing:-0.3px;'>" +
-            "\uc774\uba54\uc77c \uc778\uc99d</p>" +
+            "letter-spacing:-0.3px;'>이메일 인증</p>" +
 
             // 부제목
             "<p style='margin:0 0 28px;color:" + MUTED + ";font-size:14px;line-height:1.7;'>" +
-            "\uc544\ub798 \uc778\uc99d\ucf54\ub4dc\ub97c \uc785\ub825\ud574 \uc8fc\uc138\uc694.<br>" +
-            "\ucf54\ub4dc\ub294 <strong style='color:" + TEAL_800 + ";'>10\ubd84</strong>" +
-            " \ub3d9\uc548 \uc720\ud6a8\ud569\ub2c8\ub2e4.</p>" +
+            "아래 버튼을 클릭하여 인증번호를 확인하세요.<br>" +
+            "인증번호는 <strong style='color:" + TEAL_800 + ";'>10분</strong> 동안 유효합니다.</p>" +
 
-            // 인증코드 박스
-            "<div style='border:2px solid " + TEAL_400 + ";border-radius:8px;" +
-            "padding:24px 20px;text-align:center;margin-bottom:28px;" +
-            "background:" + TEAL_50 + ";'>" +
-            "<p style='margin:0 0 8px;color:" + MUTED + ";font-size:11px;" +
-            "letter-spacing:2px;text-transform:uppercase;'>\uc778\uc99d\ucf54\ub4dc</p>" +
-            "<p style='margin:0;color:" + TEAL_600 + ";font-size:38px;font-weight:700;" +
-            "letter-spacing:12px;font-family:\"Courier New\",Courier,monospace;'>" +
-            code + "</p>" +
-            "</div>" +
+            // ── 인증번호 확인 버튼 (클릭 → /copy-code?code=XXX → 코드 표시 + 복사) ──
+            "<table cellpadding='0' cellspacing='0' border='0' align='center' style='margin:0 auto 16px;'><tr><td align='center'>" +
+            "<a href='" + baseUrl + "/copy-code?code=" + code + "'" +
+            " style='display:inline-block;background:" + TEAL_600 + ";color:" + WHITE + ";" +
+            "font-size:15px;font-weight:700;padding:14px 32px;border-radius:8px;" +
+            "text-decoration:none;letter-spacing:0.3px;'>인증번호 확인하기</a>" +
+            "</td></tr></table>" +
 
             // 안내문
-            "<p style='margin:0;color:" + MUTED + ";font-size:12px;line-height:1.8;" +
+            "<p style='margin:0 0 28px;color:" + MUTED + ";font-size:12px;line-height:1.8;" +
             "border-left:3px solid " + TEAL_400 + ";padding-left:12px;'>" +
-            "\ubcf8\uc778\uc774 \uc694\uccad\ud558\uc9c0 \uc54a\uc740 \uacbd\uc6b0 \uc774 \uba54\uc77c\uc744 " +
-            "\ubb34\uc2dc\ud558\uc2dc\uace0, \uc774\uba54\uc77c \uc8fc\uc18c\ub97c " +
-            "\ud655\uc778\ud574 \uc8fc\uc138\uc694.</p>" +
+            "본인이 요청하지 않은 경우 이 메일을 " +
+            "무시하시고, 이메일 주소를 " +
+            "확인해 주세요.</p>" +
 
             "</td></tr>" +
 
@@ -171,9 +149,9 @@ public class EmailService {
             "border-top:1px solid " + TEAL_100 + ";'>" +
             "<table cellpadding='0' cellspacing='0' border='0' width='100%'><tr>" +
             "<td><p style='margin:0;color:#9BB4BB;font-size:11px;'>" +
-            "&copy; BNK\uce74\ub4dc. All rights reserved.</p></td>" +
+            "&copy; BNK카드. All rights reserved.</p></td>" +
             "<td align='right'><p style='margin:0;color:#9BB4BB;font-size:11px;'>" +
-            "\ubd80\uc0b0\uad11\uc5ed\uc2dc \ub3d9\ub300\uc2e0\uad6c \uc218\uc815\ub85c 60</p></td>" +
+            "부산광역시 동대신구 수정로 60</p></td>" +
             "</tr></table>" +
             "</td></tr>" +
 
@@ -205,53 +183,42 @@ public class EmailService {
             " style='background:" + WHITE + ";border-radius:10px;overflow:hidden;" +
             "box-shadow:0 4px 20px rgba(0,103,127,0.13);max-width:480px;width:100%;'>" +
 
-            // ── 헤더 (Teal-900) ──
+            // ── 헤더 ──
             "<tr><td style='background:" + TEAL_900 + ";padding:22px 36px;'>" +
             "<table cellpadding='0' cellspacing='0' border='0' width='100%'><tr>" +
             "<td><span style='color:" + WHITE + ";font-size:18px;font-weight:700;" +
-            "letter-spacing:-0.3px;'>BNK\uce74\ub4dc</span></td>" +
+            "letter-spacing:-0.3px;'>BNK카드</span></td>" +
             "<td align='right'><span style='color:rgba(255,255,255,0.6);" +
-            "font-size:11px;'>BNK\ubd80\uc0b0\uc740\ud589</span></td>" +
+            "font-size:11px;'>BNK부산은행</span></td>" +
             "</tr></table>" +
             "</td></tr>" +
 
-            // ── Teal-600 구분선 ──
+            // ── 구분선 ──
             "<tr><td style='height:3px;background:" + TEAL_600 + ";'></td></tr>" +
 
             // ── 본문 ──
             "<tr><td style='padding:36px 36px 28px;'>" +
 
-            // 제목
             "<p style='margin:0 0 6px;color:" + TEAL_800 + ";font-size:20px;font-weight:700;" +
-            "letter-spacing:-0.3px;'>" +
-            "\ube44\ubc00\ubc88\ud638 \uc7ac\uc124\uc815</p>" +
+            "letter-spacing:-0.3px;'>비밀번호 재설정</p>" +
 
-            // 부제목
             "<p style='margin:0 0 28px;color:" + MUTED + ";font-size:14px;line-height:1.7;'>" +
-            "\uc544\ub798 \ubc84\ud2bc\uc744 \ud074\ub9ad\ud558\uc5ec \ube44\ubc00\ubc88\ud638\ub97c " +
-            "\uc7ac\uc124\uc815\ud558\uc138\uc694.<br>" +
-            "\ub9c1\ud06c\ub294 \uc694\uccad \ud6c4 <strong style='color:" + TEAL_800 + ";'>30\ubd84</strong>" +
-            " \ub3d9\uc548 \uc720\ud6a8\ud569\ub2c8\ub2e4.</p>" +
+            "아래 버튼을 클릭하여 비밀번호를 " +
+            "재설정하세요.<br>" +
+            "링크는 요청 후 <strong style='color:" + TEAL_800 + ";'>30분</strong>" +
+            " 동안 유효합니다.</p>" +
 
             // 버튼
-            "<table cellpadding='0' cellspacing='0' border='0' style='margin-bottom:28px;'>" +
-            "<tr><td style='background:" + TEAL_600 + ";border-radius:6px;" +
-            "box-shadow:0 2px 8px rgba(0,103,127,0.25);'>" +
+            "<table cellpadding='0' cellspacing='0' border='0'><tr><td>" +
             "<a href='" + resetUrl + "'" +
-            " style='display:inline-block;padding:14px 32px;" +
-            "color:" + WHITE + ";font-size:15px;font-weight:700;" +
-            "text-decoration:none;letter-spacing:-0.2px;'>" +
-            "\ube44\ubc00\ubc88\ud638 \uc7ac\uc124\uc815\ud558\uae30" +
-            "</a>" +
+            " style='display:inline-block;background:" + TEAL_600 + ";color:" + WHITE + ";" +
+            "font-size:15px;font-weight:700;padding:14px 32px;border-radius:8px;" +
+            "text-decoration:none;letter-spacing:0.3px;'>비밀번호 재설정하기</a>" +
             "</td></tr></table>" +
 
-            // 경고 안내문
-            "<p style='margin:0;color:" + MUTED + ";font-size:12px;line-height:1.8;" +
+            "<p style='margin:20px 0 0;color:" + MUTED + ";font-size:12px;line-height:1.8;" +
             "border-left:3px solid " + TEAL_400 + ";padding-left:12px;'>" +
-            "\ubcf8\uc778\uc774 \uc694\uccad\ud558\uc9c0 \uc54a\uc740 \uacbd\uc6b0 \uc774 \uba54\uc77c\uc744 " +
-            "\ubb34\uc2dc\ud558\uc2dc\uace0, \ube44\ubc00\ubc88\ud638 \ubcc0\uacbd\uc774 " +
-            "\uc758\uc2ec\ub418\uba74 \uc989\uc2dc \ub85c\uadf8\uc778 \ud6c4 " +
-            "\ube44\ubc00\ubc88\ud638\ub97c \ubcc0\uacbd\ud574 \uc8fc\uc138\uc694.</p>" +
+            "본인이 요청하지 않은 경우 이 메일을 무시하세요.</p>" +
 
             "</td></tr>" +
 
@@ -260,9 +227,9 @@ public class EmailService {
             "border-top:1px solid " + TEAL_100 + ";'>" +
             "<table cellpadding='0' cellspacing='0' border='0' width='100%'><tr>" +
             "<td><p style='margin:0;color:#9BB4BB;font-size:11px;'>" +
-            "&copy; BNK\uce74\ub4dc. All rights reserved.</p></td>" +
+            "&copy; BNK카드. All rights reserved.</p></td>" +
             "<td align='right'><p style='margin:0;color:#9BB4BB;font-size:11px;'>" +
-            "\ubd80\uc0b0\uad11\uc5ed\uc2dc \ub3d9\ub300\uc2e0\uad6c \uc218\uc815\ub85c 60</p></td>" +
+            "부산광역시 동대신구 수정로 60</p></td>" +
             "</tr></table>" +
             "</td></tr>" +
 
