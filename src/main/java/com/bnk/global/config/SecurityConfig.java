@@ -130,7 +130,8 @@ public class SecurityConfig {
                     "/api/auth/find-id",
                     "/api/auth/find-password",
                     "/api/auth/reset-password",
-                    "/api/auth/refresh"
+                    "/api/auth/refresh",
+                    "/api/auth/ip-verify/**"
                 ).permitAll()
 
                 // ── 관리자 인증 API ───────────────────────────────────────

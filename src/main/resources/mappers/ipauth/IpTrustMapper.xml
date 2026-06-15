@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.bnk.domain.ipauth.mapper.IpTrustMapper">
+
+    <!--
+        [암호화 컬럼 처리]
+        ip_address      → typeHandler=aesTypeHandler : 쓰기=AES 암호화, 읽기=AES 복호화
+        ip_address_hash → TypeHandler 없음           : SHA-256 hex 평문 그대로
+        (WatchlistMapper.xml의 ci_value / ci_value_hash 패턴과 동일)
+
+        map-underscore-to-camel-case=true 이므로 snake_case 컬럼 → camelCase 자동 매핑.
+        typeHandler가 필요한 ip_address만 resultMap에 명시.
+    -->
+
+    <resultMap id="trustedIpMap" type="com.bnk.domain.ipauth.model.UserTrustedIp">
+        <id     property="trustId"       column="trust_id"/>
+        <result property="userId"        column="user_id"/>
+        <!-- AES 복호화 자동 적용 -->
+        <result property="ipAddress"     column="ip_address"      typeHandler="aesTypeHandler"/>
+        <!-- 나머지는 map-underscore-to-camel-case 자동 매핑 -->
+        <result property="ipAddressHash" column="ip_address_hash"/>
+        <result property="nickname"      column="nickname"/>
+        <result property="isInitial"     column="is_initial"/>
+        <result property="statusCode"    column="status_code"/>
+        <result property="lastUsedAt"    column="last_used_at"/>
+        <result property="registeredVia" column="registered_via"/>
+        <result property="createdAt"     column="created_at"/>
+        <result property="updatedAt"     column="updated_at"/>
+        <result property="deletedYn"     column="deleted_yn"/>
+        <result property="deletedAt"     column="deleted_at"/>
+    </resultMap>
+
+    <!-- 활성 신뢰 IP 단건 — ip_address_hash 인덱스 조회 -->
+    <select id="findActiveByUserIdAndIpHash" resultMap="trustedIpMap">
+        SELECT trust_id, user_id, ip_address, ip_address_hash, nickname,
+               is_initial, status_code, last_used_at, registered_via,
+               created_at, updated_at, deleted_yn, deleted_at
+        FROM   USER_TRUSTED_IPS
+        WHERE  user_id         = #{userId}
+          AND  ip_address_hash = #{ipAddressHash}
+          AND  status_code     = 'ACTIVE'
+          AND  deleted_yn      = 'N'
+    </select>
+
+    <!-- 사용자 신뢰 IP 전체 목록 -->
+    <select id="findAllByUserId" resultMap="trustedIpMap">
+        SELECT trust_id, user_id, ip_address, ip_address_hash, nickname,
+               is_initial, status_code, last_used_at, registered_via,
+               created_at, updated_at, deleted_yn, deleted_at
+        FROM   USER_TRUSTED_IPS
+        WHERE  user_id   = #{userId}
+          AND  deleted_yn = 'N'
+        ORDER BY is_initial DESC, created_at ASC
+    </select>
+
+    <!-- trust_id + user_id 단건 -->
+    <select id="findByTrustIdAndUserId" resultMap="trustedIpMap">
+        SELECT trust_id, user_id, ip_address, ip_address_hash, nickname,
+               is_initial, status_code, last_used_at, registered_via,
+               created_at, updated_at, deleted_yn, deleted_at
+        FROM   USER_TRUSTED_IPS
+        WHERE  trust_id  = #{trustId}
+          AND  user_id   = #{userId}
+          AND  deleted_yn = 'N'
+    </select>
+
+    <!-- 활성 신뢰 IP 수 -->
+    <select id="countActiveByUserId" resultType="int">
+        SELECT COUNT(1)
+        FROM   USER_TRUSTED_IPS
+        WHERE  user_id     = #{userId}
+          AND  status_code  = 'ACTIVE'
+          AND  deleted_yn   = 'N'
+    </select>
+
+    <!-- 중복 여부 — ip_address_hash 기반 -->
+    <select id="existsByUserIdAndIpHash" resultType="boolean">
+        SELECT CASE WHEN COUNT(1) > 0 THEN 1 ELSE 0 END
+        FROM   USER_TRUSTED_IPS
+        WHERE  user_id         = #{userId}
+          AND  ip_address_hash = #{ipAddressHash}
+          AND  deleted_yn      = 'N'
+    </select>
+
+    <!--
+        INSERT
+        ip_address      → typeHandler=aesTypeHandler : AES-256-GCM 암호화 후 저장
+        ip_address_hash → TypeHandler 없음           : SHA-256 hex 평문 저장
+        trust_id        → TRG_TRUSTED_IPS_BI 트리거가 SEQ_TRUSTED_IPS로 자동 채번
+    -->
+    <insert id="insert" parameterType="com.bnk.domain.ipauth.model.UserTrustedIp">
+        INSERT INTO USER_TRUSTED_IPS (
+            user_id,
+            ip_address,
+            ip_address_hash,
+            nickname,
+            is_initial,
+            status_code,
+            registered_via,
+            created_at,
+            deleted_yn
+        ) VALUES (
+            #{userId},
+            #{ipAddress,     typeHandler=aesTypeHandler},
+            #{ipAddressHash},
+            #{nickname},
+            #{isInitial},
+            #{statusCode},
+            #{registeredVia},
+            SYSTIMESTAMP,
+            'N'
+        )
+    </insert>
+
+    <!-- last_used_at 갱신 -->
+    <update id="updateLastUsedAt">
+        UPDATE USER_TRUSTED_IPS
+        SET    last_used_at = SYSTIMESTAMP
+        WHERE  trust_id = #{trustId}
+    </update>
+
+    <!-- 별명 수정 -->
+    <update id="updateNickname">
+        UPDATE USER_TRUSTED_IPS
+        SET    nickname = #{nickname}
+        WHERE  trust_id   = #{trustId}
+          AND  user_id    = #{userId}
+          AND  deleted_yn = 'N'
+    </update>
+
+    <!-- 논리 삭제 -->
+    <update id="softDelete">
+        UPDATE USER_TRUSTED_IPS
+        SET    deleted_yn  = 'Y',
+               deleted_at  = SYSTIMESTAMP,
+               status_code = 'DISABLED'
+        WHERE  trust_id    = #{trustId}
+          AND  user_id     = #{userId}
+          AND  deleted_yn  = 'N'
+    </update>
+
+</mapper>
