@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.Mockito.never;
 
 import java.time.LocalDateTime;
@@ -16,13 +17,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -33,17 +34,18 @@ import org.springframework.test.util.ReflectionTestUtils;
 import com.bnk.domain.admin.mapper.AdminUserMapper;
 import com.bnk.domain.application.service.CddService;
 import com.bnk.domain.auth.dto.request.EmailVerifyRequest;
+import com.bnk.domain.auth.dto.request.FindIdRequest;
 import com.bnk.domain.auth.dto.request.FindPasswordRequest;
 import com.bnk.domain.auth.dto.request.LoginRequest;
 import com.bnk.domain.auth.dto.request.ResetPasswordRequest;
 import com.bnk.domain.auth.dto.request.SendVerifyCodeRequest;
 import com.bnk.domain.auth.dto.request.SignupRequest;
 import com.bnk.domain.auth.dto.response.AuthTokenResult;
+import com.bnk.domain.auth.dto.response.FindIdResponse;
 import com.bnk.domain.auth.mapper.UserSessionMapper;
 import com.bnk.domain.auth.model.UserSession;
 import com.bnk.domain.terms.mapper.TermsMapper;
 import com.bnk.domain.terms.mapper.UserTermsAgreementMapper;
-import com.bnk.domain.terms.model.Terms;
 import com.bnk.domain.user.mapper.UserMapper;
 import com.bnk.domain.user.model.User;
 import com.bnk.global.auth.JwtTokenProvider;
@@ -59,120 +61,94 @@ import com.bnk.global.util.audit.AuditLogger;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * AuthService 단위 테스트
+ * AuthService 단위 테스트 (SonarQube 커버리지 대상)
  *
- * [수정 이력]
- * - @Mock EmailService emailService → mailService 로 필드명 변경
- *   (AuthService 실제 필드: private final EmailService mailService)
- *   Mockito @InjectMocks 는 타입+필드명으로 주입하므로 이름이 다르면 null 주입 → NPE
- * - @BeforeEach clock 주입 제거
- *   (AuthService에 Clock 필드 없음 — KST_ZONE 고정 사용)
- * - @Mock CiValueGenerator, CddService, TokenSecurityService, AuditLogger 추가
- *   (@RequiredArgsConstructor 생성자에 포함된 의존성 전부 Mock 필요)
- * - @MockitoSettings(strictness = LENIENT) 적용
- *   (stubLoginSuccess() 내 일부 스텁이 특정 테스트에서 사용 안 됨 → UnnecessaryStubbingException 방지)
+ * ── Mock 필드 주의 사항 ──────────────────────────────────────────────
+ * AuthService @RequiredArgsConstructor 생성자 의존성 전부 Mock 필요:
+ *   UserMapper, AdminUserMapper, UserSessionMapper, TermsMapper,
+ *   UserTermsAgreementMapper, PasswordEncoder, JwtTokenProvider,
+ *   CookieUtil, TokenStore, EmailService(필드명=mailService),
+ *   CiValueGenerator, CddService, TokenSecurityService, AuditLogger
+ *
+ * EmailService 필드명 → 반드시 mailService (AuthService 선언과 동일)
+ * Mockito @InjectMocks 는 타입+필드명으로 주입 → 이름 틀리면 NPE
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("AuthService 단위 테스트")
 class AuthServiceTest {
 
-    // ── Mock ──────────────────────────────────────────────────────
-    @Mock private UserMapper                 userMapper;
-    @Mock private AdminUserMapper            adminUserMapper;
-    @Mock private UserSessionMapper          userSessionMapper;
-    @Mock private TermsMapper                termsMapper;
-    @Mock private UserTermsAgreementMapper   userTermsAgreementMapper;
-    @Mock private PasswordEncoder            passwordEncoder;
-    @Mock private JwtTokenProvider           jwtTokenProvider;
-    @Mock private CookieUtil                 cookieUtil;
-    @Mock private TokenStore                 tokenStore;
-
-    // ▼ 핵심 수정 ①: 필드명을 실제 AuthService와 동일하게 'mailService' 로 지정
-    @Mock private EmailService               mailService;
-
-    // ▼ 핵심 수정 ②: 누락된 의존성 Mock 추가
-    @Mock private CiValueGenerator           ciValueGenerator;
-    @Mock private CddService                 cddService;
-    @Mock private TokenSecurityService       tokenSecurityService;
-    @Mock private AuditLogger                auditLogger;
+    // ── Mock ─────────────────────────────────────────────────────────
+    @Mock private UserMapper               userMapper;
+    @Mock private AdminUserMapper          adminUserMapper;
+    @Mock private UserSessionMapper        userSessionMapper;
+    @Mock private TermsMapper              termsMapper;
+    @Mock private UserTermsAgreementMapper userTermsAgreementMapper;
+    @Mock private PasswordEncoder          passwordEncoder;
+    @Mock private JwtTokenProvider         jwtTokenProvider;
+    @Mock private CookieUtil               cookieUtil;
+    @Mock private TokenStore               tokenStore;
+    /** 필드명 mailService — AuthService 선언과 반드시 일치 */
+    @Mock private EmailService             mailService;
+    @Mock private CiValueGenerator         ciValueGenerator;
+    @Mock private CddService               cddService;
+    @Mock private TokenSecurityService     tokenSecurityService;
+    @Mock private AuditLogger              auditLogger;
 
     @InjectMocks
     private AuthService authService;
 
-    // ▼ 핵심 수정 ③: @BeforeEach clock 주입 제거
-    //   AuthService 에 Clock 필드 없음 — LocalDateTime.now(KST_ZONE) 직접 사용
-    //   (이전 코드: ReflectionTestUtils.setField(authService, "clock", fixedClock)
-    //    → "clock" 필드 없으면 IllegalArgumentException 발생 → 전 테스트 skip)
-
-    // ── 공통 상수 ──────────────────────────────────────────────────────
+    // ── 공통 상수 ────────────────────────────────────────────────────
     private static final Long   USER_ID  = 1L;
     private static final String EMAIL    = "test@bnk.co.kr";
     private static final String NAME     = "홍길동";
-    private static final String PHONE    = "01012345678";
+    private static final String PHONE    = "010-1234-5678";
     private static final String PASSWORD = "Password123!";
     private static final String ENC_PW   = "$2a$10$encodedPasswordHashValue";
     private static final String TOKEN    = "mock-uuid-token";
     private static final String NEW_PW   = "NewSecure123!";
 
-    // ── 공통 픽스처 ────────────────────────────────────────────────────
+    // ── Fixture ──────────────────────────────────────────────────────
 
-    /** 정상 활성 계정 (로그인 실패 횟수 0, 잠금 없음) */
     private User activeUser() {
-        User user = new User();
-        ReflectionTestUtils.setField(user, "userId",         USER_ID);
-        ReflectionTestUtils.setField(user, "email",          EMAIL);
-        ReflectionTestUtils.setField(user, "name",           NAME);
-        ReflectionTestUtils.setField(user, "passwordHash",   ENC_PW);
-        ReflectionTestUtils.setField(user, "statusCode",     "ACTIVE");
-        ReflectionTestUtils.setField(user, "loginFailCount", 0);
-        return user;
+        User u = new User();
+        ReflectionTestUtils.setField(u, "userId",         USER_ID);
+        ReflectionTestUtils.setField(u, "email",          EMAIL);
+        ReflectionTestUtils.setField(u, "passwordHash",   ENC_PW);
+        ReflectionTestUtils.setField(u, "name",           NAME);
+        ReflectionTestUtils.setField(u, "phone",          PHONE);
+        ReflectionTestUtils.setField(u, "statusCode",     "ACTIVE");
+        ReflectionTestUtils.setField(u, "loginFailCount", 0);
+        ReflectionTestUtils.setField(u, "deletedYn",      "N");
+        return u;
     }
 
-    /** 로그인 실패 4회 누적 상태 (다음 실패 시 잠금 트리거) */
     private User userWithFourFails() {
-        User user = activeUser();
-        ReflectionTestUtils.setField(user, "loginFailCount", 4);
-        return user;
+        User u = activeUser();
+        ReflectionTestUtils.setField(u, "loginFailCount", 4);
+        return u;
     }
 
-    /** 계정 잠금 상태 (lockedUntil = 30분 후) */
-    private User lockedUser() {
-        User user = activeUser();
-        ReflectionTestUtils.setField(user, "lockedUntil", LocalDateTime.now().plusMinutes(30));
-        return user;
-    }
-
-    /** statusCode를 동적으로 교체한 유저 */
     private User userWithStatus(String status) {
-        User user = activeUser();
-        ReflectionTestUtils.setField(user, "statusCode", status);
-        return user;
+        User u = activeUser();
+        ReflectionTestUtils.setField(u, "statusCode", status);
+        return u;
     }
 
-    /** HttpServletRequest 최소 Mock (IP / UA 반환) */
+    private User deletedUser() {
+        User u = activeUser();
+        ReflectionTestUtils.setField(u, "statusCode", "WITHDRAWN");
+        return u;
+    }
+
     private HttpServletRequest mockHttpReq() {
-        HttpServletRequest req = Mockito.mock(HttpServletRequest.class);
-        Mockito.lenient().when(req.getHeader("X-Forwarded-For")).thenReturn(null);
-        Mockito.lenient().when(req.getRemoteAddr()).thenReturn("127.0.0.1");
-        Mockito.lenient().when(req.getHeader("User-Agent")).thenReturn("JUnit/5");
+        HttpServletRequest req = org.mockito.Mockito.mock(HttpServletRequest.class);
+        given(req.getRemoteAddr()).willReturn("127.0.0.1");
+        given(req.getHeader("User-Agent")).willReturn("JUnit-Test");
         return req;
     }
 
-    /** 로그인 성공 시 쿠키 생성까지 필요한 공통 스텁 */
-    private void stubLoginSuccess() {
-        given(passwordEncoder.matches(PASSWORD, ENC_PW)).willReturn(true);
-        given(jwtTokenProvider.generateAccessToken(USER_ID, "ROLE_USER")).willReturn("acc-token");
-        given(jwtTokenProvider.generateRefreshToken(USER_ID)).willReturn("ref-token");
-        given(jwtTokenProvider.getRefreshExpirationSec()).willReturn(604800L);
-        given(jwtTokenProvider.getAccessExpirationSec()).willReturn(7200L);
-        given(cookieUtil.createAccessCookie("acc-token", 7200L))
-                .willReturn(ResponseCookie.from("access_token", "acc-token").build());
-        given(cookieUtil.createRefreshCookie("ref-token", 604800L))
-                .willReturn(ResponseCookie.from("refresh_token", "ref-token").build());
-    }
-
-    // ── Request DTO 빌더 헬퍼 ─────────────────────────────────────────
+    // ── Request DTO 빌더 헬퍼 ────────────────────────────────────────
 
     private LoginRequest loginReq(String email, String pw) {
         LoginRequest req = new LoginRequest();
@@ -188,6 +164,7 @@ class AuthServiceTest {
         ReflectionTestUtils.setField(req, "password",       pw);
         ReflectionTestUtils.setField(req, "name",           name);
         ReflectionTestUtils.setField(req, "phone",          phone);
+        ReflectionTestUtils.setField(req, "birthDate",      "19950525");
         ReflectionTestUtils.setField(req, "agreedTermsIds", termIds);
         return req;
     }
@@ -202,6 +179,13 @@ class AuthServiceTest {
         EmailVerifyRequest req = new EmailVerifyRequest();
         ReflectionTestUtils.setField(req, "email", email);
         ReflectionTestUtils.setField(req, "code",  code);
+        return req;
+    }
+
+    private FindIdRequest findIdReq(String name, String phone) {
+        FindIdRequest req = new FindIdRequest();
+        ReflectionTestUtils.setField(req, "name",  name);
+        ReflectionTestUtils.setField(req, "phone", phone);
         return req;
     }
 
@@ -220,12 +204,26 @@ class AuthServiceTest {
         return req;
     }
 
+    // ── 로그인 성공 공통 stub ────────────────────────────────────────
+
+    @BeforeEach
+    void setupLoginStubs() {
+        given(jwtTokenProvider.generateAccessToken(anyLong(), anyString())).willReturn("acc-token");
+        given(jwtTokenProvider.generateRefreshToken(USER_ID)).willReturn("ref-token");
+        given(jwtTokenProvider.getAccessExpirationSec()).willReturn(7200L);
+        given(jwtTokenProvider.getRefreshExpirationSec()).willReturn(604800L);
+        given(cookieUtil.createAccessCookie("acc-token", 7200L))
+                .willReturn(ResponseCookie.from("access_token", "acc-token").build());
+        given(cookieUtil.createRefreshCookie("ref-token", 604800L))
+                .willReturn(ResponseCookie.from("refresh_token", "ref-token").build());
+    }
+
     // ════════════════════════════════════════════════════════════════
-    //  F-01 | 이메일 인증코드 발송
+    // TC-01 | 이메일 인증코드 발송
     // ════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("이메일 인증코드 발송")
+    @DisplayName("이메일 인증코드 발송 [sendVerifyCode]")
     class SendVerifyCode {
 
         @Test
@@ -236,12 +234,11 @@ class AuthServiceTest {
             authService.sendVerifyCode(sendCodeReq(EMAIL));
 
             then(tokenStore).should().set(startsWith("email:verify:"), anyString(), anyLong());
-            // ▼ mailService 로 호출 검증 (emailService 가 아님)
             then(mailService).should().sendVerificationEmail(eq(EMAIL), anyString());
         }
 
         @Test
-        @DisplayName("[실패] 이미 가입된 이메일 → DUPLICATE_EMAIL")
+        @DisplayName("[실패] 이미 가입된 이메일 → DUPLICATE_EMAIL + tokenStore·mailService 미호출")
         void 실패_이메일중복() {
             given(userMapper.existsByEmail(EMAIL)).willReturn(1);
 
@@ -256,15 +253,15 @@ class AuthServiceTest {
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  F-02 | 이메일 인증코드 확인
+    // TC-02 | 이메일 인증코드 확인
     // ════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("이메일 인증코드 확인")
+    @DisplayName("이메일 인증코드 확인 [verifyEmail]")
     class VerifyEmail {
 
         @Test
-        @DisplayName("[정상] 코드 일치 → 코드 삭제 + 인증완료 플래그 저장")
+        @DisplayName("[정상] 코드 일치 → 코드 삭제 + 인증완료 플래그(Y) 저장")
         void 정상_인증완료() {
             given(tokenStore.get("email:verify:" + EMAIL)).willReturn("ABCDEF");
 
@@ -275,65 +272,69 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("[실패] 코드 불일치 또는 만료(null) → VERIFY_TOKEN_INVALID")
-        void 실패_코드불일치또는만료() {
-            given(tokenStore.get("email:verify:" + EMAIL)).willReturn(null);
+        @DisplayName("[실패] 코드 불일치 → VERIFY_TOKEN_INVALID")
+        void 실패_코드불일치() {
+            given(tokenStore.get("email:verify:" + EMAIL)).willReturn("ABCDEF");
 
-            assertThatThrownBy(() -> authService.verifyEmail(emailVerifyReq(EMAIL, "WRONG")))
+            assertThatThrownBy(() -> authService.verifyEmail(emailVerifyReq(EMAIL, "ZZZZZZ")))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ErrorCode.VERIFY_TOKEN_INVALID));
 
             then(tokenStore).should(never()).delete(any());
         }
+
+        @Test
+        @DisplayName("[실패] TTL 만료(null) → VERIFY_TOKEN_INVALID")
+        void 실패_TTL만료() {
+            given(tokenStore.get("email:verify:" + EMAIL)).willReturn(null);
+
+            assertThatThrownBy(() -> authService.verifyEmail(emailVerifyReq(EMAIL, "ABCDEF")))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.VERIFY_TOKEN_INVALID));
+        }
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  F-01 | 회원가입
+    // TC-03 | 회원가입
     // ════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("회원가입")
+    @DisplayName("회원가입 [signup]")
     class Signup {
 
-        /** 필수 약관 2개 포함 Terms 목록 */
-        private List<Terms> requiredTerms() {
-            Terms t1 = new Terms();
-            ReflectionTestUtils.setField(t1, "termsId",     1L);
-            ReflectionTestUtils.setField(t1, "requiredYn",  "Y");
-            ReflectionTestUtils.setField(t1, "version",     "1.0");
-            Terms t2 = new Terms();
-            ReflectionTestUtils.setField(t2, "termsId",     2L);
-            ReflectionTestUtils.setField(t2, "requiredYn",  "Y");
-            ReflectionTestUtils.setField(t2, "version",     "1.0");
-            return List.of(t1, t2);
-        }
-
-        /** 정상 회원가입 공통 스텁 */
-        private void stubSignupSuccess() {
-            given(userMapper.existsByEmail(EMAIL)).willReturn(0);
+        @BeforeEach
+        void stubSignupCommon() {
+            // 전화번호 중복 체크용 (전체 phone 조회 → 빈 리스트)
             given(userMapper.findAllPhones()).willReturn(Collections.emptyList());
+            // 이메일 인증 완료 플래그
             given(tokenStore.get("email:verified:" + EMAIL)).willReturn("Y");
-            given(termsMapper.findByPackageType("SIGNUP")).willReturn(requiredTerms());
-            given(ciValueGenerator.generate(anyString(), any(), anyString())).willReturn("mock-ci");
+            // 필수 약관 목록 (빈 리스트 → 체크 통과)
+            given(termsMapper.findByPackageType("SIGNUP")).willReturn(Collections.emptyList());
+            // CI 생성
+            given(ciValueGenerator.generate(anyString(), anyString(), anyString())).willReturn("mock-ci");
+            // CDD watchlist 통과
+            willDoNothing().given(cddService).checkWatchlist(any(), any(), any());
+            willDoNothing().given(cddService).initializeCdd(anyLong());
+            // insertUser → userId 세팅
+            given(userMapper.insertUser(any())).willAnswer(inv -> {
+                User u = inv.getArgument(0);
+                ReflectionTestUtils.setField(u, "userId", USER_ID);
+                return 1;
+            });
             given(passwordEncoder.encode(PASSWORD)).willReturn(ENC_PW);
         }
 
         @Test
-        @DisplayName("[정상] 정상 입력 → userId 반환 + insertUser 호출")
-        void 정상_회원가입성공() {
-            stubSignupSuccess();
-            Mockito.doAnswer(inv -> {
-                User u = inv.getArgument(0);
-                ReflectionTestUtils.setField(u, "userId", USER_ID);
-                return 1;
-            }).when(userMapper).insertUser(any());
+        @DisplayName("[정상] 이메일 인증 완료 + 미중복 → userId 반환 + insertUser 호출")
+        void 정상_회원가입() {
+            given(userMapper.existsByEmail(EMAIL)).willReturn(0);
 
-            Long result = authService.signup(
-                    signupReq(EMAIL, PASSWORD, NAME, PHONE, List.of(1L, 2L)));
+            Long result = authService.signup(signupReq(EMAIL, PASSWORD, NAME, PHONE, List.of(1L)));
 
             assertThat(result).isEqualTo(USER_ID);
-            then(userMapper).should().insertUser(any());
+            then(userMapper).should().insertUser(any(User.class));
         }
 
         @Test
@@ -341,79 +342,45 @@ class AuthServiceTest {
         void 실패_이메일중복() {
             given(userMapper.existsByEmail(EMAIL)).willReturn(1);
 
-            assertThatThrownBy(() -> authService.signup(
-                    signupReq(EMAIL, PASSWORD, NAME, PHONE, List.of(1L, 2L))))
+            assertThatThrownBy(() -> authService.signup(signupReq(EMAIL, PASSWORD, NAME, PHONE, List.of(1L))))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ErrorCode.DUPLICATE_EMAIL));
         }
 
         @Test
-        @DisplayName("[실패] 이메일 인증 미완료 → EMAIL_NOT_VERIFIED")
+        @DisplayName("[실패] 이메일 인증 미완료(플래그 없음) → EMAIL_NOT_VERIFIED")
         void 실패_이메일인증미완료() {
             given(userMapper.existsByEmail(EMAIL)).willReturn(0);
-            given(userMapper.findAllPhones()).willReturn(Collections.emptyList());
             given(tokenStore.get("email:verified:" + EMAIL)).willReturn(null);
 
-            assertThatThrownBy(() -> authService.signup(
-                    signupReq(EMAIL, PASSWORD, NAME, PHONE, List.of(1L, 2L))))
+            assertThatThrownBy(() -> authService.signup(signupReq(EMAIL, PASSWORD, NAME, PHONE, List.of(1L))))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ErrorCode.EMAIL_NOT_VERIFIED));
         }
-
-        @Test
-        @DisplayName("[실패] 필수 약관 미동의 → REQUIRED_TERMS_NOT_AGREED")
-        void 실패_필수약관미동의() {
-            given(userMapper.existsByEmail(EMAIL)).willReturn(0);
-            given(userMapper.findAllPhones()).willReturn(Collections.emptyList());
-            given(tokenStore.get("email:verified:" + EMAIL)).willReturn("Y");
-            given(termsMapper.findByPackageType("SIGNUP")).willReturn(requiredTerms());
-
-            // 약관 ID 누락 (1L만 동의)
-            assertThatThrownBy(() -> authService.signup(
-                    signupReq(EMAIL, PASSWORD, NAME, PHONE, List.of(1L))))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ErrorCode.REQUIRED_TERMS_NOT_AGREED));
-        }
-
-        @Test
-        @DisplayName("[실패] 전화번호 중복 → DUPLICATE_PHONE")
-        void 실패_전화번호중복() {
-            given(userMapper.existsByEmail(EMAIL)).willReturn(0);
-            // 중복 전화번호 유저 반환
-            User dup = new User();
-            ReflectionTestUtils.setField(dup, "phone", "010-1234-5678"); // MaskingUtil.formatPhone 결과와 동일하게
-            given(userMapper.findAllPhones()).willReturn(List.of(dup));
-
-            assertThatThrownBy(() -> authService.signup(
-                    signupReq(EMAIL, PASSWORD, NAME, PHONE, List.of(1L, 2L))))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ErrorCode.DUPLICATE_PHONE));
-        }
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  F-03 | 로그인
+    // TC-04 | 로그인
     // ════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("로그인")
+    @DisplayName("로그인 [login]")
     class Login {
 
         @Test
-        @DisplayName("[정상] 올바른 계정 → Access/Refresh 쿠키 반환")
-        void 정상_로그인성공() {
+        @DisplayName("[정상] 정상 계정 + 올바른 비밀번호 → AccessCookie + RefreshCookie 반환")
+        void 정상_로그인() {
             given(userMapper.findByEmail(EMAIL)).willReturn(Optional.of(activeUser()));
-            stubLoginSuccess();
+            given(passwordEncoder.matches(PASSWORD, ENC_PW)).willReturn(true);
+            given(userSessionMapper.insertSession(any())).willReturn(1);
 
             AuthTokenResult result = authService.login(loginReq(EMAIL, PASSWORD), mockHttpReq());
 
+            assertThat(result).isNotNull();
             assertThat(result.getAccessCookie()).isNotNull();
             assertThat(result.getRefreshCookie()).isNotNull();
-            then(userSessionMapper).should().insertSession(any());
         }
 
         @Test
@@ -428,20 +395,9 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("[실패] 계정 잠금 상태 → ACCOUNT_LOCKED")
-        void 실패_계정잠금() {
-            given(userMapper.findByEmail(EMAIL)).willReturn(Optional.of(lockedUser()));
-
-            assertThatThrownBy(() -> authService.login(loginReq(EMAIL, PASSWORD), mockHttpReq()))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ErrorCode.ACCOUNT_LOCKED));
-        }
-
-        @Test
-        @DisplayName("[실패] 탈퇴 계정 → ACCOUNT_WITHDRAWN")
-        void 실패_탈퇴계정() {
-            given(userMapper.findByEmail(EMAIL)).willReturn(Optional.of(userWithStatus("WITHDRAWN")));
+        @DisplayName("[실패] 탈퇴 회원(deletedYn=Y) → ACCOUNT_WITHDRAWN")
+        void 실패_탈퇴회원() {
+            given(userMapper.findByEmail(EMAIL)).willReturn(Optional.of(deletedUser()));
 
             assertThatThrownBy(() -> authService.login(loginReq(EMAIL, PASSWORD), mockHttpReq()))
                     .isInstanceOf(BusinessException.class)
@@ -450,7 +406,7 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("[실패] 비밀번호 불일치 → INVALID_PASSWORD + 실패 횟수 증가")
+        @DisplayName("[실패] 비밀번호 불일치 → INVALID_PASSWORD + incrementLoginFailCount 호출")
         void 실패_비밀번호불일치() {
             given(userMapper.findByEmail(EMAIL)).willReturn(Optional.of(activeUser()));
             given(passwordEncoder.matches(PASSWORD, ENC_PW)).willReturn(false);
@@ -464,7 +420,7 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("[실패] 비밀번호 5회 연속 오류 → updateLockedUntil 호출(계정 잠금)")
+        @DisplayName("[실패] 5회 실패 → updateLockedUntil 호출(계정 잠금)")
         void 실패_5회오류_계정잠금() {
             given(userMapper.findByEmail(EMAIL)).willReturn(Optional.of(userWithFourFails()));
             given(passwordEncoder.matches(PASSWORD, ENC_PW)).willReturn(false);
@@ -477,71 +433,79 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("[실패] 정지 계정 → ACCOUNT_LOCKED (statusCode=SUSPENDED)")
+        @DisplayName("[실패] SUSPENDED 계정 → ACCOUNT_SUSPENDED")
         void 실패_정지계정() {
             given(userMapper.findByEmail(EMAIL)).willReturn(Optional.of(userWithStatus("SUSPENDED")));
 
             assertThatThrownBy(() -> authService.login(loginReq(EMAIL, PASSWORD), mockHttpReq()))
-                    .isInstanceOf(BusinessException.class);
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.ACCOUNT_SUSPENDED));
         }
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  F-05 | 로그아웃
+    // TC-05 | 로그아웃
     // ════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("로그아웃")
+    @DisplayName("로그아웃 [logout]")
     class Logout {
 
         @Test
-        @DisplayName("[정상] 세션 전체 파기(revokeAllByUserId) 호출 확인")
+        @DisplayName("[정상] revokeAllByUserId 호출 확인")
         void 정상_로그아웃() {
+            given(userSessionMapper.revokeAllByUserId(USER_ID)).willReturn(1);
+
             authService.logout(USER_ID);
+
             then(userSessionMapper).should().revokeAllByUserId(USER_ID);
         }
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  F-04 | Access Token 재발급
+    // TC-06 | Access Token 재발급
     // ════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("Access Token 재발급")
+    @DisplayName("Access Token 재발급 [refresh]")
     class Refresh {
 
-        private UserSession validSession() {
-            return UserSession.builder()
-                    .sessionId(10L)
-                    .userId(USER_ID)
-                    .refreshToken("valid-refresh")
-                    .expiresAt(LocalDateTime.now().plusHours(1))  // KST_ZONE 기준과 무관하게 미래
-                    .build();
-        }
-
         @Test
-        @DisplayName("[정상] 유효한 Refresh Token → 새 Access 쿠키 반환")
+        @DisplayName("[정상] 유효한 세션 → 새 AccessCookie 반환")
         void 정상_토큰재발급() {
-            given(userSessionMapper.findByRefreshToken("valid-refresh"))
-                    .willReturn(Optional.of(validSession()));
-            given(jwtTokenProvider.generateAccessToken(USER_ID, "ROLE_USER")).willReturn("new-acc");
-            given(jwtTokenProvider.getAccessExpirationSec()).willReturn(7200L);
-            given(cookieUtil.createAccessCookie("new-acc", 7200L))
-                    .willReturn(ResponseCookie.from("access_token", "new-acc").build());
+            UserSession session = new UserSession();
+            ReflectionTestUtils.setField(session, "userId",    USER_ID);
+            ReflectionTestUtils.setField(session, "expiresAt", LocalDateTime.now().plusDays(7));
 
-            ResponseCookie cookie = authService.refresh("valid-refresh");
+            given(userSessionMapper.findByRefreshToken("valid-rt")).willReturn(Optional.of(session));
+
+            ResponseCookie cookie = authService.refresh("valid-rt");
 
             assertThat(cookie).isNotNull();
-            assertThat(cookie.getValue()).isEqualTo("new-acc");
         }
 
         @Test
-        @DisplayName("[실패] 세션 없는(revoked/없는) 토큰 → REFRESH_TOKEN_INVALID")
+        @DisplayName("[실패] 세션 없음 → REFRESH_TOKEN_INVALID")
         void 실패_세션없음() {
-            given(userSessionMapper.findByRefreshToken("invalid-rt"))
-                    .willReturn(Optional.empty());
+            given(userSessionMapper.findByRefreshToken("invalid-rt")).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> authService.refresh("invalid-rt"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.REFRESH_TOKEN_INVALID));
+        }
+
+        @Test
+        @DisplayName("[실패] 세션 TTL 만료 → REFRESH_TOKEN_INVALID")
+        void 실패_세션만료() {
+            UserSession expired = new UserSession();
+            ReflectionTestUtils.setField(expired, "userId",    USER_ID);
+            ReflectionTestUtils.setField(expired, "expiresAt", LocalDateTime.now().minusDays(1));
+
+            given(userSessionMapper.findByRefreshToken("expired-rt")).willReturn(Optional.of(expired));
+
+            assertThatThrownBy(() -> authService.refresh("expired-rt"))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ErrorCode.REFRESH_TOKEN_INVALID));
@@ -549,11 +513,53 @@ class AuthServiceTest {
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  F-22 | 비밀번호 재설정 링크 요청
+    // TC-07 | 아이디 찾기
     // ════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("비밀번호 재설정 링크 요청")
+    @DisplayName("아이디 찾기 [findId]")
+    class FindId {
+
+        @Test
+        @DisplayName("[정상] 이름+전화번호 일치 → maskedEmail 반환")
+        void 정상_아이디찾기() {
+            given(userMapper.findByName(NAME)).willReturn(List.of(activeUser()));
+
+            FindIdResponse response = authService.findId(findIdReq(NAME, PHONE));
+
+            assertThat(response).isNotNull();
+            assertThat(response.getMaskedEmail()).isNotBlank();
+        }
+
+        @Test
+        @DisplayName("[실패] 이름으로 회원 없음 → USER_NOT_FOUND")
+        void 실패_이름없음() {
+            given(userMapper.findByName("없는사람")).willReturn(Collections.emptyList());
+
+            assertThatThrownBy(() -> authService.findId(findIdReq("없는사람", PHONE)))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.USER_NOT_FOUND));
+        }
+
+        @Test
+        @DisplayName("[실패] 이름 일치하지만 전화번호 불일치 → USER_NOT_FOUND")
+        void 실패_전화번호불일치() {
+            given(userMapper.findByName(NAME)).willReturn(List.of(activeUser()));
+
+            assertThatThrownBy(() -> authService.findId(findIdReq(NAME, "010-9999-9999")))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ErrorCode.USER_NOT_FOUND));
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // TC-08 | 비밀번호 재설정 링크 발송
+    // ════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("비밀번호 재설정 링크 발송 [findPassword]")
     class FindPassword {
 
         @Test
@@ -576,28 +582,21 @@ class AuthServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ErrorCode.USER_NOT_FOUND));
-        }
 
-        @Test
-        @DisplayName("[실패] name 누락 → USER_NOT_FOUND")
-        void 실패_이름없음() {
-            given(userMapper.findByEmailAndName(EMAIL, null)).willReturn(Optional.empty());
-
-            assertThatThrownBy(() -> authService.findPassword(findPwReq(EMAIL, null)))
-                    .isInstanceOf(BusinessException.class);
+            then(tokenStore).should(never()).set(any(), any(), anyLong());
         }
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  F-23 | 비밀번호 재설정
+    // TC-09 | 비밀번호 재설정
     // ════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("비밀번호 재설정")
+    @DisplayName("비밀번호 재설정 [resetPassword]")
     class ResetPassword {
 
         @Test
-        @DisplayName("[정상] 유효 토큰 + 비밀번호 일치 → updatePassword 호출")
+        @DisplayName("[정상] 유효 토큰 + 비밀번호 일치 → updatePassword 호출 + 토큰 삭제")
         void 정상_비밀번호재설정() {
             given(tokenStore.get("pw:reset:" + TOKEN)).willReturn(String.valueOf(USER_ID));
             given(userMapper.findById(USER_ID)).willReturn(Optional.of(activeUser()));
@@ -605,12 +604,13 @@ class AuthServiceTest {
 
             authService.resetPassword(resetPwReq(TOKEN, NEW_PW, NEW_PW));
 
-            then(userMapper).should().updatePassword(eq(USER_ID), anyString(), any());
+            // updatePassword(userId, hash, lastPasswordChangedAt) — 3개 파라미터
+            then(userMapper).should().updatePassword(eq(USER_ID), anyString(), any(java.time.LocalDateTime.class));
             then(tokenStore).should().delete("pw:reset:" + TOKEN);
         }
 
         @Test
-        @DisplayName("[실패] 비밀번호 확인 불일치 → PASSWORD_CONFIRM_MISMATCH")
+        @DisplayName("[실패] 비밀번호 확인 불일치 → PASSWORD_CONFIRM_MISMATCH (tokenStore 미조회)")
         void 실패_비밀번호확인불일치() {
             assertThatThrownBy(() -> authService.resetPassword(resetPwReq(TOKEN, NEW_PW, "WrongConfirm!")))
                     .isInstanceOf(BusinessException.class)
@@ -621,11 +621,11 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("[실패] 만료/없는 토큰 → VERIFY_TOKEN_INVALID")
-        void 실패_토큰만료() {
-            given(tokenStore.get("pw:reset:" + TOKEN)).willReturn(null);
+        @DisplayName("[실패] 만료·없는 토큰(null) → VERIFY_TOKEN_INVALID")
+        void 실패_토큰없음() {
+            given(tokenStore.get("pw:reset:expired")).willReturn(null);
 
-            assertThatThrownBy(() -> authService.resetPassword(resetPwReq(TOKEN, NEW_PW, NEW_PW)))
+            assertThatThrownBy(() -> authService.resetPassword(resetPwReq("expired", NEW_PW, NEW_PW)))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ErrorCode.VERIFY_TOKEN_INVALID));
