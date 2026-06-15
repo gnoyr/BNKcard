@@ -22,6 +22,8 @@ public class IpVerifyService {
     private static final String CODE_CHARS         = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     private static final long   EMAIL_CODE_TTL_MIN = 10L;
 
+    private final SecureRandom  secureRandom       = new SecureRandom();
+
     private final TokenStore  tokenStore;
     /**
      * 기존 com.bnk.global.email.EmailService 구체 클래스 주입.
@@ -98,10 +100,9 @@ public class IpVerifyService {
     // ─── 유틸 ────────────────────────────────────────────────────────
 
     private String generateCode() {
-        SecureRandom random = new SecureRandom();
         StringBuilder sb = new StringBuilder(EMAIL_CODE_LENGTH);
         for (int i = 0; i < EMAIL_CODE_LENGTH; i++) {
-            sb.append(CODE_CHARS.charAt(random.nextInt(CODE_CHARS.length())));
+            sb.append(CODE_CHARS.charAt(secureRandom.nextInt(CODE_CHARS.length())));
         }
         return sb.toString();
     }
