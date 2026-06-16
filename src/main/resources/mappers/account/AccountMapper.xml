@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bnk.domain.account.mapper.AccountMapper">
+
+    <resultMap id="accountMap" type="com.bnk.domain.account.model.Account">
+        <id     property="accountId"     column="ACCOUNT_ID"/>
+        <result property="userId"        column="USER_ID"/>
+        <result property="accountNumber" column="ACCOUNT_NUMBER"/>
+        <result property="accountType"   column="ACCOUNT_TYPE"/>
+        <result property="accountAlias"  column="ACCOUNT_ALIAS"
+                jdbcType="VARCHAR"
+                typeHandler="org.apache.ibatis.type.StringTypeHandler"/>
+        <result property="accountStatus" column="ACCOUNT_STATUS"/>
+        <result property="balance"       column="BALANCE"/>
+        <result property="createdAt"     column="CREATED_AT"/>
+    </resultMap>
+
+    <!-- 계좌 등록 -->
+    <insert id="insertAccount" parameterType="com.bnk.domain.account.model.Account">
+        <selectKey keyProperty="accountId" resultType="long" order="BEFORE">
+            SELECT SEQ_ACCOUNTS.NEXTVAL FROM DUAL
+        </selectKey>
+        INSERT INTO ACCOUNTS (
+            account_id, user_id, account_number,
+            account_type, account_alias, account_status, balance
+        ) VALUES (
+            #{accountId},
+            #{userId},
+            #{accountNumber,    jdbcType=VARCHAR},
+            #{accountType,      jdbcType=VARCHAR},
+            #{accountAlias,     jdbcType=VARCHAR,
+              typeHandler=org.apache.ibatis.type.StringTypeHandler},
+            #{accountStatus,    jdbcType=VARCHAR},
+            0
+        )
+    </insert>
+
+    <!-- 사용자 계좌 목록 -->
+    <select id="findByUserId" resultMap="accountMap">
+        SELECT * FROM ACCOUNTS
+        WHERE user_id   = #{userId}
+          AND account_status != 'CLOSED'
+        ORDER BY created_at DESC
+    </select>
+
+    <!-- 계좌 단건 조회 -->
+    <select id="findByAccountId" resultMap="accountMap">
+        SELECT * FROM ACCOUNTS
+        WHERE account_id = #{accountId}
+    </select>
+
+    <!-- 채번용 시퀀스 -->
+    <select id="nextAccountSeq" resultType="long">
+        SELECT SEQ_ACCOUNTS.NEXTVAL FROM DUAL
+    </select>
+    
+    <!-- 계좌 비밀번호 저장 -->
+	<insert id="insertAccountPassword">
+	    INSERT INTO ACCOUNT_PASSWORDS (account_id, password_hash)
+	    VALUES (#{accountId}, #{passwordHash, jdbcType=VARCHAR,
+	            typeHandler=org.apache.ibatis.type.StringTypeHandler})
+	</insert>
+
+</mapper>
