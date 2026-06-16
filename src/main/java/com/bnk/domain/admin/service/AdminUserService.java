@@ -180,7 +180,7 @@ public class AdminUserService {
                                 .build())
                         .collect(Collectors.toList());
 
-        // ③ 카드 신청 이력 전체 (CARD_APPLICATIONS JOIN CARDS)
+        // ③ 카드 신청 이력 전체 (CARD_APPLICATIONS JOIN CARDS) - 수정 필요 ---------------------------------
         List<AdminUserResponse.ApplicationItem> applications =
                 adminUserMapper.findApplicationsByUserId(userId)
                         .stream()

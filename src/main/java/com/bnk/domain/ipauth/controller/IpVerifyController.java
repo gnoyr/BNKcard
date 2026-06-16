@@ -29,12 +29,6 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * IP 인증 컨트롤러
- *
- * [수정 내역]
- * [BUG-IP-02] issueLoginCookies()에 HttpServletRequest 추가 → UserSession 정보 정상 기록
- * [COMPILE-FIX] verifyCi() 호출 인자 수정
- *   수정 전: req.getResidentFront(), req.getGenderCode()  → 4개 인자 (서비스 시그니처 불일치)
- *   수정 후: req.getName(), req.getBirthDate(), req.getPhone() → 5개 인자 (서비스 시그니처 일치)
  */
 @Slf4j
 @RestController
@@ -74,17 +68,6 @@ public class IpVerifyController {
 
     /**
      * POST /api/auth/ip-verify/ci → CI 인증 성공 시 로그인 완료
-     *
-     * [COMPILE-FIX] IpVerifyService.verifyCi() 시그니처:
-     *   verifyCi(Long userId, String name, String birthDate, String phone, IpTrustService)
-     *
-     * 수정 전 (컴파일 에러):
-     *   ipVerifyService.verifyCi(req.getUserId(), req.getResidentFront(), req.getGenderCode(), ipTrustService)
-     *   IpCiVerifyRequest → residentFront / genderCode 필드
-     *
-     * 수정 후:
-     *   ipVerifyService.verifyCi(req.getUserId(), req.getName(), req.getBirthDate(), req.getPhone(), ipTrustService)
-     *   IpCiVerifyRequest → name / birthDate / phone 필드 (DTO도 함께 수정)
      */
     @PostMapping("/ci")
     public ResponseEntity<ApiResponse<Void>> verifyCi(
@@ -94,15 +77,14 @@ public class IpVerifyController {
 
         String plainIp = ipTrustService.validateChallengeToken(req.getUserId(), req.getChallengeToken());
 
-        // [COMPILE-FIX] 수정 전: req.getResidentFront(), req.getGenderCode() — 필드 불일치
-        //               수정 후: req.getName(), req.getBirthDate(), req.getPhone()
         ipVerifyService.verifyCi(
-                req.getUserId(),
-                req.getName(),
-                req.getBirthDate(),
-                req.getPhone(),
-                ipTrustService
-        );
+        	    req.getUserId(),
+        	    req.getName(),
+        	    req.getResidentFront(),
+        	    req.getGenderCode(),
+        	    req.getAddress(),
+        	    ipTrustService
+        	);
 
         ipTrustService.approvePendingIp(req.getUserId(), plainIp, "CI_VERIFY", req.getNickname());
         issueLoginCookies(req.getUserId(), httpRequest, response);
@@ -113,7 +95,6 @@ public class IpVerifyController {
 
     /**
      * JWT 쿠키 발급
-     * [BUG-IP-02] HttpServletRequest 추가 → deviceInfo/ipAddress/userAgent 정상 기록
      */
     private void issueLoginCookies(Long userId, HttpServletRequest httpRequest, HttpServletResponse response) {
         String accessToken   = jwtTokenProvider.generateAccessToken(userId, "ROLE_USER");

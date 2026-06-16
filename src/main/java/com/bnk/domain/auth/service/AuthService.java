@@ -179,7 +179,10 @@ public class AuthService {
 		// ⑥ CI값 생성 — birthDate null 허용 (선택 필드)
 		String ciValue = null;
 		if (birthDateStr != null) {
-			ciValue = ciValueGenerator.generate(request.getName(), birthDateStr, formattedPhone);
+			ciValue = ciValueGenerator.generate(request.getName(),
+			        request.getResidentFront(),
+			        request.getGenderCode(),
+			        request.getAddress());
 		}
 
 		// ⑦ Watchlist 대조 (ciValue가 있을 때만 CI 기반 대조 수행)
@@ -272,7 +275,7 @@ public class AuthService {
 				.orElseGet(() -> {
 					auditLogger.failure(AuditLogger.AUTH, AuditLogger.LOGIN,
 							null, null, "존재하지 않는 이메일: " + request.getEmail());
-					throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+					throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
 				});
 
 		try {
@@ -289,7 +292,7 @@ public class AuthService {
 					"\ube44\ubc00\ubc88\ud638 \ubd88\uc77c\uce58", ipAddress, request.getDeviceInfo(), userAgent);
 			auditLogger.failure(AuditLogger.AUTH, AuditLogger.LOGIN,
 					user.getUserId(), null, "비밀번호 불일치");
-			throw new BusinessException(ErrorCode.INVALID_PASSWORD);
+			throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
 		}
 
 		if (user.getLoginFailCount() > 0)
