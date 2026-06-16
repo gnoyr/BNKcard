@@ -275,7 +275,7 @@ public class AuthService {
 				.orElseGet(() -> {
 					auditLogger.failure(AuditLogger.AUTH, AuditLogger.LOGIN,
 							null, null, "존재하지 않는 이메일: " + request.getEmail());
-					throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+					throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
 				});
 
 		try {
@@ -292,7 +292,7 @@ public class AuthService {
 					"\ube44\ubc00\ubc88\ud638 \ubd88\uc77c\uce58", ipAddress, request.getDeviceInfo(), userAgent);
 			auditLogger.failure(AuditLogger.AUTH, AuditLogger.LOGIN,
 					user.getUserId(), null, "비밀번호 불일치");
-			throw new BusinessException(ErrorCode.INVALID_PASSWORD);
+			throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
 		}
 
 		if (user.getLoginFailCount() > 0)
