@@ -100,7 +100,6 @@ public class SecurityConfig {
                 .contentSecurityPolicy(csp -> csp
                 	    .policyDirectives(
                 	        "default-src 'self'; " +
-                	        // ↓ 카카오 우편번호 API 스크립트 로드 허용
                 	        "script-src 'self' 'unsafe-inline' https://t1.daumcdn.net; " +
                 	        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
                 	        "font-src 'self' https://fonts.gstatic.com; " +
@@ -110,11 +109,11 @@ public class SecurityConfig {
                 	            "https://objectstorage.ap-chuncheon-1.oraclecloud.com " +
                 	            "https://www.busanbank.co.kr " +
                 	            "https://busanbank.co.kr; " +
-                	        // ↓ 카카오 embed XHR 허용
                 	        "connect-src 'self' https://t1.daumcdn.net; " +
-                	        // ↓ 카카오 embed iframe 허용
-                	        "frame-src 'self' https://t1.daumcdn.net http://postcode.map.kakao.com https://postcode.map.kakao.com; " +
-                	        "frame-ancestors 'none'"
+                	        "frame-src 'self' https://t1.daumcdn.net http://postcode.map.kakao.com https://postcode.map.kakao.com " +
+                	            "https://objectstorage.ap-chuncheon-1.oraclecloud.com; " +
+                	        "object-src 'self' https://objectstorage.ap-chuncheon-1.oraclecloud.com; " +
+                	        "frame-ancestors 'none';"
                 	    ))
             )
 
@@ -188,9 +187,12 @@ public class SecurityConfig {
                     "/admin/approvals/**"
                 ).permitAll()
                 
+                
+                
                 // 기존 permitAll() 목록에 추가
                 .requestMatchers("/api/init").permitAll()
-
+                .requestMatchers("/api/terms/*/files").permitAll()
+                .requestMatchers("/terms/**").permitAll()
                 // ── Swagger — 인증 필요 (운영 차단) ─────────────────────
                 .requestMatchers(
                     "/swagger-ui/**",

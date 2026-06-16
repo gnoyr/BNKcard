@@ -22,12 +22,11 @@ function goStep(step) {
     state.currentStep = step;
 }
 
-// ── 1단계: 약관 동의 ──────────────────────────────────────────────
+// ── 1단계: 약관 동의 ──────────────────────────────────────────
 async function initStep1() {
     const container = document.getElementById('step-1');
     container.innerHTML = `<p style="color:#999;">약관을 불러오는 중...</p>`;
 
-    // ACCOUNT_OPEN 패키지 약관 조회
     const res = await fetch('/api/terms/packages/ACCOUNT_OPEN', {
         credentials: 'include'
     });
@@ -39,13 +38,15 @@ async function initStep1() {
         return;
     }
 
+    // 저장된 체크 상태 복원
+    const savedAgreed = JSON.parse(sessionStorage.getItem('agreedTerms') || '[]');
+
     container.innerHTML = `
         <h2 style="font-size:20px; margin-bottom:8px;">약관 동의</h2>
         <p style="color:#666; font-size:14px; margin-bottom:24px;">
             계좌 개설에 필요한 약관에 동의해 주세요.
         </p>
 
-        <!-- 전체 동의 -->
         <label style="display:flex; align-items:center; gap:10px;
                       padding:14px; background:#f0f4fb; border-radius:8px;
                       cursor:pointer; margin-bottom:16px;">
@@ -54,7 +55,6 @@ async function initStep1() {
             <span style="font-weight:600; font-size:15px;">전체 동의</span>
         </label>
 
-        <!-- 개별 약관 목록 -->
         <div id="terms-list">
             ${terms.map(t => `
                 <div style="display:flex; align-items:center; justify-content:space-between;
@@ -64,6 +64,7 @@ async function initStep1() {
                                data-terms-id="${t.termsId}"
                                data-required="${t.requiredYn}"
                                onchange="onTermChange()"
+                               ${savedAgreed.includes(t.termsId) ? 'checked' : ''}
                                style="width:16px; height:16px;">
                         <span style="font-size:14px;">
                             ${t.requiredYn === 'Y'
@@ -72,7 +73,7 @@ async function initStep1() {
                             ${t.title}
                         </span>
                     </label>
-                    <a href="/terms/view.html?termsId=${t.termsId}" target="_blank"
+                    <a href="/terms/view.html?termsId=${t.termsId}"
                        style="font-size:12px; color:#003087; white-space:nowrap;">
                         보기 &gt;
                     </a>
@@ -88,16 +89,28 @@ async function initStep1() {
             다음
         </button>
     `;
+
+    // 전체 동의 체크박스 상태 동기화
+    onTermChange();
 }
 
 function toggleAll(checked) {
     document.querySelectorAll('.chk-term').forEach(c => c.checked = checked);
+    saveCheckedState();
 }
 
 function onTermChange() {
-    const all   = document.querySelectorAll('.chk-term');
+    const all     = document.querySelectorAll('.chk-term');
     const checked = document.querySelectorAll('.chk-term:checked');
     document.getElementById('chk-all').checked = all.length === checked.length;
+    saveCheckedState();
+}
+
+// 체크 상태 sessionStorage에 저장
+function saveCheckedState() {
+    const checked = [...document.querySelectorAll('.chk-term:checked')]
+        .map(c => Number(c.dataset.termsId));
+    sessionStorage.setItem('agreedTerms', JSON.stringify(checked));
 }
 
 function submitStep1() {
@@ -108,9 +121,11 @@ function submitStep1() {
             return;
         }
     }
-    // 동의한 약관 ID 수집
     state.agreedTerms = [...document.querySelectorAll('.chk-term:checked')]
         .map(c => Number(c.dataset.termsId));
+
+    // 완료 후 sessionStorage 정리
+    sessionStorage.removeItem('agreedTerms');
 
     goStep(2);
     initStep2();
