@@ -34,6 +34,7 @@ public enum ErrorCode {
 	DUPLICATE_PHONE("U010", "이미 사용 중인 휴대폰 번호입니다.", HttpStatus.CONFLICT),
 	PASSWORD_RECENTLY_USED("U011", "최근 사용한 비밀번호는 재사용할 수 없습니다.", HttpStatus.BAD_REQUEST),
 	WATCHLIST_BLOCKED("U012", "서비스 이용이 제한된 계정입니다. 고객센터에 문의해 주세요.", HttpStatus.FORBIDDEN),
+	INVALID_CREDENTIALS("U013", "아이디 또는 비밀번호가 올바르지 않습니다.", HttpStatus.UNAUTHORIZED),
 
 	// 카드
 	CARD_NOT_FOUND("CD001", "카드 상품을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
