@@ -66,16 +66,6 @@ import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * AuthService 단위 테스트 (SonarQube 커버리지 대상)
- *
- * ── Mock 필드 주의 사항 ──────────────────────────────────────────────
- * AuthService @RequiredArgsConstructor 생성자 의존성 전부 Mock 필요:
- *   UserMapper, AdminUserMapper, UserSessionMapper, TermsMapper,
- *   UserTermsAgreementMapper, PasswordEncoder, JwtTokenProvider,
- *   CookieUtil, TokenStore, EmailService(필드명=mailService),
- *   CiValueGenerator, CddService, TokenSecurityService, AuditLogger
- *
- * EmailService 필드명 → 반드시 mailService (AuthService 선언과 동일)
- * Mockito @InjectMocks 는 타입+필드명으로 주입 → 이름 틀리면 NPE
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -92,14 +82,13 @@ class AuthServiceTest {
     @Mock private JwtTokenProvider         jwtTokenProvider;
     @Mock private CookieUtil               cookieUtil;
     @Mock private TokenStore               tokenStore;
-    /** 필드명 mailService — AuthService 선언과 반드시 일치 */
     @Mock private EmailService             mailService;
     @Mock private CiValueGenerator         ciValueGenerator;
     @Mock private CddService               cddService;
     @Mock private TokenSecurityService     tokenSecurityService;
     @Mock private AuditLogger              auditLogger;
     @Mock private IpTrustService		   ipTrustService;
-    @Mock private Clock clock;
+    @Mock private Clock                    clock;
 
     @InjectMocks
     private AuthService authService;
@@ -315,19 +304,13 @@ class AuthServiceTest {
 
         @BeforeEach
         void stubSignupCommon() {
-            // 전화번호 중복 체크용 (전체 phone 조회 → 빈 리스트)
             given(userMapper.findAllPhones()).willReturn(Collections.emptyList());
-            // 이메일 인증 완료 플래그
             given(tokenStore.get("email:verified:" + EMAIL)).willReturn("Y");
-            // 필수 약관 목록 (빈 리스트 → 체크 통과)
             given(termsMapper.findByPackageType("SIGNUP")).willReturn(Collections.emptyList());
-            // CI 생성
             given(ciValueGenerator.generate(anyString(), anyString(), anyString(), anyString()))
             .willReturn("mock-ci");
-            // CDD watchlist 통과
             willDoNothing().given(cddService).checkWatchlist(any(), any(), any());
             willDoNothing().given(cddService).initializeCdd(anyLong());
-            // insertUser → userId 세팅
             given(userMapper.insertUser(any())).willAnswer(inv -> {
                 User u = inv.getArgument(0);
                 ReflectionTestUtils.setField(u, "userId", USER_ID);
@@ -401,7 +384,7 @@ class AuthServiceTest {
             assertThatThrownBy(() -> authService.login(loginReq(EMAIL, PASSWORD), mockHttpReq()))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ErrorCode.INVALID_CREDENTIALS)); // <- USER_NOT_FOUND 에서 변경
+                            .isEqualTo(ErrorCode.INVALID_CREDENTIALS));
         }
 
         @Test
@@ -424,7 +407,7 @@ class AuthServiceTest {
             assertThatThrownBy(() -> authService.login(loginReq(EMAIL, PASSWORD), mockHttpReq()))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ErrorCode.INVALID_CREDENTIALS)); // <- INVALID_PASSWORD 에서 변경
+                            .isEqualTo(ErrorCode.INVALID_CREDENTIALS));
 
             then(userMapper).should().incrementLoginFailCount(USER_ID);
         }
@@ -481,23 +464,24 @@ class AuthServiceTest {
     @DisplayName("Access Token 재발급 [refresh]")
     class Refresh {
 
-    	@Test
-    	@DisplayName("[정상] 유효한 세션 → 새 AccessCookie 반환")
-    	void 정상_토큰재발급() {
-    	    UserSession session = new UserSession();
-    	    ReflectionTestUtils.setField(session, "userId", USER_ID);
-    	    ReflectionTestUtils.setField(session, "expiresAt", LocalDateTime.now().plusDays(7));
+        @Test
+        @DisplayName("[정상] 유효한 세션 → 새 AccessCookie 반환")
+        void 정상_토큰재발급() {
+            UserSession session = new UserSession();
+            ReflectionTestUtils.setField(session, "userId", USER_ID);
+            // 시스템 시간 대신 mock 클락 사용으로 수정
+            ReflectionTestUtils.setField(session, "expiresAt", LocalDateTime.now(clock).plusDays(7));
 
-    	    given(userSessionMapper.findByRefreshToken("valid-rt")).willReturn(Optional.of(session));
-    	    given(jwtTokenProvider.generateAccessToken(USER_ID, "ROLE_USER")).willReturn("new-access-token");
-    	    given(jwtTokenProvider.getAccessExpirationSec()).willReturn(1800L);
-    	    given(cookieUtil.createAccessCookie("new-access-token", 1800L))
-    	            .willReturn(ResponseCookie.from("access_token", "new-access-token").path("/").build());
+            given(userSessionMapper.findByRefreshToken("valid-rt")).willReturn(Optional.of(session));
+            given(jwtTokenProvider.generateAccessToken(USER_ID, "ROLE_USER")).willReturn("new-access-token");
+            given(jwtTokenProvider.getAccessExpirationSec()).willReturn(1800L);
+            given(cookieUtil.createAccessCookie("new-access-token", 1800L))
+                    .willReturn(ResponseCookie.from("access_token", "new-access-token").path("/").build());
 
-    	    ResponseCookie cookie = authService.refresh("valid-rt");
+            ResponseCookie cookie = authService.refresh("valid-rt");
 
-    	    assertThat(cookie).isNotNull();
-    	}
+            assertThat(cookie).isNotNull();
+        }
 
         @Test
         @DisplayName("[실패] 세션 없음 → REFRESH_TOKEN_INVALID")
@@ -515,8 +499,8 @@ class AuthServiceTest {
         void 실패_세션만료() {
             UserSession expired = new UserSession();
             ReflectionTestUtils.setField(expired, "userId",    USER_ID);
-            // 동일하게 만료 테스트의 대상일도 TimeConstants.KST 기준으로 수정
-            ReflectionTestUtils.setField(expired, "expiresAt", LocalDateTime.now(com.bnk.global.util.TimeConstants.KST).minusDays(1));
+            // 시스템 시간이나 외부 상수 대신 mock 클락 기준으로 과거 시간 생성되도록 수정
+            ReflectionTestUtils.setField(expired, "expiresAt", LocalDateTime.now(clock).minusDays(1));
 
             given(userSessionMapper.findByRefreshToken("expired-rt")).willReturn(Optional.of(expired));
 
@@ -619,7 +603,6 @@ class AuthServiceTest {
 
             authService.resetPassword(resetPwReq(TOKEN, NEW_PW, NEW_PW));
 
-            // updatePassword(userId, hash, lastPasswordChangedAt) — 3개 파라미터
             then(userMapper).should().updatePassword(eq(USER_ID), anyString(), any(java.time.LocalDateTime.class));
             then(tokenStore).should().delete("pw:reset:" + TOKEN);
         }
