@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 @Controller
 public class CleanUrlController {
 
+    // ── 회원 인증 페이지 ──────────────────────────────────────────
+
     @GetMapping("/login")
     public String login() {
         return "forward:/auth/login.html";
@@ -27,10 +29,24 @@ public class CleanUrlController {
         return "forward:/auth/reset-password.html";
     }
 
+    @GetMapping("/copy-code")
+    public String copyCode() {
+        return "forward:/auth/copy-code.html";
+    }
+
+    @GetMapping("/auth/ip-verify")
+    public String ipVerify() {
+        return "forward:/auth/ip-verify.html";
+    }
+
+    // ── 관리자 인증 페이지 ────────────────────────────────────────
+
     @GetMapping("/admin/login")
     public String adminLogin() {
         return "forward:/auth/admin-login.html";
     }
+
+    // ── 마이페이지 ────────────────────────────────────────────────
 
     @GetMapping("/mypage")
     public String mypage() {
@@ -62,15 +78,20 @@ public class CleanUrlController {
         return "forward:/mypage/trusted-ips.html";
     }
 
-    @GetMapping("/copy-code")
-    public String copyCode() {
-        return "forward:/auth/copy-code.html";
+    /** 계좌 페이지 — 추가 */
+    @GetMapping("/mypage/accounts")
+    public String mypageAccounts() {
+        return "forward:/mypage/accounts.html";
     }
+
+    // ── 카드 상세 ─────────────────────────────────────────────────
 
     @GetMapping("/card/{cardId:\\d+}")
     public String cardDetail(@PathVariable String cardId) {
         return "forward:/card/index.html";
     }
+
+    // ── 관리자 페이지 ─────────────────────────────────────────────
 
     @GetMapping("/admin/cards")
     public String adminCards() {
@@ -90,10 +111,5 @@ public class CleanUrlController {
     @GetMapping("/admin/approvals/{approvalId}")
     public String adminApprovalDetail(@PathVariable String approvalId) {
         return "forward:/admin/approvalManage.html";
-    }
-
-    @GetMapping("/auth/ip-verify")
-    public String ipVerify() {
-        return "forward:/auth/ip-verify.html";
     }
 }

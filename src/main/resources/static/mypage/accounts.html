@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>내 계좌 | 부산은행</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/mypage.css">
+  <link rel="stylesheet" href="/css/teal-theme.css">
+</head>
+<body data-page="mypage-accounts">
+
+  <div id="app-header"></div>
+
+  <nav class="sub-nav" aria-label="페이지 이동">
+    <button class="sub-nav__back" type="button">마이페이지</button>
+    <span class="sub-nav__sep" aria-hidden="true">›</span>
+    <span class="sub-nav__title" aria-current="page">내 계좌</span>
+  </nav>
+
+  <main class="page-wrap">
+
+    <header class="page-title">
+      <h1>내 계좌</h1>
+      <p>보유하신 계좌 목록과 잔액을 확인할 수 있습니다.</p>
+    </header>
+
+    <!-- 총 잔액 배너 -->
+    <div class="account-summary-banner" id="accountSummaryBanner" aria-live="polite">
+      <span class="account-summary-banner__label">총 잔액</span>
+      <strong class="account-summary-banner__amount" id="totalBalance">
+        <span class="skeleton skeleton-balance"></span>
+      </strong>
+      <span class="account-summary-banner__count" id="accountCount"></span>
+    </div>
+
+    <!-- 계좌 목록 -->
+    <section class="card" aria-labelledby="lbl-account-list">
+      <h2 class="card__head" id="lbl-account-list">계좌 목록</h2>
+      <ul class="account-list" id="accountList" aria-label="내 계좌 목록">
+        <!-- 스켈레톤 -->
+        <li class="account-item" aria-hidden="true">
+          <span class="skeleton skeleton-badge"></span>
+          <span class="account-item__body">
+            <span class="skeleton skeleton-text"></span>
+            <span class="skeleton skeleton-text skeleton-text--short"></span>
+          </span>
+          <span class="skeleton skeleton-amount"></span>
+        </li>
+        <li class="account-item" aria-hidden="true">
+          <span class="skeleton skeleton-badge"></span>
+          <span class="account-item__body">
+            <span class="skeleton skeleton-text skeleton-text--mid"></span>
+            <span class="skeleton skeleton-text skeleton-text--short"></span>
+          </span>
+          <span class="skeleton skeleton-amount skeleton-amount--wide"></span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- 계좌 개설 CTA -->
+    <a href="/account-open" class="account-open-cta" aria-label="새 계좌 개설하기">
+      <span class="account-open-cta__icon" aria-hidden="true">＋</span>
+      <span class="account-open-cta__text">새 계좌 개설하기</span>
+      <span class="account-open-cta__arrow" aria-hidden="true">›</span>
+    </a>
+
+  </main>
+
+  <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+  <script src="/js/utils.js"></script>
+  <script src="/js/header.js"></script>
+  <script src="/js/mypage.js"></script>
+</body>
+</html>
