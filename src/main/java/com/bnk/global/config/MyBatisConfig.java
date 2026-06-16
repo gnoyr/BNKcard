@@ -38,8 +38,10 @@ import lombok.RequiredArgsConstructor;
 @Configuration
 @RequiredArgsConstructor
 @MapperScan({
-    "com.bnk.domain.**.mapper",
-    "com.bnk.global.**.mapper"
+    "com.bnk.domain.**.mapper",   // domain 하위 모든 mapper 패키지
+    "com.bnk.global.log.mapper",  // EventLogMapper
+    "com.bnk.global.util.audit",  // AuditLogMapper
+    "com.bnk.global.migration"    // TrustedIpMigrationMapper
 })
 public class MyBatisConfig {
 
