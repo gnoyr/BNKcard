@@ -60,7 +60,6 @@ class IpVerifyControllerTest {
 	private static final String CHALLENGE_TOKEN = "ip:challenge:42:bbb222hash";
 	private static final String PLAIN_IP = "10.0.0.99";
 
-	// [COMPILE-FIX] CI 테스트용 공통 상수 — residentFront/genderCode 대신 실제 CI 생성 인자
 	private static final String NAME = "홍길동";
 	private static final String BIRTH_DATE = "1990-01-01";
 	private static final String PHONE = "010-1234-5678";
@@ -164,46 +163,43 @@ class IpVerifyControllerTest {
 			lenient().when(userSessionMapper.insertSession(any())).thenReturn(1);
 		}
 
-		/**
-		 * [성공] CI 인증 완료 → 200
-		 *
-		 * [COMPILE-FIX] stub 수정 수정 전: .verifyCi(eq(USER_ID), eq("900101"), eq("1"),
-		 * any()) → 4개 인자, 서비스는 5개 파라미터 → 컴파일 에러 수정 후: .verifyCi(eq(USER_ID), eq(NAME),
-		 * eq(BIRTH_DATE), eq(PHONE), any(IpTrustService.class)) → 5개 인자, 서비스 시그니처 일치
-		 *
-		 * 요청 바디도 residentFront/genderCode → name/birthDate/phone 으로 변경
-		 */
 		@Test
 		@DisplayName("[성공] CI 인증 완료 → 200")
 		void CI인증성공() throws Exception {
 			given(ipTrustService.validateChallengeToken(USER_ID, CHALLENGE_TOKEN)).willReturn(PLAIN_IP);
 
-			// [COMPILE-FIX] 5개 파라미터로 수정
-			willDoNothing().given(ipVerifyService).verifyCi(eq(USER_ID), eq(NAME), eq(BIRTH_DATE), eq(PHONE),
-					any(IpTrustService.class));
+			// 컴파일 에러 수정: 총 6개의 파라미터 매처 적용 (String 4개 반영)
+			willDoNothing().given(ipVerifyService).verifyCi(
+					eq(USER_ID),
+					anyString(),
+					anyString(),
+					anyString(),
+					anyString(),
+					any(IpTrustService.class)
+			);
 
 			willDoNothing().given(ipTrustService).approvePendingIp(USER_ID, PLAIN_IP, "CI_VERIFY", "회사");
 
 			mvc.perform(post("/api/auth/ip-verify/ci").contentType(MediaType.APPLICATION_JSON)
 					.content(om.writeValueAsString(Map.of("userId", USER_ID, "challengeToken", CHALLENGE_TOKEN,
-							// [COMPILE-FIX] residentFront/genderCode → name/birthDate/phone
 							"name", NAME, "birthDate", BIRTH_DATE, "phone", PHONE, "nickname", "회사"))))
 					.andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true));
 		}
 
-		/**
-		 * [실패] CI 불일치 → 400 IP002
-		 *
-		 * [COMPILE-FIX] stub 수정 — anyString() 3개 + any(IpTrustService.class)
-		 */
 		@Test
 		@DisplayName("[실패] CI 불일치 → 400 IP002")
 		void CI불일치() throws Exception {
 			given(ipTrustService.validateChallengeToken(USER_ID, CHALLENGE_TOKEN)).willReturn(PLAIN_IP);
 
-			// [COMPILE-FIX] 수정 전: anyString() x2 + any() → 수정 후: anyString() x3 + any()
-			willThrow(new BusinessException(ErrorCode.CI_MISMATCH)).given(ipVerifyService).verifyCi(eq(USER_ID),
-					anyString(), anyString(), anyString(), any(IpTrustService.class));
+			// 컴파일 에러 수정: 총 6개의 파라미터 매처 적용
+			willThrow(new BusinessException(ErrorCode.CI_MISMATCH)).given(ipVerifyService).verifyCi(
+					eq(USER_ID),
+					anyString(),
+					anyString(),
+					anyString(),
+					anyString(),
+					any(IpTrustService.class)
+			);
 
 			mvc.perform(post("/api/auth/ip-verify/ci").contentType(MediaType.APPLICATION_JSON)
 					.content(om.writeValueAsString(Map.of("userId", USER_ID, "challengeToken", CHALLENGE_TOKEN, "name",
@@ -211,49 +207,39 @@ class IpVerifyControllerTest {
 					.andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("IP002"));
 		}
 
-		/**
-		 * [실패] 이름 누락 → 400 C001 (Bean Validation)
-		 *
-		 * [COMPILE-FIX] 기존 "주민번호 7자리 → 400 C001" 테스트를 "필수 필드 누락 → 400 C001" 테스트로 교체
-		 * (residentFront @Pattern 검증 제거됨 → 새 DTO 기준 검증 테스트)
-		 */
 		@Test
 		@DisplayName("[실패] 필수 필드(name) 누락 → 400 C001")
 		void 필수필드누락() throws Exception {
 			mvc.perform(post("/api/auth/ip-verify/ci").contentType(MediaType.APPLICATION_JSON)
 					.content(om.writeValueAsString(Map.of("userId", USER_ID, "challengeToken", CHALLENGE_TOKEN,
-							// name 누락
 							"birthDate", BIRTH_DATE, "phone", PHONE))))
 					.andExpect(status().isBadRequest());
 		}
 
-		/**
-		 * [실패] 생년월일 형식 오류 → 400
-		 */
 		@Test
 		@DisplayName("[실패] 생년월일 형식 오류(YYYYMMDD) → 400")
 		void 생년월일형식오류() throws Exception {
 			mvc.perform(post("/api/auth/ip-verify/ci").contentType(MediaType.APPLICATION_JSON)
 					.content(om.writeValueAsString(Map.of("userId", USER_ID, "challengeToken", CHALLENGE_TOKEN, "name",
-							NAME, "birthDate", "19900101", // YYYY-MM-DD 아님
+							NAME, "birthDate", "19900101",
 							"phone", PHONE))))
 					.andExpect(status().isBadRequest());
 		}
 
-		/**
-		 * [실패] CI 3회 실패 잠금 → 429 IP003
-		 *
-		 * [COMPILE-FIX] stub 수정 — 5개 파라미터 매처
-		 */
 		@Test
 		@DisplayName("[실패] CI 3회 실패 잠금 → 429 IP003")
 		void CI잠금() throws Exception {
 			given(ipTrustService.validateChallengeToken(USER_ID, CHALLENGE_TOKEN)).willReturn(PLAIN_IP);
 
-			// [COMPILE-FIX] anyString() x2 + any() → anyString() x3 +
-			// any(IpTrustService.class)
-			willThrow(new BusinessException(ErrorCode.CI_LOCKED)).given(ipVerifyService).verifyCi(eq(USER_ID),
-					anyString(), anyString(), anyString(), any(IpTrustService.class));
+			// 컴파일 에러 수정: 총 6개의 파라미터 매처 적용
+			willThrow(new BusinessException(ErrorCode.CI_LOCKED)).given(ipVerifyService).verifyCi(
+					eq(USER_ID),
+					anyString(),
+					anyString(),
+					anyString(),
+					anyString(),
+					any(IpTrustService.class)
+			);
 
 			mvc.perform(post("/api/auth/ip-verify/ci").contentType(MediaType.APPLICATION_JSON)
 					.content(om.writeValueAsString(Map.of("userId", USER_ID, "challengeToken", CHALLENGE_TOKEN, "name",

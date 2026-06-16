@@ -52,6 +52,16 @@ public class CleanUrlController {
         return "forward:/mypage/spending.html";
     }
 
+    @GetMapping("/mypage/credit-score")
+    public String mypageCreditScore() {
+        return "forward:/mypage/credit-score.html";
+    }
+
+    @GetMapping("/mypage/trusted-ips")
+    public String mypageTrustedIps() {
+        return "forward:/mypage/trusted-ips.html";
+    }
+
     @GetMapping("/copy-code")
     public String copyCode() {
         return "forward:/auth/copy-code.html";
@@ -81,9 +91,9 @@ public class CleanUrlController {
     public String adminApprovalDetail(@PathVariable String approvalId) {
         return "forward:/admin/approvalManage.html";
     }
+
     @GetMapping("/auth/ip-verify")
     public String ipVerify() {
         return "forward:/auth/ip-verify.html";
     }
-
 }
