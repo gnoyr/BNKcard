@@ -153,7 +153,7 @@
         try {
             const response = await fetch(apiUrl, {
                 method: "POST",
-                credentials: "omit",
+                credentials: "include",
                 headers: {
                     "Content-Type": "application/json",
                     ...getCsrfHeaders()
