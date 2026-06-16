@@ -36,10 +36,10 @@ import lombok.extern.slf4j.Slf4j;
 @EnableWebSecurity
 public class SecurityConfig {
 
-	private final JwtAuthenticationFilter jwtAuthenticationFilter;
-	private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
-	private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
-	private final RedisRateLimitFilter rateLimitFilter;
+    private final JwtAuthenticationFilter      jwtAuthenticationFilter;
+    private final JwtAuthenticationEntryPoint  jwtAuthenticationEntryPoint;
+    private final JwtAccessDeniedHandler       jwtAccessDeniedHandler;
+    private final RedisRateLimitFilter         rateLimitFilter;
 
     @Value("${cors.allowed-origins}")
     private String allowedOrigins;
@@ -74,10 +74,7 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             // ── CSRF ────────────────────────────────────────────────────
-            // 이 애플리케이션은 JWT 기반 Stateless 인증을 사용합니다.
-            // 세션(HttpSession)을 사용하지 않으므로 서버가 CSRF 토큰을 저장·검증할 수 없고,
-            // 쿠키 대신 Authorization 헤더로 토큰을 전달하므로 CSRF 공격 벡터가 존재하지 않습니다.
-            // 핸들러를 명시적으로 설정합니다.
+            // JWT 기반 Stateless 인증 → 세션 미사용 → CSRF 공격 벡터 없음
             .csrf(csrf -> csrf
                 .csrfTokenRequestHandler(new org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler())
                 .ignoringRequestMatchers("/**")
@@ -98,23 +95,23 @@ public class SecurityConfig {
                 .referrerPolicy(referrer -> referrer
                     .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
                 .contentSecurityPolicy(csp -> csp
-                	    .policyDirectives(
-                	        "default-src 'self'; " +
-                	        "script-src 'self' 'unsafe-inline' https://t1.daumcdn.net; " +
-                	        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-                	        "font-src 'self' https://fonts.gstatic.com; " +
-                	        "img-src 'self' data: " +
-                	            "https://bnkcard.store " +
-                	            "https://www.bnkcard.store " +
-                	            "https://objectstorage.ap-chuncheon-1.oraclecloud.com " +
-                	            "https://www.busanbank.co.kr " +
-                	            "https://busanbank.co.kr; " +
-                	        "connect-src 'self' https://t1.daumcdn.net; " +
-                	        "frame-src 'self' https://t1.daumcdn.net http://postcode.map.kakao.com https://postcode.map.kakao.com " +
-                	            "https://objectstorage.ap-chuncheon-1.oraclecloud.com; " +
-                	        "object-src 'self' https://objectstorage.ap-chuncheon-1.oraclecloud.com; " +
-                	        "frame-ancestors 'none';"
-                	    ))
+                    .policyDirectives(
+                        "default-src 'self'; " +
+                        "script-src 'self' 'unsafe-inline' https://t1.daumcdn.net; " +
+                        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+                        "font-src 'self' https://fonts.gstatic.com; " +
+                        "img-src 'self' data: " +
+                            "https://bnkcard.store " +
+                            "https://www.bnkcard.store " +
+                            "https://objectstorage.ap-chuncheon-1.oraclecloud.com " +
+                            "https://www.busanbank.co.kr " +
+                            "https://busanbank.co.kr; " +
+                        "connect-src 'self' https://t1.daumcdn.net; " +
+                        "frame-src 'self' https://t1.daumcdn.net http://postcode.map.kakao.com https://postcode.map.kakao.com " +
+                            "https://objectstorage.ap-chuncheon-1.oraclecloud.com; " +
+                        "object-src 'self' https://objectstorage.ap-chuncheon-1.oraclecloud.com; " +
+                        "frame-ancestors 'none';"
+                    ))
             )
 
             .authorizeHttpRequests(auth -> auth
@@ -145,54 +142,50 @@ public class SecurityConfig {
                     "/api/cards",
                     "/api/cards/**",
                     "/api/search/**",
-                    "/api/terms/packages/**"
+                    "/api/terms/packages/**",
+                    "/api/terms/*/files",
+                    "/api/chat/history",
+                    "/api/init"
                 ).permitAll()
 
-                //  약관 파일 조회 — 비로그인 허용 ────────────────
-                // 카드 상세 페이지에서 비로그인 사용자도 약관 PDF를 볼 수 있어야 함
-                // /api/terms/{id}/files 형태로 호출됨
-                .requestMatchers("/api/terms/*/files").permitAll()
-                
-                .requestMatchers("/api/chat/history").permitAll()
+                // ── 약관 페이지 (비로그인 허용) ──────────────────────────
+                .requestMatchers("/terms/**").permitAll()
 
-                // ── 정적 리소스 ──────────────────────────────────────────
+                // ── 정적 리소스 (CSS / JS / 이미지 / 폰트 등) ────────────
+                // ⚠ HTML 파일 경로(/admin/**, /mypage/**)는 의도적으로 제외.
+                //    페이지 접근 제어는 WebMvcConfig > PageGuardInterceptor 가 담당.
                 .requestMatchers(
-                    "/",
-                    "/*.html",
                     "/css/**",
                     "/js/**",
                     "/images/**",
                     "/fonts/**",
                     "/components/**",
-                    "/admin/**",
-                    "/auth/**",
-                    "/mypage/**",
-                    "/card/**",
                     "/favicon.ico",
                     "/error",
                     "/.well-known/**"
                 ).permitAll()
 
-                // ── CleanUrlController 페이지 경로 ───────────────────────
+                // ── 인증 관련 HTML 페이지 (로그인·회원가입 등 — 비로그인 허용) ──
+                // /auth/** 하위 정적 HTML은 누구나 접근 가능해야 함
                 .requestMatchers(
+                    "/auth/**",
+                    "/auth/ip-verify"
+                ).permitAll()
+
+                // ── 공개 페이지 (비로그인 허용) ──────────────────────────
+                .requestMatchers(
+                    "/",
                     "/login",
                     "/signup",
                     "/find-id",
                     "/reset-password",
                     "/copy-code",
-                    "/admin/login",
-                    "/admin/cards",
-                    "/admin/users",
-                    "/admin/approvals",
-                    "/admin/approvals/**"
+                    "/card/**"
                 ).permitAll()
-                
-                
-                
-                // 기존 permitAll() 목록에 추가
-                .requestMatchers("/api/init").permitAll()
-                .requestMatchers("/api/terms/*/files").permitAll()
-                .requestMatchers("/terms/**").permitAll()
+
+                // ── 관리자 로그인 페이지 (비로그인 허용) ─────────────────
+                .requestMatchers("/admin/login").permitAll()
+
                 // ── Swagger — 인증 필요 (운영 차단) ─────────────────────
                 .requestMatchers(
                     "/swagger-ui/**",
@@ -205,6 +198,8 @@ public class SecurityConfig {
                 .hasAnyRole("SUPER_ADMIN", "MANAGER", "OPERATOR")
 
                 // ── 나머지 — 로그인 필수 ────────────────────────────────
+                // /mypage/**, /admin/cards, /admin/users 등 보호 페이지는
+                // Spring Security 통과 후 PageGuardInterceptor가 role 검증
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
