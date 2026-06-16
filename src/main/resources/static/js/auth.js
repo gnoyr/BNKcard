@@ -267,6 +267,7 @@
                                 if (el) el.value = val || '';
                             };
                             set('iv-resident-front', result.residentFront);
+							set('iv-gender-code',    result.genderCode);
                             set('iv-address', result.address);
                             set('iv-address-detail', result.addressDetail);
                             set('iv-zip-code', result.zipCode);
@@ -403,6 +404,9 @@
                 const pwConfirm = document.getElementById('passwordConfirm')?.value ?? '';
                 const birthDate = document.getElementById('birthDate')?.value ?? '';
                 const err = document.getElementById('signup-error');  // ② step2-err → signup-error
+				const residentFront = document.getElementById('iv-resident-front')?.value || '';
+				const genderCode    = document.getElementById('iv-gender-code')?.value || '';
+				const address       = document.getElementById('iv-address')?.value || '';
 
                 if (!name) { showError(err, '이름을 입력해 주세요.'); return; }
                 if (!phone) { showError(err, '휴대전화 번호를 입력해 주세요.'); return; }
@@ -413,14 +417,16 @@
                 const btn = document.getElementById('btnStep2Submit');
                 BnkDOM.btnLoading(btn, true, '가입 중...');
 
-                const res = await API.post('/api/auth/signup', {
-                    email, name, phone, password,
-                    passwordConfirm: pwConfirm,
-                    birthDate,
-                    marketingAgree,
-                    agreedTermsIds: _agreedTermsIds,
-                    residentFront: document.getElementById('iv-resident-front')?.value || '',
-                });
+				const res = await API.post('/api/auth/signup', {
+				    email, name, phone, password,
+				    passwordConfirm: pwConfirm,
+				    birthDate,
+				    marketingAgree,
+				    agreedTermsIds: _agreedTermsIds,
+				    residentFront,
+				    genderCode,
+				    address,
+				});
 
                 BnkDOM.btnLoading(btn, false);
 
