@@ -130,7 +130,8 @@ public class SecurityConfig {
                     "/api/auth/find-id",
                     "/api/auth/find-password",
                     "/api/auth/reset-password",
-                    "/api/auth/refresh"
+                    "/api/auth/refresh",
+                    "/api/auth/ip-verify/**"
                 ).permitAll()
 
                 // ── 관리자 인증 API ───────────────────────────────────────
@@ -169,7 +170,8 @@ public class SecurityConfig {
                     "/mypage/**",
                     "/card/**",
                     "/favicon.ico",
-                    "/error"
+                    "/error",
+                    "/.well-known/**"
                 ).permitAll()
 
                 // ── CleanUrlController 페이지 경로 ───────────────────────
@@ -185,6 +187,9 @@ public class SecurityConfig {
                     "/admin/approvals",
                     "/admin/approvals/**"
                 ).permitAll()
+                
+                // 기존 permitAll() 목록에 추가
+                .requestMatchers("/api/init").permitAll()
 
                 // ── Swagger — 인증 필요 (운영 차단) ─────────────────────
                 .requestMatchers(

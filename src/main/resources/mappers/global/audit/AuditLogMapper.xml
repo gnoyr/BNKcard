@@ -31,17 +31,17 @@
 	<insert id="insertUserActivity"
 		parameterType="com.bnk.global.util.audit.UserActivityLog">
 		INSERT INTO USER_ACTIVITY_LOG (
-		user_id, action, result, target_id,
-		detail, client_ip, request_uri, occurred_at
+		    user_id, action, result, target_id,
+		    detail, client_ip, request_uri, occurred_at
 		) VALUES (
-		#{userId},
-		#{action},
-		#{result},
-		#{targetId, jdbcType=VARCHAR},
-		#{detail, jdbcType=VARCHAR},
-		#{clientIp, jdbcType=VARCHAR},
-		#{requestUri, jdbcType=VARCHAR},
-		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+		    #{userId,     jdbcType=NUMERIC},
+		    #{action,     jdbcType=VARCHAR},
+		    #{result,     jdbcType=VARCHAR},
+		    #{targetId,   jdbcType=VARCHAR},
+		    #{detail,     jdbcType=VARCHAR},
+		    #{clientIp,   jdbcType=VARCHAR},
+		    #{requestUri, jdbcType=VARCHAR},
+		    SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		)
 	</insert>
 

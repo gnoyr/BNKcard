@@ -27,6 +27,7 @@ import com.bnk.domain.auth.dto.response.AuthTokenResult;
 import com.bnk.domain.auth.dto.response.FindIdResponse;
 import com.bnk.domain.auth.mapper.UserSessionMapper;
 import com.bnk.domain.auth.model.UserSession;
+import com.bnk.domain.ipauth.service.IpTrustService;
 import com.bnk.domain.terms.mapper.TermsMapper;
 import com.bnk.domain.terms.mapper.UserTermsAgreementMapper;
 import com.bnk.domain.terms.model.Terms;
@@ -68,6 +69,7 @@ public class AuthService {
 	private final CddService cddService;
 	private final TokenSecurityService tokenSecurityService;
 	private final AuditLogger auditLogger;
+	private final IpTrustService ipTrustService;
 
 	// ──────────────────────────────────────────────────────────────────
 	// KEY_VERIFY : 인증코드 임시 저장 "email:verify:{email}"
@@ -219,6 +221,38 @@ public class AuthService {
 		auditLogger.success(AuditLogger.AUTH, AuditLogger.SIGNUP,
 				user.getUserId(), null, null);
 		return user.getUserId();
+	}
+
+	/**
+	 * 회원가입 최초 IP 등록.
+	 * AuthController.signup()에서 signup() 완료 후 호출.
+	 * AuthService.signup()은 HttpServletRequest를 받지 않으므로
+	 * Controller 레이어에서 IP를 추출하여 전달.
+	 */
+	public void registerInitialIp(Long userId, String ip) {
+		ipTrustService.registerInitialIp(userId, ip);
+	}
+
+	/**
+	 * 이메일로 userId 조회 — AuthController.login()에서 IP 챌린지 체크 시 사용.
+	 * login()이 AuthTokenResult를 반환하고 userId를 포함하지 않으므로 별도 조회.
+	 * 이미 login()에서 사용자 검증이 완료된 후 호출되므로 USER_NOT_FOUND는 발생하지 않음.
+	 */
+	public Long findUserIdByEmail(String email) {
+		return userMapper.findByEmail(email)
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND))
+				.getUserId();
+	}
+
+	/**
+	 * 로그인 완료 후 IP 챌린지 여부 확인.
+	 * AuthController.login()에서 AuthTokenResult 발급 후 호출.
+	 *
+	 * @return 빈 Optional → 신뢰 IP (쿠키 그대로 발급)
+	 *         값 있음     → challengeToken (쿠키 미발급, 챌린지 응답 반환)
+	 */
+	public java.util.Optional<String> checkIpChallenge(Long userId, String ip) {
+		return ipTrustService.checkIp(userId, ip);
 	}
 
 	/**

@@ -516,19 +516,40 @@ async function runModalSearch() {
     if (cats.length === 1) params.append('categoryId', cats[0]);
     else if (cats.length > 1) cats.forEach(id => params.append('categoryIds', id));
 
-    const data = await api('/api/cards?' + params.toString());
-    const results = data?.content ?? [];
-    document.getElementById('modal-result-title').textContent = `검색 결과 (${data?.totalCount ?? 0}건)`;
+    // ↓ 변경: /api/cards → /api/search (AI 검색 포함)
+    const data = await api('/api/search?' + params.toString());
+
+    // ↓ 변경: 응답 구조가 { page: { content, totalCount }, aiSearchMessage } 로 바뀜
+    const results = data?.page?.content ?? [];
+    const totalCount = data?.page?.totalCount ?? 0;
+
+    document.getElementById('modal-result-title').textContent = `검색 결과 (${totalCount}건)`;
+
+    // ↓ 추가: AI 검색 안내 문구 처리
+    const aiMsgEl = document.getElementById('ai-search-message');
+    if (aiMsgEl) {
+        const aiMsg = data?.aiSearchMessage;
+        if (aiMsg) {
+            aiMsgEl.textContent = aiMsg;
+            aiMsgEl.style.display = '';
+        } else {
+            aiMsgEl.style.display = 'none';
+        }
+    }
 
     if (!results.length) {
-        document.getElementById('modal-results').innerHTML = '<div style="text-align:center;color:#999;padding:20px">결과가 없습니다.</div>';
+        document.getElementById('modal-results').innerHTML =
+            '<div style="text-align:center;color:#999;padding:20px">결과가 없습니다.</div>';
         return;
     }
+
     const modalResultsEl = document.getElementById('modal-results');
     modalResultsEl.innerHTML = results.map(card => {
         const ne = (card.cardName ?? '').replace(/"/g, '&quot;');
         const ce = (card.companyName ?? '').replace(/"/g, '&quot;');
-        const th = card.thumbnailUrl ? `<img src="${card.thumbnailUrl}" alt="${card.cardName}" onerror="this.style.display='none'" style="width:100%;height:100%;object-fit:cover;">` : '';
+        const th = card.thumbnailUrl
+            ? `<img src="${card.thumbnailUrl}" alt="${card.cardName}" onerror="this.style.display='none'" style="width:100%;height:100%;object-fit:cover;">`
+            : '';
         return `
       <div class="modal-result-item" data-card-id="${card.cardId}">
         <div class="modal-result-thumb">${th}</div>
@@ -543,7 +564,8 @@ async function runModalSearch() {
         </div>
       </div>`;
     }).join('');
-    // 이벤트 위임
+
+    // 이벤트 위임 (기존 그대로)
     modalResultsEl.addEventListener('click', (e) => {
         const detailBtn = e.target.closest('.btn-m-detail');
         const compareBtn = e.target.closest('.btn-m-compare');
