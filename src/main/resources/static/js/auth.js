@@ -113,29 +113,32 @@
 
             BnkDOM.btnLoading(btn, false);
 
-            if (res.ok) {
-                // ── IP 챌린지 분기 ──
-                const payload = res.data?.data ?? res.data;
-                if (payload?.requireIpVerify) {
-                    sessionStorage.setItem('ip_challenge_token', payload.challengeToken);
+			if (res.ok) {
+			    const payload = res.data?.data ?? res.data;
+			    if (payload?.requireIpVerify) {
+			        sessionStorage.setItem('ip_challenge_token', payload.challengeToken);
 
-                    const tokenParts = payload.challengeToken ? payload.challengeToken.split(':') : [];
-                    const parsedUserId = tokenParts.length >= 3 ? Number(tokenParts[2]) : NaN;
+			        const tokenParts = payload.challengeToken ? payload.challengeToken.split(':') : [];
+			        const parsedUserId = tokenParts.length >= 3 ? Number(tokenParts[2]) : NaN;
 
-                    if (!parsedUserId || isNaN(parsedUserId)) {
-                        // userId 파싱 실패 → 로그인 재시도 유도 (세션 오염 방지)
-                        BnkToast.error('인증 정보가 올바르지 않습니다. 다시 로그인해 주세요.');
-                        BnkDOM.btnLoading(btn, false);
-                        return;
-                    }
+			        if (!parsedUserId || isNaN(parsedUserId)) {
+			            BnkToast.error('인증 정보가 올바르지 않습니다. 다시 로그인해 주세요.');
+			            BnkDOM.btnLoading(btn, false);
+			            return;
+			        }
 
-                    sessionStorage.setItem('ip_challenge_userId', String(parsedUserId));
-                    const next = new URLSearchParams(location.search).get('next');
-                    sessionStorage.setItem('ip_challenge_next', (next?.startsWith('/') && !next.startsWith('//')) ? next : '/');
-                    location.href = '/auth/ip-verify';
-                    return;
-                }
-            }
+			        sessionStorage.setItem('ip_challenge_userId', String(parsedUserId));
+			        const next = new URLSearchParams(location.search).get('next');
+			        sessionStorage.setItem('ip_challenge_next', (next?.startsWith('/') && !next.startsWith('//')) ? next : '/');
+			        location.href = '/auth/ip-verify';
+			        return;
+			    }
+
+			    sessionStorage.setItem('bnk_login_at', String(Date.now()));
+			    const next = new URLSearchParams(location.search).get('next');
+			    location.href = (next?.startsWith('/') && !next.startsWith('//')) ? next : '/';
+			    return;
+			}
 
             if (res.status === 0 || res.status >= 500) return;
 
