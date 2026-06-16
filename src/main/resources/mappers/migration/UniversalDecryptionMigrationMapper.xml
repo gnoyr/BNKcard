@@ -3,73 +3,69 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <!--
   UniversalDecryptionMigrationMapper.xml
-  
+
   [핵심 전략]
   - USER_TAB_COLUMNS 메타데이터로 모든 VARCHAR2/CHAR 컬럼을 런타임에 탐지
   - 암호문 판별: REGEXP_COUNT(컬럼, ':') = 1 (콜론 정확히 1개)
   - 동적 SQL은 ${} 로 테이블/컬럼명 바인딩 (메타데이터 출처이므로 SQLi 안전)
   - 값 바인딩은 #{} 사용
-  
-  [제외 테이블]
-  - 로그/이력 테이블: UPDATE 트리거로 변경 차단됨 → 제외 필수
-    · AUDIT_LOGS, USER_ACTIVITY_LOG, ADMIN_ACTIVITY_LOG
-    · LOGIN_HISTORIES (로그성 테이블)
-  - 시스템 테이블, 뷰: USER_TAB_COLUMNS 필터로 자동 제외
+
+  [제외 컬럼 — findAllVarcharColumns WHERE 절]
+  1. 해시 컬럼 (%_HASH suffix)
+  2. PK 컬럼
+  3. Phase 1에서 암호화 보존하는 컬럼 (USERS.PHONE 등)
+  4. 원래부터 평문인 URL/텍스트 컬럼 (CARD_IMAGES.IMAGE_URL 등)
+  5. Phase 1 신규 암호화 대상 컬럼 (EVENT_LOGS.REQUEST_IP, LOGIN_HISTORIES.IP_ADDRESS)
 -->
 <mapper namespace="com.bnk.global.migration.UniversalDecryptionMigrationMapper">
 
-    <!--
-        이 스키마의 모든 테이블 + VARCHAR2/CHAR 컬럼 + 각 테이블 PK 컬럼명 조회.
-        PK_COLUMN은 USER_CONS_COLUMNS에서 PRIMARY KEY 제약 컬럼 추출.
-        PK가 없거나 복합 PK인 경우 ROWID 패턴으로 처리하기 어려우므로 단일 PK만 대상.
-        
-        [제외 조건]
-        - 로그/이력성 테이블: UPDATE 불가 트리거 존재
-        - 해시 컬럼 (_hash suffix): 복호화 대상 아님
-        - deleted_yn, status_code 등 단순 코드 컬럼: 암호문 패턴 들어갈 일 없으나
-          어차피 REGEXP_COUNT 검사에서 0건으로 통과하므로 제외 불필요
-    -->
     <select id="findAllVarcharColumns" resultType="map">
-    SELECT c.TABLE_NAME, c.COLUMN_NAME, pk.PK_COLUMN
-    FROM   USER_TAB_COLUMNS c
-    INNER JOIN (
-        SELECT TABLE_NAME, PK_COLUMN
-        FROM (
-            SELECT
-                cc.TABLE_NAME,
-                cc.COLUMN_NAME  AS PK_COLUMN,
-                COUNT(*) OVER (PARTITION BY cc.TABLE_NAME) AS PK_COL_CNT
-            FROM   USER_CONSTRAINTS  con
-            JOIN   USER_CONS_COLUMNS cc
-                   ON  con.CONSTRAINT_NAME = cc.CONSTRAINT_NAME
-                   AND con.TABLE_NAME      = cc.TABLE_NAME
-            WHERE  con.CONSTRAINT_TYPE = 'P'
-        )
-        WHERE PK_COL_CNT = 1
-    ) pk ON c.TABLE_NAME = pk.TABLE_NAME
-    WHERE
-        c.DATA_TYPE IN ('VARCHAR2', 'CHAR', 'NVARCHAR2')
-        /* 해시 컬럼 제외 */
-        AND c.COLUMN_NAME NOT LIKE '%\_HASH' ESCAPE '\'
-        /* PK 컬럼 자체 제외 */
-        AND c.COLUMN_NAME != pk.PK_COLUMN
-        /* Phase 1 암호화 보존 컬럼 제외 */
-        AND NOT (c.TABLE_NAME = 'USERS'             AND c.COLUMN_NAME IN ('PHONE','CI_VALUE','BIRTH_DATE'))
-        AND NOT (c.TABLE_NAME = 'ADMIN_USERS'       AND c.COLUMN_NAME = 'PHONE')
-        AND NOT (c.TABLE_NAME = 'WATCHLIST'         AND c.COLUMN_NAME IN ('CI_VALUE','BIRTH_DATE'))
-        AND NOT (c.TABLE_NAME = 'USER_TRUSTED_IPS'  AND c.COLUMN_NAME = 'IP_ADDRESS')
-        /* 원래부터 평문인 컬럼 제외 (URL, 콜론포함 텍스트) */
-        AND NOT (c.TABLE_NAME = 'CARD_BENEFITS'     AND c.COLUMN_NAME IN ('BENEFIT_TITLE','DISPLAY_TEXT'))
-        AND NOT (c.TABLE_NAME = 'CARD_IMAGES'       AND c.COLUMN_NAME = 'IMAGE_URL')
-        AND NOT (c.TABLE_NAME = 'TERMS_FILES'       AND c.COLUMN_NAME = 'FILE_PATH')
-        AND NOT (c.TABLE_NAME = 'TERMS_FILES'       AND c.COLUMN_NAME = 'ORIGINAL_NAME')
-        AND NOT (c.TABLE_NAME = 'TERMS_FILES'       AND c.COLUMN_NAME = 'STORED_NAME')
-    ORDER BY c.TABLE_NAME, c.COLUMN_NAME
-</select>
+        SELECT c.TABLE_NAME, c.COLUMN_NAME, pk.PK_COLUMN
+        FROM   USER_TAB_COLUMNS c
+        INNER JOIN (
+            SELECT TABLE_NAME, PK_COLUMN
+            FROM (
+                SELECT
+                    cc.TABLE_NAME,
+                    cc.COLUMN_NAME  AS PK_COLUMN,
+                    COUNT(*) OVER (PARTITION BY cc.TABLE_NAME) AS PK_COL_CNT
+                FROM   USER_CONSTRAINTS  con
+                JOIN   USER_CONS_COLUMNS cc
+                       ON  con.CONSTRAINT_NAME = cc.CONSTRAINT_NAME
+                       AND con.TABLE_NAME      = cc.TABLE_NAME
+                WHERE  con.CONSTRAINT_TYPE = 'P'
+            )
+            WHERE PK_COL_CNT = 1
+        ) pk ON c.TABLE_NAME = pk.TABLE_NAME
+        WHERE
+            c.DATA_TYPE IN ('VARCHAR2', 'CHAR', 'NVARCHAR2')
+
+            /* ── 해시 컬럼: 복호화 대상 아님 ── */
+            AND c.COLUMN_NAME NOT LIKE '%\_HASH' ESCAPE '\'
+
+            /* ── PK 컬럼 자체 제외 ── */
+            AND c.COLUMN_NAME != pk.PK_COLUMN
+
+            /* ── Phase 1 암호화 보존 컬럼: Phase 2 복호화 제외 ── */
+            AND NOT (c.TABLE_NAME = 'USERS'             AND c.COLUMN_NAME IN ('PHONE', 'CI_VALUE', 'BIRTH_DATE'))
+            AND NOT (c.TABLE_NAME = 'ADMIN_USERS'       AND c.COLUMN_NAME = 'PHONE')
+            AND NOT (c.TABLE_NAME = 'WATCHLIST'         AND c.COLUMN_NAME IN ('CI_VALUE', 'BIRTH_DATE'))
+            AND NOT (c.TABLE_NAME = 'USER_TRUSTED_IPS'  AND c.COLUMN_NAME = 'IP_ADDRESS')
+
+            /* ── Phase 1 신규 암호화 대상: Phase 2 복호화 제외 ── */
+            AND NOT (c.TABLE_NAME = 'EVENT_LOGS'        AND c.COLUMN_NAME = 'REQUEST_IP')
+            AND NOT (c.TABLE_NAME = 'LOGIN_HISTORIES'   AND c.COLUMN_NAME = 'IP_ADDRESS')
+
+            /* ── 원래부터 평문인 컬럼: URL, 콜론 포함 텍스트 ── */
+            AND NOT (c.TABLE_NAME = 'CARD_BENEFITS'     AND c.COLUMN_NAME IN ('BENEFIT_TITLE', 'DISPLAY_TEXT'))
+            AND NOT (c.TABLE_NAME = 'CARD_IMAGES'       AND c.COLUMN_NAME = 'IMAGE_URL')
+            AND NOT (c.TABLE_NAME = 'TERMS_FILES'       AND c.COLUMN_NAME IN ('FILE_PATH', 'ORIGINAL_NAME', 'STORED_NAME'))
+
+        ORDER BY c.TABLE_NAME, c.COLUMN_NAME
+    </select>
 
     <!--
         특정 테이블·컬럼에서 암호문 패턴 행 수 카운트.
-        ${} 사용: 테이블명·컬럼명은 USER_TAB_COLUMNS에서 온 신뢰값.
         REGEXP_COUNT(컬럼, ':') = 1 → 콜론 정확히 1개 = AES 암호문 후보.
     -->
     <select id="countEncryptedRows" resultType="int">

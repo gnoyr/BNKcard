@@ -170,7 +170,8 @@ public class SecurityConfig {
                     "/mypage/**",
                     "/card/**",
                     "/favicon.ico",
-                    "/error"
+                    "/error",
+                    "/.well-known/**"
                 ).permitAll()
 
                 // ── CleanUrlController 페이지 경로 ───────────────────────
