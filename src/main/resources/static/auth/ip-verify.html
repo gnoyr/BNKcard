@@ -25,7 +25,7 @@
           이메일 인증
         </button>
         <button class="btn btn-outline btn-block" id="btnCi">
-          주민번호 인증 (CI)
+          본인정보 인증
         </button>
       </div>
 
@@ -56,20 +56,25 @@
         <button class="btn btn-outline btn-block" id="btnBackFromEmail">← 다른 방법 선택</button>
       </div>
 
-      <!-- VIEW 3: CI 인증 -->
+      <!-- VIEW 3: 본인정보 인증 (이름 + 생년월일 + 전화번호) -->
       <div id="view-ci" style="display:none;">
         <p class="page-desc" style="margin-bottom:16px;">
-          회원가입 시 등록한 주민등록번호 앞 6자리와 성별코드를 입력해 주세요.
+          회원가입 시 등록한 정보를 입력해 주세요.
         </p>
         <div class="form-group">
-          <label class="form-label" for="residentFront">주민번호 앞 6자리 <span class="required">*</span></label>
-          <input class="form-input" type="text" id="residentFront"
-                 placeholder="예: 900101" maxlength="6" inputmode="numeric">
+          <label class="form-label" for="ciName">이름 <span class="required">*</span></label>
+          <input class="form-input" type="text" id="ciName"
+                 placeholder="홍길동" maxlength="20">
         </div>
         <div class="form-group">
-          <label class="form-label" for="genderCode">성별코드 <span class="required">*</span></label>
-          <input class="form-input" type="text" id="genderCode"
-                 placeholder="남=1, 여=2 (2000년대 이후: 남=3, 여=4)" maxlength="1" inputmode="numeric">
+          <label class="form-label" for="ciBirthDate">생년월일 <span class="required">*</span></label>
+          <input class="form-input" type="text" id="ciBirthDate"
+                 placeholder="예: 1990-01-01 또는 19900101" maxlength="10" inputmode="numeric">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="ciPhone">전화번호 <span class="required">*</span></label>
+          <input class="form-input" type="text" id="ciPhone"
+                 placeholder="예: 010-1234-5678" maxlength="13" inputmode="numeric">
         </div>
         <div class="form-group">
           <label class="form-label" for="ciNickname">기기 별명 (선택)</label>
