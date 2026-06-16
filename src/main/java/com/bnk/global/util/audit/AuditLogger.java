@@ -109,7 +109,12 @@ public class AuditLogger {
 
     private void record(String category, String action, String result,
                         Long userId, Long adminId, String targetId, String detail) {
-
+    	// userId null이면 로그 스킵
+        if (userId == null) {
+            log.debug("[AUDIT] userId null — 스킵: {}/{}", category, action);
+            return;
+        }
+    	
         // ① Slf4j 로그
         String actor = adminId != null ? "adminId=" + adminId
                      : userId  != null ? "userId="  + userId
