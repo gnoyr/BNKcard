@@ -162,7 +162,8 @@ public class SecurityConfig {
                     "/components/**",
                     "/favicon.ico",
                     "/error",
-                    "/.well-known/**"
+                    "/.well-known/**",
+                    "/index.html"                    
                 ).permitAll()
 
                 // ── 인증 관련 HTML 페이지 (로그인·회원가입 등 — 비로그인 허용) ──
