@@ -37,9 +37,10 @@ public class MiscEncryptionMigrationService {
     public MigrationResult migrateAll() {
         MigrationResult r1 = migrateEventLogsRequestIp();
         MigrationResult r2 = migrateLoginHistoriesIpAddress();
+        MigrationResult r3 = migrateAuditLogsIpAddress();
         return new MigrationResult(
-                r1.successCount() + r2.successCount(),
-                r1.failCount()    + r2.failCount());
+                r1.successCount() + r2.successCount() + r3.successCount(),
+                r1.failCount()    + r2.failCount()    + r3.failCount());
     }
 
     // ── EVENT_LOGS.REQUEST_IP ──────────────────────────────────────
@@ -132,5 +133,58 @@ public class MiscEncryptionMigrationService {
         }
         log.info("[MiscEncryption] LOGIN_HISTORIES.IP_ADDRESS 완료 — 성공:{}, 실패:{}", success, fail);
         return new MigrationResult(success, fail);
+    }
+ // ── AUDIT_LOGS.IP_ADDRESS ──────────────────────────────────────
+    @Transactional
+    public MigrationResult migrateAuditLogsIpAddress() {
+        // 1. 작업 전 트리거 비활성화
+        jdbcTemplate.execute("ALTER TRIGGER ADMIN.TRG_AUDIT_LOGS_NO_UPD DISABLE");
+        
+        try {
+            Integer total = jdbcTemplate.queryForObject(
+                """
+                SELECT COUNT(1) FROM AUDIT_LOGS
+                WHERE IP_ADDRESS IS NOT NULL
+                  AND REGEXP_COUNT(IP_ADDRESS, ':') != 1
+                """, Integer.class);
+            int cnt = (total == null) ? 0 : total;
+            log.info("[MiscEncryption] AUDIT_LOGS.IP_ADDRESS 평문 대상: {}건", cnt);
+            if (cnt == 0) return new MigrationResult(0, 0);
+
+            int success = 0, fail = 0, offset = 0;
+            while (offset < cnt) {
+                List<Map<String, Object>> batch = jdbcTemplate.queryForList(
+                    """
+                    SELECT AUDIT_LOG_ID, IP_ADDRESS FROM AUDIT_LOGS
+                    WHERE IP_ADDRESS IS NOT NULL
+                      AND REGEXP_COUNT(IP_ADDRESS, ':') != 1
+                    ORDER BY AUDIT_LOG_ID
+                    OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+                    """, offset, BATCH_SIZE);
+
+                if (batch.isEmpty()) break;
+
+                for (Map<String, Object> row : batch) {
+                    Object id  = row.get("AUDIT_LOG_ID");
+                    String val = (String) row.get("IP_ADDRESS");
+                    try {
+                        if (aesCryptoUtil.isEncrypted(val)) { success++; continue; }
+                        jdbcTemplate.update(
+                            "UPDATE AUDIT_LOGS SET IP_ADDRESS = ? WHERE AUDIT_LOG_ID = ?",
+                            aesCryptoUtil.encrypt(val), id);
+                        success++;
+                    } catch (Exception e) {
+                        log.warn("[MiscEncryption] AUDIT_LOGS.IP_ADDRESS id={} 실패: {}", id, e.getMessage());
+                        fail++;
+                    }
+                }
+                offset += batch.size();
+            }
+            log.info("[MiscEncryption] AUDIT_LOGS.IP_ADDRESS 완료 — 성공:{}, 실패:{}", success, fail);
+            return new MigrationResult(success, fail);
+        } finally {
+            // 2. 작업 후 트리거 재활성화 (성공/실패 무관하게 반드시 수행)
+            jdbcTemplate.execute("ALTER TRIGGER ADMIN.TRG_AUDIT_LOGS_NO_UPD ENABLE");
+        }
     }
 }
