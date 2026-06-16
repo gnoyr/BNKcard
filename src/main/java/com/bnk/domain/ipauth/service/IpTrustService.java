@@ -176,7 +176,7 @@ public class IpTrustService {
     public void updateNickname(Long userId, Long trustId, String newNickname) {
         int updated = ipTrustMapper.updateNickname(trustId, userId, newNickname);
         if (updated == 0) {
-            throw new BusinessException(ErrorCode.IP_CHALLENGE_EXPIRED);
+            throw new BusinessException(ErrorCode.IP_NOT_FOUND);
         }
     }
 
@@ -187,12 +187,12 @@ public class IpTrustService {
     @Transactional
     public void deleteTrustedIp(Long userId, Long trustId) {
         UserTrustedIp target = ipTrustMapper.findByTrustIdAndUserId(trustId, userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.IP_CHALLENGE_EXPIRED));
-
+                .orElseThrow(() -> new BusinessException(ErrorCode.IP_NOT_FOUND));
+ 
         if (target.isInitialDevice()) {
             throw new BusinessException(ErrorCode.IP_INITIAL_DELETE_FORBIDDEN);
         }
-
+ 
         ipTrustMapper.softDelete(trustId, userId);
         auditLogger.success(AuditLogger.AUTH, "IP_DELETE", userId,
                 target.getIpAddressHash(), "trust_id=" + trustId);
