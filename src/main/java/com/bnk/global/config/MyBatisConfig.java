@@ -41,6 +41,11 @@ import lombok.RequiredArgsConstructor;
  *   - WATCHLIST.ci_value       → typeHandler="aesTypeHandler"
  *   - WATCHLIST.birth_date     → typeHandler="aesTypeHandler"
  *   - USER_TRUSTED_IPS.ip_address → typeHandler="aesTypeHandler"
+ *   
+ *   // - CREDIT_CARD_APPLICATIONS.applicant_snapshot → typeHandler="aesTypeHandler"
+	 // - CREDIT_CARD_APPLICATIONS.payment_snapshot   → typeHandler="aesTypeHandler"
+	 // - CHECK_CARD_APPLICATIONS.applicant_snapshot  → typeHandler="aesTypeHandler"
+	 // - CHECK_CARD_APPLICATIONS.payment_snapshot    → typeHandler="aesTypeHandler"
  */
 @Configuration
 @RequiredArgsConstructor
