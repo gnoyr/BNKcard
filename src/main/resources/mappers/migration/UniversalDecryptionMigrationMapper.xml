@@ -7,8 +7,15 @@
   [핵심 전략]
   - USER_TAB_COLUMNS 메타데이터로 모든 VARCHAR2/CHAR 컬럼을 런타임에 탐지
   - 암호문 판별: REGEXP_COUNT(컬럼, ':') = 1 (콜론 정확히 1개)
-  - 동적 SQL은 ${} 로 테이블/컬럼명 바인딩 (메타데이터 출처이므로 SQLi 안전)
-  - 값 바인딩은 #{} 사용
+
+  [보안 — Security Hotspot 대응]
+  - tableName / columnName / pkColumn 은 Oracle 식별자(identifier)이므로
+    MyBatis #{} PreparedStatement 바인딩 대상이 아님.
+    Oracle JDBC 드라이버는 ? 위치에 리터럴 값만 바인딩하며, 식별자로 해석하지 않음.
+  - 따라서 ${} 사용이 불가피하나, 호출 전 Service 계층(UniversalDecryptionMigrationService)에서
+    VALID_IDENTIFIER 정규식(^[A-Z][A-Z0-9_]{0,29}$)으로 반드시 검증 후 호출.
+    메타데이터 출처(USER_TAB_COLUMNS)이므로 외부 사용자 입력이 직접 도달하지 않음.
+  - 실제 데이터 값(plainValue, pkValue, offset, limit)은 #{} 바인딩 사용 — SQL Injection 차단.
 
   [제외 컬럼 — findAllVarcharColumns WHERE 절]
   1. 해시 컬럼 (%_HASH suffix)
@@ -71,6 +78,9 @@
     <!--
         특정 테이블·컬럼에서 암호문 패턴 행 수 카운트.
         REGEXP_COUNT(컬럼, ':') = 1 → 콜론 정확히 1개 = AES 암호문 후보.
+        tableName / columnName / pkColumn 은 SQL 식별자이므로 #{} 바인딩 불가.
+        호출 전 UniversalDecryptionMigrationService.validateIdentifier()에서
+        정규식(^[A-Z][A-Z0-9_]{0,29}$) 검증 완료. 메타데이터(USER_TAB_COLUMNS) 출처.
     -->
     <select id="countEncryptedRows" resultType="int">
         SELECT COUNT(1)
@@ -82,6 +92,9 @@
     <!--
         암호문 패턴 행 배치 조회.
         PK값과 암호문 컬럼값을 Map으로 반환.
+
+        [Security Hotspot — ${} 사용 근거] 위와 동일.
+        offset, limit 은 숫자 파라미터 → #{} 바인딩 적용.
     -->
     <select id="findEncryptedRows" resultType="map">
         SELECT ${pkColumn} AS PK_VALUE, ${columnName} AS COL_VALUE
@@ -94,7 +107,6 @@
 
     <!--
         복호화된 평문으로 단건 UPDATE.
-        pkValue는 #{} 바인딩으로 안전하게 처리.
     -->
     <update id="updateDecryptedValue">
         UPDATE ${tableName}
