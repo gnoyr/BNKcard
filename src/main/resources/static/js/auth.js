@@ -113,29 +113,29 @@
 
             BnkDOM.btnLoading(btn, false);
 
-			if (res.ok) {
-			    // ── IP 챌린지 분기 ──
-			    const payload = res.data?.data ?? res.data;
-			    if (payload?.requireIpVerify) {
-			        // challengeToken · userId · next URL 을 세션에 저장 후 IP 인증 화면으로 이동
-			        sessionStorage.setItem('ip_challenge_token', payload.challengeToken);
-			        sessionStorage.setItem('ip_challenge_userId', String(
-			            // userId는 challengeToken에서 파싱 ("ip:challenge:{userId}:{hash}")
-			            payload.challengeToken.split(':')[2]
-			        ));
-			        const next = new URLSearchParams(location.search).get('next');
-			        sessionStorage.setItem('ip_challenge_next', (next?.startsWith('/') && !next.startsWith('//')) ? next : '/');
-			        location.href = '/auth/ip-verify';
-			        return;
-			    }
+            if (res.ok) {
+                // ── IP 챌린지 분기 ──
+                const payload = res.data?.data ?? res.data;
+                if (payload?.requireIpVerify) {
+                    sessionStorage.setItem('ip_challenge_token', payload.challengeToken);
 
-			    // ── 정상 로그인 ──
-			    sessionStorage.setItem('bnk_login_at', String(Date.now()));
-			    const next = new URLSearchParams(location.search).get('next');
-			    const safeNext = next?.startsWith('/') && !next.startsWith('//') ? next : '/';
-			    location.href = safeNext;
-			    return;
-			}
+                    const tokenParts = payload.challengeToken ? payload.challengeToken.split(':') : [];
+                    const parsedUserId = tokenParts.length >= 3 ? Number(tokenParts[2]) : NaN;
+
+                    if (!parsedUserId || isNaN(parsedUserId)) {
+                        // userId 파싱 실패 → 로그인 재시도 유도 (세션 오염 방지)
+                        BnkToast.error('인증 정보가 올바르지 않습니다. 다시 로그인해 주세요.');
+                        BnkDOM.btnLoading(btn, false);
+                        return;
+                    }
+
+                    sessionStorage.setItem('ip_challenge_userId', String(parsedUserId));
+                    const next = new URLSearchParams(location.search).get('next');
+                    sessionStorage.setItem('ip_challenge_next', (next?.startsWith('/') && !next.startsWith('//')) ? next : '/');
+                    location.href = '/auth/ip-verify';
+                    return;
+                }
+            }
 
             if (res.status === 0 || res.status >= 500) return;
 
@@ -182,12 +182,20 @@
         return {
             init() {
                 const allCb = document.getElementById('terms-all');
+
+                // 전체동의 → 개별 체크박스 일괄 토글
                 allCb?.addEventListener('change', () => {
                     const form = document.getElementById('termsForm');
-                    // data-required="false"인 선택 약관은 전체동의 토글에서 제외
                     const allCbs = [...(form?.querySelectorAll('input[type="checkbox"][data-id], input[type="checkbox"][data-required]') ?? [])]
                         .filter(cb => cb.dataset.required !== 'false');
                     allCbs.forEach(cb => { cb.checked = allCb.checked; });
+                });
+
+                document.getElementById('termsForm')?.addEventListener('change', (e) => {
+                    // 전체동의 체크박스 자체 변경은 제외 (무한 루프 방지)
+                    if (e.target.matches('input[type="checkbox"]') && e.target !== allCb) {
+                        syncAllCheck();
+                    }
                 });
 
                 document.getElementById('btnStep1Next')?.addEventListener('click', () => {
@@ -301,12 +309,12 @@
 
                 // 입력 시 에러 메시지 자동 클리어 — 필드별 + 공통
                 const errClearMap = {
-                    'name':            ['name-err', 'signup-error'],
-                    'phone':           ['phone-err', 'signup-error'],
-                    'email':           ['email-err', 'signup-error'],
-                    'verifyCode':      ['verifyCode-err'],
-                    'creditScore':     ['creditScore-err'],
-                    'birthDate':       ['birthDate-err'],
+                    'name': ['name-err', 'signup-error'],
+                    'phone': ['phone-err', 'signup-error'],
+                    'email': ['email-err', 'signup-error'],
+                    'verifyCode': ['verifyCode-err'],
+                    'creditScore': ['creditScore-err'],
+                    'birthDate': ['birthDate-err'],
                 };
                 Object.entries(errClearMap).forEach(([fieldId, errIds]) => {
                     document.getElementById(fieldId)?.addEventListener('input', () => {
@@ -384,7 +392,7 @@
             async _submitSignup() {
                 if (!_emailVerified) { authToast.error('이메일 인증을 완료해 주세요.'); return; }
                 if (!_ivDone) { authToast.error('본인인증을 완료해 주세요.'); return; }
-				const marketingAgree = document.getElementById('chk-marketing')?.checked ?? false;
+                const marketingAgree = document.getElementById('chk-marketing')?.checked ?? false;
                 const email = document.getElementById('email')?.value.trim();  // ① signupEmail → email
                 const name = document.getElementById('name')?.value.trim();
                 const phone = document.getElementById('phone')?.value.trim().replace(/-/g, '');
@@ -406,7 +414,7 @@
                     email, name, phone, password,
                     passwordConfirm: pwConfirm,
                     birthDate,
-					marketingAgree,
+                    marketingAgree,
                     agreedTermsIds: _agreedTermsIds,
                     residentFront: document.getElementById('iv-resident-front')?.value || '',
                 });

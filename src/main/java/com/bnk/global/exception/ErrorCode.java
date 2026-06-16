@@ -68,7 +68,8 @@ public enum ErrorCode {
     CI_LOCKED                 ("IP003", "CI 인증 실패 횟수를 초과하였습니다. 잠시 후 다시 시도해 주세요.", HttpStatus.TOO_MANY_REQUESTS),
     IP_INITIAL_DELETE_FORBIDDEN("IP004","최초 등록 기기는 삭제할 수 없습니다.",               HttpStatus.BAD_REQUEST),
     IP_ALREADY_TRUSTED        ("IP005", "이미 등록된 IP입니다.",                           HttpStatus.CONFLICT),
-    IP_MAX_LIMIT_EXCEEDED     ("IP006", "신뢰 IP는 최대 10개까지 등록할 수 있습니다.",        HttpStatus.BAD_REQUEST);
+    IP_MAX_LIMIT_EXCEEDED     ("IP006", "신뢰 IP는 최대 10개까지 등록할 수 있습니다.",        HttpStatus.BAD_REQUEST),
+    IP_NOT_FOUND ("IP008", "등록된 기기를 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
 
 	private final String code;
 	private final String message;
