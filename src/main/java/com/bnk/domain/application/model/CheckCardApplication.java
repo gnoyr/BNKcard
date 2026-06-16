@@ -15,8 +15,6 @@ public class CheckCardApplication {
     private String applicationStatus;  // DRAFT/REQUESTED/APPROVED/REJECTED/ISSUED
 
     // STEP 2 - 본인확인
-    private String idType;
-    private String idIssueDate;
     private String idVerifiedYn;
     
     // STEP 3
@@ -30,7 +28,7 @@ public class CheckCardApplication {
     // STEP 5 - 심사
     private String        rejectionReason;
     private LocalDateTime reviewedAt;
-    private Long          reviewedBy;
+    private String        reviewedBy;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

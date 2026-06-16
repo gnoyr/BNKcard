@@ -10,7 +10,6 @@ public class CheckApplicantSnapshotDto {
     private String mobileNo;
     private String address;
     private String email;
-    private String idIssueDate;
     
     private String jobType;
     private String transactionPurpose;
