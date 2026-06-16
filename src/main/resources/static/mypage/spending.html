@@ -4,46 +4,54 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>소비 패턴 관리 | 부산은행</title>
-	<link rel="stylesheet" href="/css/components.css" />
-	<link rel="stylesheet" href="/css/mypage.css" />
-	<link rel="stylesheet" href="/css/teal-theme.css" />
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/mypage.css">
+  <link rel="stylesheet" href="/css/teal-theme.css">
 </head>
 <body data-page="mypage-spending">
-  <nav class="sub-nav">
-    <button class="sub-nav__back" onclick="history.back()">마이페이지</button>
-    <span class="sub-nav__sep">›</span>
-    <span class="sub-nav__title">소비 패턴 관리</span>
+
+  <nav class="sub-nav" aria-label="페이지 이동">
+    <button class="sub-nav__back" type="button">마이페이지</button>
+    <span class="sub-nav__sep" aria-hidden="true">›</span>
+    <span class="sub-nav__title" aria-current="page">소비 패턴 관리</span>
   </nav>
-  <div class="page-wrap">
-    <div class="page-title">
+
+  <main class="page-wrap">
+
+    <header class="page-title">
       <h1>소비 패턴 관리</h1>
       <p>카테고리별 월 지출 금액을 입력하면 소비 패턴 차트에 반영됩니다.</p>
-    </div>
-    <div class="alert alert-info">
+    </header>
+
+    <p class="alert alert-info">
       입력한 금액은 <strong>수동(MANUAL)</strong> 출처로 저장되며 메인 차트에 즉시 반영됩니다.
-    </div>
-    <form id="spendingForm" novalidate>
-      <div class="card">
-        <div class="card__head">카테고리별 월 지출액 입력</div>
-        <div id="rowContainer">
-          <div class="skeleton-row">
-            <span class="skeleton spending-dot skeleton-dot"></span>
-            <span class="skeleton skeleton-text-long"></span>
-            <span class="skeleton skeleton-input"></span>
-          </div>
-        </div>
-        <div class="spending-total">
-          <span class="spending-total__label">월 합계</span>
-          <span class="spending-total__amount" id="totalAmount">0원</span>
-        </div>
-      </div>
+    </p>
+
+    <form class="card" id="spendingForm" novalidate>
+      <h2 class="card__head">카테고리별 월 지출액 입력</h2>
+
+      <ul class="spending-list" id="rowContainer" aria-label="카테고리별 지출 입력">
+        <li class="spending-row spending-row--skeleton">
+          <span class="skeleton spending-dot" aria-hidden="true"></span>
+          <span class="skeleton skeleton-text-long" aria-hidden="true"></span>
+          <span class="skeleton skeleton-input" aria-hidden="true"></span>
+        </li>
+      </ul>
+
+      <p class="spending-total">
+        <span class="spending-total__label">월 합계</span>
+        <output class="spending-total__amount" id="totalAmount" for="rowContainer">0원</output>
+      </p>
+
       <div class="form-actions">
-        <button type="button" class="btn btn-outline" onclick="history.back()">뒤로가기</button>
-        <button type="submit" class="btn btn-primary" id="submitBtn">저장하기</button>
+        <button type="button" class="btn btn-outline" id="backBtn">뒤로가기</button>
+        <button type="submit"  class="btn btn-primary" id="submitBtn">저장하기</button>
       </div>
     </form>
-  </div>
-  <div id="toast-container"></div>
+
+  </main>
+
+  <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
   <script src="/js/utils.js"></script>
   <script src="/js/header.js"></script>
   <script src="/js/mypage.js"></script>
