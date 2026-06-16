@@ -17,6 +17,7 @@ import com.bnk.global.util.AesCryptoUtil;
 /**
  * birth_date 전용 TypeHandler. LocalDate ↔ AES 암호화 String 변환.
  */
+@org.apache.ibatis.type.MappedTypes({})
 public class AesBirthDateTypeHandler extends BaseTypeHandler<LocalDate> {
 
 	private static final DateTimeFormatter ISO_FMT = DateTimeFormatter.ISO_LOCAL_DATE;
@@ -31,13 +32,18 @@ public class AesBirthDateTypeHandler extends BaseTypeHandler<LocalDate> {
 			.appendPattern("dd-MMM-yy")
 			.toFormatter(Locale.ENGLISH);
 
-	private AesCryptoUtil aesCryptoUtil;
+	private static AesCryptoUtil STATIC_UTIL;
 
-	public AesBirthDateTypeHandler() {}
+    private AesCryptoUtil aesCryptoUtil;
 
-	public AesBirthDateTypeHandler(AesCryptoUtil aesCryptoUtil) {
-		this.aesCryptoUtil = aesCryptoUtil;
-	}
+    public AesBirthDateTypeHandler() {
+        this.aesCryptoUtil = STATIC_UTIL;
+    }
+
+    public AesBirthDateTypeHandler(AesCryptoUtil aesCryptoUtil) {
+        this.aesCryptoUtil = aesCryptoUtil;
+        STATIC_UTIL = aesCryptoUtil;
+    }
 
 	// ── Write (암호화) ────────────────────────────────────────────────────────
 	@Override

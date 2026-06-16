@@ -21,15 +21,21 @@ import com.bnk.global.util.AesCryptoUtil;
  *   parameter:  #{phone, typeHandler=AesTypeHandler}
  *
  */
+@org.apache.ibatis.type.MappedTypes({})
 public class AesTypeHandler extends BaseTypeHandler<String> {
 
-	private AesCryptoUtil aesCryptoUtil;
+	private static AesCryptoUtil STATIC_UTIL;
 
-	public AesTypeHandler() {}
+    private AesCryptoUtil aesCryptoUtil;
 
-	public AesTypeHandler(AesCryptoUtil aesCryptoUtil) {
-		this.aesCryptoUtil = aesCryptoUtil;
-	}
+    public AesTypeHandler() {
+        this.aesCryptoUtil = STATIC_UTIL; // 정적 참조 사용
+    }
+
+    public AesTypeHandler(AesCryptoUtil aesCryptoUtil) {
+        this.aesCryptoUtil = aesCryptoUtil;
+        STATIC_UTIL = aesCryptoUtil; // 정적으로 보관
+    }
 
 	// ── Write (암호화) ────────────────────────────────────────────────────────
 	@Override
