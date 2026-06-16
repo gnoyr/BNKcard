@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>계좌 개설 | BNK 부산은행</title>
+  <link rel="stylesheet" href="/css/components.css">
+</head>
+<body>
+
+<div id="app-header"></div>
+
+<main style="max-width:540px; margin:40px auto; padding:0 16px;">
+
+  <!-- 단계 표시 -->
+  <div id="step-indicator" style="display:flex; gap:8px; margin-bottom:32px;">
+    <span id="si-1" style="font-weight:bold; color:#003087;">① 약관동의</span>
+    <span style="color:#ccc;">—</span>
+    <span id="si-2" style="color:#ccc;">② 계좌정보</span>
+    <span style="color:#ccc;">—</span>
+    <span id="si-3" style="color:#ccc;">③ 비밀번호</span>
+    <span style="color:#ccc;">—</span>
+    <span id="si-4" style="color:#ccc;">④ 완료</span>
+  </div>
+
+  <!-- 각 단계 콘텐츠 -->
+  <div id="step-1"><!-- 약관 동의 --></div>
+  <div id="step-2" style="display:none;"><!-- 계좌 정보 --></div>
+  <div id="step-3" style="display:none;"><!-- 비밀번호 --></div>
+  <div id="step-4" style="display:none;"><!-- 완료 --></div>
+
+</main>
+
+<script src="/js/utils.js"></script>
+<script src="/js/header.js"></script>
+<script src="/js/account-open.js"></script>
+</body>
+</html>
