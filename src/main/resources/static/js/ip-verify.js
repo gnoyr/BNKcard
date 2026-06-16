@@ -128,18 +128,38 @@ async function confirmEmailCode() {
 }
 
 /* ================================================================
-   CI 인증
+   본인정보 인증 (이름 + 생년월일 + 전화번호)
 ================================================================ */
-async function confirmCi() {
-    var residentFront = (document.getElementById('residentFront').value || '').trim();
-    var genderCode    = (document.getElementById('genderCode').value || '').trim();
-    var nickname      = (document.getElementById('ciNickname').value || '').trim() || null;
 
-    if (!residentFront || residentFront.length !== 6 || !/^\d{6}$/.test(residentFront)) {
-        showErr('ci-error', '주민번호 앞 6자리를 숫자로 정확히 입력해 주세요.'); return;
+/**
+ * 생년월일 입력값을 YYYY-MM-DD 형식으로 정규화.
+ * "19900101" → "1990-01-01", "1990-01-01" → 그대로
+ */
+function normalizeBirthDate(raw) {
+    var digits = raw.replace(/[^0-9]/g, '');
+    if (digits.length === 8) {
+        return digits.slice(0, 4) + '-' + digits.slice(4, 6) + '-' + digits.slice(6, 8);
     }
-    if (!genderCode || !/^[1-4]$/.test(genderCode)) {
-        showErr('ci-error', '성별코드를 1~4 사이로 입력해 주세요.'); return;
+    return raw.trim();
+}
+
+async function confirmCi() {
+    var name      = (document.getElementById('ciName').value || '').trim();
+    var birthRaw  = (document.getElementById('ciBirthDate').value || '').trim();
+    var phone     = (document.getElementById('ciPhone').value || '').trim();
+    var nickname  = (document.getElementById('ciNickname').value || '').trim() || null;
+
+    // 입력 검증
+    if (!name) {
+        showErr('ci-error', '이름을 입력해 주세요.'); return;
+    }
+    var birthDate = normalizeBirthDate(birthRaw);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
+        showErr('ci-error', '생년월일을 올바르게 입력해 주세요. (예: 1990-01-01)'); return;
+    }
+    var phoneDigits = phone.replace(/[^0-9]/g, '');
+    if (phoneDigits.length < 10 || phoneDigits.length > 11) {
+        showErr('ci-error', '전화번호를 올바르게 입력해 주세요.'); return;
     }
     showErr('ci-error', '');
 
@@ -149,8 +169,9 @@ async function confirmCi() {
         var res = await BnkAPI.post('/api/auth/ip-verify/ci', {
             userId: USER_ID,
             challengeToken: CHALLENGE_TOKEN,
-            residentFront: residentFront,
-            genderCode: genderCode,
+            name: name,
+            birthDate: birthDate,
+            phone: phone,
             nickname: nickname,
         });
         if (res.ok) {
@@ -160,9 +181,9 @@ async function confirmCi() {
             if (errCode === 'IP001') {
                 onSessionExpired();
             } else if (errCode === 'IP003') {
-                showErr('ci-error', 'CI 인증 실패 횟수를 초과했습니다. 이메일 인증을 이용해 주세요.');
+                showErr('ci-error', '인증 실패 횟수를 초과했습니다. 이메일 인증을 이용해 주세요.');
             } else {
-                showErr('ci-error', (res.data && res.data.message) || '본인 정보가 일치하지 않습니다.');
+                showErr('ci-error', (res.data && res.data.message) || '입력하신 정보가 일치하지 않습니다.');
             }
         }
     } catch (e) {
@@ -172,10 +193,10 @@ async function confirmCi() {
     }
 }
 
-/* ── 이벤트 바인딩 — 스크립트 로드 시점에 바로 실행 ── */
+/* ── 이벤트 바인딩 ── */
 function bindEvents() {
-    var btnEmail = document.getElementById('btnEmail');
-    var btnCi    = document.getElementById('btnCi');
+    var btnEmail     = document.getElementById('btnEmail');
+    var btnCi        = document.getElementById('btnCi');
     var btnBackEmail = document.getElementById('btnBackFromEmail');
     var btnBackCi    = document.getElementById('btnBackFromCi');
     var btnSend      = document.getElementById('btnSendCode');
@@ -195,7 +216,6 @@ function bindEvents() {
     });
 }
 
-/* HTML 파싱 완료 여부에 관계없이 안전하게 바인딩 */
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', bindEvents);
 } else {
