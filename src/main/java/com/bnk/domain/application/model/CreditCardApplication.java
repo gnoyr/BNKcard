@@ -11,9 +11,9 @@ public class CreditCardApplication {
     private Long   userId;
     private Long   cardId;
     private String applicationStatus;   // DRAFT/REQUESTED/REVIEWING/APPROVED/REJECTED/ISSUED
-
+    									// REVIEWING: MANUAL_REQUIRED 케이스 추가심사 진행 중
+    
     // STEP 2 - 본인확인
-    private String idType;              // RESIDENT / DRIVER
     private String idVerifiedYn;        // Y / N
 
     // STEP 3 - 소득/신용
@@ -21,7 +21,6 @@ public class CreditCardApplication {
     private String creditScoreBand;     // HIGH/MID/LOW
     private Long   linkedAccountId;     // 연회비 자동이체 계좌 ID
     private String applicantSnapshot;   // CLOB JSON
-    private String incomeSnapshot;      // CLOB JSON
 
     // STEP 4 - 신청정보
     private String        paymentSnapshot;  // CLOB JSON
@@ -45,7 +44,7 @@ public class CreditCardApplication {
 
     // STEP 8 - 추가 심사
     private LocalDateTime reviewedAt;
-    private Long          reviewedBy;
+    private String        reviewedBy;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
