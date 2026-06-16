@@ -19,7 +19,9 @@ import com.bnk.domain.ipauth.service.IpVerifyService;
 import com.bnk.global.auth.JwtTokenProvider;
 import com.bnk.global.response.ApiResponse;
 import com.bnk.global.util.CookieUtil;
+import com.bnk.global.util.TimeConstants;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,10 +30,11 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * IP 인증 컨트롤러
  *
- * [기존 파일 수정 필요 — 기존파일_수정가이드.txt 참고]
- * 1. SecurityConfig: .requestMatchers("/api/auth/ip-verify/**").permitAll() 추가
- * 2. JwtAuthenticationFilter.SKIP_PATHS: "/api/auth/ip-verify/**" 추가
- * 3. RedisRateLimitFilter.POST_RATE_LIMIT_RULES: ip-verify 경로 3개 추가
+ * [수정 내역]
+ * [BUG-IP-02] issueLoginCookies()에 HttpServletRequest 추가 → UserSession 정보 정상 기록
+ * [COMPILE-FIX] verifyCi() 호출 인자 수정
+ *   수정 전: req.getResidentFront(), req.getGenderCode()  → 4개 인자 (서비스 시그니처 불일치)
+ *   수정 후: req.getName(), req.getBirthDate(), req.getPhone() → 5개 인자 (서비스 시그니처 일치)
  */
 @Slf4j
 @RestController
@@ -57,47 +60,80 @@ public class IpVerifyController {
     @PostMapping("/email/confirm")
     public ResponseEntity<ApiResponse<Void>> confirmEmailCode(
             @Valid @RequestBody IpEmailConfirmRequest req,
+            HttpServletRequest httpRequest,
             HttpServletResponse response) {
 
         String plainIp = ipTrustService.validateChallengeToken(req.getUserId(), req.getChallengeToken());
         ipVerifyService.verifyEmailCode(req.getUserId(), req.getCode());
         ipTrustService.approvePendingIp(req.getUserId(), plainIp, "EMAIL_VERIFY", req.getNickname());
-        issueLoginCookies(req.getUserId(), response);
+        issueLoginCookies(req.getUserId(), httpRequest, response);
 
         log.info("[IpVerify] userId={} 이메일 인증 완료 → 로그인", req.getUserId());
         return ApiResponse.toOk(null);
     }
 
-    /** POST /api/auth/ip-verify/ci → CI 인증 성공 시 로그인 완료 */
+    /**
+     * POST /api/auth/ip-verify/ci → CI 인증 성공 시 로그인 완료
+     *
+     * [COMPILE-FIX] IpVerifyService.verifyCi() 시그니처:
+     *   verifyCi(Long userId, String name, String birthDate, String phone, IpTrustService)
+     *
+     * 수정 전 (컴파일 에러):
+     *   ipVerifyService.verifyCi(req.getUserId(), req.getResidentFront(), req.getGenderCode(), ipTrustService)
+     *   IpCiVerifyRequest → residentFront / genderCode 필드
+     *
+     * 수정 후:
+     *   ipVerifyService.verifyCi(req.getUserId(), req.getName(), req.getBirthDate(), req.getPhone(), ipTrustService)
+     *   IpCiVerifyRequest → name / birthDate / phone 필드 (DTO도 함께 수정)
+     */
     @PostMapping("/ci")
     public ResponseEntity<ApiResponse<Void>> verifyCi(
             @Valid @RequestBody IpCiVerifyRequest req,
+            HttpServletRequest httpRequest,
             HttpServletResponse response) {
 
         String plainIp = ipTrustService.validateChallengeToken(req.getUserId(), req.getChallengeToken());
-        ipVerifyService.verifyCi(req.getUserId(), req.getResidentFront(), req.getGenderCode(), ipTrustService);
+
+        // [COMPILE-FIX] 수정 전: req.getResidentFront(), req.getGenderCode() — 필드 불일치
+        //               수정 후: req.getName(), req.getBirthDate(), req.getPhone()
+        ipVerifyService.verifyCi(
+                req.getUserId(),
+                req.getName(),
+                req.getBirthDate(),
+                req.getPhone(),
+                ipTrustService
+        );
+
         ipTrustService.approvePendingIp(req.getUserId(), plainIp, "CI_VERIFY", req.getNickname());
-        issueLoginCookies(req.getUserId(), response);
+        issueLoginCookies(req.getUserId(), httpRequest, response);
 
         log.info("[IpVerify] userId={} CI 인증 완료 → 로그인", req.getUserId());
         return ApiResponse.toOk(null);
     }
 
     /**
-     * JWT 쿠키 발급 — 기존 AuthService.login()의 토큰 발급 로직과 동일.
-     * AuthService에 issueTokenForUser(Long userId) 메서드가 추가되면 그것으로 교체 가능.
+     * JWT 쿠키 발급
+     * [BUG-IP-02] HttpServletRequest 추가 → deviceInfo/ipAddress/userAgent 정상 기록
      */
-    private void issueLoginCookies(Long userId, HttpServletResponse response) {
-        String accessToken  = jwtTokenProvider.generateAccessToken(userId, "ROLE_USER");
-        String refreshToken = jwtTokenProvider.generateRefreshToken(userId);
+    private void issueLoginCookies(Long userId, HttpServletRequest httpRequest, HttpServletResponse response) {
+        String accessToken   = jwtTokenProvider.generateAccessToken(userId, "ROLE_USER");
+        String refreshToken  = jwtTokenProvider.generateRefreshToken(userId);
+        long   refreshExpSec = jwtTokenProvider.getRefreshExpirationSec();
 
-        // USER_SESSIONS INSERT
-        LocalDateTime now       = LocalDateTime.now(com.bnk.global.util.TimeConstants.KST);
-        LocalDateTime expiresAt = now.plusSeconds(jwtTokenProvider.getRefreshExpirationSec());
+        String ipAddress  = httpRequest.getRemoteAddr();
+        String userAgent  = httpRequest.getHeader("User-Agent");
+        String deviceInfo = (userAgent != null && userAgent.length() > 100)
+                ? userAgent.substring(0, 100) : userAgent;
+
+        LocalDateTime now       = LocalDateTime.now(TimeConstants.KST);
+        LocalDateTime expiresAt = now.plusSeconds(refreshExpSec);
 
         userSessionMapper.insertSession(UserSession.builder()
                 .userId(userId)
                 .refreshToken(refreshToken)
+                .deviceInfo(deviceInfo)
+                .ipAddress(ipAddress)
+                .userAgent(userAgent)
                 .createdAt(now)
                 .expiresAt(expiresAt)
                 .revokedYn("N")
@@ -106,6 +142,6 @@ public class IpVerifyController {
         response.addHeader(HttpHeaders.SET_COOKIE,
                 cookieUtil.createAccessCookie(accessToken, jwtTokenProvider.getAccessExpirationSec()).toString());
         response.addHeader(HttpHeaders.SET_COOKIE,
-                cookieUtil.createRefreshCookie(refreshToken, jwtTokenProvider.getRefreshExpirationSec()).toString());
+                cookieUtil.createRefreshCookie(refreshToken, refreshExpSec).toString());
     }
 }
