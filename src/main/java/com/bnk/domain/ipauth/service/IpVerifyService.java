@@ -1,19 +1,20 @@
 package com.bnk.domain.ipauth.service;
 
+import java.security.SecureRandom;
+
+import org.springframework.stereotype.Service;
+
 import com.bnk.domain.user.mapper.UserMapper;
 import com.bnk.domain.user.model.User;
 import com.bnk.global.email.EmailService;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.util.CiValueGenerator;
-import com.bnk.global.util.MaskingUtil;
 import com.bnk.global.util.TokenStore;
 import com.bnk.global.util.audit.AuditLogger;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-
-import java.security.SecureRandom;
 
 @Slf4j
 @Service
@@ -30,7 +31,7 @@ public class IpVerifyService {
     private final EmailService     emailService;
     private final UserMapper       userMapper;
     private final AuditLogger      auditLogger;
-    private final CiValueGenerator ciValueGenerator; // 추가
+    private final CiValueGenerator ciValueGenerator; 
 
     // ─── 이메일 인증코드 발송 ─────────────────────────────────────────
 
@@ -70,26 +71,22 @@ public class IpVerifyService {
     // ─── CI 인증 검증 ─────────────────────────────────────────────────
 
     /**
-     * 이름 + 생년월일 + 전화번호로 CI를 재생성하여 DB 저장값과 비교.
+     * CI 기반 본인 확인.
      *
-     * [변경 이유]
-     * 기존: residentFront + genderCode 단순 연결 → storedCi(SHA-256 Base64)와 절대 불일치
-     * 변경: CiValueGenerator.generate()로 동일한 방식의 CI를 생성하여 비교
-     *
-     * @param name        이름 (회원가입 시 입력한 값)
-     * @param birthDate   생년월일 YYYY-MM-DD (회원가입 시 입력한 값)
-     * @param phone       전화번호 (포맷 무관 — 내부에서 숫자만 추출)
+     * @param name          이름
+     * @param residentFront 주민번호 앞 6자리
+     * @param genderCode    성별코드
+     * @param address       주소
      */
-    public void verifyCi(Long userId, String name, String birthDate, String phone,
+    public void verifyCi(Long userId, String name, String residentFront,
+                         String genderCode, String address,
                          IpTrustService ipTrustService) {
+
         User user = userMapper.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        // 전화번호 포맷 정규화 (MaskingUtil.formatPhone과 동일한 방식)
-        String formattedPhone = MaskingUtil.formatPhone(phone);
-
         // 회원가입과 동일한 로직으로 CI 재생성
-        String inputCi  = ciValueGenerator.generate(name, birthDate, formattedPhone);
+        String inputCi  = ciValueGenerator.generate(name, residentFront, genderCode, address);
         String storedCi = user.getCiValue(); // TypeHandler가 AES 복호화한 평문
 
         if (!storedCi.equals(inputCi)) {

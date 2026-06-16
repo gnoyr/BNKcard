@@ -320,7 +320,8 @@ class AuthServiceTest {
             // 필수 약관 목록 (빈 리스트 → 체크 통과)
             given(termsMapper.findByPackageType("SIGNUP")).willReturn(Collections.emptyList());
             // CI 생성
-            given(ciValueGenerator.generate(anyString(), anyString(), anyString())).willReturn("mock-ci");
+            given(ciValueGenerator.generate(anyString(), anyString(), anyString(), anyString()))
+            .willReturn("mock-ci");
             // CDD watchlist 통과
             willDoNothing().given(cddService).checkWatchlist(any(), any(), any());
             willDoNothing().given(cddService).initializeCdd(anyLong());

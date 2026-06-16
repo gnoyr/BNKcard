@@ -1,91 +1,86 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>신뢰 기기 관리 | 부산은행</title>
-<link rel="stylesheet" href="/css/components.css" />
-<link rel="stylesheet" href="/css/mypage.css" />
-<link rel="stylesheet" href="/css/teal-theme.css" />
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>신뢰 기기 관리 | 부산은행</title>
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/mypage.css">
+  <link rel="stylesheet" href="/css/teal-theme.css">
 </head>
 <body data-page="mypage-trusted-ips">
 
-  <nav class="sub-nav">
-    <button class="sub-nav__back" onclick="history.back()">마이페이지</button>
-    <span class="sub-nav__sep">›</span>
-    <span class="sub-nav__title">신뢰 기기 관리</span>
+  <nav class="sub-nav" aria-label="페이지 이동">
+    <button class="sub-nav__back" type="button">마이페이지</button>
+    <span class="sub-nav__sep" aria-hidden="true">›</span>
+    <span class="sub-nav__title" aria-current="page">신뢰 기기 관리</span>
   </nav>
 
-  <div class="page-wrap">
-    <div class="page-title">
+  <main class="page-wrap">
+
+    <header class="page-title">
       <h1>신뢰 기기 관리</h1>
       <p>등록된 기기(IP)에서만 별도 인증 없이 로그인할 수 있습니다.</p>
-    </div>
+    </header>
 
-    <div class="alert alert-info" style="margin-bottom:16px;">
-      미등록 IP에서 로그인하면 이메일 또는 CI 인증이 필요합니다. 최대 <strong>10개</strong>까지 등록할 수 있습니다.
-    </div>
+    <p class="alert alert-info">
+      미등록 IP에서 로그인하면 이메일 또는 CI 인증이 필요합니다.
+      최대 <strong>10개</strong>까지 등록할 수 있습니다.
+    </p>
 
-    <div class="card">
+    <section class="card" aria-labelledby="ipListTitle">
       <div class="ip-header-info">
-        <div class="card__head" style="border:none;padding:0;margin:0;">등록된 기기 목록</div>
-        <span class="ip-count-badge" id="ipCountBadge">0 / 10</span>
+        <h2 class="card__head card__head--inline" id="ipListTitle">등록된 기기 목록</h2>
+        <span class="ip-count-badge" id="ipCountBadge" aria-live="polite">0 / 10</span>
       </div>
 
-      <!-- 스켈레톤 -->
-      <ul class="ip-list" id="ipList">
+      <ul class="ip-list" id="ipList" aria-label="신뢰 기기 목록">
         <li class="ip-skeleton">
-          <span class="skeleton" style="width:42px;height:42px;border-radius:10px;flex-shrink:0;"></span>
-          <div style="flex:1;">
-            <span class="skeleton skeleton-text" style="width:120px;height:14px;display:block;margin-bottom:8px;"></span>
-            <span class="skeleton skeleton-text" style="width:180px;height:12px;display:block;margin-bottom:6px;"></span>
-            <span class="skeleton skeleton-text skeleton-text--short" style="width:90px;height:11px;display:block;"></span>
-          </div>
+          <span class="skeleton ip-skeleton__icon" aria-hidden="true"></span>
+          <span class="ip-skeleton__body">
+            <span class="skeleton skeleton-text"></span>
+            <span class="skeleton skeleton-text skeleton-text--mid"></span>
+            <span class="skeleton skeleton-text skeleton-text--short"></span>
+          </span>
         </li>
-        <li class="ip-skeleton" style="border-bottom:none;">
-          <span class="skeleton" style="width:42px;height:42px;border-radius:10px;flex-shrink:0;"></span>
-          <div style="flex:1;">
-            <span class="skeleton skeleton-text" style="width:100px;height:14px;display:block;margin-bottom:8px;"></span>
-            <span class="skeleton skeleton-text" style="width:150px;height:12px;display:block;margin-bottom:6px;"></span>
-            <span class="skeleton skeleton-text skeleton-text--short" style="width:80px;height:11px;display:block;"></span>
-          </div>
+        <li class="ip-skeleton ip-skeleton--last">
+          <span class="skeleton ip-skeleton__icon" aria-hidden="true"></span>
+          <span class="ip-skeleton__body">
+            <span class="skeleton skeleton-text"></span>
+            <span class="skeleton skeleton-text skeleton-text--mid"></span>
+            <span class="skeleton skeleton-text skeleton-text--short"></span>
+          </span>
         </li>
       </ul>
 
-      <!-- 용량 게이지 -->
-      <div class="ip-capacity" id="ipCapacityWrap" style="display:none;">
-        <span class="ip-capacity__label" id="ipCapacityLabel">0/10 사용 중</span>
-        <div class="ip-capacity__bar-wrap">
-          <div class="ip-capacity__bar" id="ipCapacityBar"></div>
-        </div>
-      </div>
-    </div>
+      <meter class="ip-capacity-meter" id="ipCapacityMeter"
+             min="0" max="10" low="7" high="10" optimum="0"
+             value="0" hidden
+             aria-label="등록 기기 용량"></meter>
+      <p class="ip-capacity-label" id="ipCapacityLabel" hidden>0/10 사용 중</p>
+    </section>
 
-  </div>
+  </main>
 
   <!-- 삭제 확인 모달 -->
-  <div class="modal-overlay delete-modal" id="deleteModal">
+  <div class="modal-overlay" id="deleteModal"
+       role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle" hidden>
     <div class="modal">
-      <div class="modal__title">기기 삭제</div>
-      <div class="modal__body">
-        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;">
-          이 기기를 삭제하면 해당 IP에서 다시 접속 시 인증이 필요합니다.<br>
-          정말 삭제하시겠습니까?
-        </p>
-        <p style="font-size:12px;font-weight:700;color:var(--gray-800);margin-top:12px;padding:10px 12px;background:var(--gray-100);border-radius:8px;" id="deleteTargetName"></p>
-      </div>
+      <h2 class="modal__title" id="deleteModalTitle">기기 삭제</h2>
+      <p class="modal__body modal-desc--warn">
+        이 기기를 삭제하면 해당 IP에서 다시 접속 시 인증이 필요합니다.<br>
+        정말 삭제하시겠습니까?
+      </p>
       <div class="modal__footer">
-        <button class="btn btn-outline" id="deleteCancelBtn">취소</button>
-        <button class="btn" style="background:#DC2626;color:#fff;border-color:#DC2626;" id="deleteConfirmBtn">삭제</button>
+        <button class="btn btn-outline" id="deleteCancelBtn" type="button">취소</button>
+        <button class="btn btn-danger"  id="deleteConfirmBtn" type="button">삭제하기</button>
       </div>
     </div>
   </div>
 
-  <div id="toast-container"></div>
+  <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
   <script src="/js/utils.js"></script>
   <script src="/js/header.js"></script>
   <script src="/js/mypage.js"></script>
-
 </body>
 </html>
