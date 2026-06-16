@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.bnk.global.exception.BusinessException;
 import com.bnk.global.util.CookieUtil;
 import com.bnk.global.util.audit.AuditLogger;
 
@@ -119,11 +120,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(auth);
 
                 } else {
-                    UserDetails userDetails = userDetailsService.loadUserById(subjectId);
-                    UsernamePasswordAuthenticationToken auth =
-                        new UsernamePasswordAuthenticationToken(
-                            userDetails, null, userDetails.getAuthorities());
-                    SecurityContextHolder.getContext().setAuthentication(auth);
+                    try {
+                        UserDetails userDetails = userDetailsService.loadUserById(subjectId);
+                        UsernamePasswordAuthenticationToken auth =
+                            new UsernamePasswordAuthenticationToken(
+                                userDetails, null, userDetails.getAuthorities());
+                        SecurityContextHolder.getContext().setAuthentication(auth);
+                    } catch (BusinessException e) {
+                        // 토큰은 유효하지만 DB에 사용자가 없는 경우 (탈퇴·삭제 계정)
+                        // 필터 밖으로 예외를 전파하지 않고 익명 처리 — ERROR 로그 방지
+                        log.warn("[JWT] userId={} 사용자 조회 실패, 익명 처리: {}", subjectId, e.getMessage());
+                        setAnonymous();
+                    }
                 }
             }
 
