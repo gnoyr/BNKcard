@@ -360,28 +360,6 @@ select.form-control {
   transform: translateY(-1px);
 }
 
-/* 아이콘: span::before 유니코드, SVG 없음 */
-.menu-card__icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: var(--mp-teal-l);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  font-size: 15px;
-  font-style: normal;
-}
-.menu-card__icon--edit::before     { content: '\270E'; color: var(--mp-teal-d); }
-.menu-card__icon--password::before { content: '\26BF'; color: var(--mp-teal-d); font-size: 13px; }
-.menu-card__icon--credit::before   { content: '\25B3'; color: var(--mp-teal-d); font-size: 13px; }
-.menu-card__icon--spending::before { content: '\25A6'; color: var(--mp-teal-d); font-size: 14px; }
-.menu-card__icon--income::before   { content: '\2261'; color: var(--mp-teal-d); font-size: 18px; }
-.menu-card__icon--device::before   { content: '\25A1'; color: var(--mp-indigo); font-size: 14px; }
-.menu-card__icon--notify::before   { content: '\25CE'; color: var(--mp-indigo); font-size: 14px; }
-.menu-card--security .menu-card__icon { background: var(--mp-indigo-l); }
-
 .menu-card__title { font-size: 12.5px; font-weight: 700; color: var(--mp-g800); line-height: 1.3; }
 .menu-card__desc  { font-size: 10.5px; color: var(--mp-g400); line-height: 1.4; margin-top: 0; }
 
@@ -454,20 +432,6 @@ select.form-control {
   border-radius: var(--mp-r-sm);
   margin-top: 12px;
 }
-.ci-notice__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #3B82F6;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
 .ci-notice__text { font-size: 12px; color: #1E40AF; line-height: 1.6; }
 .ci-notice__text strong { font-weight: 700; }
 
@@ -537,21 +501,6 @@ select.form-control {
   text-align: center;
 }
 .score-lock-screen.hidden { display: none; }
-.score-lock-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: var(--mp-teal-l);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 16px;
-  font-size: 26px;
-  font-weight: 700;
-  color: var(--mp-teal);
-}
-/* 자물쇠 기호 — ::after */
-.score-lock-icon::after { content: '\1F512'; font-size: 24px; }
 .score-lock-screen h2 { font-size: 16px; font-weight: 800; color: var(--mp-g800); margin: 0 0 8px; }
 .score-lock-screen p  { font-size: 12.5px; color: var(--mp-g400); line-height: 1.7; margin: 0 0 22px; max-width: 260px; }
 .btn-reveal {
@@ -699,23 +648,6 @@ select.form-control {
   border-bottom: 1px solid var(--mp-g100);
 }
 .ip-item:last-child { border-bottom: none; }
-
-.ip-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 8px;
-  background: var(--mp-teal-l);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-.ip-icon::before { content: '\25A1'; color: var(--mp-teal); font-size: 15px; }
-.ip-icon--initial { background: var(--mp-indigo-l); }
-.ip-icon--initial::before { content: '\2605'; color: var(--mp-indigo); }
-.ip-icon--disabled { opacity: .45; }
 
 .ip-body { flex: 1; min-width: 0; }
 .ip-nickname-row {
@@ -1038,9 +970,156 @@ select.form-control {
 @media (max-width: 480px) {
   .page-wrap { padding: 0 12px 56px; }
   .menu-grid--3 { grid-template-columns: 1fr 1fr; }
+  .menu-grid--4 { grid-template-columns: 1fr 1fr; }
   .spending-input { width: 90px; }
   .form-actions { flex-direction: column; }
   .score-info-grid { grid-template-columns: 1fr; }
   .addr-search-wrap { flex-direction: column; }
   .btn-addr { width: 100%; }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   25. menu-grid--4 (금융 정보 4열)
+   ───────────────────────────────────────────────────────────── */
+.menu-grid--4 { grid-template-columns: repeat(4, 1fr); }
+
+/* ─────────────────────────────────────────────────────────────
+   26. 내 계좌 페이지 (mypage/accounts.html)
+   ───────────────────────────────────────────────────────────── */
+
+/* 총 잔액 요약 배너 */
+.account-summary-banner {
+  background: linear-gradient(135deg, var(--mp-teal) 0%, var(--mp-teal-d) 100%);
+  border-radius: var(--mp-r-md);
+  padding: 18px 20px;
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #fff;
+}
+.account-summary-banner__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  opacity: .8;
+}
+.account-summary-banner__amount {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -.5px;
+  line-height: 1.2;
+}
+.account-summary-banner__count {
+  font-size: 11.5px;
+  opacity: .75;
+  margin-top: 2px;
+}
+
+/* 계좌 목록 */
+.account-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.account-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--mp-g100);
+}
+.account-item:last-child { border-bottom: none; }
+
+/* 계좌 유형 뱃지 */
+.account-item__type-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.account-item__type-badge--CHECKING { background: #EFF6FF; color: #1D4ED8; }
+.account-item__type-badge--SAVINGS  { background: #F0FDF4; color: #15803D; }
+.account-item__type-badge--DEPOSIT  { background: #FFF7ED; color: #C2410C; }
+
+/* 계좌 본문 */
+.account-item__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.account-item__alias {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--mp-g800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.account-item__number {
+  font-size: 11px;
+  color: var(--mp-g400);
+  font-family: 'SF Mono', 'Fira Mono', monospace;
+  letter-spacing: .03em;
+}
+
+/* 잔액 */
+.account-item__balance {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--mp-g800);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.account-item__balance--zero { color: var(--mp-g300); }
+
+/* 상태 뱃지 (DORMANT / CLOSED) */
+.account-item__status { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px; }
+.account-item__status--ACTIVE  { display: none; }
+.account-item__status--DORMANT { background: #FEF9C3; color: #854D0E; }
+.account-item__status--CLOSED  { background: var(--mp-g100); color: var(--mp-g400); }
+
+/* 계좌 개설 CTA */
+.account-open-cta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: var(--mp-w);
+  border: 1.5px dashed var(--mp-teal);
+  border-radius: var(--mp-r-md);
+  text-decoration: none;
+  color: var(--mp-teal);
+  transition: background var(--mp-ease), border-color var(--mp-ease);
+}
+.account-open-cta:hover { background: var(--mp-teal-l); border-color: var(--mp-teal-d); }
+.account-open-cta__icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--mp-teal-l);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.account-open-cta__text { flex: 1; font-size: 13.5px; font-weight: 700; }
+.account-open-cta__arrow { font-size: 18px; font-weight: 700; opacity: .6; }
+
+/* 계좌 페이지 전용 스켈레톤 */
+.skeleton-balance      { width: 120px; height: 22px; display: inline-block; border-radius: 4px; }
+.skeleton-badge        { width: 46px;  height: 20px; border-radius: 20px; flex-shrink: 0; }
+.skeleton-amount       { width: 72px;  height: 15px; border-radius: 4px; flex-shrink: 0; }
+.skeleton-amount--wide { width: 86px; }
