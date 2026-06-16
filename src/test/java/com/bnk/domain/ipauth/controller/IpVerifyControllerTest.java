@@ -30,9 +30,6 @@ import static org.mockito.Mockito.lenient;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-/**
- * IpVerifyController 단위 테스트.
- */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("IpVerifyController 단위 테스트")
 class IpVerifyControllerTest {
@@ -61,8 +58,9 @@ class IpVerifyControllerTest {
 	private static final String PLAIN_IP = "10.0.0.99";
 
 	private static final String NAME = "홍길동";
-	private static final String BIRTH_DATE = "1990-01-01";
-	private static final String PHONE = "010-1234-5678";
+	private static final String RESIDENT_FRONT = "900101";
+	private static final String GENDER_CODE = "1";
+	private static final String ADDRESS = "부산시 중구";
 
 	@BeforeEach
 	void setUp() {
@@ -131,16 +129,18 @@ class IpVerifyControllerTest {
 		}
 
 		@Test
-		@DisplayName("[실패] 코드 불일치 → 400 IP007")
+		@DisplayName("[실패] 코드 불일치 → 400 U008")
 		void 코드불일치() throws Exception {
 			given(ipTrustService.validateChallengeToken(USER_ID, CHALLENGE_TOKEN)).willReturn(PLAIN_IP);
+			
+			// ErrorCode.java에 존재하는 VERIFY_TOKEN_INVALID(U008) 코드로 일치화 진행
 			willThrow(new BusinessException(ErrorCode.VERIFY_TOKEN_INVALID)).given(ipVerifyService)
 					.verifyEmailCode(USER_ID, "WRONG1");
 
 			mvc.perform(post("/api/auth/ip-verify/email/confirm").contentType(MediaType.APPLICATION_JSON)
 					.content(om.writeValueAsString(
 							Map.of("userId", USER_ID, "challengeToken", CHALLENGE_TOKEN, "code", "WRONG1"))))
-					.andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("IP007"));
+					.andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("U008"));
 		}
 	}
 
@@ -168,7 +168,6 @@ class IpVerifyControllerTest {
 		void CI인증성공() throws Exception {
 			given(ipTrustService.validateChallengeToken(USER_ID, CHALLENGE_TOKEN)).willReturn(PLAIN_IP);
 
-			// 컴파일 에러 수정: 총 6개의 파라미터 매처 적용 (String 4개 반영)
 			willDoNothing().given(ipVerifyService).verifyCi(
 					eq(USER_ID),
 					anyString(),
@@ -181,17 +180,22 @@ class IpVerifyControllerTest {
 			willDoNothing().given(ipTrustService).approvePendingIp(USER_ID, PLAIN_IP, "CI_VERIFY", "회사");
 
 			mvc.perform(post("/api/auth/ip-verify/ci").contentType(MediaType.APPLICATION_JSON)
-					.content(om.writeValueAsString(Map.of("userId", USER_ID, "challengeToken", CHALLENGE_TOKEN,
-							"name", NAME, "birthDate", BIRTH_DATE, "phone", PHONE, "nickname", "회사"))))
+					.content(om.writeValueAsString(Map.of(
+							"userId", USER_ID, 
+							"challengeToken", CHALLENGE_TOKEN,
+							"name", NAME, 
+							"residentFront", RESIDENT_FRONT, 
+							"genderCode", GENDER_CODE, 
+							"address", ADDRESS, 
+							"nickname", "회사"))))
 					.andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true));
 		}
 
 		@Test
-		@DisplayName("[실패] CI 불일치 → 400 IP002")
+		@DisplayName("[실패] CI 정보 불일치 → 400 IP002")
 		void CI불일치() throws Exception {
 			given(ipTrustService.validateChallengeToken(USER_ID, CHALLENGE_TOKEN)).willReturn(PLAIN_IP);
 
-			// 컴파일 에러 수정: 총 6개의 파라미터 매처 적용
 			willThrow(new BusinessException(ErrorCode.CI_MISMATCH)).given(ipVerifyService).verifyCi(
 					eq(USER_ID),
 					anyString(),
@@ -202,27 +206,40 @@ class IpVerifyControllerTest {
 			);
 
 			mvc.perform(post("/api/auth/ip-verify/ci").contentType(MediaType.APPLICATION_JSON)
-					.content(om.writeValueAsString(Map.of("userId", USER_ID, "challengeToken", CHALLENGE_TOKEN, "name",
-							"김철수", "birthDate", "1980-01-01", "phone", "010-9999-8888"))))
+					.content(om.writeValueAsString(Map.of(
+							"userId", USER_ID, 
+							"challengeToken", CHALLENGE_TOKEN, 
+							"name", "김철수", 
+							"residentFront", "800101", 
+							"genderCode", "1", 
+							"address", "서울시 강남구"))))
 					.andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("IP002"));
 		}
 
 		@Test
-		@DisplayName("[실패] 필수 필드(name) 누락 → 400 C001")
+		@DisplayName("[실패] 필수 필드(name) 누락 → 400")
 		void 필수필드누락() throws Exception {
 			mvc.perform(post("/api/auth/ip-verify/ci").contentType(MediaType.APPLICATION_JSON)
-					.content(om.writeValueAsString(Map.of("userId", USER_ID, "challengeToken", CHALLENGE_TOKEN,
-							"birthDate", BIRTH_DATE, "phone", PHONE))))
+					.content(om.writeValueAsString(Map.of(
+							"userId", USER_ID, 
+							"challengeToken", CHALLENGE_TOKEN,
+							"residentFront", RESIDENT_FRONT, 
+							"genderCode", GENDER_CODE, 
+							"address", ADDRESS))))
 					.andExpect(status().isBadRequest());
 		}
 
 		@Test
-		@DisplayName("[실패] 생년월일 형식 오류(YYYYMMDD) → 400")
-		void 생년월일형식오류() throws Exception {
+		@DisplayName("[실패] 주민번호 앞자리 형식 오류 → 400")
+		void 주민번호앞자리형식오류() throws Exception {
 			mvc.perform(post("/api/auth/ip-verify/ci").contentType(MediaType.APPLICATION_JSON)
-					.content(om.writeValueAsString(Map.of("userId", USER_ID, "challengeToken", CHALLENGE_TOKEN, "name",
-							NAME, "birthDate", "19900101",
-							"phone", PHONE))))
+					.content(om.writeValueAsString(Map.of(
+							"userId", USER_ID, 
+							"challengeToken", CHALLENGE_TOKEN, 
+							"name", NAME, 
+							"residentFront", "19900101", 
+							"genderCode", GENDER_CODE, 
+							"address", ADDRESS))))
 					.andExpect(status().isBadRequest());
 		}
 
@@ -231,7 +248,6 @@ class IpVerifyControllerTest {
 		void CI잠금() throws Exception {
 			given(ipTrustService.validateChallengeToken(USER_ID, CHALLENGE_TOKEN)).willReturn(PLAIN_IP);
 
-			// 컴파일 에러 수정: 총 6개의 파라미터 매처 적용
 			willThrow(new BusinessException(ErrorCode.CI_LOCKED)).given(ipVerifyService).verifyCi(
 					eq(USER_ID),
 					anyString(),
@@ -242,8 +258,13 @@ class IpVerifyControllerTest {
 			);
 
 			mvc.perform(post("/api/auth/ip-verify/ci").contentType(MediaType.APPLICATION_JSON)
-					.content(om.writeValueAsString(Map.of("userId", USER_ID, "challengeToken", CHALLENGE_TOKEN, "name",
-							"이영희", "birthDate", "1980-01-01", "phone", "010-5555-6666"))))
+					.content(om.writeValueAsString(Map.of(
+							"userId", USER_ID, 
+							"challengeToken", CHALLENGE_TOKEN, 
+							"name", "이영희", 
+							"residentFront", "800101", 
+							"genderCode", "2", 
+							"address", "인천시 부평구"))))
 					.andExpect(status().isTooManyRequests()).andExpect(jsonPath("$.code").value("IP003"));
 		}
 	}
