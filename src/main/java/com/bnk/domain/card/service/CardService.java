@@ -10,8 +10,6 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.document.Document;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -281,20 +279,7 @@ public class CardService {
         // 카드 신청 약관 (packageType = "CARD_APPLICATION" 고정)
         List<CardDetailResponse.TermsFileDto> termsFileDtos =
                 termsMapper.findTermsFilesByCardId(cardId);        
-        
-        /*
-        List<Terms> termsList = termsMapper.findByPackageType("CARD_APPLICATION");
-        List<CardDetailResponse.TermsFileDto> termsFileDtos = termsList.stream()
-                .map(t -> CardDetailResponse.TermsFileDto.builder()
-                        .termsId(t.getTermsId())
-                        .title(t.getTitle())
-                        // Terms 모델에 filePath/fileType이 없으므로 null 처리
-                        // 실제 파일 경로가 필요하면 TERMS_MASTERS에 컬럼 추가 필요
-                        .filePath(null)
-                        .fileType(null)
-                        .build())
-                .collect(Collectors.toList());
-         */
+
         return CardDetailResponse.builder()
                 .cardId(card.getCardId())
                 .cardName(card.getCardName())
