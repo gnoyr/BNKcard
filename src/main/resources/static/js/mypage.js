@@ -588,49 +588,47 @@ async function initTrustedIps() {
         }
     }
 
-    function renderList() {
-        const list   = document.getElementById('ipList');
-        const badge  = document.getElementById('ipCountBadge');
-        const meter  = document.getElementById('ipCapacityMeter');
-        const lbl    = document.getElementById('ipCapacityLabel');
-        const count  = _ipList.length;
+	function renderList() {
+	        const list   = document.getElementById('ipList');
+	        const badge  = document.getElementById('ipCountBadge');
+	        const meter  = document.getElementById('ipCapacityMeter');
+	        const lbl    = document.getElementById('ipCapacityLabel');
+	        const count  = _ipList.length;
 
-        if (badge) badge.textContent = `${count} / 10`;
-        if (meter) { meter.value = count; meter.removeAttribute('hidden'); }
-        if (lbl)   { lbl.textContent = `${count}/10 사용 중`; lbl.removeAttribute('hidden'); }
+	        if (badge) badge.textContent = `${count} / 10`;
+	        if (meter) { meter.value = count; meter.removeAttribute('hidden'); }
+	        if (lbl)   { lbl.textContent = `${count}/10 사용 중`; lbl.removeAttribute('hidden'); }
 
-        if (!count) { list.innerHTML = emptyState('등록된 기기가 없습니다.'); return; }
+	        if (!count) { list.innerHTML = emptyState('등록된 기기가 없습니다.'); return; }
 
-        list.innerHTML = _ipList.map(item => {
-            const { id: tid, ipAddress, nickname, via, isInitial, isDisabled, createdAt, lastUsedAt } = item;
-            return `
-            <li class="ip-item">
-                <span class="ip-icon${isInitial ? ' ip-icon--initial' : ''}${isDisabled ? ' ip-icon--disabled' : ''}"
-                      aria-hidden="true"></span>
-                <span class="ip-body">
-                    <span class="ip-nickname-row">
-                        <span class="ip-nickname" id="nn-${tid}">${esc(nickname ?? '이름 없음')}</span>
-                        <input class="ip-nickname-input" id="nn-input-${tid}"
-                               value="${esc(nickname ?? '')}" maxlength="20">
-                        ${isInitial  ? '<span class="ip-badge-initial">최초 기기</span>'  : ''}
-                        ${isDisabled ? '<span class="ip-badge-disabled">비활성</span>'   : ''}
-                    </span>
-                    <span class="ip-address">${esc(maskIp(ipAddress))}</span>
-                    <span class="ip-meta">
-                        <span>${esc(fmtVia(via))}</span>
-                        <span>등록 ${fmtDate(createdAt)}</span>
-                        ${lastUsedAt ? `<span>최근 ${fmtDate(lastUsedAt)}</span>` : ''}
-                    </span>
-                </span>
-                <span class="ip-actions">
-                    ${!isInitial ? `
-                    <button class="btn-ip-edit" data-id="${tid}" type="button">수정</button>
-                    <button class="btn-ip-save" data-id="${tid}" type="button" hidden>저장</button>
-                    <button class="btn-ip-del"  data-id="${tid}" type="button">삭제</button>
-                    ` : ''}
-                </span>
-            </li>`;
-        }).join('');
+	        list.innerHTML = _ipList.map(item => {
+	            const { id: tid, ipAddress, nickname, via, isInitial, isDisabled, createdAt, lastUsedAt } = item;
+	            return `
+	            <li class="ip-item">
+	                <span class="ip-body">
+	                    <span class="ip-nickname-row">
+	                        <span class="ip-nickname" id="nn-${tid}">${esc(nickname ?? '이름 없음')}</span>
+	                        <input class="ip-nickname-input" id="nn-input-${tid}"
+	                               value="${esc(nickname ?? '')}" maxlength="20">
+	                        ${isInitial  ? '<span class="ip-badge-initial">최초 기기</span>'  : ''}
+	                        ${isDisabled ? '<span class="ip-badge-disabled">비활성</span>'   : ''}
+	                    </span>
+	                    <span class="ip-address">${esc(maskIp(ipAddress))}</span>
+	                    <span class="ip-meta">
+	                        <span>${esc(fmtVia(via))}</span>
+	                        <span>등록 ${fmtDate(createdAt)}</span>
+	                        ${lastUsedAt ? `<span>최근 ${fmtDate(lastUsedAt)}</span>` : ''}
+	                    </span>
+	                </span>
+	                <span class="ip-actions">
+	                    ${!isInitial ? `
+	                    <button class="btn-ip-edit" data-id="${tid}" type="button">수정</button>
+	                    <button class="btn-ip-save" data-id="${tid}" type="button" hidden>저장</button>
+	                    <button class="btn-ip-del"  data-id="${tid}" type="button">삭제</button>
+	                    ` : ''}
+	                </span>
+	            </li>`;
+	        }).join('');
 
     container.querySelectorAll('.spending-dot[data-color]').forEach(el => {
         el.style.setProperty('background-color', el.dataset.color);
@@ -716,5 +714,65 @@ async function initTrustedIps() {
                 else                           Toast.error(err.message || '삭제 중 오류가 발생했습니다.');
             } finally { btnLoading(btn, false); }
         });
+    }
+}
+/* ================================================================
+   §9. 내 계좌  (data-page="mypage-accounts")
+   ================================================================ */
+async function initAccounts() {
+    const listEl       = document.getElementById('accountList');
+    const totalBalEl   = document.getElementById('totalBalance');
+    const accountCntEl = document.getElementById('accountCount');
+ 
+    const TYPE_LABEL   = { CHECKING: '입출금', SAVINGS: '적금', DEPOSIT: '예금' };
+    const STATUS_LABEL = { DORMANT: '휴면', CLOSED: '해지' };
+ 
+    function fmtBalance(amount) {
+        if (amount == null) return '-';
+        return Number(amount).toLocaleString('ko-KR') + '원';
+    }
+ 
+    function buildItem(acc) {
+        const typeLabel   = TYPE_LABEL[acc.accountType]    ?? acc.accountType;
+        const statusLabel = STATUS_LABEL[acc.accountStatus] ?? '';
+        const alias       = esc(acc.accountAlias ?? acc.accountNumber ?? '-');
+        const number      = esc(acc.accountNumber ?? '');
+        const isZero      = Number(acc.balance ?? 0) === 0;
+ 
+        return `
+        <li class="account-item">
+          <span class="account-item__type-badge account-item__type-badge--${esc(acc.accountType)}">
+            ${esc(typeLabel)}
+          </span>
+          <span class="account-item__body">
+            <span class="account-item__alias">${alias}</span>
+            <span class="account-item__number">${number}</span>
+          </span>
+          <span class="account-item__balance${isZero ? ' account-item__balance--zero' : ''}">
+            ${fmtBalance(acc.balance)}
+          </span>
+          ${statusLabel
+            ? `<span class="account-item__status account-item__status--${esc(acc.accountStatus)}">${esc(statusLabel)}</span>`
+            : ''}
+        </li>`;
+    }
+ 
+    try {
+        const raw      = await API.get('/api/accounts/me');
+        const accounts = Array.isArray(raw) ? raw : (raw?.data ?? []);
+ 
+        const total = accounts.reduce((sum, a) => sum + Number(a.balance ?? 0), 0);
+        totalBalEl.textContent   = fmtBalance(total);
+        accountCntEl.textContent = `계좌 ${accounts.length}개`;
+ 
+        listEl.innerHTML = accounts.length
+            ? accounts.map(buildItem).join('')
+            : `<li>${emptyState('보유 계좌가 없습니다.')}</li>`;
+ 
+    } catch (err) {
+        totalBalEl.textContent = '-';
+        listEl.innerHTML       = `<li>${emptyState('계좌 정보를 불러올 수 없습니다.')}</li>`;
+        if (err?.status > 0 && err.status !== 403 && err.status < 500)
+            Toast.error('계좌 정보를 불러오지 못했습니다.');
     }
 }
