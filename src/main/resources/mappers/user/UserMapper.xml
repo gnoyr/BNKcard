@@ -120,34 +120,31 @@
 
 	<insert id="insertUser">
 		<selectKey keyProperty="userId" resultType="long"
-			order="AFTER">
-			SELECT SEQ_USERS.CURRVAL FROM DUAL
+			order="BEFORE">
+			SELECT SEQ_USERS.NEXTVAL FROM DUAL
 		</selectKey>
 		INSERT INTO USERS (
+		user_id,
 		email, password_hash, name,
-		phone, ci_value,
-		birth_date,
+		phone, ci_value, birth_date,
 		job, income_level_code, credit_score,
-		marketing_agree,
-		privacy_agree,
+		marketing_agree, privacy_agree,
 		status_code, is_email_verified, is_phone_verified,
 		push_enabled, login_fail_count, created_at, deleted_yn
 		) VALUES (
+		#{userId},
 		#{email},
 		#{passwordHash},
 		#{name},
 		#{phone, typeHandler=AesTypeHandler},
 		#{ciValue, typeHandler=AesTypeHandler},
-		#{birthDate,
-		typeHandler=AesBirthDateTypeHandler},
+		#{birthDate, typeHandler=AesBirthDateTypeHandler},
 		#{job, jdbcType=VARCHAR,
 		typeHandler=org.apache.ibatis.type.StringTypeHandler},
 		#{incomeLevelCode, jdbcType=VARCHAR,
 		typeHandler=org.apache.ibatis.type.StringTypeHandler},
-		#{creditScore,
-		jdbcType=NUMERIC},
-		#{marketingAgree, jdbcType=CHAR,
-		typeHandler=org.apache.ibatis.type.StringTypeHandler},
+		#{creditScore, jdbcType=NUMERIC},
+		#{marketingAgree, jdbcType=CHAR, typeHandler=org.apache.ibatis.type.StringTypeHandler},
 		'Y',
 		'ACTIVE',
 		'N', 'N',

@@ -31,6 +31,12 @@ import lombok.extern.slf4j.Slf4j;
  * [Phase 2] 전 테이블 범용 복호화 스캔
  *   - Oracle USER_TAB_COLUMNS 기반 전 컬럼 동적 스캔
  *   - 잘못 암호화된 값 탐지 → 복호화
+ *   - AUDIT_LOGS는 제외 (Phase 3에서 별도 처리)
+ *
+ * [Phase 3] ★ AUDIT_LOGS 복구
+ *   - actor_type_code / action_type_code / target_type_code
+ *   - description / ip_address / user_agent
+ *   - 잘못 암호화된 평문 코드값을 복호화하여 원복
  *
  * [멱등성] 재실행 안전.
  * [장애 격리] 각 단계 독립 try-catch.
@@ -41,12 +47,13 @@ import lombok.extern.slf4j.Slf4j;
 @ConditionalOnProperty(name = "migration.enabled", havingValue = "true", matchIfMissing = false)
 public class EncryptionMigrationRunner implements ApplicationRunner {
 
-    private final EncryptionMigrationService          migrationService;
-    private final AdminEncryptionMigrationService     adminMigrationService;
-    private final WatchlistMigrationService           watchlistMigrationService;
-    private final TrustedIpMigrationService           trustedIpMigrationService;
-    private final MiscEncryptionMigrationService      miscEncryptionMigrationService;
-    private final UniversalDecryptionMigrationService universalDecryptionService;
+    private final EncryptionMigrationService              migrationService;
+    private final AdminEncryptionMigrationService         adminMigrationService;
+    private final WatchlistMigrationService               watchlistMigrationService;
+    private final TrustedIpMigrationService               trustedIpMigrationService;
+    private final MiscEncryptionMigrationService          miscEncryptionMigrationService;
+    private final UniversalDecryptionMigrationService     universalDecryptionService;
+    private final AuditLogDecryptionMigrationService      auditLogDecryptionService; // ★ 추가
 
     @Override
     public void run(ApplicationArguments args) {
@@ -85,7 +92,7 @@ public class EncryptionMigrationRunner implements ApplicationRunner {
             logResult("기타 IP 암호화", r.successCount(), r.failCount());
         });
 
-        log.info("[Migration] ── Phase 2: 전 테이블 범용 복호화 스캔 ──");
+        log.info("[Migration] ── Phase 2: 전 테이블 범용 복호화 스캔 (AUDIT_LOGS 제외) ──");
 
         runSafely("전 테이블 범용 복호화", () -> {
             UniversalDecryptionMigrationService.MigrationResult r =
@@ -93,6 +100,15 @@ public class EncryptionMigrationRunner implements ApplicationRunner {
             log.info("[Migration] 범용복호화 완료 — 스캔컬럼:{}, 데이터컬럼:{}, 성공:{}, 실패:{}, skip:{}",
                     r.columnsProcessed(), r.columnsWithData(),
                     r.totalSuccess(), r.totalFail(), r.totalSkip());
+        });
+
+        // ★ Phase 3: AUDIT_LOGS 잘못 암호화된 컬럼 복구
+        log.info("[Migration] ── Phase 3: AUDIT_LOGS 복호화 복구 ──");
+
+        runSafely("AUDIT_LOGS (actor_type_code / action_type_code / target_type_code / description / ip_address / user_agent)", () -> {
+            AuditLogDecryptionMigrationService.MigrationResult r =
+                    auditLogDecryptionService.migrateAll();
+            logResult("AUDIT_LOGS 복호화", r.totalSuccess(), r.totalFail());
         });
 
         log.info("[Migration] ══════════════════════════════════════════");
