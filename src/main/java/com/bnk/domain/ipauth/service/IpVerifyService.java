@@ -5,6 +5,8 @@ import com.bnk.domain.user.model.User;
 import com.bnk.global.email.EmailService;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
+import com.bnk.global.util.CiValueGenerator;
+import com.bnk.global.util.MaskingUtil;
 import com.bnk.global.util.TokenStore;
 import com.bnk.global.util.audit.AuditLogger;
 import lombok.RequiredArgsConstructor;
@@ -22,20 +24,13 @@ public class IpVerifyService {
     private static final String CODE_CHARS         = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     private static final long   EMAIL_CODE_TTL_MIN = 10L;
 
-    private final SecureRandom  secureRandom       = new SecureRandom();
+    private final SecureRandom     secureRandom   = new SecureRandom();
 
-    private final TokenStore  tokenStore;
-    /**
-     * 기존 com.bnk.global.email.EmailService 구체 클래스 주입.
-     * sendIpVerifyCode() 메서드를 EmailService에 추가 필요 (기존파일_수정가이드.txt 참고).
-     */
-    private final EmailService emailService;
-    /**
-     * UserMapper를 직접 주입하여 email/ciValue 조회.
-     * UserService에 해당 메서드가 없으므로 Mapper 직접 사용.
-     */
-    private final UserMapper   userMapper;
-    private final AuditLogger  auditLogger;
+    private final TokenStore       tokenStore;
+    private final EmailService     emailService;
+    private final UserMapper       userMapper;
+    private final AuditLogger      auditLogger;
+    private final CiValueGenerator ciValueGenerator; // 추가
 
     // ─── 이메일 인증코드 발송 ─────────────────────────────────────────
 
@@ -50,7 +45,6 @@ public class IpVerifyService {
         String code = generateCode();
         tokenStore.set(IpTrustService.emailVerifyKey(userId), code, EMAIL_CODE_TTL_MIN);
 
-        // EmailService에 sendIpVerifyCode() 추가 필요 — 기존파일_수정가이드.txt 참고
         emailService.sendIpVerifyCode(user.getEmail(), code);
         log.info("[IpVerify] userId={} IP 인증 이메일 발송", userId);
     }
@@ -76,20 +70,31 @@ public class IpVerifyService {
     // ─── CI 인증 검증 ─────────────────────────────────────────────────
 
     /**
-     * CI 값 검증.
-     * UserMapper resultMap → typeHandler=AesTypeHandler → ciValue 자동 복호화.
+     * 이름 + 생년월일 + 전화번호로 CI를 재생성하여 DB 저장값과 비교.
+     *
+     * [변경 이유]
+     * 기존: residentFront + genderCode 단순 연결 → storedCi(SHA-256 Base64)와 절대 불일치
+     * 변경: CiValueGenerator.generate()로 동일한 방식의 CI를 생성하여 비교
+     *
+     * @param name        이름 (회원가입 시 입력한 값)
+     * @param birthDate   생년월일 YYYY-MM-DD (회원가입 시 입력한 값)
+     * @param phone       전화번호 (포맷 무관 — 내부에서 숫자만 추출)
      */
-    public void verifyCi(Long userId, String residentFront, String genderCode,
+    public void verifyCi(Long userId, String name, String birthDate, String phone,
                          IpTrustService ipTrustService) {
         User user = userMapper.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        // ciValue는 TypeHandler가 자동 복호화한 평문값
-        String storedCi = user.getCiValue();
-        String inputCi  = residentFront + genderCode;
+        // 전화번호 포맷 정규화 (MaskingUtil.formatPhone과 동일한 방식)
+        String formattedPhone = MaskingUtil.formatPhone(phone);
+
+        // 회원가입과 동일한 로직으로 CI 재생성
+        String inputCi  = ciValueGenerator.generate(name, birthDate, formattedPhone);
+        String storedCi = user.getCiValue(); // TypeHandler가 AES 복호화한 평문
 
         if (!storedCi.equals(inputCi)) {
             ipTrustService.incrementCiFailCount(userId);
+            auditLogger.failure(AuditLogger.AUTH, "CI_VERIFY_FAIL", userId, "", "CI 불일치");
             throw new BusinessException(ErrorCode.CI_MISMATCH);
         }
 
