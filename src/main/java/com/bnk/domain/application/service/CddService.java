@@ -69,22 +69,22 @@ public class CddService {
 		}
 	}
 
-    // ================================================================
-    // Watchlist 등록 (관리자용)
-    // — ciValueHash, birthDateHash를 계산해서 함께 저장
-    // ================================================================
-    @Transactional
-    public void registerWatchlist(Watchlist raw) {
-        Watchlist withHash = Watchlist.builder()
-                .name(raw.getName())
-                .birthDate(raw.getBirthDate())
-                .ciValue(raw.getCiValue())
-                .ciValueHash(raw.getCiValue()   != null ? sha256Hex(raw.getCiValue())   : null)
-                .birthDateHash(raw.getBirthDate() != null ? sha256Hex(raw.getBirthDate()) : null)
-                .reason(raw.getReason())
-                .riskLevel(raw.getRiskLevel())
-                .registeredBy(raw.getRegisteredBy())
-                .build();
+	// ================================================================
+	// Watchlist 등록 (관리자용)
+	// — ciValueHash, birthDateHash를 계산해서 함께 저장
+	// ================================================================
+	@Transactional
+	public void registerWatchlist(Watchlist raw) {
+		Watchlist withHash = Watchlist.builder()
+				.name(raw.getName())
+				.birthDate(raw.getBirthDate())
+				.ciValue(raw.getCiValue())
+				.ciValueHash(raw.getCiValue()    != null ? sha256Hex(raw.getCiValue())    : null)
+				.birthDateHash(raw.getBirthDate() != null ? sha256Hex(raw.getBirthDate()) : null)
+				.reason(raw.getReason())
+				.riskLevel(raw.getRiskLevel())
+				.registeredBy(raw.getRegisteredBy())
+				.build();
 
 		watchlistMapper.insert(withHash);
 		log.info("[Watchlist] 등록 name={} riskLevel={}", raw.getName(), raw.getRiskLevel());
@@ -105,7 +105,6 @@ public class CddService {
 	@Transactional
 	public void initializeCdd(Long userId) {
 		userMapper.updateCddStatus(userId, "VERIFIED");
-		log.info("[CDD] 초기화 완료 userId={} → VERIFIED", userId);
 	}
 
 	// ================================================================

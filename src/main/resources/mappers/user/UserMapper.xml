@@ -120,10 +120,11 @@
 
 	<insert id="insertUser">
 		<selectKey keyProperty="userId" resultType="long"
-			order="AFTER">
-			SELECT SEQ_USERS.CURRVAL FROM DUAL
+			order="BEFORE">
+			SELECT SEQ_USERS.NEXTVAL FROM DUAL
 		</selectKey>
 		INSERT INTO USERS (
+		user_id,
 		email, password_hash, name,
 		phone, ci_value,
 		birth_date,
@@ -133,14 +134,16 @@
 		status_code, is_email_verified, is_phone_verified,
 		push_enabled, login_fail_count, created_at, deleted_yn
 		) VALUES (
+		#{userId},
 		#{email},
 		#{passwordHash},
 		#{name},
-		#{phone, typeHandler=aesTypeHandler},
-		#{ciValue, typeHandler=aesTypeHandler},
-		#{birthDate,
-		typeHandler=aesBirthDateTypeHandler},
-		#{job, jdbcType=VARCHAR,
+		#{phone,
+		typeHandler=AesTypeHandler},
+		#{ciValue, typeHandler=AesTypeHandler},
+		#{birthDate, typeHandler=AesBirthDateTypeHandler},
+		#{job,
+		jdbcType=VARCHAR,
 		typeHandler=org.apache.ibatis.type.StringTypeHandler},
 		#{incomeLevelCode, jdbcType=VARCHAR,
 		typeHandler=org.apache.ibatis.type.StringTypeHandler},
@@ -160,7 +163,7 @@
 		UPDATE USERS
 		<set>
 			<if test="name != null">name = #{name},</if>
-			<if test="phone != null">phone = #{phone, typeHandler=aesTypeHandler},</if>
+			<if test="phone != null">phone = #{phone, typeHandler=AesTypeHandler},</if>
 			<if test="job != null">job = #{job},</if>
 			<if test="incomeLevelCode != null">income_level_code = #{incomeLevelCode},</if>
 			<if test="creditScore != null">credit_score = #{creditScore},</if>
@@ -176,9 +179,10 @@
 	<update id="updateEmailVerified">
 		UPDATE USERS
 		SET is_email_verified =
-		#{isEmailVerified},
-		updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
-		WHERE user_id = #{userId}
+		#{isEmailVerified, jdbcType=CHAR},
+		updated_at = SYSTIMESTAMP AT TIME
+		ZONE 'Asia/Seoul'
+		WHERE user_id = #{userId, jdbcType=NUMERIC}
 	</update>
 
 	<update id="updatePhoneVerified">
@@ -295,10 +299,10 @@
 
 	<update id="updateCddStatus">
 		UPDATE USERS
-		SET cdd_status_code = #{cddStatusCode},
+		SET cdd_status_code = #{cddStatusCode,
+		typeHandler=org.apache.ibatis.type.StringTypeHandler},
 		updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
-		WHERE user_id =
-		#{userId}
+		WHERE user_id = #{userId}
 	</update>
 
 	<select id="selectOwnedCards" resultMap="ownedCardRowMap">

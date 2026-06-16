@@ -321,7 +321,7 @@
             #{passwordHash},
             #{name},
             #{email},
-            #{phone, typeHandler=aesTypeHandler},
+            #{phone, typeHandler=AesTypeHandler},
             NVL(#{statusCode, jdbcType=VARCHAR}, 'ACTIVE'),
             SYSTIMESTAMP,
             'N'

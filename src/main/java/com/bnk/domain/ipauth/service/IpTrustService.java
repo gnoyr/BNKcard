@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
  * IP 신뢰 기기 관리 서비스
  *
  * [IP 암호화 전략]
- * 저장: IpTrustMapper.xml → typeHandler=aesTypeHandler → AES-256-GCM 자동 암호화
+ * 저장: IpTrustMapper.xml → typeHandler=AesTypeHandler → AES-256-GCM 자동 암호화
  * 조회: IpHashUtil.hash(plainIp) → ip_address_hash(SHA-256) 컬럼으로 WHERE 조건
  * 반환: resultMap aesTypeHandler 자동 복호화 → 서비스 계층은 평문으로 사용
  *

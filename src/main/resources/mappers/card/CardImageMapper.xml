@@ -50,7 +50,7 @@
                IMAGE_WIDTH, IMAGE_HEIGHT, SORT_ORDER, CREATED_AT
         FROM CARD_IMAGES
         WHERE CARD_ID  = #{cardId}
-          AND IMAGE_TYPE = #{imageType}
+          AND IMAGE_TYPE = #{imageType, jdbcType=VARCHAR, javaType=String}
         ORDER BY SORT_ORDER ASC NULLS LAST
         FETCH FIRST 1 ROWS ONLY
     </select>
@@ -79,7 +79,7 @@
         <foreach collection="cardIds" item="id" open="(" separator="," close=")">
             #{id}
         </foreach>
-          AND IMAGE_TYPE = #{imageType}
+          AND IMAGE_TYPE = #{imageType, jdbcType=VARCHAR, javaType=String}
         ORDER BY SORT_ORDER ASC NULLS LAST
     </select>
 

@@ -62,8 +62,7 @@ public class UserService {
         boolean hasPersonalChange = request.getName() != null
                 || request.getPhone() != null
                 || request.getJob() != null
-                || request.getIncomeLevelCode() != null
-                || request.getCreditScore() != null;
+                || request.getIncomeLevelCode() != null;
 
         boolean hasNotifChange    = request.getPushEnabled() != null
                                  || request.getMarketingAgree() != null;
