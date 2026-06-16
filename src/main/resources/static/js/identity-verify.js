@@ -316,14 +316,15 @@ const IdentityVerify = (() => {
             }
 
             // 결과 저장
-            _pendingResult = {
-                name,
-                birthDate,
-                residentFront: front,
-                address: _addrData?.address || addr,
-                addressDetail: detail,
-                zipCode: _addrData?.zipCode || '',
-            };
+			_pendingResult = {
+			    name,
+			    birthDate,
+			    residentFront: front,
+			    genderCode, 
+			    address: _addrData?.address || addr,
+			    addressDetail: detail,
+			    zipCode: _addrData?.zipCode || '',
+			};
 
             document.getElementById('iv-panel-form').style.display = 'none';
             document.getElementById('iv-panel-done').style.display = 'block';

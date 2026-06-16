@@ -1,46 +1,28 @@
 'use strict';
 /**
- * mypage.js  |  BNK 마이페이지 통합 스크립트 (버그 수정본)
- *
+ * mypage.js  |  BNK 마이페이지
  * 의존: utils.js (BnkAPI, BnkToast, BnkDOM)
- * 로드 순서: utils.js → header.js → mypage.js
- *
- *
- * 구성:
- *   §1. 로컬 별칭 + 마이페이지 전용 유틸
- *   §2. 페이지 감지 + 초기화 진입  (body[data-page])
- *   §3. 메인 대시보드      (mypage-main)
- *   §4. 내 정보 수정       (mypage-edit)
- *   §5. 비밀번호 변경      (mypage-password)
- *   §6. 소비 패턴 관리     (mypage-spending)
- *   §7. 신용점수 조회      (mypage-credit-score)
- *   §8. 신뢰 기기(IP) 관리 (mypage-trusted-ips)
+ * 로드: utils.js → header.js → mypage.js
  */
 
 /* ================================================================
-   §1. 로컬 별칭 + 마이페이지 전용 유틸
+   §1. 공통 유틸
    ================================================================ */
-
-const Toast = BnkToast;
-const btnLoading = (btn, on) => BnkDOM.btnLoading(btn, on, '처리 중…');
+const Toast      = BnkToast;
+const btnLoading = (btn, on) => BnkDOM.btnLoading(btn, on, '처리 중...');
 
 class ApiError extends Error {
     constructor(data = {}, status = 0) {
-        const msg =
-            data.detail
-            ?? data.fieldErrors?.[0]?.message
-            ?? data.message
-            ?? '오류가 발생했습니다.';
+        const msg = data.detail ?? data.fieldErrors?.[0]?.message ?? data.message ?? '오류가 발생했습니다.';
         super(msg);
-        this.name = 'ApiError';
-        this.status = status;
-        this.code = data.code ?? null;
+        this.name        = 'ApiError';
+        this.status      = status;
+        this.code        = data.code        ?? null;
         this.fieldErrors = data.fieldErrors ?? [];
     }
-
-    applyFieldErrors(setErrFn) {
+    applyFieldErrors(fn) {
         if (!this.fieldErrors.length) return false;
-        this.fieldErrors.forEach(fe => { if (fe.field) setErrFn(fe.field, fe.message); });
+        this.fieldErrors.forEach(fe => { if (fe.field) fn(fe.field, fe.message); });
         return true;
     }
 }
@@ -52,15 +34,14 @@ const API = (() => {
         return res.data?.data ?? res.data;
     }
     return {
-        get: url => req('get', url),
-        post: (url, b) => req('post', url, b),
-        put: (url, b) => req('put', url, b),
+        get:   url      => req('get',   url),
+        post:  (url, b) => req('post',  url, b),
+        put:   (url, b) => req('put',   url, b),
         patch: (url, b) => req('patch', url, b),
-        del: url => req('del', url),
+        del:   url      => req('del',   url),
     };
 })();
 
-/* ── Validator ── */
 const V = (() => {
     function setErr(id, msg) {
         const el = document.getElementById(`${id}-err`) ?? document.getElementById(`${id}Err`);
@@ -72,336 +53,527 @@ const V = (() => {
     return {
         setErr,
         required: (v, msg = '필수 입력 항목입니다.') => v?.trim() ? '' : msg,
-        phone: v => /^01[0-9]{8,9}$/.test(v.replace(/-/g, ''))
-            ? '' : '올바른 휴대폰 번호를 입력해주세요.',
-        match: (a, b, msg = '비밀번호가 일치하지 않습니다.') => (a === b) ? '' : msg,
+        phone:    v => /^01[0-9]{8,9}$/.test(v.replace(/-/g, '')) ? '' : '올바른 휴대폰 번호를 입력해주세요.',
+        match:    (a, b, msg = '비밀번호가 일치하지 않습니다.') => a === b ? '' : msg,
         password: v => {
-            if (!v || v.length < 8) return '8자 이상 입력해주세요.';
-            if (v.length > 50) return '50자 이하로 입력해주세요.';
+            if (!v || v.length < 8)  return '8자 이상 입력해주세요.';
+            if (v.length > 50)        return '50자 이하로 입력해주세요.';
             if (!/[A-Za-z]/.test(v)) return '영문을 포함해주세요.';
-            if (!/\d/.test(v)) return '숫자를 포함해주세요.';
+            if (!/\d/.test(v))        return '숫자를 포함해주세요.';
             return '';
         },
     };
 })();
 
+function esc(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function bindPwToggles(root = document) {
+    root.querySelectorAll('.pw-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const input = document.getElementById(btn.dataset.target);
+            if (!input) return;
+            const show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            btn.textContent = show ? '숨김' : '표시';
+        });
+    });
+}
+
+function emptyState(msg = '데이터가 없습니다.') {
+    return `<p class="empty-state">${msg}</p>`;
+}
+
+/* modal open/close — hidden attribute 기반 */
+function openModal(id)  { const m = document.getElementById(id); if (m) m.removeAttribute('hidden'); }
+function closeModal(id) { const m = document.getElementById(id); if (m) m.setAttribute('hidden', ''); }
+
 /* ================================================================
-   §2. 페이지 감지 + 초기화 진입
+   §2. 페이지 감지 + 초기화
    ================================================================ */
 document.addEventListener('DOMContentLoaded', () => {
+    bindPwToggles();
+    document.querySelector('.sub-nav__back')?.addEventListener('click', () => history.back());
+
     const page = document.body.dataset.page;
-    if (page === 'mypage-main')         initMain();
-    else if (page === 'mypage-edit')    initEdit();
-    else if (page === 'mypage-password') initPassword();
-    else if (page === 'mypage-spending') initSpending();
+    if      (page === 'mypage-main')         initMain();
+    else if (page === 'mypage-edit')         initEdit();
+    else if (page === 'mypage-password')     initPassword();
+    else if (page === 'mypage-spending')     initSpending();
     else if (page === 'mypage-credit-score') initCreditScore();
     else if (page === 'mypage-trusted-ips')  initTrustedIps();
 });
 
 /* ================================================================
-   §3. 메인 대시보드 (mypage-main)
+   §3. 메인 대시보드
    ================================================================ */
 async function initMain() {
     try {
         const user = await API.get('/api/users/me');
         const name = user.name ?? '';
-        document.getElementById('profileName').textContent = name;
+        document.getElementById('profileName').textContent    = name;
         document.getElementById('profileInitial').textContent = name.charAt(0) || '?';
         const meta = [];
-        if (user.email) meta.push(user.maskedEmail ?? user.email);
+        if (user.email)       meta.push(user.maskedEmail ?? user.email);
         if (user.maskedPhone) meta.push(user.maskedPhone);
         document.getElementById('profileMeta').textContent = meta.join(' · ');
     } catch (err) {
         if (err.status > 0 && err.status !== 403 && err.status < 500)
             Toast.error('내 정보를 불러오지 못했습니다.');
     }
+
+    const tabOwned    = document.getElementById('tab-owned');
+    const tabApplied  = document.getElementById('tab-applied');
+    const cardSection = document.getElementById('cardSection');
+
+    function renderCardItems(items, emptyMsg) {
+        if (!items.length) { cardSection.innerHTML = emptyState(emptyMsg); return; }
+        cardSection.innerHTML = items.map(c => `
+            <article class="card-item">
+                <span class="card-item__name">${esc(c.cardName ?? c.name ?? '')}</span>
+                <span class="card-item__status">${esc(c.statusCode ?? c.status ?? '')}</span>
+            </article>`).join('');
+    }
+
+    async function loadOwned() {
+        tabOwned.setAttribute('aria-selected', 'true');
+        tabApplied.setAttribute('aria-selected', 'false');
+        tabOwned.classList.add('active');
+        tabApplied.classList.remove('active');
+        cardSection.innerHTML = '<span class="skeleton skeleton-line"></span><span class="skeleton skeleton-line skeleton-line--short"></span>';
+        try {
+            const data  = await API.get('/api/users/me/cards');
+            const items = Array.isArray(data) ? data : (data?.content ?? data?.items ?? []);
+            renderCardItems(items, '보유 카드가 없습니다.');
+        } catch { cardSection.innerHTML = emptyState('카드 정보를 불러올 수 없습니다.'); }
+    }
+
+    async function loadApplied() {
+        tabOwned.setAttribute('aria-selected', 'false');
+        tabApplied.setAttribute('aria-selected', 'true');
+        tabOwned.classList.remove('active');
+        tabApplied.classList.add('active');
+        cardSection.innerHTML = '<span class="skeleton skeleton-line"></span><span class="skeleton skeleton-line skeleton-line--short"></span>';
+        try {
+            const data  = await API.get('/api/users/me/card-applications');
+            const items = Array.isArray(data) ? data : (data?.content ?? data?.items ?? []);
+            renderCardItems(items, '신청 이력이 없습니다.');
+        } catch { cardSection.innerHTML = emptyState('신청 현황을 불러올 수 없습니다.'); }
+    }
+
+    tabOwned?.addEventListener('click',   loadOwned);
+    tabApplied?.addEventListener('click', loadApplied);
+    loadOwned();
 }
 
 /* ================================================================
-   §4. 내 정보 수정 (mypage-edit)
+   §4. 내 정보 수정
    ================================================================ */
-
-let _editSubmitHandler = null; // initEdit()에서 등록한 제출 핸들러 참조 보관
-
-function handleBasicSubmit() {
-    if (typeof _editSubmitHandler === 'function') {
-        _editSubmitHandler();
-    }
-}
-
 async function initEdit() {
-    const form      = document.getElementById('editForm');
-    const submitBtn = document.getElementById('basicSubmitBtn') ?? document.getElementById('submitBtn');
-    const modal     = document.getElementById('pwConfirmModal');
-    const pwInput   = document.getElementById('confirmPwInput');
-    const pwErr     = document.getElementById('confirmPwErr');
-    const confirmBtn = document.getElementById('modalConfirmBtn');
 
+    /* 탭 전환 */
+    const tabs   = document.querySelectorAll('.edit-tab');
+    const panels = document.querySelectorAll('.tab-panel');
+
+    function switchTab(tab) {
+        tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
+        panels.forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        tab.setAttribute('aria-selected', 'true');
+        document.getElementById('panel-' + tab.dataset.tab)?.classList.add('active');
+    }
+    tabs.forEach(t => t.addEventListener('click', () => switchTab(t)));
+
+    const urlTab = new URLSearchParams(location.search).get('tab');
+    if (urlTab) {
+        const t = document.querySelector(`.edit-tab[data-tab="${urlTab}"]`);
+        if (t) switchTab(t);
+    }
+
+    /* 사용자 정보 로드 */
     let _original     = {};
     let _phoneChanged = false;
 
-    /* ① 사용자 정보 로드 */
     try {
         const user = await API.get('/api/users/me');
+        const get  = id => document.getElementById(id);
 
-        document.getElementById('name').value = user.name ?? '';
-
-        document.getElementById('currentPhone').textContent = user.maskedPhone ?? user.phone ?? '미등록';
-
-        document.getElementById('job').value = user.job ?? '';
-        const emailEl = document.getElementById('currentEmail');
-        if (emailEl) emailEl.textContent = user.email ?? '';
-
-        document.getElementById('incomeLevelCode').value = user.incomeLevelCode ?? '';
-        const pushEl = document.getElementById('pushEnabled');
-        if (pushEl) pushEl.checked = user.pushEnabled === 'Y' || user.pushEnabled === true;
-        const mktEl = document.getElementById('marketingAgree');
-        if (mktEl) mktEl.checked = user.marketingAgree === 'Y' || user.marketingAgree === true;
+        if (get('name'))           get('name').value           = user.name            ?? '';
+        if (get('currentEmail'))   get('currentEmail').textContent = user.email        ?? '';
+        if (get('currentPhone'))   get('currentPhone').textContent = user.maskedPhone  ?? user.phone ?? '미등록';
+        if (get('currentAddr'))    get('currentAddr').textContent  = user.address      ?? '주소 미등록';
+        if (get('job'))            get('job').value            = user.job             ?? '';
+        if (get('incomeLevelCode')) get('incomeLevelCode').value = user.incomeLevelCode ?? '';
+        if (get('pushEnabled'))    get('pushEnabled').checked   = user.pushEnabled    === 'Y' || user.pushEnabled    === true;
+        if (get('marketingAgree')) get('marketingAgree').checked = user.marketingAgree === 'Y' || user.marketingAgree === true;
 
         _original = {
-            name: user.name ?? '',
-            job: user.job ?? '',
+            name:            user.name            ?? '',
+            job:             user.job             ?? '',
             incomeLevelCode: user.incomeLevelCode ?? '',
-            pushEnabled: pushEl?.checked ?? false,
-            marketingAgree: mktEl?.checked ?? false,
+            pushEnabled:     get('pushEnabled')?.checked     ?? false,
+            marketingAgree:  get('marketingAgree')?.checked  ?? false,
         };
     } catch (err) {
         if (err.status > 0 && err.status !== 403 && err.status < 500)
             Toast.error('내 정보를 불러오지 못했습니다.');
     }
 
-    /* ② 변경 감지 */
-    function hasPersonalInfoChange() {
-        return (
-            document.getElementById('name').value.trim() !== _original.name ||
-            _phoneChanged ||
-            document.getElementById('job').value !== _original.job ||
-            document.getElementById('incomeLevelCode').value !== _original.incomeLevelCode
-        );
-    }
-
-    function hasNotificationChange() {
-        const pushEl = document.getElementById('pushEnabled');
-        const mktEl  = document.getElementById('marketingAgree');
-        return (
-            (pushEl?.checked ?? false) !== _original.pushEnabled ||
-            (mktEl?.checked  ?? false) !== _original.marketingAgree
-        );
-    }
-
-    function hasChanges() {
-        return hasPersonalInfoChange() || hasNotificationChange();
-    }
-
-    /* ③ 전송 바디 수집 */
-    function collectBody(currentPassword) {
-        const pushEl = document.getElementById('pushEnabled');
-        const mktEl  = document.getElementById('marketingAgree');
-        const body   = {};
-
-        if (currentPassword) body.currentPassword = currentPassword;
-
-        const name      = document.getElementById('name').value.trim();
-        const phone     = document.getElementById('phone').value.trim();
-        const job       = document.getElementById('job').value;
-        const incomeCode = document.getElementById('incomeLevelCode').value;
-
-        if (name !== _original.name) body.name = name;
-        if (_phoneChanged && phone)   body.phone = phone;
-        if (job !== _original.job)    body.job = job;
-        if (incomeCode !== _original.incomeLevelCode) body.incomeLevelCode = incomeCode;
-
-        body.pushEnabled    = pushEl?.checked ?? false;
-        body.marketingAgree = mktEl?.checked  ?? false;
-        return body;
-    }
-
-    /* ④ 실제 수정 요청 */
-    async function doUpdate(currentPassword) {
-        btnLoading(submitBtn, true);
-        try {
-            await API.put('/api/users/me', collectBody(currentPassword));
-            Toast.success('정보가 수정되었습니다.');
-            setTimeout(() => { window.location.href = '/mypage'; }, 1000);
-        } catch (err) {
-            if (err instanceof ApiError && err.applyFieldErrors(V.setErr)) {
-                // 필드별 에러 표시됨
-            } else if (err.code === 'U003' || err.code === 'C001' || err.message?.includes('비밀번호')) {
-                if (pwInput) pwInput.value = '';
-                if (pwErr) { pwErr.textContent = '비밀번호가 올바르지 않습니다. 다시 입력해주세요.'; pwErr.classList.add('show'); }
-                modal?.classList.add('open');
-                setTimeout(() => pwInput?.focus(), 150);
-            } else if (err.status > 0 && err.status !== 403 && err.status < 500) {
-                Toast.error(err.message || '수정 중 오류가 발생했습니다.');
-            }
-        } finally {
-            btnLoading(submitBtn, false);
-        }
-    }
-
-    /* ⑤ 핵심 제출 로직 (폼 이벤트 & 버튼 onclick 양쪽에서 호출)
-     */
-    async function submitLogic() {
-        if (!hasChanges()) { Toast.warning('변경된 내용이 없습니다.'); return; }
-
-        const phoneVal = document.getElementById('phone').value.trim();
-        if (phoneVal) {
-            const phoneErrMsg = V.phone(phoneVal);
-            if (phoneErrMsg) { V.setErr('phone', phoneErrMsg); return; }
-        }
-        V.setErr('phone', '');
-
-        if (hasPersonalInfoChange()) {
-            if (pwInput) pwInput.value = '';
-            if (pwErr) { pwErr.textContent = ''; pwErr.classList.remove('show'); }
-            modal?.classList.add('open');
-            setTimeout(() => pwInput?.focus(), 150);
-        } else {
-            await doUpdate(null);
-        }
-    }
-
-    _editSubmitHandler = submitLogic;
-
-    // form submit 이벤트도 유지 (form 내 Enter 키 제출 대비)
-    form?.addEventListener('submit', async e => { e.preventDefault(); await submitLogic(); });
-
     document.getElementById('phone')?.addEventListener('input', () => {
         _phoneChanged = true;
         V.setErr('phone', '');
     });
 
-    /* 모달 취소 */
-    document.getElementById('modalCancelBtn')?.addEventListener('click', () => {
-        modal?.classList.remove('open');
-        if (pwInput) pwInput.value = '';
-    });
+    /* 비밀번호 확인 모달 */
+    const pwInput    = document.getElementById('confirmModalPw');
+    const pwErrEl    = document.getElementById('modalPw-err');
 
-    /* 모달 확인 */
-    confirmBtn?.addEventListener('click', async () => {
+    function openPwModal(onConfirm) {
+        if (pwInput) pwInput.value = '';
+        if (pwErrEl) { pwErrEl.textContent = ''; pwErrEl.classList.remove('show'); }
+        openModal('pwConfirmModal');
+        setTimeout(() => pwInput?.focus(), 150);
+        document.getElementById('pwConfirmBtn')._onConfirm = onConfirm;
+    }
+
+    document.getElementById('pwCancelBtn')?.addEventListener('click', () => closeModal('pwConfirmModal'));
+
+    document.getElementById('pwConfirmBtn')?.addEventListener('click', async function () {
         const pw = pwInput?.value?.trim() ?? '';
         if (!pw) {
-            if (pwErr) { pwErr.textContent = '비밀번호를 입력해주세요.'; pwErr.classList.add('show'); }
+            if (pwErrEl) { pwErrEl.textContent = '비밀번호를 입력해주세요.'; pwErrEl.classList.add('show'); }
             return;
         }
-        pwErr?.classList.remove('show');
-        modal?.classList.remove('open');
-        await doUpdate(pw);
+        pwErrEl?.classList.remove('show');
+        closeModal('pwConfirmModal');
+        if (typeof this._onConfirm === 'function') await this._onConfirm(pw);
+    });
+    pwInput?.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('pwConfirmBtn')?.click(); });
+
+    /* 기본 정보 저장 */
+    async function submitBasic(currentPassword) {
+        const nameVal  = document.getElementById('name')?.value.trim() ?? '';
+        const phoneVal = document.getElementById('phone')?.value.trim() ?? '';
+        let ok = true;
+        if (!V.setErr('name', V.required(nameVal))) ok = false;
+        if (phoneVal && !V.setErr('phone', V.phone(phoneVal))) ok = false;
+        if (!ok) return;
+        const changed = nameVal !== _original.name || _phoneChanged;
+        if (!changed) { Toast.warning('변경된 내용이 없습니다.'); return; }
+
+        const body = {};
+        if (nameVal !== _original.name) body.name = nameVal;
+        if (_phoneChanged && phoneVal)  body.phone = phoneVal;
+        if (currentPassword)            body.currentPassword = currentPassword;
+
+        const btn = document.getElementById('basicSubmitBtn');
+        btnLoading(btn, true);
+        try {
+            await API.put('/api/users/me', body);
+            Toast.success('기본 정보가 수정되었습니다.');
+            setTimeout(() => { location.href = '/mypage'; }, 1000);
+        } catch (err) {
+            if (err instanceof ApiError && err.applyFieldErrors(V.setErr)) return;
+            if (err.code === 'U003' || err.message?.includes('비밀번호') || err.message?.includes('password')) {
+                openPwModal(submitBasic);
+            } else if (err.status > 0 && err.status !== 403 && err.status < 500) {
+                Toast.error(err.message || '수정 중 오류가 발생했습니다.');
+            }
+        } finally { btnLoading(btn, false); }
+    }
+
+    document.getElementById('basicSubmitBtn')?.addEventListener('click', () => {
+        const phoneVal = document.getElementById('phone')?.value.trim() ?? '';
+        if (_phoneChanged && phoneVal) openPwModal(pw => submitBasic(pw));
+        else submitBasic(null);
     });
 
-    pwInput?.addEventListener('keydown', e => { if (e.key === 'Enter') confirmBtn?.click(); });
+    /* 주소 검색 */
+    document.getElementById('addrSearchBtn')?.addEventListener('click', searchAddress);
+
+    function searchAddress() {
+        function load(cb) {
+            if (window.daum?.Postcode) { cb(); return; }
+            const s = document.createElement('script');
+            s.src     = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+            s.onload  = cb;
+            s.onerror = () => Toast.error('주소 검색 서비스를 불러오지 못했습니다.');
+            document.head.appendChild(s);
+        }
+        load(() => {
+            document.getElementById('addrSearchEmbed')?.remove();
+            const overlay = document.createElement('div');
+            overlay.id        = 'addrSearchEmbed';
+            overlay.className = 'addr-embed-overlay';
+            const inner = document.createElement('div');
+            inner.className   = 'addr-embed-inner';
+            const closeBtn    = document.createElement('button');
+            closeBtn.type        = 'button';
+            closeBtn.className   = 'addr-embed-close';
+            closeBtn.textContent = '닫기';
+            closeBtn.addEventListener('click', () => overlay.remove());
+            overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+            inner.appendChild(closeBtn);
+            overlay.appendChild(inner);
+            document.body.appendChild(overlay);
+            new daum.Postcode({
+                oncomplete(data) {
+                    document.getElementById('postcode').value  = data.zonecode;
+                    document.getElementById('addrMain').value  = data.roadAddress || data.jibunAddress;
+                    document.getElementById('addrDetail').value = '';
+                    document.getElementById('addrDetail').focus();
+                    V.setErr('addr', '');
+                    overlay.remove();
+                },
+                width: '100%', height: '100%',
+            }).embed(inner, { autoClose: false });
+        });
+    }
+
+    /* 주소 저장 */
+    document.getElementById('addrSubmitBtn')?.addEventListener('click', async () => {
+        const postcode   = document.getElementById('postcode')?.value.trim()   ?? '';
+        const addrMain   = document.getElementById('addrMain')?.value.trim()   ?? '';
+        const addrDetail = document.getElementById('addrDetail')?.value.trim() ?? '';
+        if (!addrMain) { V.setErr('addr', '주소를 검색해주세요.'); return; }
+        V.setErr('addr', '');
+        const btn = document.getElementById('addrSubmitBtn');
+        btnLoading(btn, true);
+        try {
+            await API.put('/api/users/me', { postcode, address: addrMain, addressDetail: addrDetail });
+            document.getElementById('ciRefreshBadge')?.classList.add('show');
+            Toast.success('주소가 변경되었습니다.');
+            setTimeout(() => { location.href = '/mypage'; }, 1200);
+        } catch (err) {
+            if (err instanceof ApiError && err.applyFieldErrors(V.setErr)) return;
+            if (err.status > 0 && err.status !== 403 && err.status < 500)
+                Toast.error(err.message || '주소 변경 중 오류가 발생했습니다.');
+        } finally { btnLoading(btn, false); }
+    });
+
+    /* 소득 정보 저장 */
+    document.getElementById('incomeSubmitBtn')?.addEventListener('click', async () => {
+        const job   = document.getElementById('job')?.value             ?? '';
+        const income = document.getElementById('incomeLevelCode')?.value ?? '';
+        if (job === _original.job && income === _original.incomeLevelCode) {
+            Toast.warning('변경된 내용이 없습니다.'); return;
+        }
+        const btn = document.getElementById('incomeSubmitBtn');
+        btnLoading(btn, true);
+        try {
+            await API.put('/api/users/me', { job, incomeLevelCode: income });
+            Toast.success('소득 정보가 수정되었습니다.');
+            setTimeout(() => { location.href = '/mypage'; }, 1000);
+        } catch (err) {
+            if (err.status > 0 && err.status !== 403 && err.status < 500)
+                Toast.error(err.message || '수정 중 오류가 발생했습니다.');
+        } finally { btnLoading(btn, false); }
+    });
+
+    /* 알림 설정 저장 */
+    document.getElementById('notifySubmitBtn')?.addEventListener('click', async () => {
+        const push = document.getElementById('pushEnabled')?.checked   ?? false;
+        const mkt  = document.getElementById('marketingAgree')?.checked ?? false;
+        if (push === _original.pushEnabled && mkt === _original.marketingAgree) {
+            Toast.warning('변경된 내용이 없습니다.'); return;
+        }
+        const btn = document.getElementById('notifySubmitBtn');
+        btnLoading(btn, true);
+        try {
+            await API.put('/api/users/me', { pushEnabled: push, marketingAgree: mkt });
+            Toast.success('알림 설정이 저장되었습니다.');
+        } catch (err) {
+            if (err.status > 0 && err.status !== 403 && err.status < 500)
+                Toast.error(err.message || '저장 중 오류가 발생했습니다.');
+        } finally { btnLoading(btn, false); }
+    });
 }
 
 /* ================================================================
-   §5. 비밀번호 변경 (mypage-password)
+   §5. 비밀번호 변경
    ================================================================ */
 async function initPassword() {
-    const form      = document.getElementById('pwForm');
-    const submitBtn = document.getElementById('submitBtn');
-    const newPw     = document.getElementById('newPw');
-    const confirmPw = document.getElementById('confirmPw');
-    const currentPw = document.getElementById('currentPw');
+    const form       = document.getElementById('pwForm');
+    const submitBtn  = document.getElementById('submitBtn');
+    const currentPwEl = document.getElementById('currentPw');
+    const newPwEl    = document.getElementById('newPw');
+    const confirmPwEl = document.getElementById('confirmPw');
+
+    /* 강도 + 규칙 */
+    newPwEl?.addEventListener('input', () => {
+        const val   = newPwEl.value;
+        const wrap  = document.getElementById('strengthWrap');
+        const fill  = document.getElementById('strengthFill');
+        const label = document.getElementById('strengthLabel');
+        const rules = document.getElementById('pwRules');
+        if (!val) { if (wrap) wrap.hidden = true; return; }
+        if (wrap) wrap.hidden = false;
+        const c = {
+            length:  val.length >= 8 && val.length <= 50,
+            letter:  /[A-Za-z]/.test(val),
+            number:  /\d/.test(val),
+            special: /[^A-Za-z0-9]/.test(val),
+        };
+        const score = Object.values(c).filter(Boolean).length;
+        if (fill) {
+            fill.style.width = (score * 25) + '%';
+            fill.style.background = score <= 1 ? '#EF4444' : score === 2 ? '#F59E0B' : score === 3 ? '#3B82F6' : '#22C55E';
+        }
+        if (label) {
+            label.textContent = ['', '취약', '보통', '강함', '매우 강함'][score] ?? '';
+            label.style.color = fill?.style.background ?? '';
+        }
+        rules?.querySelectorAll('li[data-rule]').forEach(li => li.classList.toggle('ok', c[li.dataset.rule] === true));
+    });
 
     form?.addEventListener('submit', async e => {
         e.preventDefault();
-
         let ok = true;
-        if (!V.setErr('currentPw', V.required(currentPw?.value))) ok = false;
-        if (!V.setErr('newPw', V.password(newPw?.value ?? ''))) ok = false;
-        if (ok && currentPw.value === newPw.value) {
-            V.setErr('newPw', '현재 비밀번호와 동일한 비밀번호는 사용할 수 없습니다.');
-            ok = false;
+        if (!V.setErr('currentPw', V.required(currentPwEl?.value))) ok = false;
+        if (!V.setErr('newPw',     V.password(newPwEl?.value ?? ''))) ok = false;
+        if (ok && currentPwEl.value === newPwEl.value) {
+            V.setErr('newPw', '현재 비밀번호와 동일한 비밀번호는 사용할 수 없습니다.'); ok = false;
         }
-        if (ok && !V.setErr('confirmPw', V.match(newPw?.value ?? '', confirmPw?.value ?? ''))) ok = false;
+        if (ok && !V.setErr('confirmPw', V.match(newPwEl?.value ?? '', confirmPwEl?.value ?? ''))) ok = false;
         if (!ok) return;
 
         btnLoading(submitBtn, true);
         try {
             await API.patch('/api/users/me/password', {
-                currentPassword:    currentPw.value,
-                newPassword:        newPw.value,
-                newPasswordConfirm: confirmPw.value,
+                currentPassword:    currentPwEl.value,
+                newPassword:        newPwEl.value,
+                newPasswordConfirm: confirmPwEl.value,
             });
             Toast.success('비밀번호가 변경되었습니다.');
-            setTimeout(() => {
-                document.getElementById('doneModal')?.classList.add('open');
-            }, 500);
+            setTimeout(() => openModal('doneModal'), 500);
         } catch (err) {
-            if (err instanceof ApiError && err.applyFieldErrors(V.setErr)) {
-                // 필드별 에러 표시됨
-            } else if (err.code === 'U009') {
-                V.setErr('confirmPw', '새 비밀번호와 확인이 일치하지 않습니다.');
-            } else if (err.code === 'U003' || err.message?.includes('비밀번호') || err.message?.includes('password')) {
-                V.setErr('currentPw', err.message);
-            } else if (err.status > 0 && err.status !== 403 && err.status < 500) {
-                Toast.error(err.message || '변경 중 오류가 발생했습니다.');
-            }
-        } finally {
-            btnLoading(submitBtn, false);
-        }
+            if (err instanceof ApiError && err.applyFieldErrors(V.setErr)) return;
+            if      (err.code === 'U009')                                    V.setErr('confirmPw', '새 비밀번호와 확인이 일치하지 않습니다.');
+            else if (err.code === 'U003' || err.message?.includes('비밀번호')) V.setErr('currentPw', err.message);
+            else if (err.status > 0 && err.status !== 403 && err.status < 500) Toast.error(err.message || '변경 중 오류가 발생했습니다.');
+        } finally { btnLoading(submitBtn, false); }
     });
 
-    document.getElementById('doneOk')?.addEventListener('click', () => {
-        window.location.href = '/mypage';
-    });
+    document.getElementById('doneOk')?.addEventListener('click', () => { location.href = '/mypage'; });
 }
 
 /* ================================================================
-   §6. 소비 패턴 관리 (mypage-spending)
+   §6. 소비 패턴 관리
    ================================================================ */
 async function initSpending() {
-    // 기존 코드 유지 (버그 없음)
+    const CATS = [
+        { key: 'FOOD',          label: '식비',         color: '#EF4444' },
+        { key: 'TRANSPORT',     label: '교통',         color: '#3B82F6' },
+        { key: 'SHOPPING',      label: '쇼핑',         color: '#8B5CF6' },
+        { key: 'CULTURE',       label: '문화/여가',    color: '#F59E0B' },
+        { key: 'HEALTH',        label: '의료/건강',    color: '#10B981' },
+        { key: 'EDUCATION',     label: '교육',         color: '#06B6D4' },
+        { key: 'COMMUNICATION', label: '통신',         color: '#6366F1' },
+        { key: 'INSURANCE',     label: '보험',         color: '#EC4899' },
+        { key: 'HOUSING',       label: '주거/관리비',  color: '#84CC16' },
+        { key: 'ETC',           label: '기타',         color: '#94A3B8' },
+    ];
+
+    const container = document.getElementById('rowContainer');
+    const totalEl   = document.getElementById('totalAmount');
+    const submitBtn = document.getElementById('submitBtn');
+    const backBtn   = document.getElementById('backBtn');
+
+    backBtn?.addEventListener('click', () => history.back());
+
+    let _existing = {};
     try {
-        const spending = await API.get('/api/users/me/spending-patterns');
-        const items = Array.isArray(spending) ? spending : (spending?.items ?? spending ?? []);
-        const total = items.reduce((s, i) => s + Number(i.monthlyAmount ?? 0), 0);
-        const totalEl = document.getElementById('chart-amount');
-        if (totalEl) totalEl.textContent = total.toLocaleString() + '원';
-        // renderDonut 등 기존 로직 유지
-    } catch (err) {
-        if (err.status > 0 && err.status !== 403 && err.status < 500)
-            Toast.warning('소비 패턴 데이터를 불러오지 못했습니다.');
+        const data  = await API.get('/api/users/me/spending-patterns');
+        const items = Array.isArray(data) ? data : (data?.items ?? []);
+        items.forEach(i => { _existing[i.categoryCode ?? i.category] = Number(i.monthlyAmount ?? 0); });
+    } catch { /* 빈 값으로 렌더 */ }
+
+    container.innerHTML = CATS.map(cat => `
+        <li class="spending-row">
+            <span class="spending-dot" data-color="${cat.color}" aria-hidden="true"></span>
+            <label class="spending-label" for="sp-${cat.key}">${cat.label}</label>
+            <input class="spending-input" type="number" min="0" step="1000"
+                   id="sp-${cat.key}" name="${cat.key}"
+                   value="${_existing[cat.key] ?? 0}" placeholder="0">
+            <span class="spending-unit" aria-hidden="true">원</span>
+        </li>`).join('');
+
+    function updateTotal() {
+        const total = CATS.reduce((s, c) => s + Number(document.getElementById(`sp-${c.key}`)?.value ?? 0), 0);
+        if (totalEl) totalEl.value = total.toLocaleString() + '원';
     }
+    container.addEventListener('input', updateTotal);
+    updateTotal();
+
+    document.getElementById('spendingForm')?.addEventListener('submit', async e => {
+        e.preventDefault();
+        btnLoading(submitBtn, true);
+        try {
+            const items = CATS.map(c => ({
+                categoryCode:  c.key,
+                monthlyAmount: Number(document.getElementById(`sp-${c.key}`)?.value ?? 0),
+                source:        'MANUAL',
+            }));
+            await API.post('/api/users/me/spending-patterns', { items });
+            Toast.success('소비 패턴이 저장되었습니다.');
+            setTimeout(() => { location.href = '/mypage'; }, 1000);
+        } catch (err) {
+            Toast.error(err.message || '저장 중 오류가 발생했습니다.');
+        } finally { btnLoading(submitBtn, false); }
+    });
 }
 
 /* ================================================================
-   §7. 신용점수 조회 (mypage-credit-score)
+   §7. 신용점수 조회
    ================================================================ */
 async function initCreditScore() {
-    // 기존 코드 유지 (버그 없음)
+    const lockScreen   = document.getElementById('lockScreen');
+    const revealScreen = document.getElementById('revealScreen');
+
     document.getElementById('revealBtn')?.addEventListener('click', async () => {
         try {
-            const user = await API.get('/api/users/me');
+            const user  = await API.get('/api/users/me');
             const score = user.creditScore;
             if (score == null) { Toast.warning('신용점수 정보가 없습니다.'); return; }
 
             document.getElementById('scoreVal').textContent = score;
-            document.getElementById('lockScreen')?.classList.add('hidden');
-            document.getElementById('revealScreen')?.classList.add('show');
+            lockScreen?.classList.add('hidden');
+            revealScreen?.classList.add('show');
 
-            const pct = Math.max(0, Math.min(100, ((score - 300) / 600) * 100));
-            document.getElementById('gaugeFill').style.width = pct + '%';
+            /* meter 태그 값 업데이트 */
+            const meter = document.getElementById('scoreMeter');
+            if (meter) { meter.value = score; meter.textContent = score + '점'; }
 
             let grade = '일반';
-            if (score >= 820) grade = '최우수';
+            if      (score >= 820) grade = '최우수';
             else if (score >= 665) grade = '우수';
-            else if (score < 600) grade = '주의';
+            else if (score < 600)  grade = '주의';
             document.getElementById('scoreGrade').textContent = grade;
 
-            const percentile = Math.round(((score - 300) / 600) * 100);
-            document.getElementById('scorePercentile').textContent = Math.max(1, 100 - percentile);
-        } catch (err) {
+            const pct = Math.round(((score - 300) / 600) * 100);
+            document.getElementById('scorePercentile').textContent = Math.max(1, 100 - pct);
+
+            const updatedEl = document.getElementById('scoreUpdated');
+            if (updatedEl && user.creditScoreUpdatedAt)
+                updatedEl.textContent = '최종 갱신: ' + new Date(user.creditScoreUpdatedAt).toLocaleDateString('ko-KR');
+        } catch {
             Toast.error('신용점수를 불러올 수 없습니다.');
         }
+    });
+
+    document.getElementById('hideScoreBtn')?.addEventListener('click', () => {
+        lockScreen?.classList.remove('hidden');
+        revealScreen?.classList.remove('show');
     });
 }
 
 /* ================================================================
-   §8. 신뢰 기기(IP) 관리 (mypage-trusted-ips)
+   §8. 신뢰 기기(IP) 관리
    ================================================================ */
 async function initTrustedIps() {
-    let _ipList          = [];
-    let _deleteTargetId  = null;
+    let _ipList         = [];
+    let _deleteTargetId = null;
 
     await loadIpList();
     bindDeleteModal();
@@ -411,184 +583,138 @@ async function initTrustedIps() {
             const data = await API.get('/api/users/me/trusted-ips');
             _ipList = Array.isArray(data) ? data : (data?.items ?? data ?? []);
             renderList();
-        } catch (err) {
-            document.getElementById('ipList').innerHTML = emptyHtml('목록을 불러올 수 없습니다.');
+        } catch {
+            document.getElementById('ipList').innerHTML = emptyState('목록을 불러올 수 없습니다.');
         }
     }
 
     function renderList() {
-        const list         = document.getElementById('ipList');
-        const countBadge   = document.getElementById('ipCountBadge');
-        const capacityWrap = document.getElementById('ipCapacityWrap');
-        const capacityBar  = document.getElementById('ipCapacityBar');
-        const capacityLabel = document.getElementById('ipCapacityLabel');
+        const list   = document.getElementById('ipList');
+        const badge  = document.getElementById('ipCountBadge');
+        const meter  = document.getElementById('ipCapacityMeter');
+        const lbl    = document.getElementById('ipCapacityLabel');
+        const count  = _ipList.length;
 
-        const count = _ipList.length;
-        if (countBadge) countBadge.textContent = count + ' / 10';
-        if (capacityWrap) capacityWrap.style.display = 'flex';
-        const pct = (count / 10) * 100;
-        if (capacityBar) {
-            capacityBar.style.width = pct + '%';
-            capacityBar.className = 'ip-capacity__bar' + (pct >= 100 ? ' full' : pct >= 70 ? ' warn' : '');
-        }
-        if (capacityLabel) capacityLabel.textContent = count + '/10 사용 중';
+        if (badge) badge.textContent = `${count} / 10`;
+        if (meter) { meter.value = count; meter.removeAttribute('hidden'); }
+        if (lbl)   { lbl.textContent = `${count}/10 사용 중`; lbl.removeAttribute('hidden'); }
 
-        if (!list) return;
-        if (count === 0) { list.innerHTML = emptyHtml('등록된 기기가 없습니다.'); return; }
-        list.innerHTML = _ipList.map(ip => buildIpItem(ip)).join('');
-        attachItemEvents();
+        if (!count) { list.innerHTML = emptyState('등록된 기기가 없습니다.'); return; }
+
+        list.innerHTML = _ipList.map(item => {
+            const { id: tid, ipAddress, nickname, via, isInitial, isDisabled, createdAt, lastUsedAt } = item;
+            return `
+            <li class="ip-item">
+                <span class="ip-icon${isInitial ? ' ip-icon--initial' : ''}${isDisabled ? ' ip-icon--disabled' : ''}"
+                      aria-hidden="true"></span>
+                <span class="ip-body">
+                    <span class="ip-nickname-row">
+                        <span class="ip-nickname" id="nn-${tid}">${esc(nickname ?? '이름 없음')}</span>
+                        <input class="ip-nickname-input" id="nn-input-${tid}"
+                               value="${esc(nickname ?? '')}" maxlength="20">
+                        ${isInitial  ? '<span class="ip-badge-initial">최초 기기</span>'  : ''}
+                        ${isDisabled ? '<span class="ip-badge-disabled">비활성</span>'   : ''}
+                    </span>
+                    <span class="ip-address">${esc(maskIp(ipAddress))}</span>
+                    <span class="ip-meta">
+                        <span>${esc(fmtVia(via))}</span>
+                        <span>등록 ${fmtDate(createdAt)}</span>
+                        ${lastUsedAt ? `<span>최근 ${fmtDate(lastUsedAt)}</span>` : ''}
+                    </span>
+                </span>
+                <span class="ip-actions">
+                    ${!isInitial ? `
+                    <button class="btn-ip-edit" data-id="${tid}" type="button">수정</button>
+                    <button class="btn-ip-save" data-id="${tid}" type="button" hidden>저장</button>
+                    <button class="btn-ip-del"  data-id="${tid}" type="button">삭제</button>
+                    ` : ''}
+                </span>
+            </li>`;
+        }).join('');
+
+    container.querySelectorAll('.spending-dot[data-color]').forEach(el => {
+        el.style.setProperty('background-color', el.dataset.color);
+    });
+
+        list.querySelectorAll('.btn-ip-edit').forEach(b => b.addEventListener('click', () => enterEdit(b.dataset.id)));
+        list.querySelectorAll('.btn-ip-save').forEach(b => b.addEventListener('click', () => saveNickname(b.dataset.id, b)));
+        list.querySelectorAll('.btn-ip-del').forEach(b => b.addEventListener('click', () => {
+            _deleteTargetId = Number(b.dataset.id);
+            openModal('deleteModal');
+        }));
     }
 
-    function emptyHtml(msg) {
-        return `<li class="ip-empty"><p>${msg}</p></li>`;
+    function maskIp(ip) {
+        if (!ip) return '';
+        const p = ip.split('.');
+        if (p.length === 4) p[3] = '***';
+        return p.join('.');
+    }
+    function fmtVia(v) {
+        return { EMAIL: '이메일 인증', CI: 'CI 인증', MANUAL: '직접 등록', AUTO: '자동 등록' }[v] ?? v ?? '';
+    }
+    function fmtDate(ts) {
+        if (!ts) return '';
+        return new Date(ts).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
     }
 
-    function maskIp(addr) {
-        const parts = addr.split('.');
-        return parts.length === 4
-            ? `${parts[0]}.${parts[1]}.*.${parts[3]}`
-            : addr;
-    }
-
-    function formatVia(via) {
-        return {
-            SIGNUP:       '<span class="via-signup">자동 등록</span>',
-            EMAIL_VERIFY: '<span class="via-email">이메일 인증</span>',
-            CI_VERIFY:    '<span class="via-ci">CI 인증</span>',
-            ADMIN:        '<span class="via-admin">관리자 등록</span>',
-        }[via] ?? via;
-    }
-
-    function fmtTs(ts) {
-        if (!ts) return '—';
-        try { return new Date(ts).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }); }
-        catch { return ts; }
-    }
-
-    function esc(s) {
-        return String(s)
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
-
-    function buildIpItem(ip) {
-        const isInitial  = ip.isInitial === 'Y' || ip.is_initial === 'Y';
-        const isDisabled = (ip.statusCode || ip.status_code) === 'DISABLED';
-        const trustId    = ip.trustId ?? ip.trust_id;
-        const nickname   = ip.nickname ?? '내 기기';
-        const ipAddr     = ip.ipAddress ?? ip.ip_address ?? '';
-        const via        = ip.registeredVia ?? ip.registered_via ?? '';
-        const createdAt  = ip.createdAt ?? ip.created_at;
-        const lastUsedAt = ip.lastUsedAt ?? ip.last_used_at;
-
-        return `
-        <li class="ip-item${isDisabled ? ' ip-item--disabled' : ''}" data-trust-id="${trustId}">
-          <span class="ip-icon${isInitial ? ' ip-icon--initial' : ''}">💻</span>
-          <div class="ip-body">
-            <div class="ip-row">
-              <span class="ip-nickname" id="nn-${trustId}">${esc(nickname)}</span>
-              ${isInitial ? '<span class="ip-initial-badge">최초 기기</span>' : ''}
-              <input class="ip-nickname-input" id="nn-input-${trustId}" value="${esc(nickname)}" maxlength="20" style="display:none;" />
-            </div>
-            <div class="ip-addr">${esc(maskIp(ipAddr))}</div>
-            <div class="ip-meta">${formatVia(via)} · 등록일 ${fmtTs(createdAt)}${lastUsedAt ? ' · 최근 사용 ' + fmtTs(lastUsedAt) : ''}</div>
-          </div>
-          <div class="ip-actions">
-            ${!isInitial ? `
-            <button class="btn-ip-edit" data-id="${trustId}" title="별명 수정">✏️</button>
-            <button class="btn-ip-save" data-id="${trustId}" style="display:none;">저장</button>
-            <button class="btn-ip-del"  data-id="${trustId}" title="삭제">🗑</button>
-            ` : ''}
-          </div>
-        </li>`;
-    }
-
-    function attachItemEvents() {
-        document.querySelectorAll('.btn-ip-edit').forEach(btn => {
-            btn.addEventListener('click', () => enterEditMode(btn.dataset.id));
-        });
-        document.querySelectorAll('.btn-ip-save').forEach(btn => {
-            btn.addEventListener('click', () => saveNickname(btn.dataset.id, btn));
-        });
-        document.querySelectorAll('.btn-ip-del').forEach(btn => {
-            btn.addEventListener('click', () => {
-                _deleteTargetId = Number(btn.dataset.id);
-                document.getElementById('deleteModal')?.classList.add('open');
-            });
-        });
-    }
-
-    function enterEditMode(id) {
-        const span  = document.getElementById(`nn-${id}`);
-        const input = document.getElementById(`nn-input-${id}`);
+    function enterEdit(id) {
+        const span    = document.getElementById(`nn-${id}`);
+        const input   = document.getElementById(`nn-input-${id}`);
         const editBtn = document.querySelector(`.btn-ip-edit[data-id="${id}"]`);
         const saveBtn = document.querySelector(`.btn-ip-save[data-id="${id}"]`);
         if (!span || !input) return;
-        span.style.display  = 'none';
-        input.style.display = '';
-        editBtn && (editBtn.style.display = 'none');
-        saveBtn && (saveBtn.style.display = '');
-        input.focus();
-        input.select();
+        span.classList.add('editing');
+        input.classList.add('editing');
+        if (editBtn) editBtn.hidden = true;
+        if (saveBtn) saveBtn.hidden = false;
+        input.focus(); input.select();
     }
-
-    function exitEditMode(span, input, editBtn, saveBtn) {
-        span.style.display  = '';
-        input.style.display = 'none';
-        editBtn && (editBtn.style.display = '');
-        saveBtn && (saveBtn.style.display = 'none');
+    function exitEdit(id) {
+        const span    = document.getElementById(`nn-${id}`);
+        const input   = document.getElementById(`nn-input-${id}`);
+        const editBtn = document.querySelector(`.btn-ip-edit[data-id="${id}"]`);
+        const saveBtn = document.querySelector(`.btn-ip-save[data-id="${id}"]`);
+        span?.classList.remove('editing');
+        input?.classList.remove('editing');
+        if (editBtn) editBtn.hidden = false;
+        if (saveBtn) saveBtn.hidden = true;
     }
-
-    async function saveNickname(trustId, saveBtn) {
-        const span  = document.getElementById(`nn-${trustId}`);
-        const input = document.getElementById(`nn-input-${trustId}`);
-        const editBtn = document.querySelector(`.btn-ip-edit[data-id="${trustId}"]`);
-        const newNickname = input?.value?.trim() ?? '';
-
-        if (!newNickname) { Toast.warning('별명을 입력해주세요.'); input.focus(); return; }
-
+    async function saveNickname(tid, saveBtn) {
+        const span  = document.getElementById(`nn-${tid}`);
+        const input = document.getElementById(`nn-input-${tid}`);
+        const name  = input?.value?.trim() ?? '';
+        if (!name) { Toast.warning('별명을 입력해주세요.'); input?.focus(); return; }
         btnLoading(saveBtn, true);
         try {
-            await API.patch('/api/users/me/trusted-ips/' + trustId, { nickname: newNickname });
-            span.textContent = newNickname;
+            await API.patch(`/api/users/me/trusted-ips/${tid}`, { nickname: name });
+            if (span) span.textContent = name;
             Toast.success('별명이 수정되었습니다.');
+            exitEdit(tid);
         } catch (err) {
             Toast.error(err.message || '수정 중 오류가 발생했습니다.');
-            input.value = span.textContent;
-        } finally {
-            btnLoading(saveBtn, false);
-            exitEditMode(span, input, editBtn, saveBtn);
-        }
+            if (input && span) input.value = span.textContent;
+        } finally { btnLoading(saveBtn, false); }
     }
 
     function bindDeleteModal() {
         document.getElementById('deleteCancelBtn')?.addEventListener('click', () => {
-            document.getElementById('deleteModal')?.classList.remove('open');
-            _deleteTargetId = null;
+            closeModal('deleteModal'); _deleteTargetId = null;
         });
-
         document.getElementById('deleteConfirmBtn')?.addEventListener('click', async () => {
             if (!_deleteTargetId) return;
             const btn = document.getElementById('deleteConfirmBtn');
             btnLoading(btn, true);
             try {
-                await API.del('/api/users/me/trusted-ips/' + _deleteTargetId);
+                await API.del(`/api/users/me/trusted-ips/${_deleteTargetId}`);
                 Toast.success('기기가 삭제되었습니다.');
-                document.getElementById('deleteModal')?.classList.remove('open');
-                _deleteTargetId = null;
+                closeModal('deleteModal'); _deleteTargetId = null;
                 await loadIpList();
             } catch (err) {
-
-                if (err.code === 'IP004') {
-                    Toast.error('최초 가입 기기는 삭제할 수 없습니다.');
-                } else if (err.code === 'IP008') {
-                    Toast.error('기기를 찾을 수 없습니다.');
-                } else {
-                    Toast.error(err.message || '삭제 중 오류가 발생했습니다.');
-                }
-            } finally {
-                btnLoading(btn, false);
-            }
+                if      (err.code === 'IP004') Toast.error('최초 가입 기기는 삭제할 수 없습니다.');
+                else if (err.code === 'IP008') Toast.error('기기를 찾을 수 없습니다.');
+                else                           Toast.error(err.message || '삭제 중 오류가 발생했습니다.');
+            } finally { btnLoading(btn, false); }
         });
     }
 }

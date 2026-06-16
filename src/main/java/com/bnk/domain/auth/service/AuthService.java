@@ -179,7 +179,10 @@ public class AuthService {
 		// ⑥ CI값 생성 — birthDate null 허용 (선택 필드)
 		String ciValue = null;
 		if (birthDateStr != null) {
-			ciValue = ciValueGenerator.generate(request.getName(), birthDateStr, formattedPhone);
+			ciValue = ciValueGenerator.generate(request.getName(),
+			        request.getResidentFront(),
+			        request.getGenderCode(),
+			        request.getAddress());
 		}
 
 		// ⑦ Watchlist 대조 (ciValue가 있을 때만 CI 기반 대조 수행)
