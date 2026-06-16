@@ -203,15 +203,19 @@ class AuthControllerTest {
     @DisplayName("회원가입 API [POST /api/auth/signup]")
     class SignupApi {
 
-        private static final String VALID_JSON =
-                "{\"email\":\"test@bnk.com\",\"password\":\"Abcd123!\"," +
-                "\"name\":\"홍길동\",\"phone\":\"01012345678\",\"birthDate\":\"19950525\"," +
-                "\"agreedTermsIds\":[1,2]}";
+    	private static final String VALID_JSON =
+    		    "{\"email\":\"test@bnk.com\",\"password\":\"Abcd123!\"," +
+    		    "\"name\":\"홍길동\",\"phone\":\"01012345678\"," +
+    		    "\"residentFront\":\"950525\",\"genderCode\":\"1\"," +
+    		    "\"address\":\"부산광역시 해운대구 테스트로 1\"," +
+    		    "\"birthDate\":\"19950525\"," +
+    		    "\"agreedTermsIds\":[1,2]}";
 
         @Test
         @DisplayName("[성공] 정상 회원가입 → 201 Created")
         void 정상_201() throws Exception {
             given(authService.signup(any(SignupRequest.class))).willReturn(1L);
+            willDoNothing().given(authService).registerInitialIp(anyLong(), anyString());
 
             mvc.perform(post("/api/auth/signup")
                     .contentType(MediaType.APPLICATION_JSON)
