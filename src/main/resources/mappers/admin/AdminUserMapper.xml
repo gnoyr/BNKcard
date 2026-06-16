@@ -226,13 +226,19 @@
         ORDER BY agreed_at DESC
     </select>
 
-    <select id="findApplicationsByUserId" resultMap="applicationRowMap">
-        SELECT ca.card_id, c.card_name, ca.application_status, ca.applied_at
-        FROM CARD_APPLICATIONS ca
-        INNER JOIN CARDS c ON ca.card_id = c.card_id
-        WHERE ca.user_id = #{userId}
-        ORDER BY ca.applied_at DESC
-    </select>
+    <!-- 카드 신청 수정 - 신용, 체크 신청서에서 각 조회 후 union -->
+	<select id="findApplicationsByUserId" resultMap="applicationRowMap">
+	    SELECT ca.card_id, c.card_name, ca.application_status, ca.applied_at
+	    FROM CREDIT_CARD_APPLICATIONS ca
+	    INNER JOIN CARDS c ON ca.card_id = c.card_id
+	    WHERE ca.user_id = #{userId}
+	    UNION ALL
+	    SELECT ca.card_id, c.card_name, ca.application_status, ca.applied_at
+	    FROM CHECK_CARD_APPLICATIONS ca
+	    INNER JOIN CARDS c ON ca.card_id = c.card_id
+	    WHERE ca.user_id = #{userId}
+	    ORDER BY applied_at DESC
+	</select>
 
     <select id="findRecentAdminLogins" resultMap="adminLoginRowMap">
         SELECT au.name AS admin_name, lh.login_at, lh.ip_address

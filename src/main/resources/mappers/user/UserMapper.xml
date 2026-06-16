@@ -316,19 +316,32 @@
 		ORDER BY uc.issued_at DESC
 	</select>
 
-	<select id="selectCardApplications"
-		resultMap="cardApplicationRowMap">
-		SELECT ca.application_id, ca.card_id, c.card_name,
-		ci.image_url AS card_image_url,
-		ca.application_status, ca.applied_at
-		FROM CARD_APPLICATIONS ca
-		INNER JOIN CARDS c ON
-		ca.card_id = c.card_id
-		LEFT JOIN CARD_IMAGES ci ON c.card_id =
-		ci.card_id AND ci.image_type =
-		'THUMBNAIL'
-		WHERE ca.user_id = #{userId}
-		ORDER BY ca.applied_at DESC
+	<!-- 카드 신청 수정 - 신용, 체크 신청서에서 각 조회 후 union -->
+	<select id="selectCardApplications" resultType="com.bnk.domain.user.dto.query.CardApplicationRow">
+	    SELECT
+	        ca.credit_app_id   AS applicationId,
+	        ca.card_id,
+	        c.card_name        AS cardName,
+	        ci.image_url       AS cardImageUrl,
+	        ca.application_status AS applicationStatus,
+	        ca.applied_at      AS appliedAt
+	    FROM CREDIT_CARD_APPLICATIONS ca
+	    INNER JOIN CARDS c ON ca.card_id = c.card_id
+	    LEFT JOIN CARD_IMAGES ci ON ci.card_id = c.card_id AND ci.image_type = 'THUMBNAIL'
+	    WHERE ca.user_id = #{userId}
+	    UNION ALL
+	    SELECT
+	        ca.check_app_id    AS applicationId,
+	        ca.card_id,
+	        c.card_name        AS cardName,
+	        ci.image_url       AS cardImageUrl,
+	        ca.application_status AS applicationStatus,
+	        ca.applied_at      AS appliedAt
+	    FROM CHECK_CARD_APPLICATIONS ca
+	    INNER JOIN CARDS c ON ca.card_id = c.card_id
+	    LEFT JOIN CARD_IMAGES ci ON ci.card_id = c.card_id AND ci.image_type = 'THUMBNAIL'
+	    WHERE ca.user_id = #{userId}
+	    ORDER BY appliedAt DESC
 	</select>
 
 	<select id="selectSpendingPatterns"
