@@ -519,8 +519,8 @@ async function doApprove() {
   const r = await api('POST', `/api/admin/approvals/${approvalId}/approve`, { comment });
 
   if (r.ok) {
-    alert('승인 처리 완료');
-    loadDetail(approvalId);
+	  alert('승인 처리 완료');
+	  location.href = '/admin/approvalManage.html';
   } else {
     alert(extractApiMsg(r.data, '승인 처리 실패'));
   }
@@ -541,8 +541,8 @@ async function doReject() {
   const r = await api('POST', `/api/admin/approvals/${approvalId}/reject`, { comment });
 
   if (r.ok) {
-    alert('반려 처리 완료');
-    loadDetail(approvalId);
+	  alert('반려 처리 완료');
+	  location.href = '/admin/approvalManage.html';
   } else {
     alert(extractApiMsg(r.data, '반려 처리 실패'));
   }

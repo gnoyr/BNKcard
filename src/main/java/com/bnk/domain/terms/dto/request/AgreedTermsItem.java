@@ -16,7 +16,6 @@ import lombok.NoArgsConstructor;
  *
  * 사용처:
  *  - com.bnk.domain.terms.dto.request.TermsAgreementRequest
- *  - com.bnk.domain.application.dto.request.CardApplyRequest
  */
 @Getter
 @NoArgsConstructor
