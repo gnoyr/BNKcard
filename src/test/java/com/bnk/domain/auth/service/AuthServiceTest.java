@@ -47,6 +47,7 @@ import com.bnk.domain.auth.dto.response.AuthTokenResult;
 import com.bnk.domain.auth.dto.response.FindIdResponse;
 import com.bnk.domain.auth.mapper.UserSessionMapper;
 import com.bnk.domain.auth.model.UserSession;
+import com.bnk.domain.ipauth.service.IpTrustService;
 import com.bnk.domain.terms.mapper.TermsMapper;
 import com.bnk.domain.terms.mapper.UserTermsAgreementMapper;
 import com.bnk.domain.user.mapper.UserMapper;
@@ -97,6 +98,7 @@ class AuthServiceTest {
     @Mock private CddService               cddService;
     @Mock private TokenSecurityService     tokenSecurityService;
     @Mock private AuditLogger              auditLogger;
+    @Mock private IpTrustService		   ipTrustService;
     @Mock private Clock clock;
 
     @InjectMocks
@@ -392,14 +394,14 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("[실패] 존재하지 않는 이메일 → USER_NOT_FOUND")
+        @DisplayName("[실패] 존재하지 않는 이메일 → INVALID_CREDENTIALS")
         void 실패_이메일없음() {
             given(userMapper.findByEmail(EMAIL)).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> authService.login(loginReq(EMAIL, PASSWORD), mockHttpReq()))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ErrorCode.USER_NOT_FOUND));
+                            .isEqualTo(ErrorCode.INVALID_CREDENTIALS)); // <- USER_NOT_FOUND 에서 변경
         }
 
         @Test
@@ -414,7 +416,7 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("[실패] 비밀번호 불일치 → INVALID_PASSWORD + incrementLoginFailCount 호출")
+        @DisplayName("[실패] 비밀번호 불일치 → INVALID_CREDENTIALS + incrementLoginFailCount 호출")
         void 실패_비밀번호불일치() {
             given(userMapper.findByEmail(EMAIL)).willReturn(Optional.of(activeUser()));
             given(passwordEncoder.matches(PASSWORD, ENC_PW)).willReturn(false);
@@ -422,7 +424,7 @@ class AuthServiceTest {
             assertThatThrownBy(() -> authService.login(loginReq(EMAIL, PASSWORD), mockHttpReq()))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ErrorCode.INVALID_PASSWORD));
+                            .isEqualTo(ErrorCode.INVALID_CREDENTIALS)); // <- INVALID_PASSWORD 에서 변경
 
             then(userMapper).should().incrementLoginFailCount(USER_ID);
         }
@@ -480,19 +482,22 @@ class AuthServiceTest {
     class Refresh {
 
     	@Test
-        @DisplayName("[정상] 유효한 세션 → 새 AccessCookie 반환")
-        void 정상_토큰재발급() {
-            UserSession session = new UserSession();
-            ReflectionTestUtils.setField(session, "userId",    USER_ID);
-            // 고정된 시계(clock)를 기준으로 7일 뒤를 설정
-            ReflectionTestUtils.setField(session, "expiresAt", LocalDateTime.now(clock).plusDays(7));
+    	@DisplayName("[정상] 유효한 세션 → 새 AccessCookie 반환")
+    	void 정상_토큰재발급() {
+    	    UserSession session = new UserSession();
+    	    ReflectionTestUtils.setField(session, "userId", USER_ID);
+    	    ReflectionTestUtils.setField(session, "expiresAt", LocalDateTime.now().plusDays(7));
 
-            given(userSessionMapper.findByRefreshToken("valid-rt")).willReturn(Optional.of(session));
+    	    given(userSessionMapper.findByRefreshToken("valid-rt")).willReturn(Optional.of(session));
+    	    given(jwtTokenProvider.generateAccessToken(USER_ID, "ROLE_USER")).willReturn("new-access-token");
+    	    given(jwtTokenProvider.getAccessExpirationSec()).willReturn(1800L);
+    	    given(cookieUtil.createAccessCookie("new-access-token", 1800L))
+    	            .willReturn(ResponseCookie.from("access_token", "new-access-token").path("/").build());
 
-            ResponseCookie cookie = authService.refresh("valid-rt");
+    	    ResponseCookie cookie = authService.refresh("valid-rt");
 
-            assertThat(cookie).isNotNull();
-        }
+    	    assertThat(cookie).isNotNull();
+    	}
 
         @Test
         @DisplayName("[실패] 세션 없음 → REFRESH_TOKEN_INVALID")
@@ -510,8 +515,8 @@ class AuthServiceTest {
         void 실패_세션만료() {
             UserSession expired = new UserSession();
             ReflectionTestUtils.setField(expired, "userId",    USER_ID);
-            // 고정된 시계(clock)를 기준으로 어제를 설정
-            ReflectionTestUtils.setField(expired, "expiresAt", LocalDateTime.now(clock).minusDays(1));
+            // 동일하게 만료 테스트의 대상일도 TimeConstants.KST 기준으로 수정
+            ReflectionTestUtils.setField(expired, "expiresAt", LocalDateTime.now(com.bnk.global.util.TimeConstants.KST).minusDays(1));
 
             given(userSessionMapper.findByRefreshToken("expired-rt")).willReturn(Optional.of(expired));
 
