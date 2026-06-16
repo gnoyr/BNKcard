@@ -126,4 +126,23 @@ public class AesCryptoUtil {
 			return false;
 		}
 	}
+	
+	public String decryptDirect(String encryptedText) throws Exception {
+	    if (encryptedText == null || encryptedText.isBlank()) return encryptedText;
+
+	    // ':' 가 정확히 1개인지 확인
+	    int colonIdx = encryptedText.indexOf(':');
+	    if (colonIdx < 0) throw new IllegalArgumentException("콜론 없음 — 암호문 아님");
+	    if (encryptedText.indexOf(':', colonIdx + 1) >= 0) throw new IllegalArgumentException("콜론 2개 이상 — 암호문 아님");
+
+	    String ivPart  = encryptedText.substring(0, colonIdx);
+	    String encPart = encryptedText.substring(colonIdx + 1);
+
+	    byte[] iv  = Base64.getDecoder().decode(ivPart);   // Base64 실패 시 예외
+	    byte[] enc = Base64.getDecoder().decode(encPart);  // Base64 실패 시 예외
+
+	    Cipher cipher = Cipher.getInstance(ALGORITHM);
+	    cipher.init(Cipher.DECRYPT_MODE, secretKey, new GCMParameterSpec(GCM_TAG_BITS, iv));
+	    return new String(cipher.doFinal(enc), StandardCharsets.UTF_8); // GCM 인증 실패 시 예외
+	}
 }

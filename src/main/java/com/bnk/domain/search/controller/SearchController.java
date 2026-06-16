@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.bnk.domain.card.dto.response.CardListResponse;
 import com.bnk.domain.search.dto.response.PopularKeywordResponse;
+import com.bnk.domain.search.dto.response.SearchResultResponse;
 import com.bnk.domain.search.model.SearchKeyword;
 import com.bnk.domain.search.service.SearchService;
 import com.bnk.global.auth.CustomUserDetails;
@@ -30,12 +31,13 @@ public class SearchController {
 	 * 카드 검색 (RQ-F08, F13).
 	 */
 	@GetMapping
-	public ResponseEntity<ApiResponse<PageResponse<CardListResponse>>> search(@RequestParam String q,
-			@AuthenticationPrincipal(errorOnInvalidType = false) CustomUserDetails ud,
-			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
-
-		Long userId = ud != null ? ud.getUserId() : null;
-		return ApiResponse.toOk(searchService.search(q, userId, page, size));
+	public ResponseEntity<ApiResponse<SearchResultResponse>> search(
+	        @RequestParam String q,
+	        @AuthenticationPrincipal(errorOnInvalidType = false) CustomUserDetails ud,
+	        @RequestParam(defaultValue = "0") int page,
+	        @RequestParam(defaultValue = "20") int size) {
+	    Long userId = ud != null ? ud.getUserId() : null;
+	    return ApiResponse.toOk(searchService.search(q, userId, page, size));
 	}
 
 	/** 추천 검색어 (RQ-F09) */

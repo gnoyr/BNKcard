@@ -466,5 +466,17 @@
 		</foreach>
 		AND version_status = 'PUBLISHED'
 	</update>
+	
+	<!-- CardMapper.xml 에 추가 -->
+	<select id="findByIds" resultMap="cardMap">
+	    SELECT * FROM CARDS
+	    WHERE card_id IN
+	    <foreach collection="cardIds" item="id" open="(" separator="," close=")">
+	        #{id}
+	    </foreach>
+	    AND card_status = 'PUBLISHED'
+	    AND visible_yn = 'Y'
+	    AND deleted_yn = 'N'
+	</select>
 
 </mapper>

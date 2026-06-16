@@ -6,11 +6,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.SearchRequest;
+import org.springframework.ai.document.Document;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
-
+import java.util.Objects;
 import com.bnk.domain.card.dto.request.CardCompareRequest;
 import com.bnk.domain.card.dto.request.CardSearchRequest;
 import com.bnk.domain.card.dto.request.CardSimulationRequest;
@@ -52,7 +57,9 @@ public class CardService {
     private final SpendingPatternMapper spendingPatternMapper;
     private final SearchLogMapper searchLogMapper;
     private final TermsMapper termsMapper;
-
+    
+    @Autowired(required = false)
+    private VectorStore vectorStore;
     // ────────────────────────────────────────────────────────────────
     // 홈 배너 조회
     // ────────────────────────────────────────────────────────────────
@@ -107,8 +114,18 @@ public class CardService {
         long totalCount = cardMapper.countAll(request);
 
         if (totalCount == 0) {
-            // 검색어 로그는 결과 0건이어도 기록
+            log.warn("[Search] 키워드 검색 0건 — query={}", request.getQ());  // ← 추가
             saveSearchLog(request.getQ(), userId, 0);
+
+            if (request.getQ() != null && !request.getQ().isBlank()) {
+                log.warn("[Search] semanticSearch 호출 시도");  // ← 추가
+                List<CardListResponse> semanticResult = semanticSearch(request.getQ(), userId);
+                log.warn("[Search] semanticSearch 결과: {}건", semanticResult.size());  // ← 추가
+                if (!semanticResult.isEmpty()) {
+                    return PageResponse.of(semanticResult, (long) semanticResult.size(),
+                            request.getPage(), request.getSize());
+                }
+            }
             return PageResponse.of(Collections.emptyList(), 0L, request.getPage(), request.getSize());
         }
 
@@ -465,6 +482,90 @@ public class CardService {
             return Long.parseLong(value.trim());
         } catch (Exception e) {
             return null;
+        }
+    }
+    
+    /**
+     * 의미 기반 검색 — 키워드 검색 0건 fallback용
+     * BGE-M3 임베딩 → Qdrant 유사도 검색 → Oracle 카드 상세 조회
+     */
+    private List<CardListResponse> semanticSearch(String query, Long userId) {
+        if (vectorStore == null) {
+            log.warn("[SemanticSearch] ai.enabled=false — 의미 검색 불가");
+            return Collections.emptyList();
+        }
+
+        try {
+            // Qdrant 유사도 검색 (상위 5개, 유사도 0.65 이상)
+        	List<Document> docs = vectorStore.similaritySearch(
+        		    SearchRequest.builder()
+        		        .query(query)
+        		        .topK(5)
+        		        .similarityThreshold(0.4)
+        		        .build()
+        	);
+
+            if (docs.isEmpty()) {
+                log.info("[SemanticSearch] 유사 카드 없음: query={}", query);
+                return Collections.emptyList();
+            }
+
+            // metadata에서 card_id 추출
+            List<Long> cardIds = docs.stream()
+                .map(doc -> {
+                    Object cardId = doc.getMetadata().get("card_id");
+                    if (cardId instanceof Number) return ((Number) cardId).longValue();
+                    if (cardId instanceof String) return Long.parseLong((String) cardId);
+                    return null;
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+            if (cardIds.isEmpty()) return Collections.emptyList();
+
+            // Oracle에서 카드 상세 조회
+            List<Card> cards = cardMapper.findByIds(cardIds);
+
+            if (cards.isEmpty()) return Collections.emptyList();
+
+            // 이미지 조회
+            Map<Long, String> thumbnailMap = new HashMap<>();
+            for (Long cid : cardIds) {
+                CardImage img = cardImageMapper.findByCardIdAndType(cid, "THUMBNAIL");
+                if (img == null) img = cardImageMapper.findByCardIdAndType(cid, "FRONT");
+                if (img != null) thumbnailMap.put(cid, img.getImageUrl());
+            }
+
+            // 혜택 조회
+            List<CardBenefit> topBenefits = cardBenefitMapper.findTop1ByCardIds(cardIds);
+            Map<Long, String> topBenefitMap = topBenefits.stream()
+                .collect(Collectors.toMap(
+                    CardBenefit::getCardId,
+                    CardBenefit::getDisplayText,
+                    (e, r) -> e
+                ));
+
+            // 검색 로그 저장
+            saveSearchLog(query, userId, cards.size());
+
+            log.info("[SemanticSearch] 의미 검색 결과: query={}, 결과={}건", query, cards.size());
+
+            return cards.stream()
+                .map(card -> CardListResponse.builder()
+                    .cardId(card.getCardId())
+                    .cardName(card.getCardName())
+                    .companyName(card.getCompanyName())
+                    .cardType(card.getCardType())
+                    .annualFeeDomestic(card.getAnnualFeeDomestic())
+                    .annualFeeOverseas(card.getAnnualFeeOverseas())
+                    .thumbnailUrl(thumbnailMap.get(card.getCardId()))
+                    .topBenefit(topBenefitMap.get(card.getCardId()))
+                    .build())
+                .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            log.error("[SemanticSearch] 오류 발생 (빈 결과 반환): {}", e.getMessage());
+            return Collections.emptyList();
         }
     }
 }

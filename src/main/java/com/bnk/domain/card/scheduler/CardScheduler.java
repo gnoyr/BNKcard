@@ -3,7 +3,6 @@ package com.bnk.domain.card.scheduler;
 import com.bnk.domain.ai.service.CardVectorService;
 import com.bnk.domain.card.mapper.CardMapper;
 import com.bnk.domain.card.model.Card;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -15,14 +14,18 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class CardScheduler {
 
     private final CardMapper cardMapper;
 
     // ai.enabled=false 환경에서는 빈이 없으므로 @Autowired(required=false)
-    @Autowired(required = false)
-    private CardVectorService cardVectorService;
+    private final CardVectorService cardVectorService;
+
+    public CardScheduler(CardMapper cardMapper,
+                         @Autowired(required = false) CardVectorService cardVectorService) {
+        this.cardMapper = cardMapper;
+        this.cardVectorService = cardVectorService;
+    }
 
     /**
      * APPROVED → PUBLISHED 자동 전환 + Qdrant upsert

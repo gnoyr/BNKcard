@@ -10,73 +10,150 @@
 <link rel="stylesheet" href="/css/teal-theme.css" />
 </head>
 <body data-page="mypage-main">
-	<div id="app-header"></div>
-	<div class="page-wrap">
-		<div class="profile-banner">
-			<span class="profile-initial" id="profileInitial"></span>
-			<div class="profile-body">
-				<div class="profile-name" id="profileName">불러오는 중...</div>
-				<div class="profile-meta" id="profileMeta"></div>
-				<div class="profile-score">
-					<span class="profile-score__label">신용점수</span> <span
-						class="profile-score__num" id="profileScore">—</span> <span
-						class="profile-score__unit">점</span>
-				</div>
-			</div>
-		</div>
-		<div class="quick-nav">
-			<a href="/mypage/edit" class="quick-btn">내 정보 수정</a> <a
-				href="/mypage/password" class="quick-btn">비밀번호 변경</a> <a
-				href="/mypage/spending" class="quick-btn">소비 패턴</a>
-		</div>
-		<div class="card">
-			<div class="card__head">보유 카드 및 신청 현황</div>
-			<div class="card-tabs">
-				<button class="card-tab active" id="tab-owned">보유 카드</button>
-				<button class="card-tab" id="tab-applied">신청 현황</button>
-			</div>
-			<div id="cardSection">
-				<div class="skeleton-item">
-					<span class="skeleton skeleton-chip"></span><span
-						class="skeleton skeleton-text"></span>
-				</div>
-				<div class="skeleton-item">
-					<span class="skeleton skeleton-chip"></span><span
-						class="skeleton skeleton-text skeleton-text--short"></span>
-				</div>
-			</div>
-		</div>
-		<div class="card">
-			<div class="card__head">이달의 소비 패턴</div>
-			<div id="spendingSection">
-				<div class="chart-wrap">
-					<div class="chart-canvas-box">
-						<canvas id="donutChart" width="170" height="170"></canvas>
-						<div class="chart-center">
-							<div class="chart-center__amount" id="chart-amount">—</div>
-							<div class="chart-center__label">총 지출</div>
-						</div>
-					</div>
-					<div class="legend" id="chart-legend">
-						<span class="skeleton skeleton-legend"></span> <span
-							class="skeleton skeleton-legend skeleton-legend--short"></span>
-					</div>
-				</div>
-			</div>
-		</div>
-		<div class="card">
-			<div class="card__head">내 정보</div>
-			<ul class="info-list" id="infoList"></ul>
-			<div class="info-action">
-				<a href="/mypage/edit" class="btn btn-outline btn-block">내 정보
-					수정하기</a>
-			</div>
-		</div>
-	</div>
-	<div id="toast-container"></div>
-	<script src="/js/lib/chart.umd.min.js"></script>
-	<script src="/js/utils.js"></script>
-	<script src="/js/header.js"></script>
-	<script src="/js/mypage.js"></script>
+  <div id="app-header"></div>
+
+  <div class="page-wrap">
+
+    <!-- 프로필 배너 -->
+    <div class="profile-banner">
+      <span class="profile-initial" id="profileInitial"></span>
+      <div class="profile-body">
+        <div class="profile-name" id="profileName">불러오는 중...</div>
+        <div class="profile-meta" id="profileMeta"></div>
+        <a href="/mypage/credit-score" class="profile-score-lock" title="신용점수 확인하기">
+          🔒 신용점수 확인하기
+        </a>
+      </div>
+    </div>
+
+    <!-- ① 개인정보 관리 -->
+    <div class="section-group">
+      <div class="section-group__label">
+        <span class="section-group__icon">👤</span>
+        개인정보 관리
+      </div>
+      <div class="menu-grid">
+        <a href="/mypage/edit" class="menu-card">
+          <span class="menu-card__icon">✏️</span>
+          <span class="menu-card__title">내 정보 수정</span>
+          <span class="menu-card__desc">이름·전화번호·주소 변경</span>
+        </a>
+        <a href="/mypage/password" class="menu-card">
+          <span class="menu-card__icon">🔑</span>
+          <span class="menu-card__title">비밀번호 변경</span>
+          <span class="menu-card__desc">현재 비밀번호 확인 후 변경</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- ② 금융 정보 -->
+    <div class="section-group">
+      <div class="section-group__label">
+        <span class="section-group__icon">💰</span>
+        금융 정보
+      </div>
+      <div class="menu-grid menu-grid--3">
+        <a href="/mypage/credit-score" class="menu-card">
+          <span class="menu-card__icon">📈</span>
+          <span class="menu-card__title">신용점수</span>
+          <span class="menu-card__desc">점수 조회</span>
+        </a>
+        <a href="/mypage/spending" class="menu-card">
+          <span class="menu-card__icon">📊</span>
+          <span class="menu-card__title">소비 패턴</span>
+          <span class="menu-card__desc">지출 현황</span>
+        </a>
+        <a href="/mypage/edit?tab=income" class="menu-card">
+          <span class="menu-card__icon">🖥</span>
+          <span class="menu-card__title">소득 정보</span>
+          <span class="menu-card__desc">직업·소득 등급</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- ③ 보안 설정 -->
+    <div class="section-group">
+      <div class="section-group__label">
+        <span class="section-group__icon">🔐</span>
+        보안 설정
+      </div>
+      <div class="menu-grid">
+        <a href="/mypage/trusted-ips" class="menu-card menu-card--security">
+          <span class="menu-card__icon">🖥</span>
+          <span class="menu-card__title">신뢰 기기 관리</span>
+          <span class="menu-card__desc">IP 인증 기기 목록</span>
+        </a>
+        <a href="/mypage/edit?tab=notify" class="menu-card menu-card--security">
+          <span class="menu-card__icon">🔔</span>
+          <span class="menu-card__title">알림 설정</span>
+          <span class="menu-card__desc">푸시·마케팅 알림</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- 보유 카드 -->
+    <div class="section-group">
+      <div class="section-group__label">
+        <span class="section-group__icon">💳</span>
+        내 카드
+      </div>
+      <div class="card">
+        <div class="card-tabs">
+          <button class="card-tab active" id="tab-owned">보유 카드</button>
+          <button class="card-tab" id="tab-applied">신청 현황</button>
+        </div>
+        <div id="cardSection">
+          <div class="skeleton-item"><span class="skeleton skeleton-chip"></span><span class="skeleton skeleton-text"></span></div>
+          <div class="skeleton-item"><span class="skeleton skeleton-chip"></span><span class="skeleton skeleton-text skeleton-text--short"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 소비 차트 -->
+    <div class="section-group">
+      <div class="section-group__label">
+        <span class="section-group__icon">📊</span>
+        이달의 소비 패턴
+      </div>
+      <div class="card">
+        <div id="spendingSection">
+          <div class="chart-wrap">
+            <div class="chart-canvas-box">
+              <canvas id="donutChart" width="170" height="170"></canvas>
+              <div class="chart-center">
+                <div class="chart-center__amount" id="chart-amount">—</div>
+                <div class="chart-center__label">총 지출</div>
+              </div>
+            </div>
+            <div class="legend" id="chart-legend">
+              <span class="skeleton skeleton-legend"></span>
+              <span class="skeleton skeleton-legend skeleton-legend--short"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 내 정보 요약 -->
+    <div class="section-group">
+      <div class="section-group__label">
+        <span class="section-group__icon">ℹ</span>
+        내 정보 요약
+      </div>
+      <div class="card">
+        <ul class="info-list" id="infoList"></ul>
+        <div class="info-action">
+          <a href="/mypage/edit" class="btn btn-outline btn-block">내 정보 수정하기</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="toast-container"></div>
+  <script src="/js/lib/chart.umd.min.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/header.js"></script>
+  <script src="/js/mypage.js"></script>
 </body>
 </html>
