@@ -39,7 +39,7 @@ public class CiValueGenerator {
      * Mock CI값 생성.
      *
      * @param name      이름
-     * @param birthDate 생년월일 (YYYY-MM-DD)
+     * @param birthDate 생년월일 (YYMMDD)
      * @param phone     전화번호 (포맷 무관, 숫자만 사용)
      * @return Base64 인코딩된 SHA-256 해시값 (약 44자)
      */
