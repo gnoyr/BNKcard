@@ -37,7 +37,10 @@ import lombok.RequiredArgsConstructor;
  */
 @Configuration
 @RequiredArgsConstructor
-@MapperScan("com.bnk")
+@MapperScan({
+    "com.bnk.domain.**.mapper",
+    "com.bnk.global.**.mapper"
+})
 public class MyBatisConfig {
 
     private final AesCryptoUtil aesCryptoUtil;
