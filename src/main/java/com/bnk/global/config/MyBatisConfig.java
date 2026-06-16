@@ -22,9 +22,16 @@ import lombok.RequiredArgsConstructor;
  * [TypeHandler 등록 전략]
  *  - AesTypeHandler / AesBirthDateTypeHandler 에 @MappedTypes({}) 선언
  *    → MyBatis가 String/LocalDate 타입 전체에 자동 바인딩하지 않음
+ *  - typeAliasRegistry 에 별칭만 등록
  *    → XML에서 typeHandler="aesTypeHandler" 로 명시한 컬럼에만 적용
- *  - setTypeHandlers()로 aesCryptoUtil이 주입된 실제 인스턴스를 등록
- *    → XML에서 클래스명으로 찾을 때 기본 생성자 대신 이 인스턴스 재사용
+ *  - register() 호출 제거
+ *    → 이전에 register()를 호출하면 @MappedTypes({})와 무관하게
+ *       MyBatis가 제네릭 타입(String/LocalDate) 전역에 바인딩하여
+ *       typeHandler 미명시 String 컬럼(cdd_status_code, ip_address_hash 등)까지
+ *       AES 암호화가 적용되는 버그가 발생했음 → 제거로 해결
+ *  - STATIC_UTIL 패턴
+ *    → @Bean 으로 먼저 생성된 인스턴스가 STATIC_UTIL 에 aesCryptoUtil 을 저장
+ *    → 이후 MyBatis가 별칭으로 기본 생성자를 호출해도 STATIC_UTIL 을 통해 정상 동작
  *
  * [암호화 대상 컬럼]
  *   - USERS.phone              → typeHandler="aesTypeHandler"
@@ -61,7 +68,7 @@ public class MyBatisConfig {
     SqlSessionFactory sqlSessionFactory(DataSource dataSource) throws Exception {
         SqlSessionFactoryBean factoryBean = new SqlSessionFactoryBean();
         factoryBean.setDataSource(dataSource);
-        
+
         org.apache.ibatis.session.Configuration config =
                 new org.apache.ibatis.session.Configuration();
         config.setMapUnderscoreToCamelCase(true);
@@ -69,16 +76,14 @@ public class MyBatisConfig {
         config.setCacheEnabled(false);
         config.setJdbcTypeForNull(org.apache.ibatis.type.JdbcType.NULL);
 
-        // 먼저 인스턴스 생성 → 정적 참조 세팅
-        AesTypeHandler aesHandler = aesTypeHandler();
-        AesBirthDateTypeHandler aesBdHandler = aesBirthDateTypeHandler();
+        // @Bean 호출로 인스턴스 생성 → STATIC_UTIL 에 aesCryptoUtil 저장
+        aesTypeHandler();
+        aesBirthDateTypeHandler();
 
+        // 별칭만 등록 — XML에서 명시한 컬럼에만 적용됨
+        // register() 를 호출하지 않으므로 String/LocalDate 전역 바인딩 없음
         config.getTypeAliasRegistry().registerAlias("aesTypeHandler",          AesTypeHandler.class);
         config.getTypeAliasRegistry().registerAlias("aesBirthDateTypeHandler", AesBirthDateTypeHandler.class);
-
-        // @MappedTypes({}) 덕분에 String 전역 바인딩 없이 인스턴스만 등록
-        config.getTypeHandlerRegistry().register(aesHandler);
-        config.getTypeHandlerRegistry().register(aesBdHandler);
 
         factoryBean.setConfiguration(config);
         factoryBean.setMapperLocations(
@@ -87,7 +92,7 @@ public class MyBatisConfig {
 
         return factoryBean.getObject();
     }
-    
+
     @Bean
     SqlSessionTemplate sqlSessionTemplate(SqlSessionFactory sqlSessionFactory) {
         return new SqlSessionTemplate(sqlSessionFactory);
