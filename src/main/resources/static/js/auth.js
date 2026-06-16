@@ -113,13 +113,29 @@
 
             BnkDOM.btnLoading(btn, false);
 
-            if (res.ok) {
-                sessionStorage.setItem('bnk_login_at', String(Date.now()));
-                const next = new URLSearchParams(location.search).get('next');
-                const safeNext = next?.startsWith('/') && !next.startsWith('//') ? next : '/';
-                location.href = safeNext;
-                return;
-            }
+			if (res.ok) {
+			    // ── IP 챌린지 분기 ──
+			    const payload = res.data?.data ?? res.data;
+			    if (payload?.requireIpVerify) {
+			        // challengeToken · userId · next URL 을 세션에 저장 후 IP 인증 화면으로 이동
+			        sessionStorage.setItem('ip_challenge_token', payload.challengeToken);
+			        sessionStorage.setItem('ip_challenge_userId', String(
+			            // userId는 challengeToken에서 파싱 ("ip:challenge:{userId}:{hash}")
+			            payload.challengeToken.split(':')[2]
+			        ));
+			        const next = new URLSearchParams(location.search).get('next');
+			        sessionStorage.setItem('ip_challenge_next', (next?.startsWith('/') && !next.startsWith('//')) ? next : '/');
+			        location.href = '/auth/ip-verify';
+			        return;
+			    }
+
+			    // ── 정상 로그인 ──
+			    sessionStorage.setItem('bnk_login_at', String(Date.now()));
+			    const next = new URLSearchParams(location.search).get('next');
+			    const safeNext = next?.startsWith('/') && !next.startsWith('//') ? next : '/';
+			    location.href = safeNext;
+			    return;
+			}
 
             if (res.status === 0 || res.status >= 500) return;
 
