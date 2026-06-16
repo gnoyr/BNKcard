@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>약관 보기 | BNK 부산은행</title>
+  <link rel="stylesheet" href="/css/components.css">
+  <style>
+    .terms-wrap { max-width:720px; margin:40px auto; padding:0 16px; }
+    .terms-title { font-size:20px; font-weight:700; margin-bottom:8px; color:#003087; }
+    .terms-meta  { font-size:13px; color:#888; margin-bottom:24px; }
+    .terms-pdf   { width:100%; height:80vh; border:1px solid #ddd; border-radius:8px; }
+    .terms-images img { width:100%; margin-bottom:8px; border:1px solid #eee; border-radius:4px; }
+    .back-btn {
+        display:inline-block; margin-bottom:20px;
+        padding:8px 16px; background:#f0f2f6; color:#333;
+        border-radius:6px; font-size:14px; cursor:pointer;
+        text-decoration:none;
+    }
+  </style>
+</head>
+<body>
+<div class="terms-wrap">
+  <a href="javascript:void(0)" onclick="window.history.length > 1 ? history.back() : window.close()" class="back-btn">← 뒤로</a>
+  <div id="terms-title" class="terms-title">약관 불러오는 중...</div>
+  <div id="terms-meta"  class="terms-meta"></div>
+  <div id="terms-body"></div>
+</div>
+
+<script>
+(async () => {
+    const params  = new URLSearchParams(location.search);
+    const termsId = params.get('termsId');
+    if (!termsId) {
+        document.getElementById('terms-title').textContent = '잘못된 접근입니다.';
+        return;
+    }
+
+    // 약관 파일 목록 조회
+    const res  = await fetch(`/api/terms/${termsId}/files`, { credentials: 'include' });
+    const json = await res.json();
+    const files = json?.data ?? [];
+
+    // 약관 제목 (파일 목록 API에 title 없으면 별도 조회)
+    const titleRes  = await fetch(`/api/terms/packages/ACCOUNT_OPEN`, { credentials: 'include' });
+    const titleJson = await titleRes.json();
+    const found = (titleJson?.data?.terms ?? []).find(t => String(t.termsId) === String(termsId));
+    document.getElementById('terms-title').textContent = found?.title ?? '약관';
+    document.getElementById('terms-meta').textContent  = `버전 ${found?.version ?? '-'} · 시행일 ${found?.effectiveFrom ?? '-'}`;
+
+    const body = document.getElementById('terms-body');
+
+    if (!files.length) {
+        body.innerHTML = '<p style="color:#999;">등록된 파일이 없습니다.</p>';
+        return;
+    }
+
+    const pdf  = files.filter(f => f.fileType === 'PDF');
+    const imgs = files.filter(f => f.fileType === 'IMAGE');
+
+    // PDF 있으면 embed로 보여주기
+    if (pdf.length > 0) {
+        body.innerHTML = `
+            <embed src="${pdf[0].filePath}" type="application/pdf" class="terms-pdf">
+            <p style="margin-top:8px; font-size:13px; color:#888; text-align:center;">
+                PDF가 보이지 않으면
+                <a href="${pdf[0].filePath}" target="_blank" style="color:#003087;">
+                    여기서 다운로드
+                </a>
+            </p>`;
+        return;
+    }
+
+    // 이미지로 보여주기
+    if (imgs.length > 0) {
+        body.innerHTML = `
+            <div class="terms-images">
+                ${imgs.map((f, i) => `
+                    <img src="${f.filePath}"
+                         alt="약관 ${i+1}페이지"
+                         onerror="this.style.display='none'">
+                `).join('')}
+            </div>`;
+        return;
+    }
+
+    body.innerHTML = '<p style="color:#999;">파일을 불러올 수 없습니다.</p>';
+})();
+</script>
+</body>
+</html>
