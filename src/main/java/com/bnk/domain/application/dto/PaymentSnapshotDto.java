@@ -8,7 +8,6 @@ import lombok.Setter;
 public class PaymentSnapshotDto {
     private String  cardBrand;          // VISA / MASTER / AMEX / LOCAL
     private Integer paymentDay;         // 결제일
-    private String  cardPasswordHash;   // 카드 결제 비밀번호 해시
     private String  combinedTransitYn;  // 후불교통 결합 여부 Y/N
     private String  txAlertType;        // SMS / APP / NONE
     private String  statementMethod;    // EMAIL / POST / APP
@@ -19,6 +18,6 @@ public class PaymentSnapshotDto {
 /*
 payment_snapshot 
 { card_brand, payment_day, 
- card_password_hash, combined_transit_yn, // 신용 전용
+ card_password_hash, combined_transit_yn, 
  tx_alert_type, statement_method, overseas_dcc_block_yn }
 */

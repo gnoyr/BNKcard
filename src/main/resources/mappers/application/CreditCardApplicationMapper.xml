@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.bnk.domain.application.mapper.CreditCardApplicationMapper">
+
+    <resultMap id="creditAppMap" type="com.bnk.domain.application.model.CreditCardApplication">
+        <id     property="creditAppId"        column="credit_app_id"/>
+        <result property="userId"             column="user_id"/>
+        <result property="cardId"             column="card_id"/>
+        <result property="applicationStatus"  column="application_status"/>
+        <!-- STEP 2 -->
+        <result property="idVerifiedYn"       column="id_verified_yn"/>
+        <!-- STEP 3 -->
+        <result property="annualIncomeBand"   column="annual_income_band"/>
+        <result property="creditScoreBand"    column="credit_score_band"/>
+        <result property="linkedAccountId"    column="linked_account_id"/>
+        <result property="applicantSnapshot"  column="applicant_snapshot"
+                typeHandler="aesTypeHandler"/>
+        <!-- STEP 4 -->
+        <result property="paymentSnapshot"    column="payment_snapshot"
+                typeHandler="aesTypeHandler"/>
+        <result property="requestedLimit"     column="requested_limit"/>
+        <result property="appliedAt"          column="applied_at"/>
+        <!-- STEP 5 -->
+        <result property="incomeDocKey"       column="income_doc_key"/>
+        <result property="assetDocKey"        column="asset_doc_key"/>
+        <result property="jobDocKey"          column="job_doc_key"/>
+        <!-- STEP 6 -->
+        <result property="screeningResult"    column="screening_result"/>
+        <result property="docVerifiedYn"      column="doc_verified_yn"/>
+        <result property="rejectionReason"    column="rejection_reason"/>
+        <!-- STEP 7 -->
+        <result property="estimatedMonthlyIncome" column="estimated_monthly_income"/>
+        <result property="limitCheckResult"   column="limit_check_result"/>
+        <result property="approvedLimit"      column="approved_limit"/>
+        <!-- STEP 8 -->
+        <result property="reviewedAt"         column="reviewed_at"/>
+        <result property="reviewedBy"         column="reviewed_by"/>
+        <!-- 공통 -->
+        <result property="createdAt"          column="created_at"/>
+        <result property="updatedAt"          column="updated_at"/>
+    </resultMap>
+
+    <!-- STEP 1 - INSERT (DRAFT) -->
+    <insert id="insertApplication" useGeneratedKeys="false">
+        <selectKey keyProperty="creditAppId" resultType="long" order="AFTER">
+            SELECT SEQ_CREDIT_CARD_APPLICATIONS.CURRVAL FROM DUAL
+        </selectKey>
+        INSERT INTO CREDIT_CARD_APPLICATIONS (
+            user_id, card_id, application_status
+        ) VALUES (
+            #{userId}, #{cardId}, 'DRAFT'
+        )
+    </insert>
+
+    <!-- STEP 2 - 본인확인 결과 -->
+    <update id="updateIdVerified">
+        UPDATE CREDIT_CARD_APPLICATIONS
+        SET    id_verified_yn    = #{idVerifiedYn}
+        WHERE  credit_app_id     = #{creditAppId}
+    </update>
+
+    <!-- STEP 3 - 기본정보 + 직업/소득 -->
+    <update id="updateApplicantInfo">
+        UPDATE CREDIT_CARD_APPLICATIONS
+        SET    applicant_snapshot  = #{applicantSnapshot, typeHandler=aesTypeHandler},
+               annual_income_band  = #{annualIncomeBand},
+               credit_score_band   = #{creditScoreBand},
+               linked_account_id   = #{linkedAccountId, jdbcType=NUMERIC}
+        WHERE  credit_app_id       = #{creditAppId}
+    </update>
+
+    <!-- STEP 4 - 신청정보 + 신청 완료 -->
+    <update id="updatePaymentInfo">
+        UPDATE CREDIT_CARD_APPLICATIONS
+        SET    payment_snapshot    = #{paymentSnapshot, typeHandler=aesTypeHandler},
+               requested_limit     = #{requestedLimit},
+               application_status  = 'REQUESTED',
+               applied_at          = SYSTIMESTAMP
+        WHERE  credit_app_id       = #{creditAppId}
+    </update>
+
+    <!-- STEP 5 - 서류 -->
+    <update id="updateDocs">
+        UPDATE CREDIT_CARD_APPLICATIONS
+        SET    income_doc_key  = #{incomeDocKey},
+               asset_doc_key   = #{assetDocKey,  jdbcType=VARCHAR},
+               job_doc_key     = #{jobDocKey}
+        WHERE  credit_app_id   = #{creditAppId}
+    </update>
+
+    <!-- STEP 6 - 1차 심사 -->
+    <update id="updateScreeningResult">
+        UPDATE CREDIT_CARD_APPLICATIONS
+        SET    screening_result    = #{screeningResult},
+               doc_verified_yn     = #{docVerifiedYn},
+               <if test="rejectionReason != null">
+               rejection_reason    = #{rejectionReason},
+               </if>
+               <if test="'REJECTED'.equals(applicationStatus)">
+               application_status  = 'REJECTED',
+               </if>
+               updated_at          = SYSTIMESTAMP
+        WHERE  credit_app_id       = #{creditAppId}
+    </update>
+
+    <!-- STEP 7 - 한도 검증 -->
+    <update id="updateLimitCheck">
+        UPDATE CREDIT_CARD_APPLICATIONS
+        SET    estimated_monthly_income = #{estimatedMonthlyIncome},
+               limit_check_result       = #{limitCheckResult},
+               <if test="'PASS'.equals(limitCheckResult)">
+               approved_limit           = #{approvedLimit},
+               application_status       = 'APPROVED',
+               </if>
+               <if test="'MANUAL_REQUIRED'.equals(limitCheckResult)">
+               application_status       = 'REVIEWING',
+               </if>
+               updated_at               = SYSTIMESTAMP
+        WHERE  credit_app_id            = #{creditAppId}
+    </update>
+
+    <!-- STEP 8 - 추가 심사 (REVIEWING 케이스) -->
+    <update id="updateReviewResult">
+        UPDATE CREDIT_CARD_APPLICATIONS
+        SET    application_status  = #{applicationStatus},
+               reviewed_at         = SYSTIMESTAMP,
+               reviewed_by         = #{reviewedBy},
+               <if test="approvedLimit != null">
+               approved_limit       = #{approvedLimit},
+               </if>
+               <if test="rejectionReason != null">
+               rejection_reason     = #{rejectionReason},
+               </if>
+               updated_at           = SYSTIMESTAMP
+        WHERE  credit_app_id        = #{creditAppId}
+    </update>
+
+    <!-- STEP 9 / 공통 상태 변경 -->
+    <update id="updateStatus">
+        UPDATE CREDIT_CARD_APPLICATIONS
+        SET    application_status = #{applicationStatus},
+               updated_at         = SYSTIMESTAMP
+        WHERE  credit_app_id      = #{creditAppId}
+    </update>
+
+    <!-- 조회 -->
+    <select id="findById" resultMap="creditAppMap">
+        SELECT * FROM CREDIT_CARD_APPLICATIONS
+        WHERE  credit_app_id = #{creditAppId}
+    </select>
+
+    <select id="findByUserId" resultMap="creditAppMap">
+        SELECT * FROM CREDIT_CARD_APPLICATIONS
+        WHERE  user_id = #{userId}
+        ORDER BY created_at DESC
+    </select>
+
+    <!-- DRAFT 정리 배치 - 7일 이상 DRAFT -->
+    <select id="findExpiredDraftIds" resultType="long">
+        SELECT credit_app_id
+        FROM   CREDIT_CARD_APPLICATIONS
+        WHERE  application_status = 'DRAFT'
+          AND  created_at &lt; SYSTIMESTAMP - INTERVAL '7' DAY
+    </select>
+
+    <delete id="deleteByIds">
+        DELETE FROM CREDIT_CARD_APPLICATIONS
+        WHERE  credit_app_id IN
+        <foreach collection="creditAppIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>

@@ -10,7 +10,6 @@ public class CreditApplicantSnapshotDto {
     private String mobileNo;
     private String address;
     private String email;
-    private String idIssueDate;  // 신분증 발급 일자
 
     private String incomeType;           // 직업 구분 (직장인/자영업자/전문직 등)
     private String healthInsuranceType;  // 건강보험 유형 (직장가입자/지역가입자)
