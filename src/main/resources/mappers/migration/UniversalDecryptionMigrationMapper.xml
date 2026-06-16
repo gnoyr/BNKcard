@@ -16,6 +16,7 @@
   3. Phase 1에서 암호화 보존하는 컬럼 (USERS.PHONE 등)
   4. 원래부터 평문인 URL/텍스트 컬럼 (CARD_IMAGES.IMAGE_URL 등)
   5. Phase 1 신규 암호화 대상 컬럼 (EVENT_LOGS.REQUEST_IP, LOGIN_HISTORIES.IP_ADDRESS)
+  6. ★ AUDIT_LOGS 전체: 평문 코드값/설명/IP — AuditLogDecryptionMigrationService에서 별도 처리
 -->
 <mapper namespace="com.bnk.global.migration.UniversalDecryptionMigrationMapper">
 
@@ -60,6 +61,9 @@
             AND NOT (c.TABLE_NAME = 'CARD_BENEFITS'     AND c.COLUMN_NAME IN ('BENEFIT_TITLE', 'DISPLAY_TEXT'))
             AND NOT (c.TABLE_NAME = 'CARD_IMAGES'       AND c.COLUMN_NAME = 'IMAGE_URL')
             AND NOT (c.TABLE_NAME = 'TERMS_FILES'       AND c.COLUMN_NAME IN ('FILE_PATH', 'ORIGINAL_NAME', 'STORED_NAME'))
+
+            /* ── ★ AUDIT_LOGS 전체 제외: AuditLogDecryptionMigrationService에서 별도 처리 ── */
+            AND c.TABLE_NAME != 'AUDIT_LOGS'
 
         ORDER BY c.TABLE_NAME, c.COLUMN_NAME
     </select>
