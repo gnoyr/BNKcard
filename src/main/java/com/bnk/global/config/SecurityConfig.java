@@ -148,8 +148,17 @@ public class SecurityConfig {
                     "/api/init"
                 ).permitAll()
 
+
                 // ── 약관 페이지 (비로그인 허용) ──────────────────────────
                 .requestMatchers("/terms/**").permitAll()
+
+                //  약관 파일 조회 — 비로그인 허용 ────────────────
+                // 카드 상세 페이지에서 비로그인 사용자도 약관 PDF를 볼 수 있어야 함
+                // /api/terms/{id}/files 형태로 호출됨
+                .requestMatchers("/api/terms/*/files").permitAll()
+                
+                .requestMatchers("/api/chat/history", "/api/chat", "/api/chat/**").permitAll()
+
 
                 // ── 정적 리소스 (CSS / JS / 이미지 / 폰트 등) ────────────
                 // ⚠ HTML 파일 경로(/admin/**, /mypage/**)는 의도적으로 제외.
@@ -162,7 +171,8 @@ public class SecurityConfig {
                     "/components/**",
                     "/favicon.ico",
                     "/error",
-                    "/.well-known/**"
+                    "/.well-known/**",
+                    "/index.html"
                 ).permitAll()
 
                 // ── 인증 관련 HTML 페이지 (로그인·회원가입 등 — 비로그인 허용) ──
