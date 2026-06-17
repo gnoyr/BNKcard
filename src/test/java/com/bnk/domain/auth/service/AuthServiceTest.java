@@ -90,7 +90,7 @@ class AuthServiceTest {
     @Mock private AuditLogger              auditLogger;
     @Mock private IpTrustService		   ipTrustService;
     @Mock private Clock                    clock;
-    private static final LocalDateTime FIXED_FUTURE   = LocalDateTime.of(2024, Month.JANUARY, 22, 0, 0); // +7일
+    private static final LocalDateTime FIXED_FUTURE = LocalDateTime.of(2099, Month.DECEMBER, 31, 0, 0);
     private static final LocalDateTime FIXED_PAST     = LocalDateTime.of(2024, Month.JANUARY, 14, 0, 0); // -1일
 
 
