@@ -17,18 +17,19 @@ import org.springframework.stereotype.Component;
  *   CARD_APPLY / TERMS / FILE / USER   → USER_ACTIVITY_LOG  (신규)
  *   CARD / CDD / ADMIN / EXTERNAL_API  → ADMIN_ACTIVITY_LOG (신규)
  *
- * ── 변경 이력 ────────────────────────────────────────────────────────
- *   - USER 카테고리 추가 (관리자에 의한 회원 관리 행위 → ADMIN_ACTIVITY_LOG)
- *   - HttpServletRequest 주입 → clientIp, requestUri 자동 수집
- *   - WATCHLIST 카테고리 추가 → ADMIN_ACTIVITY_LOG 라우팅
+ *   IP 주소는 개인정보(개인정보보호법·GDPR 대상)이므로
+ *   Slf4j 로그(콘솔/파일)에 직접 기록하지 않는다.
+ *   IP는 DB의 AES 암호화 컬럼(AUDIT_LOGS.ip_address, ACTIVITY_LOG.client_ip)에만 저장.
+ *   SonarQube: "Make sure that this logger's configuration does not log sensitive data."
+ *   → IP를 로그 메시지에서 제거함으로써 Reviewed(Safe) 처리 가능.
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class AuditLogger {
 
-    private final AuditLogMapper    auditLogMapper;
-    private final HttpServletRequest httpRequest;   // ✅ IP/URI 자동 수집용
+    private final AuditLogMapper     auditLogMapper;
+    private final HttpServletRequest  httpRequest;
 
     // ── 카테고리 상수 ─────────────────────────────────────────────────
 
@@ -45,8 +46,8 @@ public class AuditLogger {
     public static final String CDD          = "CDD";
     public static final String ADMIN        = "ADMIN";
     public static final String EXTERNAL_API = "EXTERNAL_API";
-    public static final String USER         = "USER";   
-    public static final String WATCHLIST    = "WATCHLIST"; 
+    public static final String USER         = "USER";
+    public static final String WATCHLIST    = "WATCHLIST";
 
     // ── 액션 상수 ─────────────────────────────────────────────────────
     public static final String LOGIN           = "LOGIN";
@@ -75,9 +76,7 @@ public class AuditLogger {
     public static final String WATCHLIST_REGISTER  = "WATCHLIST_REGISTER";
     public static final String WATCHLIST_REMOVE    = "WATCHLIST_REMOVE";
 
-    // ─────────────────────────────────────────────────────────────────
-    // 편의 메서드
-    // ─────────────────────────────────────────────────────────────────
+    // ── 편의 메서드 ────────────────────────────────────────────────────
 
     /** 사용자 성공 로그 */
     public void success(String category, String action,
@@ -103,37 +102,33 @@ public class AuditLogger {
         record(category, action, "F", null, adminId, targetId, detail);
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // 핵심: Slf4j 로그 + category에 따라 테이블 라우팅
-    // ─────────────────────────────────────────────────────────────────
+    // ── 핵심: Slf4j 로그 + 테이블 라우팅 ─────────────────────────────
 
     private void record(String category, String action, String result,
                         Long userId, Long adminId, String targetId, String detail) {
-    	// userId null이면 로그 스킵
-        if (userId == null) {
-            log.debug("[AUDIT] userId null — 스킵: {}/{}", category, action);
+
+        if (userId == null && adminId == null) {
+            log.debug("[AUDIT] actor null — 스킵: {}/{}", category, action);
             return;
         }
-    	
-        // ① Slf4j 로그
-        String actor = adminId != null ? "adminId=" + adminId
-                     : userId  != null ? "userId="  + userId
-                     : "actor=-";
 
+        String actor = adminId != null ? "adminId=" + adminId
+                     : "userId="  + userId;
+        
         String msg = String.format("[AUDIT] %s | %s | %s | %s | target=%s | %s",
                 "S".equals(result) ? "SUCCESS" : "FAILURE",
                 category, action, actor,
                 targetId != null ? targetId : "-",
                 detail   != null ? detail   : "-");
+        // ※ IP 주소는 로그에 포함하지 않음 — DB 저장(암호화)으로만 기록
 
         if ("S".equals(result)) log.info(msg);
         else                    log.warn(msg);
 
-        // IP, URI 자동 수집
-        String clientIp  = resolveClientIp();
+        // IP, URI 자동 수집 — DB 저장 전용
+        String clientIp   = resolveClientIp();
         String requestUri = resolveRequestUri();
 
-        // ② DB INSERT — 실패해도 본 비즈니스 로직에 영향 없도록 try-catch
         try {
             if (AUTH.equals(category)) {
                 Long   actorId   = adminId != null ? adminId : userId;
@@ -143,7 +138,6 @@ public class AuditLogger {
                         null, null, detail, clientIp);
 
             } else if (isAdminCategory(category)) {
-                // USER, WATCHLIST 포함한 관리자 행위 → ADMIN_ACTIVITY_LOG
                 auditLogMapper.insertAdminActivity(
                         AdminActivityLog.builder()
                                 .adminId(adminId)
@@ -151,11 +145,10 @@ public class AuditLogger {
                                 .result(result)
                                 .targetId(targetId)
                                 .detail(detail)
-                                .clientIp(clientIp)
+                                .clientIp(clientIp)    // DB에는 암호화 저장
                                 .requestUri(requestUri)
                                 .build());
             } else {
-                // 사용자 행위 → USER_ACTIVITY_LOG
                 auditLogMapper.insertUserActivity(
                         UserActivityLog.builder()
                                 .userId(userId)
@@ -163,7 +156,7 @@ public class AuditLogger {
                                 .result(result)
                                 .targetId(targetId)
                                 .detail(detail)
-                                .clientIp(clientIp)
+                                .clientIp(clientIp)    // DB에는 암호화 저장
                                 .requestUri(requestUri)
                                 .build());
             }
@@ -173,9 +166,9 @@ public class AuditLogger {
     }
 
     /**
-     * USER, WATCHLIST 카테고리 추가
-     * - USER     : 관리자가 회원 상태 변경, 잠금 해제 등 회원 관리 시
-     * - WATCHLIST: 요주의 인물 등록/삭제 시
+     * USER, WATCHLIST 카테고리 포함.
+     * - USER     : 관리자에 의한 회원 관리 → ADMIN_ACTIVITY_LOG
+     * - WATCHLIST: 요주의 인물 등록/삭제  → ADMIN_ACTIVITY_LOG
      */
     private boolean isAdminCategory(String category) {
         return CARD.equals(category)
@@ -187,8 +180,11 @@ public class AuditLogger {
     }
 
     /**
+     * 클라이언트 IP 추출 — DB 저장 전용, Slf4j 로그에는 기록하지 않음.
+     *
      * server.forward-headers-strategy=framework 설정으로
-     *    Spring이 XFF를 이미 처리 → getRemoteAddr()만 사용
+     * Spring이 신뢰 프록시의 XFF만 적용하여 RemoteAddr를 실제 클라이언트 IP로 교체.
+     * XFF 헤더를 직접 읽지 않으므로 IP 스푸핑 방어됨.
      */
     private String resolveClientIp() {
         try {
