@@ -136,5 +136,20 @@
         WHERE aur.admin_id   = #{adminId}
           AND aur.deleted_yn = 'N'
     </select>
+    
+    <!-- 역할 매핑 INSERT -->
+	<insert id="insertUserRole">
+	    INSERT INTO ADMIN_USER_ROLES (
+	        user_role_id, admin_id, role_id, created_at, created_by, deleted_yn
+	    ) VALUES (
+	        SEQ_ADMIN_USER_ROLES.NEXTVAL,
+	        #{adminId},
+	        #{roleId},
+	        SYSTIMESTAMP,
+	        #{createdBy, jdbcType=NUMERIC},
+	        'N'
+	    )
+	</insert>
+    
 
 </mapper>

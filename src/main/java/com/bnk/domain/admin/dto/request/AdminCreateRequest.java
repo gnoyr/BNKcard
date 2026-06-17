@@ -22,6 +22,6 @@ public class AdminCreateRequest {
     private String phone;
 
     @NotBlank(message = "역할은 필수입니다.")
-    @Pattern(regexp = "MANAGER|OPERATOR", message = "역할은 MANAGER 또는 OPERATOR만 가능합니다.")
-    private String roleCode;  // SUPER_ADMIN 생성은 별도 API
+    @Pattern(regexp = "SUPER_ADMIN|MANAGER|OPERATOR", message = "유효하지 않은 역할입니다.")
+    private String roleCode;
 }
