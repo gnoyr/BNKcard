@@ -1,153 +1,327 @@
 -- ================================================================
 -- BNK 부산은행 금융 상품 플랫폼
--- 카드 관련 더미 데이터 INSERT (신규 DDL 스키마 기준으로 변환)
--- 원본: busanbank_insert_all.sql
--- 대상 DDL: 03_ddl_card_product.sql, 04_ddl_terms.sql, 06_ddl_file_search_ai_log.sql
+-- 통합 더미데이터 INSERT
+-- 대상 DDL: 01_ddl_common_admin.sql, 03_ddl_card_product.sql,
+--           04_ddl_terms.sql, 06_ddl_file_search_ai_log.sql (최신화 버전)
 --
--- ※ 실행 순서: 01~06 DDL 먼저 실행 후 본 파일 실행
+-- ■ 포함 범위
+--   01. ADMIN_ROLES
+--   02. ADMIN_PERMISSIONS
+--   03. ROLE_PERMISSIONS
+--   04. ADMIN_USERS (10명)
+--   05. ADMIN_USER_ROLES
+--   06. CARD_CATEGORIES (23건)
+--   07. CARDS (27건) ← brand_name, annual_fee_domestic 등 신규 컬럼 포함
+--   08. CARD_BENEFITS
+--   09. CARD_IMAGES
+--   10. CARD_CONTENTS
+--   11. CARD_ATTRIBUTE_DEFINITIONS
+--   12. CARD_ATTRIBUTE_VALUES
+--   13. CARD_TAGS
+--   14. CARD_TAG_MAP
+--   15. CARD_STATUS_HISTORIES
+--   16. TERMS_GROUPS
+--   17. TERMS_MASTERS
+--   18. TERMS
+--   19. CARD_TERMS
+--   20. TERMS_PACKAGES / PACKAGE_TERMS
+--   21. SEARCH_KEYWORDS
+--   22. CARD_KEYWORDS
+--   23. 시퀀스 재설정
+--
+-- ■ 제외 범위 (불필요)
+--   USERS, USER_SESSIONS, LOGIN_HISTORIES, AUDIT_LOGS
+--   APPROVAL_REQUESTS, APPROVAL_LINES
+--   CREDIT_CARD_APPLICATIONS, CHECK_CARD_APPLICATIONS
+--   USER_CARDS, USER_SPENDING_PATTERNS
+--
+-- ■ 실행 순서: 01~06 DDL 완료 후 본 파일 실행
+-- ■ 재실행 안전: 모든 INSERT에 WHERE NOT EXISTS 패턴 적용
 -- ================================================================
+SET DEFINE OFF;
+SET VERIFY OFF;
 
--- ==============================================================
--- 1. CARD_CATEGORIES
--- 변환: category_code 컬럼 제거, icon_code → category_icon
--- ==============================================================
-INSERT INTO CARD_CATEGORIES (category_name, category_icon, display_order, use_yn, created_at)
-VALUES ('여행/항공', 'icon-travel', 1, 'Y', SYSTIMESTAMP);
-INSERT INTO CARD_CATEGORIES (category_name, category_icon, display_order, use_yn, created_at)
-VALUES ('식음료/카페', 'icon-dining', 2, 'Y', SYSTIMESTAMP);
-INSERT INTO CARD_CATEGORIES (category_name, category_icon, display_order, use_yn, created_at)
-VALUES ('쇼핑/백화점', 'icon-shopping', 3, 'Y', SYSTIMESTAMP);
-INSERT INTO CARD_CATEGORIES (category_name, category_icon, display_order, use_yn, created_at)
-VALUES ('주유/충전', 'icon-oil', 4, 'Y', SYSTIMESTAMP);
-INSERT INTO CARD_CATEGORIES (category_name, category_icon, display_order, use_yn, created_at)
-VALUES ('교통/대중교통', 'icon-transport', 5, 'Y', SYSTIMESTAMP);
-INSERT INTO CARD_CATEGORIES (category_name, category_icon, display_order, use_yn, created_at)
-VALUES ('여가/문화', 'icon-leisure', 6, 'Y', SYSTIMESTAMP);
-INSERT INTO CARD_CATEGORIES (category_name, category_icon, display_order, use_yn, created_at)
-VALUES ('의료/약국', 'icon-medical', 7, 'Y', SYSTIMESTAMP);
-INSERT INTO CARD_CATEGORIES (category_name, category_icon, display_order, use_yn, created_at)
-VALUES ('통신/휴대폰', 'icon-telecom', 8, 'Y', SYSTIMESTAMP);
-INSERT INTO CARD_CATEGORIES (category_name, category_icon, display_order, use_yn, created_at)
-VALUES ('온라인/구독', 'icon-online', 9, 'Y', SYSTIMESTAMP);
-INSERT INTO CARD_CATEGORIES (category_name, category_icon, display_order, use_yn, created_at)
-VALUES ('배달/음식', 'icon-delivery', 10, 'Y', SYSTIMESTAMP);
-INSERT INTO CARD_CATEGORIES (category_name, category_icon, display_order, use_yn, created_at)
-VALUES ('교육/학원', 'icon-education', 11, 'Y', SYSTIMESTAMP);
-INSERT INTO CARD_CATEGORIES (category_name, category_icon, display_order, use_yn, created_at)
-VALUES ('생활/관리비', 'icon-living', 12, 'Y', SYSTIMESTAMP);
-INSERT INTO CARD_CATEGORIES (category_name, category_icon, display_order, use_yn, created_at)
-VALUES ('보험', 'icon-insurance', 13, 'Y', SYSTIMESTAMP);
-INSERT INTO CARD_CATEGORIES (category_name, category_icon, display_order, use_yn, created_at)
-VALUES ('캐시백/포인트', 'icon-cashback', 14, 'Y', SYSTIMESTAMP);
-INSERT INTO CARD_CATEGORIES (category_name, category_icon, display_order, use_yn, created_at)
-VALUES ('스포츠/레저', 'icon-sport', 15, 'Y', SYSTIMESTAMP);
-INSERT INTO CARD_CATEGORIES (category_name, category_icon, display_order, use_yn, created_at)
-VALUES ('편의점', 'icon-convenience', 16, 'Y', SYSTIMESTAMP);
-INSERT INTO CARD_CATEGORIES (category_name, category_icon, display_order, use_yn, created_at)
-VALUES ('고속도로/하이패스', 'icon-toll', 17, 'Y', SYSTIMESTAMP);
-INSERT INTO CARD_CATEGORIES (category_name, category_icon, display_order, use_yn, created_at)
-VALUES ('주차', 'icon-parking', 18, 'Y', SYSTIMESTAMP);
-INSERT INTO CARD_CATEGORIES (category_name, category_icon, display_order, use_yn, created_at)
-VALUES ('미용/세탁', 'icon-beauty', 19, 'Y', SYSTIMESTAMP);
-INSERT INTO CARD_CATEGORIES (category_name, category_icon, display_order, use_yn, created_at)
-VALUES ('마트/대형마트', 'icon-mart', 20, 'Y', SYSTIMESTAMP);
-INSERT INTO CARD_CATEGORIES (category_name, category_icon, display_order, use_yn, created_at)
-VALUES ('지역화폐', 'icon-local', 21, 'Y', SYSTIMESTAMP);
-INSERT INTO CARD_CATEGORIES (category_name, category_icon, display_order, use_yn, created_at)
-VALUES ('사업지원', 'icon-business', 22, 'Y', SYSTIMESTAMP);
-INSERT INTO CARD_CATEGORIES (category_name, category_icon, display_order, use_yn, created_at)
-VALUES ('기타혜택', 'icon-etc', 23, 'Y', SYSTIMESTAMP);
+
+-- ================================================================
+-- 01. ADMIN_ROLES (3건)
+-- ================================================================
+INSERT INTO ADMIN_ROLES (role_code, role_name, description, created_at, deleted_yn)
+SELECT 'SUPER_ADMIN','최상위 관리자','모든 기능 접근 가능한 슈퍼 관리자',SYSTIMESTAMP,'N' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM ADMIN_ROLES WHERE role_code='SUPER_ADMIN' AND deleted_yn='N');
+
+INSERT INTO ADMIN_ROLES (role_code, role_name, description, created_at, deleted_yn)
+SELECT 'MANAGER','중간 관리자','카드/약관 관리 및 결재 처리 가능',SYSTIMESTAMP,'N' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM ADMIN_ROLES WHERE role_code='MANAGER' AND deleted_yn='N');
+
+INSERT INTO ADMIN_ROLES (role_code, role_name, description, created_at, deleted_yn)
+SELECT 'OPERATOR','하위 운영자','조회 및 기본 운영 업무만 가능',SYSTIMESTAMP,'N' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM ADMIN_ROLES WHERE role_code='OPERATOR' AND deleted_yn='N');
 
 COMMIT;
 
--- ==============================================================
--- 2. CARDS
--- 변환: annual_fee_domestic→annual_fee, brand_name→domestic_network,
---       summary_description→card_summary
---       삭제: annual_fee_overseas, previous_month_spend, minimum_age,
---             target_user, searchable_yn, visible_yn, approval_required_yn
--- ==============================================================
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10101001, 'REX2_POINT', 'CREDIT', '01', 'BNK부산은행', 'REX2_포인트형(개인)', 'PUBLISHED', 200000, 'LOCAL', 'The Return of Royalty, REXⅡ카드', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10101002, 'REX2_MILE', 'CREDIT', '01', 'BNK부산은행', 'REX2_대한항공마일리지형(개인)', 'PUBLISHED', 200000, 'LOCAL', 'The Return of Royalty, REXⅡ카드', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
+-- ================================================================
+-- 02. ADMIN_PERMISSIONS (20건)
+-- ================================================================
+INSERT INTO ADMIN_PERMISSIONS (permission_code, permission_name, created_at, deleted_yn) SELECT 'CARD_VIEW',             '카드 조회',         SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_PERMISSIONS WHERE permission_code='CARD_VIEW');
+INSERT INTO ADMIN_PERMISSIONS (permission_code, permission_name, created_at, deleted_yn) SELECT 'CARD_CREATE',           '카드 생성',         SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_PERMISSIONS WHERE permission_code='CARD_CREATE');
+INSERT INTO ADMIN_PERMISSIONS (permission_code, permission_name, created_at, deleted_yn) SELECT 'CARD_UPDATE',           '카드 수정',         SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_PERMISSIONS WHERE permission_code='CARD_UPDATE');
+INSERT INTO ADMIN_PERMISSIONS (permission_code, permission_name, created_at, deleted_yn) SELECT 'CARD_DELETE',           '카드 삭제',         SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_PERMISSIONS WHERE permission_code='CARD_DELETE');
+INSERT INTO ADMIN_PERMISSIONS (permission_code, permission_name, created_at, deleted_yn) SELECT 'CARD_PUBLISH',          '카드 게시 승인',    SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_PERMISSIONS WHERE permission_code='CARD_PUBLISH');
+INSERT INTO ADMIN_PERMISSIONS (permission_code, permission_name, created_at, deleted_yn) SELECT 'TERMS_VIEW',            '약관 조회',         SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_PERMISSIONS WHERE permission_code='TERMS_VIEW');
+INSERT INTO ADMIN_PERMISSIONS (permission_code, permission_name, created_at, deleted_yn) SELECT 'TERMS_CREATE',          '약관 생성',         SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_PERMISSIONS WHERE permission_code='TERMS_CREATE');
+INSERT INTO ADMIN_PERMISSIONS (permission_code, permission_name, created_at, deleted_yn) SELECT 'TERMS_UPDATE',          '약관 수정',         SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_PERMISSIONS WHERE permission_code='TERMS_UPDATE');
+INSERT INTO ADMIN_PERMISSIONS (permission_code, permission_name, created_at, deleted_yn) SELECT 'TERMS_PUBLISH',         '약관 게시 승인',    SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_PERMISSIONS WHERE permission_code='TERMS_PUBLISH');
+INSERT INTO ADMIN_PERMISSIONS (permission_code, permission_name, created_at, deleted_yn) SELECT 'USER_VIEW',             '회원 조회',         SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_PERMISSIONS WHERE permission_code='USER_VIEW');
+INSERT INTO ADMIN_PERMISSIONS (permission_code, permission_name, created_at, deleted_yn) SELECT 'USER_UPDATE',           '회원 정보 수정',    SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_PERMISSIONS WHERE permission_code='USER_UPDATE');
+INSERT INTO ADMIN_PERMISSIONS (permission_code, permission_name, created_at, deleted_yn) SELECT 'USER_SUSPEND',          '회원 정지 처리',    SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_PERMISSIONS WHERE permission_code='USER_SUSPEND');
+INSERT INTO ADMIN_PERMISSIONS (permission_code, permission_name, created_at, deleted_yn) SELECT 'ADMIN_MANAGE',          '관리자 계정 관리',  SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_PERMISSIONS WHERE permission_code='ADMIN_MANAGE');
+INSERT INTO ADMIN_PERMISSIONS (permission_code, permission_name, created_at, deleted_yn) SELECT 'ROLE_MANAGE',           '역할/권한 관리',    SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_PERMISSIONS WHERE permission_code='ROLE_MANAGE');
+INSERT INTO ADMIN_PERMISSIONS (permission_code, permission_name, created_at, deleted_yn) SELECT 'APPROVAL_REQUEST',      '결재 요청',         SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_PERMISSIONS WHERE permission_code='APPROVAL_REQUEST');
+INSERT INTO ADMIN_PERMISSIONS (permission_code, permission_name, created_at, deleted_yn) SELECT 'APPROVAL_PROCESS',      '결재 처리',         SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_PERMISSIONS WHERE permission_code='APPROVAL_PROCESS');
+INSERT INTO ADMIN_PERMISSIONS (permission_code, permission_name, created_at, deleted_yn) SELECT 'AUDIT_LOG_VIEW',        '감사 로그 조회',    SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_PERMISSIONS WHERE permission_code='AUDIT_LOG_VIEW');
+INSERT INTO ADMIN_PERMISSIONS (permission_code, permission_name, created_at, deleted_yn) SELECT 'SEARCH_KEYWORD_MANAGE', '검색 키워드 관리',  SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_PERMISSIONS WHERE permission_code='SEARCH_KEYWORD_MANAGE');
+INSERT INTO ADMIN_PERMISSIONS (permission_code, permission_name, created_at, deleted_yn) SELECT 'STATISTICS_VIEW',       '통계 조회',         SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_PERMISSIONS WHERE permission_code='STATISTICS_VIEW');
+INSERT INTO ADMIN_PERMISSIONS (permission_code, permission_name, created_at, deleted_yn) SELECT 'SYSTEM_CONFIG',         '시스템 설정',       SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_PERMISSIONS WHERE permission_code='SYSTEM_CONFIG');
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10201001, 'BBANG_CHECK', 'CHECK', '01', 'BNK부산은행', '빵빵체크카드', 'PUBLISHED', 0, 'LOCAL', '혜택이 빵빵한 !! 빵빵체크카드 !!', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
+COMMIT;
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10101003, 'CASHBACK_CARD', 'CREDIT', '01', 'BNK부산은행', '캐쉬백카드', 'PUBLISHED', 10000, 'LOCAL', '매달 결제일에 최대 0.7% 캐쉬백혜택으로 돌아온다! 생활편의 업종은 기존카드처럼 혜택받고, 기타 업종은 이용금액에 따라 일정률로 할인 받는 캐쉬백카드! 할인제외 대상 가맹점 및 업종을 제외하고 국내 모든 가맹점에서 카드이용시 상품에서 정한 할인율 만큼을 고객님 결제일에 마이너스(-) 방식으로 차감하여 청구, 할인 적용하는 방식의 카드 예) 2천만원 차량 ', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10201002, 'GOV_HAPPY_CHECK', 'CHECK', '01', 'BNK부산은행', '국민행복체크카드', 'PUBLISHED', 0, 'LOCAL', '정부의 다양한 바우처사업을 통합하여 사용 가능한 카드', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
+-- ================================================================
+-- 03. ROLE_PERMISSIONS
+-- ================================================================
+-- SUPER_ADMIN(role_id=1): 전체 20개 권한
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 1, 1,  SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=1 AND permission_id=1);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 1, 2,  SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=1 AND permission_id=2);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 1, 3,  SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=1 AND permission_id=3);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 1, 4,  SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=1 AND permission_id=4);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 1, 5,  SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=1 AND permission_id=5);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 1, 6,  SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=1 AND permission_id=6);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 1, 7,  SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=1 AND permission_id=7);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 1, 8,  SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=1 AND permission_id=8);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 1, 9,  SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=1 AND permission_id=9);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 1, 10, SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=1 AND permission_id=10);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 1, 11, SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=1 AND permission_id=11);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 1, 12, SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=1 AND permission_id=12);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 1, 13, SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=1 AND permission_id=13);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 1, 14, SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=1 AND permission_id=14);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 1, 15, SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=1 AND permission_id=15);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 1, 16, SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=1 AND permission_id=16);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 1, 17, SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=1 AND permission_id=17);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 1, 18, SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=1 AND permission_id=18);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 1, 19, SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=1 AND permission_id=19);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 1, 20, SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=1 AND permission_id=20);
+-- MANAGER(role_id=2): 13개
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 2, 1,  SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=2 AND permission_id=1);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 2, 2,  SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=2 AND permission_id=2);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 2, 3,  SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=2 AND permission_id=3);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 2, 5,  SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=2 AND permission_id=5);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 2, 6,  SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=2 AND permission_id=6);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 2, 7,  SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=2 AND permission_id=7);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 2, 8,  SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=2 AND permission_id=8);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 2, 9,  SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=2 AND permission_id=9);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 2, 10, SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=2 AND permission_id=10);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 2, 15, SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=2 AND permission_id=15);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 2, 16, SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=2 AND permission_id=16);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 2, 17, SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=2 AND permission_id=17);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 2, 19, SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=2 AND permission_id=19);
+-- OPERATOR(role_id=3): 6개
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 3, 1,  SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=3 AND permission_id=1);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 3, 6,  SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=3 AND permission_id=6);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 3, 10, SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=3 AND permission_id=10);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 3, 17, SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=3 AND permission_id=17);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 3, 18, SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=3 AND permission_id=18);
+INSERT INTO ROLE_PERMISSIONS (role_id, permission_id, created_at, deleted_yn) SELECT 3, 19, SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ROLE_PERMISSIONS WHERE role_id=3 AND permission_id=19);
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10201003, 'DONGBAEK_CHECK', 'CHECK', '01', 'BNK부산은행', '부산 동백전 체크카드', 'PUBLISHED', 0, 'LOCAL', '부산지역 경제활성화를 위한, 부산지역화폐 동백전! 지역자금의 역외유출 방지를 위해 부산시 내 가맹점 매출액에 대해 할인 혜택 제공 전통시장 매출액에 대한 추가 혜택 제공을 통해 지역 내 소상공인 매출 증대를 통한 지역경기 활성화에 기여', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
+COMMIT;
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10201004, 'DINGDING_CHECK', 'CHECK', '01', 'BNK부산은행', '딩딩 체크카드', 'PUBLISHED', 0, 'LOCAL', '즐거움 가득, 혜택 가득~ DingDing 체크카드~!', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10201005, 'GREEN_CHECK', 'CHECK', '01', 'BNK부산은행', '어디로든 그린체크카드', 'PUBLISHED', 0, 'LOCAL', '친환경 업종 특화 체크카드! 어디로든 그린체크카드!', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
+-- ================================================================
+-- 04. ADMIN_USERS (10명)
+-- 공통 password: Test1234!
+-- BCrypt: $2a$12$TB8JjfqqjuPpyOaCM15nE.0fCY8ZWwjjywZ6rYshngwPefDxphRIm
+-- ================================================================
+INSERT INTO ADMIN_USERS (username, password_hash, name, email, phone, status_code, created_at, deleted_yn)
+SELECT 'super_admin','$2a$12$TB8JjfqqjuPpyOaCM15nE.0fCY8ZWwjjywZ6rYshngwPefDxphRIm','김슈퍼','super@bnkfinance.co.kr','010-9001-0001','ACTIVE',SYSTIMESTAMP,'N' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM ADMIN_USERS WHERE username='super_admin');
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10201006, 'UNTACT_CHECK', 'CHECK', '01', 'BNK부산은행', '2030 언택트 체크카드', 'PUBLISHED', 0, 'LOCAL', '일상 속 언택트 서비스로 구성된 비대면 특화 카드! 2030 언택트 체크카드!', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
+INSERT INTO ADMIN_USERS (username, password_hash, name, email, phone, status_code, created_at, deleted_yn)
+SELECT 'card_manager1','$2a$12$TB8JjfqqjuPpyOaCM15nE.0fCY8ZWwjjywZ6rYshngwPefDxphRIm','이카드','card1@bnkfinance.co.kr','010-9001-0002','ACTIVE',SYSTIMESTAMP,'N' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM ADMIN_USERS WHERE username='card_manager1');
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10201007, 'ONEULE_CHECK', 'CHECK', '01', 'BNK부산은행', '오늘은e 체크카드', 'PUBLISHED', 0, 'LOCAL', '각종 페이 및 생활 서비스 할인되는 오늘은e 체크카드!PAYCO, 삼성페이, 네이버페이, 카카오페이, 썸패스 결제 시 청구할인', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
+INSERT INTO ADMIN_USERS (username, password_hash, name, email, phone, status_code, created_at, deleted_yn)
+SELECT 'card_manager2','$2a$12$TB8JjfqqjuPpyOaCM15nE.0fCY8ZWwjjywZ6rYshngwPefDxphRIm','박상품','card2@bnkfinance.co.kr','010-9001-0003','ACTIVE',SYSTIMESTAMP,'N' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM ADMIN_USERS WHERE username='card_manager2');
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10201008, 'ZIPL_CHECK', 'CHECK', '01', 'BNK부산은행', 'ZipL 체크카드', 'PUBLISHED', 0, 'LOCAL', '우리집에 플러스되는 체크카드! 생활요금 할인 체크카드', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
+INSERT INTO ADMIN_USERS (username, password_hash, name, email, phone, status_code, created_at, deleted_yn)
+SELECT 'card_manager3','$2a$12$TB8JjfqqjuPpyOaCM15nE.0fCY8ZWwjjywZ6rYshngwPefDxphRIm','최운영','card3@bnkfinance.co.kr','010-9001-0004','ACTIVE',SYSTIMESTAMP,'N' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM ADMIN_USERS WHERE username='card_manager3');
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10101004, 'HIPASS_BIZ', 'CREDIT', '01', 'BNK부산은행', '후불 하이패스카드(기업)', 'PUBLISHED', 10000, 'LOCAL', '하이패스 차로 통과시 후불방식으로 이용하고 결제일에 결제하는 후불 하이패스카드! 전국고속도로, 민자도로 등에 설치된 톨게이트의 하이패스 車路 통과시 후불방식으로 이용하고 신용카드 결제일에 결제하는 카드', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
+INSERT INTO ADMIN_USERS (username, password_hash, name, email, phone, status_code, created_at, deleted_yn)
+SELECT 'terms_manager1','$2a$12$TB8JjfqqjuPpyOaCM15nE.0fCY8ZWwjjywZ6rYshngwPefDxphRIm','정약관','terms1@bnkfinance.co.kr','010-9001-0005','ACTIVE',SYSTIMESTAMP,'N' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM ADMIN_USERS WHERE username='terms_manager1');
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10101005, 'SOHO_BIZ', 'CREDIT', '01', 'BNK부산은행', 'SOHO-BIZ카드', 'PUBLISHED', 15000, 'LOCAL', '당행 최초로 보증료(신용보증기금, 기술보증기금, 신용보증재단) 할인 서비스 탑재!', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
+INSERT INTO ADMIN_USERS (username, password_hash, name, email, phone, status_code, created_at, deleted_yn)
+SELECT 'terms_manager2','$2a$12$TB8JjfqqjuPpyOaCM15nE.0fCY8ZWwjjywZ6rYshngwPefDxphRIm','한법무','terms2@bnkfinance.co.kr','010-9001-0006','ACTIVE',SYSTIMESTAMP,'N' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM ADMIN_USERS WHERE username='terms_manager2');
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10101006, 'GOV_HAPPY', 'CREDIT', '01', 'BNK부산은행', '국민행복카드', 'PUBLISHED', 0, 'LOCAL', '정부의 다양한 바우처사업을 통합하여 사용 가능한 카드', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
+INSERT INTO ADMIN_USERS (username, password_hash, name, email, phone, status_code, created_at, deleted_yn)
+SELECT 'viewer1','$2a$12$TB8JjfqqjuPpyOaCM15nE.0fCY8ZWwjjywZ6rYshngwPefDxphRIm','윤조회','view1@bnkfinance.co.kr','010-9001-0007','ACTIVE',SYSTIMESTAMP,'N' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM ADMIN_USERS WHERE username='viewer1');
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10101007, 'HIPASS', 'CREDIT', '01', 'BNK부산은행', '후불 하이패스카드', 'PUBLISHED', 8000, 'LOCAL', '하이패스 차로 통과시 후불방식으로 이용하고 결제일에 결제하는 후불 하이패스카드! 전국고속도로, 민자도로 등에 설치된 톨게이트의 하이패스 車路 통과시 후불방식으로 이용하고 신용카드 결제일에 결제하는 카드', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
+INSERT INTO ADMIN_USERS (username, password_hash, name, email, phone, status_code, created_at, deleted_yn)
+SELECT 'viewer2','$2a$12$TB8JjfqqjuPpyOaCM15nE.0fCY8ZWwjjywZ6rYshngwPefDxphRIm','임뷰어','view2@bnkfinance.co.kr','010-9001-0008','ACTIVE',SYSTIMESTAMP,'N' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM ADMIN_USERS WHERE username='viewer2');
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10101008, 'ONEULE_CREDIT', 'CREDIT', '01', 'BNK부산은행', '오늘은e 신용카드', 'PUBLISHED', 10000, 'LOCAL', '각종 페이 및 생활 서비스 할인되는 오늘은e 신용카드! 간편결제할인 서비스 : PAYCO, 삼성페이, 네이버페이, 카카오페이, 썸패스 5% 청구할인 생활할인 서비스 : 학원업종/이동통신/커피/대중교통/영화관 할인 서비스 ※ 전월실적 및 서비스 세부조건은 상품안내장 및 홈페이지 참고', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
+INSERT INTO ADMIN_USERS (username, password_hash, name, email, phone, status_code, created_at, deleted_yn)
+SELECT 'viewer3','$2a$12$TB8JjfqqjuPpyOaCM15nE.0fCY8ZWwjjywZ6rYshngwPefDxphRIm','신열람','view3@bnkfinance.co.kr','010-9001-0009','ACTIVE',SYSTIMESTAMP,'N' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM ADMIN_USERS WHERE username='viewer3');
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10101009, 'BNK_HOMESHOPPING', 'CREDIT', '01', 'BNK부산은행', 'BNK 부자되세요 홈쇼핑카드', 'PUBLISHED', 15000, 'LOCAL', '한 장의 카드로 폭 넓게 즐기는 쇼핑 특화 카드 한 장의 카드로 다양한 쇼핑을 할인받는 홈쇼핑카드! 현명하게 선택하고 당당하게 사용하는 우리는 모두 꽤 멋진 부자입니다.', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
+INSERT INTO ADMIN_USERS (username, password_hash, name, email, phone, status_code, created_at, deleted_yn)
+SELECT 'viewer4','$2a$12$TB8JjfqqjuPpyOaCM15nE.0fCY8ZWwjjywZ6rYshngwPefDxphRIm','권뷰어','view4@bnkfinance.co.kr','010-9001-0010','ACTIVE',SYSTIMESTAMP,'N' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM ADMIN_USERS WHERE username='viewer4');
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10101010, 'BUSAN_SPORTS', 'CREDIT', '01', 'BNK부산은행', '부산체육사랑카드', 'PUBLISHED', 15000, 'LOCAL', 'Sports is Busan!! 부산시체육회 지정 체육시설 10%, 월 최대 1만5천원 할인! 스포츠, 의료, 학원 등 생활 곳곳에서 할인 챙기세요!', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
+COMMIT;
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10101011, 'POD_CARD', 'CREDIT', '01', 'BNK부산은행', '팟(pod) 카드', 'PUBLISHED', 15000, 'LOCAL', '내맘속에 팟! 팟카드로 다양한 콘텐츠를 즐기세요!', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10101012, 'ZIPL_CREDIT', 'CREDIT', '01', 'BNK부산은행', 'ZipL 신용카드', 'PUBLISHED', 15000, 'LOCAL', '생활에 특별한 혜택, 더 나은 일상을 위한 신용카드', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
+-- ================================================================
+-- 05. ADMIN_USER_ROLES
+-- ================================================================
+INSERT INTO ADMIN_USER_ROLES (admin_id, role_id, assigned_at, assigned_by, deleted_yn) SELECT 1,  1, SYSTIMESTAMP, 1,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_USER_ROLES WHERE admin_id=1  AND role_id=1);
+INSERT INTO ADMIN_USER_ROLES (admin_id, role_id, assigned_at, assigned_by, deleted_yn) SELECT 2,  2, SYSTIMESTAMP, 1,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_USER_ROLES WHERE admin_id=2  AND role_id=2);
+INSERT INTO ADMIN_USER_ROLES (admin_id, role_id, assigned_at, assigned_by, deleted_yn) SELECT 3,  2, SYSTIMESTAMP, 1,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_USER_ROLES WHERE admin_id=3  AND role_id=2);
+INSERT INTO ADMIN_USER_ROLES (admin_id, role_id, assigned_at, assigned_by, deleted_yn) SELECT 4,  2, SYSTIMESTAMP, 1,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_USER_ROLES WHERE admin_id=4  AND role_id=2);
+INSERT INTO ADMIN_USER_ROLES (admin_id, role_id, assigned_at, assigned_by, deleted_yn) SELECT 5,  3, SYSTIMESTAMP, 1,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_USER_ROLES WHERE admin_id=5  AND role_id=3);
+INSERT INTO ADMIN_USER_ROLES (admin_id, role_id, assigned_at, assigned_by, deleted_yn) SELECT 6,  3, SYSTIMESTAMP, 1,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_USER_ROLES WHERE admin_id=6  AND role_id=3);
+INSERT INTO ADMIN_USER_ROLES (admin_id, role_id, assigned_at, assigned_by, deleted_yn) SELECT 7,  3, SYSTIMESTAMP, 1,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_USER_ROLES WHERE admin_id=7  AND role_id=3);
+INSERT INTO ADMIN_USER_ROLES (admin_id, role_id, assigned_at, assigned_by, deleted_yn) SELECT 8,  3, SYSTIMESTAMP, 1,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_USER_ROLES WHERE admin_id=8  AND role_id=3);
+INSERT INTO ADMIN_USER_ROLES (admin_id, role_id, assigned_at, assigned_by, deleted_yn) SELECT 9,  3, SYSTIMESTAMP, 1,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_USER_ROLES WHERE admin_id=9  AND role_id=3);
+INSERT INTO ADMIN_USER_ROLES (admin_id, role_id, assigned_at, assigned_by, deleted_yn) SELECT 10, 3, SYSTIMESTAMP, 1,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM ADMIN_USER_ROLES WHERE admin_id=10 AND role_id=3);
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10101013, 'SK_OIL', 'CREDIT', '01', 'BNK부산은행', 'SK OIL&LPG카드', 'PUBLISHED', 10000, 'LOCAL', '주유특화 할인 혜택과 생활 서비스 할인까지 가능한 SK OIL&LPG카드! SK 주유소/충전소 할인 서비스, 생활 할인 서비스', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
+COMMIT;
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10101014, 'BNK_FRIENDS', 'CREDIT', '01', 'BNK부산은행', 'BNK 프렌즈 신용카드', 'PUBLISHED', 15000, 'LOCAL', '간단 명료한 기본할인! 통큰 연간 캐시백! 생활필수 할인!', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10101015, 'DINGDING_CREDIT', 'CREDIT', '01', 'BNK부산은행', '딩딩 신용카드', 'PUBLISHED', 10000, 'LOCAL', '즐거움 가득, 혜택 가득~ DingDing 신용카드!', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
+-- ================================================================
+-- 06. CARD_CATEGORIES (23건)
+-- ★ 최신화: category_code, icon_code 컬럼 추가 (03_ddl 기준)
+-- ================================================================
+INSERT INTO CARD_CATEGORIES (category_code, category_name, category_icon, icon_code, display_order, use_yn, created_at)
+SELECT 'TRAVEL',     '여행/항공',        'icon-travel',      'icon-travel',      1,  'Y', SYSTIMESTAMP FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARD_CATEGORIES WHERE category_name='여행/항공');
+INSERT INTO CARD_CATEGORIES (category_code, category_name, category_icon, icon_code, display_order, use_yn, created_at)
+SELECT 'DINING',     '식음료/카페',      'icon-dining',      'icon-dining',      2,  'Y', SYSTIMESTAMP FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARD_CATEGORIES WHERE category_name='식음료/카페');
+INSERT INTO CARD_CATEGORIES (category_code, category_name, category_icon, icon_code, display_order, use_yn, created_at)
+SELECT 'SHOPPING',   '쇼핑/백화점',      'icon-shopping',    'icon-shopping',    3,  'Y', SYSTIMESTAMP FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARD_CATEGORIES WHERE category_name='쇼핑/백화점');
+INSERT INTO CARD_CATEGORIES (category_code, category_name, category_icon, icon_code, display_order, use_yn, created_at)
+SELECT 'OIL',        '주유/충전',        'icon-oil',         'icon-oil',         4,  'Y', SYSTIMESTAMP FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARD_CATEGORIES WHERE category_name='주유/충전');
+INSERT INTO CARD_CATEGORIES (category_code, category_name, category_icon, icon_code, display_order, use_yn, created_at)
+SELECT 'TRANSPORT',  '교통/대중교통',    'icon-transport',   'icon-transport',   5,  'Y', SYSTIMESTAMP FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARD_CATEGORIES WHERE category_name='교통/대중교통');
+INSERT INTO CARD_CATEGORIES (category_code, category_name, category_icon, icon_code, display_order, use_yn, created_at)
+SELECT 'LEISURE',    '여가/문화',        'icon-leisure',     'icon-leisure',     6,  'Y', SYSTIMESTAMP FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARD_CATEGORIES WHERE category_name='여가/문화');
+INSERT INTO CARD_CATEGORIES (category_code, category_name, category_icon, icon_code, display_order, use_yn, created_at)
+SELECT 'MEDICAL',    '의료/약국',        'icon-medical',     'icon-medical',     7,  'Y', SYSTIMESTAMP FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARD_CATEGORIES WHERE category_name='의료/약국');
+INSERT INTO CARD_CATEGORIES (category_code, category_name, category_icon, icon_code, display_order, use_yn, created_at)
+SELECT 'TELECOM',    '통신/휴대폰',      'icon-telecom',     'icon-telecom',     8,  'Y', SYSTIMESTAMP FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARD_CATEGORIES WHERE category_name='통신/휴대폰');
+INSERT INTO CARD_CATEGORIES (category_code, category_name, category_icon, icon_code, display_order, use_yn, created_at)
+SELECT 'ONLINE',     '온라인/구독',      'icon-online',      'icon-online',      9,  'Y', SYSTIMESTAMP FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARD_CATEGORIES WHERE category_name='온라인/구독');
+INSERT INTO CARD_CATEGORIES (category_code, category_name, category_icon, icon_code, display_order, use_yn, created_at)
+SELECT 'DELIVERY',   '배달/음식',        'icon-delivery',    'icon-delivery',    10, 'Y', SYSTIMESTAMP FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARD_CATEGORIES WHERE category_name='배달/음식');
+INSERT INTO CARD_CATEGORIES (category_code, category_name, category_icon, icon_code, display_order, use_yn, created_at)
+SELECT 'EDUCATION',  '교육/학원',        'icon-education',   'icon-education',   11, 'Y', SYSTIMESTAMP FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARD_CATEGORIES WHERE category_name='교육/학원');
+INSERT INTO CARD_CATEGORIES (category_code, category_name, category_icon, icon_code, display_order, use_yn, created_at)
+SELECT 'LIVING',     '생활/관리비',      'icon-living',      'icon-living',      12, 'Y', SYSTIMESTAMP FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARD_CATEGORIES WHERE category_name='생활/관리비');
+INSERT INTO CARD_CATEGORIES (category_code, category_name, category_icon, icon_code, display_order, use_yn, created_at)
+SELECT 'INSURANCE',  '보험',             'icon-insurance',   'icon-insurance',   13, 'Y', SYSTIMESTAMP FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARD_CATEGORIES WHERE category_name='보험');
+INSERT INTO CARD_CATEGORIES (category_code, category_name, category_icon, icon_code, display_order, use_yn, created_at)
+SELECT 'CASHBACK',   '캐시백/포인트',    'icon-cashback',    'icon-cashback',    14, 'Y', SYSTIMESTAMP FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARD_CATEGORIES WHERE category_name='캐시백/포인트');
+INSERT INTO CARD_CATEGORIES (category_code, category_name, category_icon, icon_code, display_order, use_yn, created_at)
+SELECT 'SPORT',      '스포츠/레저',      'icon-sport',       'icon-sport',       15, 'Y', SYSTIMESTAMP FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARD_CATEGORIES WHERE category_name='스포츠/레저');
+INSERT INTO CARD_CATEGORIES (category_code, category_name, category_icon, icon_code, display_order, use_yn, created_at)
+SELECT 'CONVENIENCE','편의점',           'icon-convenience', 'icon-convenience', 16, 'Y', SYSTIMESTAMP FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARD_CATEGORIES WHERE category_name='편의점');
+INSERT INTO CARD_CATEGORIES (category_code, category_name, category_icon, icon_code, display_order, use_yn, created_at)
+SELECT 'TOLL',       '고속도로/하이패스','icon-toll',        'icon-toll',        17, 'Y', SYSTIMESTAMP FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARD_CATEGORIES WHERE category_name='고속도로/하이패스');
+INSERT INTO CARD_CATEGORIES (category_code, category_name, category_icon, icon_code, display_order, use_yn, created_at)
+SELECT 'PARKING',    '주차',             'icon-parking',     'icon-parking',     18, 'Y', SYSTIMESTAMP FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARD_CATEGORIES WHERE category_name='주차');
+INSERT INTO CARD_CATEGORIES (category_code, category_name, category_icon, icon_code, display_order, use_yn, created_at)
+SELECT 'BEAUTY',     '미용/세탁',        'icon-beauty',      'icon-beauty',      19, 'Y', SYSTIMESTAMP FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARD_CATEGORIES WHERE category_name='미용/세탁');
+INSERT INTO CARD_CATEGORIES (category_code, category_name, category_icon, icon_code, display_order, use_yn, created_at)
+SELECT 'MART',       '마트/대형마트',    'icon-mart',        'icon-mart',        20, 'Y', SYSTIMESTAMP FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARD_CATEGORIES WHERE category_name='마트/대형마트');
+INSERT INTO CARD_CATEGORIES (category_code, category_name, category_icon, icon_code, display_order, use_yn, created_at)
+SELECT 'LOCAL',      '지역화폐',         'icon-local',       'icon-local',       21, 'Y', SYSTIMESTAMP FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARD_CATEGORIES WHERE category_name='지역화폐');
+INSERT INTO CARD_CATEGORIES (category_code, category_name, category_icon, icon_code, display_order, use_yn, created_at)
+SELECT 'BUSINESS',   '사업지원',         'icon-business',    'icon-business',    22, 'Y', SYSTIMESTAMP FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARD_CATEGORIES WHERE category_name='사업지원');
+INSERT INTO CARD_CATEGORIES (category_code, category_name, category_icon, icon_code, display_order, use_yn, created_at)
+SELECT 'ETC',        '기타혜택',         'icon-etc',         'icon-etc',         23, 'Y', SYSTIMESTAMP FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARD_CATEGORIES WHERE category_name='기타혜택');
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10101016, 'FARMCO', 'CREDIT', '01', 'BNK부산은행', '팜코카드', 'PUBLISHED', 0, 'LOCAL', '의약품 구입대금 결제전용 기업카드', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
+COMMIT;
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10301001, 'DONGBAEK_PREPAID', 'PREPAID', '01', 'BNK부산은행', '부산 동백전 선불카드', 'PUBLISHED', 0, 'LOCAL', '부산지역 경제활성화를 위한, 부산지역화폐 동백전! 지역자금의 역외유출 방지를 위해 부산시 내 사용가능하며 지역 내 소상공인 매출 증대를 통한 지역경기 활성화에 기여', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10101017, 'BNK_AMEX_SIMPLE', 'CREDIT', '01', 'BNK부산은행', 'BNK SIMPLE AMEX BLUE BUSINESS 카드', 'PUBLISHED', 30000, 'AMEX', '하나의 카드로 사업을 심플하게! BNK Simple 카드', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
+-- ================================================================
+-- 07. CARDS (27건)
+-- ★ 최신화: brand_name, annual_fee_domestic, annual_fee_overseas,
+--   previous_month_spend, minimum_age, target_user,
+--   summary_description, searchable_yn, visible_yn,
+--   approval_required_yn 컬럼 포함 (03_ddl 기준)
+-- ================================================================
 
-INSERT INTO CARDS (card_id, card_code, card_type, company_code, company_name, card_name, card_status, annual_fee, domestic_network, card_summary, publish_start_at, created_at, deleted_yn)
-VALUES (10101018, 'BNK_SIMPLE', 'CREDIT', '01', 'BNK부산은행', 'BNK Simple카드', 'PUBLISHED', 15000, 'LOCAL', '포인트 적립의 Simple한 상품서비스에 지역사회 공헌하는 ESG 상품 하나의 카드로 사업을 심플하게..! BNK Simple 카드', SYSTIMESTAMP, SYSTIMESTAMP, 'N');
+-- [신용카드 18건]
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10101001,'REX2_POINT','CREDIT','01','BNK부산은행','REX2_포인트형(개인)','LOCAL',200000,230000,300000,19,'개인(가족회원)','The Return of Royalty, REXⅡ카드','The Return of Royalty, REXⅡ카드','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10101001);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10101002,'REX2_MILE','CREDIT','01','BNK부산은행','REX2_대한항공마일리지형(개인)','LOCAL',200000,230000,300000,19,'개인(가족회원)','The Return of Royalty, REXⅡ카드','The Return of Royalty, REXⅡ카드','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10101002);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10101003,'CASHBACK_CARD','CREDIT','01','BNK부산은행','캐쉬백카드','LOCAL',10000,10000,200000,19,'개인','매달 결제일에 최대 0.7% 캐쉬백혜택','매달 결제일에 최대 0.7% 캐쉬백혜택','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10101003);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10101004,'HIPASS_BIZ','CREDIT','01','BNK부산은행','후불 하이패스카드(기업)','LOCAL',10000,0,0,19,'법인(개인사업자 포함)','하이패스 전용 기업카드','하이패스 전용 기업카드','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10101004);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10101005,'SOHO_BIZ','CREDIT','01','BNK부산은행','SOHO-BIZ카드','LOCAL',20000,20000,300000,19,'개인사업자/법인','소호사업자를 위한 비즈니스 특화카드','소호사업자를 위한 비즈니스 특화카드','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10101005);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10101006,'PEOPLE_HAPPY','CREDIT','01','BNK부산은행','국민행복카드(신용)','LOCAL',0,0,0,19,'국민행복카드 신청 자격자','바우처사업 통합 사용 가능 국민행복카드','바우처사업 통합 사용 가능 국민행복카드','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10101006);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10101007,'HIPASS_PERS','CREDIT','01','BNK부산은행','후불 하이패스카드(개인)','LOCAL',5000,0,0,19,'개인','하이패스 전용 개인 신용카드','하이패스 전용 개인 신용카드','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10101007);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10101008,'ONEULE_CREDIT','CREDIT','01','BNK부산은행','오늘은e 신용카드','LOCAL',0,0,300000,19,'개인','각종 페이 및 생활 서비스 할인되는 오늘은e 신용카드','각종 페이 및 생활 서비스 할인','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10101008);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10101009,'ZIPL_CREDIT','CREDIT','01','BNK부산은행','ZipL 신용카드','LOCAL',0,0,300000,19,'개인','주거 특화 신용카드 ZipL','주거 특화 신용카드 ZipL','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10101009);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10101010,'DINGDING_CREDIT','CREDIT','01','BNK부산은행','딩딩 신용카드','LOCAL',0,0,300000,19,'개인','즐거움 가득, 혜택 가득~ DingDing 신용카드','즐거움 가득, 혜택 가득~ DingDing 신용카드','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10101010);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10101011,'BNK_FRIENDS','CREDIT','01','BNK부산은행','BNK 프렌즈 신용카드','LOCAL',0,0,300000,19,'개인','BNK 프렌즈 신용카드','BNK 프렌즈 신용카드','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10101011);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10101012,'SMART_LIFE','CREDIT','01','BNK부산은행','스마트라이프 신용카드','LOCAL',15000,15000,300000,19,'개인','생활 전반 10% 청구할인 스마트라이프 카드','생활 전반 10% 청구할인','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10101012);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10101013,'POD_CARD','CREDIT','01','BNK부산은행','팟(pod)카드','LOCAL',0,0,300000,19,'개인','여행 및 숙박 특화 팟(pod)카드','여행 및 숙박 특화 팟(pod)카드','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10101013);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10101014,'BNK_TRAVEL','CREDIT','01','BNK부산은행','BNK TRAVEL 신용카드','LOCAL',30000,30000,500000,19,'개인','해외여행 특화 트래블 신용카드','해외여행 특화 트래블 신용카드','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10101014);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10101015,'DINGDING_COMBO','CREDIT','01','BNK부산은행','딩딩신용+체크','LOCAL',0,0,300000,19,'개인','딩딩신용+체크 통합 혜택카드','딩딩신용+체크 통합 혜택카드','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10101015);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10101016,'FARMCO','CREDIT','01','BNK부산은행','팜코카드','LOCAL',0,0,0,19,'법인','법인 복지포인트 팜코카드','법인 복지포인트 팜코카드','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10101016);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10101017,'AMEX_CARD','CREDIT','01','BNK부산은행','아맥스익스프레스(AMEX)','AMEX',100000,100000,500000,19,'개인 프리미엄','American Express 제휴 프리미엄 카드','American Express 제휴 프리미엄 카드','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10101017);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10101018,'BNK_SIMPLE','CREDIT','01','BNK부산은행','BNK Simple카드','LOCAL',0,0,200000,19,'개인','심플한 혜택의 BNK Simple카드','심플한 혜택의 BNK Simple카드','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10101018);
 
+-- [체크카드 8건]
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10201001,'BBANG_CHECK','CHECK','01','BNK부산은행','빵빵체크카드','LOCAL',0,0,0,18,'만 18세 이상 개인 본인 회원','혜택이 빵빵한 !! 빵빵체크카드 !!','혜택이 빵빵한 !! 빵빵체크카드 !!','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10201001);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10201002,'GOV_HAPPY_CHECK','CHECK','01','BNK부산은행','국민행복체크카드','LOCAL',0,0,0,18,'개인','정부 바우처사업 통합 체크카드','정부 바우처사업 통합 체크카드','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10201002);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10201003,'DONGBAEK_CHECK','CHECK','01','BNK부산은행','부산 동백전 체크카드','LOCAL',0,0,0,14,'후불교통: 만18세 이상 / 비교통: 만14세 이상','부산지역화폐 동백전 체크카드','부산지역화폐 동백전 체크카드','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10201003);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10201004,'DINGDING_CHECK','CHECK','01','BNK부산은행','딩딩 체크카드','LOCAL',0,0,0,18,'개인','즐거움 가득, 혜택 가득~ DingDing 체크카드','즐거움 가득, 혜택 가득~ DingDing 체크카드','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10201004);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10201005,'GREEN_CHECK','CHECK','01','BNK부산은행','어디로든 그린체크카드','LOCAL',0,0,0,18,'개인','친환경 업종 특화 체크카드','친환경 업종 특화 체크카드','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10201005);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10201006,'UNTACT_CHECK','CHECK','01','BNK부산은행','2030 언택트 체크카드','LOCAL',0,0,0,18,'개인 / 외국인(웰컴글로벌)','비대면 특화 2030 언택트 체크카드','비대면 특화 2030 언택트 체크카드','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10201006);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10201007,'ONEULE_CHECK','CHECK','01','BNK부산은행','오늘은e 체크카드','LOCAL',0,0,0,18,'개인','각종 페이 및 생활 서비스 할인 체크카드','각종 페이 및 생활 서비스 할인 체크카드','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10201007);
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10201008,'ZIPL_CHECK','CHECK','01','BNK부산은행','ZipL 체크카드','LOCAL',0,0,0,18,'개인','주거 특화 체크카드 ZipL','주거 특화 체크카드 ZipL','Y','Y','Y','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10201008);
+
+-- [선불카드 1건]
+INSERT INTO CARDS (card_id,card_code,card_type,company_code,company_name,card_name,brand_name,annual_fee_domestic,annual_fee_overseas,previous_month_spend,minimum_age,target_user,summary_description,card_summary,searchable_yn,visible_yn,approval_required_yn,card_status,publish_start_at,created_at,deleted_yn)
+SELECT 10301001,'DONGBAEK_PREPAID','PREPAID','01','BNK부산은행','부산 동백전 선불카드','LOCAL',0,0,0,14,'만 14세 이상 부산 시민','부산시 공식 지역화폐 동백전 선불카드','부산시 공식 지역화폐 동백전 선불카드','Y','Y','N','PUBLISHED',SYSTIMESTAMP,SYSTIMESTAMP,'N' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM CARDS WHERE card_id=10301001);
 
 COMMIT;
 
@@ -2377,5 +2551,37 @@ INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_
 INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn) VALUES (10101018, 23, SYSTIMESTAMP, 1, 'N');
 INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn) VALUES (10101018, 5,  SYSTIMESTAMP, 1, 'N');
 INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by, deleted_yn) VALUES (10101018, 30, SYSTIMESTAMP, 1, 'N');
+
+
+-- ================================================================
+-- 23. 시퀀스 재설정 (카드 시리얼)
+-- CREDIT 18건 (10101001~10101018) → 다음 NEXTVAL=19
+-- CHECK  8건  (10201001~10201008) → 다음 NEXTVAL=9
+-- PREPAID 1건 (10301001)          → 다음 NEXTVAL=2
+-- ================================================================
+DECLARE v_curr NUMBER;
+BEGIN
+    SELECT SEQ_CARD_SERIAL_CREDIT.NEXTVAL INTO v_curr FROM DUAL;
+    IF v_curr < 19 THEN
+        EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CARD_SERIAL_CREDIT INCREMENT BY ' || (19 - v_curr);
+        SELECT SEQ_CARD_SERIAL_CREDIT.NEXTVAL INTO v_curr FROM DUAL;
+        EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CARD_SERIAL_CREDIT INCREMENT BY 1';
+    END IF;
+
+    SELECT SEQ_CARD_SERIAL_CHECK.NEXTVAL INTO v_curr FROM DUAL;
+    IF v_curr < 9 THEN
+        EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CARD_SERIAL_CHECK INCREMENT BY ' || (9 - v_curr);
+        SELECT SEQ_CARD_SERIAL_CHECK.NEXTVAL INTO v_curr FROM DUAL;
+        EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CARD_SERIAL_CHECK INCREMENT BY 1';
+    END IF;
+
+    SELECT SEQ_CARD_SERIAL_PREPAID.NEXTVAL INTO v_curr FROM DUAL;
+    IF v_curr < 2 THEN
+        EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CARD_SERIAL_PREPAID INCREMENT BY 1';
+        SELECT SEQ_CARD_SERIAL_PREPAID.NEXTVAL INTO v_curr FROM DUAL;
+        EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CARD_SERIAL_PREPAID INCREMENT BY 1';
+    END IF;
+END;
+/
 
 COMMIT;
