@@ -5,15 +5,17 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
-import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.ai.vectorstore.SearchRequest;
+
 import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.SearchRequest;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
-import java.util.Objects;
+
 import com.bnk.domain.card.dto.request.CardCompareRequest;
 import com.bnk.domain.card.dto.request.CardSearchRequest;
 import com.bnk.domain.card.dto.request.CardSimulationRequest;
@@ -39,12 +41,10 @@ import com.bnk.global.log.annotation.Loggable;
 import com.bnk.global.response.PageResponse;
 
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Validated
-@RequiredArgsConstructor
 @Slf4j
 public class CardService {
 
@@ -56,8 +56,26 @@ public class CardService {
     private final SearchLogMapper searchLogMapper;
     private final TermsMapper termsMapper;
     
-    @Autowired(required = false)
-    private VectorStore vectorStore;
+    private final VectorStore vectorStore;
+    
+    public CardService(
+            CardMapper cardMapper,
+            CardBenefitMapper cardBenefitMapper,
+            CardImageMapper cardImageMapper,
+            CardContentMapper cardContentMapper,
+            SpendingPatternMapper spendingPatternMapper,
+            SearchLogMapper searchLogMapper,
+            TermsMapper termsMapper,
+            @Autowired(required = false) VectorStore vectorStore) {  
+        this.cardMapper            = cardMapper;
+        this.cardBenefitMapper     = cardBenefitMapper;
+        this.cardImageMapper       = cardImageMapper;
+        this.cardContentMapper     = cardContentMapper;
+        this.spendingPatternMapper = spendingPatternMapper;
+        this.searchLogMapper       = searchLogMapper;
+        this.termsMapper           = termsMapper;
+        this.vectorStore           = vectorStore; // ai.enabled=false 시 null
+    }
     // ────────────────────────────────────────────────────────────────
     // 홈 배너 조회
     // ────────────────────────────────────────────────────────────────
