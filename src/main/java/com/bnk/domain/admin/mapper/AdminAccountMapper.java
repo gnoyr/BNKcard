@@ -34,4 +34,9 @@ public interface AdminAccountMapper {
 
     /** 관리자 권한 목록 조회 */
     List<String> findPermissionsByAdminId(@Param("adminId") Long adminId);
+    
+    /** 역할 매핑 INSERT */
+    void insertUserRole(@Param("adminId")    Long adminId,
+                        @Param("roleId")     Long roleId,
+                        @Param("createdBy")  Long createdBy);
 }
