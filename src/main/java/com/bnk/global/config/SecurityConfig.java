@@ -246,6 +246,16 @@ public class SecurityConfig {
                 // 마이그레이션, 관리자 계정 관리, CDD 강제 변경,
                 // 요주의 인물 등록·삭제
                 .requestMatchers(
+//                    "/css/**",
+//                    "/js/**",
+//                    "/images/**",
+//                    "/fonts/**",
+//                    "/components/**",
+//                    "/favicon.ico",
+//                    "/error",
+//                    "/.well-known/**",
+//                    "/index.html"                    
+//                ).permitAll()
                     "/api/admin/migration/**",
                     "/api/admin/admins/**",
                     "/api/admin/cdd/**",
