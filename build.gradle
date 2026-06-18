@@ -1,13 +1,13 @@
 plugins {
-	id 'java'
-	id 'org.springframework.boot' version '4.0.6'
-	id 'io.spring.dependency-management' version '1.1.7'
-	id "org.sonarqube" version "7.3.0.8198"
+    id 'java'
+    id 'org.springframework.boot' version '4.0.6'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.sonarqube' version '7.3.0.8198'
+    id 'jacoco'   // ★ 추가
 }
 
 configurations {
     all {
-        // 프로젝트 전체에서 Oracle XML 파서 강제 제외
         exclude group: 'com.oracle.database.xml', module: 'xmlparserv2'
     }
 }
@@ -16,99 +16,210 @@ group = 'com.bnk'
 version = '0.0.1-SNAPSHOT'
 
 java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
-	}
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
 }
 
-test {
-    exclude '**/AiChatMock*'
-    exclude '**/AiChatEvaluationTest*'
-}
-
-// ── Spring 6+ @PathVariable / @CookieValue / @RequestParam 파라미터 이름 인식 ──
+// ── 컴파일러 파라미터 (Spring 6+ 파라미터 이름 인식) ──────────────────────
 tasks.withType(JavaCompile).configureEach {
-	options.compilerArgs += ['-parameters']
+    options.compilerArgs += ['-parameters']
 }
 
 repositories {
-	mavenCentral()
-	maven { url 'https://repo.spring.io/milestone' }
+    mavenCentral()
+    maven { url 'https://repo.spring.io/milestone' }
 }
 
 ext {
-	set('springAiVersion', "2.0.0-M6")
+    set('springAiVersion', "2.0.0-M6")
 }
 
 dependencies {
-	// ── Test ──────────────────────────────────────────────
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testImplementation("com.h2database:h2:2.4.240")
-	testImplementation 'org.springframework.boot:spring-boot-starter-security'  // security-test 포함
-	testImplementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter-test:4.0.1'
-	testCompileOnly         'org.projectlombok:lombok'
-	testAnnotationProcessor 'org.projectlombok:lombok'
-	testRuntimeOnly         'org.junit.platform:junit-platform-launcher'
+    // ── Test ──────────────────────────────────────────────
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation("com.h2database:h2:2.4.240")
+    testImplementation 'org.springframework.boot:spring-boot-starter-security'
+    testImplementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter-test:4.0.1'
+    testCompileOnly         'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+    testRuntimeOnly         'org.junit.platform:junit-platform-launcher'
 
-	// ── Spring Boot Core ──────────────────────────────────
-	implementation 'org.springframework.boot:spring-boot-starter-web'
-	implementation 'org.springframework.boot:spring-boot-starter-security'
-	implementation 'org.springframework.boot:spring-boot-starter-validation'
-	implementation 'org.springframework.boot:spring-boot-starter-mail'
-	// ── logable ──────────────────────────────────
-	implementation 'org.aspectj:aspectjweaver:1.9.22'
+    // ── Spring Boot Core ──────────────────────────────────
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+    implementation 'org.aspectj:aspectjweaver:1.9.22'
 
-	// ── JDBC (명시적 버전 고정 — Spring Boot BOM 버전과 다를 경우 충돌 방지) ──
-	implementation("org.springframework.boot:spring-boot-starter-jdbc:4.1.0-RC1")
+    // ── JDBC ─────────────────────────────────────────────
+    implementation("org.springframework.boot:spring-boot-starter-jdbc:4.1.0-RC1")
 
-	// ── Redis ────────────────────────────────────────────
-	// MemoryTokenStore → RedisTokenStore 전환
-	// 이메일 인증 토큰 / 비밀번호 재설정 토큰 TTL 관리
-	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    // ── Redis ────────────────────────────────────────────
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
-	// ── GenAI ────────────────────────────────────────────
-	//implementation("org.springframework.ai:spring-ai-starter-model-ollama:2.0.0-M7")
-	implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
-	implementation 'org.springframework.ai:spring-ai-starter-model-google-genai-embedding'
+    // ── GenAI ────────────────────────────────────────────
+    implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
+    implementation 'org.springframework.ai:spring-ai-starter-model-google-genai-embedding'
 
-	// ── MyBatis ──────────────────────────────────────────
-	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:4.0.1'
+    // ── MyBatis ──────────────────────────────────────────
+    implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:4.0.1'
 
-	// ── JWT ──────────────────────────────────────────────
-	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
-	runtimeOnly    'io.jsonwebtoken:jjwt-impl:0.12.6'
-	runtimeOnly    'io.jsonwebtoken:jjwt-jackson:0.12.6'
+    // ── JWT ──────────────────────────────────────────────
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+    runtimeOnly    'io.jsonwebtoken:jjwt-impl:0.12.6'
+    runtimeOnly    'io.jsonwebtoken:jjwt-jackson:0.12.6'
 
-	// ── AI / Vector Store ────────────────────────────────
-	implementation platform('org.springframework.ai:spring-ai-bom:2.0.0-M6')
-	implementation 'org.springframework.ai:spring-ai-starter-vector-store-qdrant'
+    // ── AI / Vector Store ────────────────────────────────
+    implementation platform('org.springframework.ai:spring-ai-bom:2.0.0-M6')
+    implementation 'org.springframework.ai:spring-ai-starter-vector-store-qdrant'
 
-	// ── DB Driver ────────────────────────────────────────
-	runtimeOnly('com.oracle.database.jdbc:ojdbc11-production:23.3.0.23.09') {
-		// MyBatis XML 파싱 충돌을 일으키는 Oracle XML 파서 제외
-		exclude group: 'com.oracle.database.xml', module: 'xmlparserv2'
-	}
+    // ── DB Driver ────────────────────────────────────────
+    runtimeOnly('com.oracle.database.jdbc:ojdbc11-production:23.3.0.23.09') {
+        exclude group: 'com.oracle.database.xml', module: 'xmlparserv2'
+    }
 
-	// ── Oracle OCI SDK (Object Storage) ──────────────────
-	implementation 'com.oracle.oci.sdk:oci-java-sdk-objectstorage:3.42.0'
-	implementation 'com.oracle.oci.sdk:oci-java-sdk-common:3.42.0'
-	implementation 'com.oracle.oci.sdk:oci-java-sdk-common-httpclient-jersey3:3.42.0'
+    // ── Oracle OCI SDK ───────────────────────────────────
+    implementation 'com.oracle.oci.sdk:oci-java-sdk-objectstorage:3.42.0'
+    implementation 'com.oracle.oci.sdk:oci-java-sdk-common:3.42.0'
+    implementation 'com.oracle.oci.sdk:oci-java-sdk-common-httpclient-jersey3:3.42.0'
 
-	// ── Lombok ───────────────────────────────────────────
-	compileOnly           'org.projectlombok:lombok'
-	annotationProcessor   'org.projectlombok:lombok'
+    // ── Lombok ───────────────────────────────────────────
+    compileOnly           'org.projectlombok:lombok'
+    annotationProcessor   'org.projectlombok:lombok'
 
-	// ── Apache PDFBox (PDF → 이미지 변환) ─────────────────
-	implementation 'org.apache.pdfbox:pdfbox:3.0.3'
-	implementation 'org.apache.pdfbox:pdfbox-io:3.0.3'
+    // ── PDFBox ───────────────────────────────────────────
+    implementation 'org.apache.pdfbox:pdfbox:3.0.3'
+    implementation 'org.apache.pdfbox:pdfbox-io:3.0.3'
 }
 
 dependencyManagement {
-	imports {
-		mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
-	}
+    imports {
+        mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
+    }
 }
 
+// ── Test 실행 설정 ────────────────────────────────────────────────────────
 tasks.named('test') {
-	useJUnitPlatform()
+    useJUnitPlatform()
+
+    // AI 평가 테스트 제외 (외부 API 의존 + SonarQube 대상 아님)
+    exclude '**/AiChatMock*'
+    exclude '**/AiChatEvaluationTest*'
+
+    // ★ 테스트 실행 후 JaCoCo 리포트 자동 생성
+    finalizedBy jacocoTestReport
+}
+
+// ── JaCoCo 설정 ─────────────────────────────────────────────────────────
+jacoco {
+    toolVersion = "0.8.12"
+}
+
+jacocoTestReport {
+    // test 태스크가 먼저 실행돼야 리포트 생성 가능
+    dependsOn test
+
+    reports {
+        // SonarQube가 읽는 XML 리포트 (필수)
+        xml.required = true
+        xml.outputLocation = layout.buildDirectory.file("reports/jacoco/test/jacocoTestReport.xml")
+
+        // 개발자용 HTML 리포트 (선택)
+        html.required = true
+        html.outputLocation = layout.buildDirectory.dir("reports/jacoco/test/html")
+
+        // CSV는 불필요
+        csv.required = false
+    }
+
+    // ★ 커버리지 측정에서 제외할 클래스
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                // 엔트리포인트 / 설정 클래스 (비즈니스 로직 없음)
+                '**/BnKcardApplication.class',
+                '**/config/**',
+                '**/global/config/**',
+
+                // 마이그레이션 (운영 1회성 배치)
+                '**/global/migration/**',
+
+                // MyBatis 타입핸들러 (프레임워크 위임)
+                '**/global/mybatis/**',
+
+                // DTO, Request/Response 순수 데이터 클래스
+                '**/dto/request/**',
+                '**/dto/response/**',
+                '**/dto/query/**',
+                '**/model/**',
+
+                // AI 평가 / 벡터 서비스 (외부 API 의존)
+                '**/ai/**',
+
+                // 보안 필터 인프라
+                '**/global/auth/**',
+                '**/global/filter/**',
+
+                // 상수·유틸 단순 클래스
+                '**/global/util/TimeConstants.class',
+                '**/global/response/**',
+                '**/global/exception/BusinessException.class',
+                '**/global/exception/ErrorResponse.class',
+
+                // Clean URL / PageGuard (URL 리다이렉트 인프라)
+                '**/global/web/**',
+            ])
+        }))
+    }
+}
+
+// ── SonarQube 연동 설정 ──────────────────────────────────────────────────
+sonarqube {
+    properties {
+        // ★ SonarQube 서버 URL — 실제 서버 주소로 교체하세요
+        property 'sonar.host.url', System.getenv('SONAR_HOST_URL') ?: 'http://localhost:9000'
+
+        // ★ 인증 토큰 — 환경변수로 관리 (하드코딩 금지)
+        property 'sonar.token', System.getenv('SONAR_TOKEN') ?: ''
+
+        property 'sonar.projectKey',  'bnkcard'
+        property 'sonar.projectName', 'BNK 카드 프로젝트'
+        property 'sonar.java.source', '21'
+
+        // ★ JaCoCo XML 리포트 경로 (sonarqube가 읽는 위치와 반드시 일치)
+        property 'sonar.coverage.jacoco.xmlReportPaths',
+                 "${layout.buildDirectory.get()}/reports/jacoco/test/jacocoTestReport.xml"
+
+        // 소스/테스트 경로
+        property 'sonar.sources',     'src/main/java'
+        property 'sonar.tests',       'src/test/java'
+
+        // SonarQube 커버리지 제외 (jacocoTestReport 제외 목록과 동기화)
+        property 'sonar.coverage.exclusions', [
+            '**/BnKcardApplication.java',
+            '**/config/**',
+            '**/global/config/**',
+            '**/global/migration/**',
+            '**/global/mybatis/**',
+            '**/dto/request/**',
+            '**/dto/response/**',
+            '**/dto/query/**',
+            '**/model/**',
+            '**/ai/**',
+            '**/global/auth/**',
+            '**/global/filter/**',
+            '**/global/util/TimeConstants.java',
+            '**/global/response/**',
+            '**/global/exception/BusinessException.java',
+            '**/global/exception/ErrorResponse.java',
+            '**/global/web/**',
+        ].join(',')
+
+        // SonarQube 분석 자체 제외 (중복 리포트 방지)
+        property 'sonar.exclusions', [
+            '**/global/migration/**',
+            '**/ai/service/AiChatEvaluation*',
+        ].join(',')
+    }
 }
