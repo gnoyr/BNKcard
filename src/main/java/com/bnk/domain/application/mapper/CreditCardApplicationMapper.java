@@ -25,10 +25,14 @@ public interface CreditCardApplicationMapper {
     // STEP 4 - 신청정보
     // UPDATE: payment_snapshot(AES), requested_limit, application_status('REQUESTED'), applied_at
     int updatePaymentInfo(CreditCardApplication application);
+    
+    Long findCurrentVersionId(@Param("cardId") Long cardId);  // 신청 시점 현재 PUBLISHED 버전 조회
 
-    // STEP 5 - 서류 (신규고객만)
+    // STEP 5 - 기존고객 여부 체크 (부산은행 서버 조회) + 서류 저장 (신규고객만)
     // UPDATE: income_doc_key, asset_doc_key(선택), job_doc_key
     int updateDocs(CreditCardApplication application);
+    
+    boolean isExistingCustomer(@Param("userId") Long userId); //만들어야됨
 
     // STEP 6 - 1차 심사 (심사서버)
     // UPDATE: screening_result, doc_verified_yn
@@ -40,9 +44,11 @@ public interface CreditCardApplicationMapper {
     //         PASS            → approved_limit, application_status('APPROVED')
     //         MANUAL_REQUIRED → application_status('REVIEWING')
     int updateLimitCheck(CreditCardApplication application);
+    
+    Long calculateEstimatedMonthlyIncome(@Param("userId") Long userId); // 결제내역 기반 월소득 추정
 
     // STEP 8 - 추가 심사 (심사서버, REVIEWING 케이스만)
-    // UPDATE: application_status, reviewed_at, reviewed_by
+    // UPDATE: application_status('APPROVED' or 'REJECTED'), reviewed_at, reviewed_by
     //         승인 → approved_limit
     //         거절 → rejection_reason
     int updateReviewResult(CreditCardApplication application);

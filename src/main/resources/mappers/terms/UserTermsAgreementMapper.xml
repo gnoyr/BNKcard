@@ -20,6 +20,8 @@
 		<result property="agreedAt" column="agreed_at" />
 		<result property="ipAddress" column="ip_address" />
 		<result property="userAgent" column="user_agent" />
+		<result property="creditAppId" column="credit_app_id"/>
+		<result property="checkAppId"  column="check_app_id"/>
 	</resultMap>
 
 	<!-- 단건 INSERT — agreement_id 생략 → TRG_USER_TERMS_AGMT_BI 자동 채번 -->
@@ -55,7 +57,8 @@
 			INTO USER_TERMS_AGREEMENTS (
 			user_id, terms_id, agreed_yn, agreement_action,
 			agreed_version, agreement_channel, agreement_source,
-			agreed_content_snapshot, agreed_at
+			agreed_content_snapshot, agreed_at,
+			credit_app_id, check_app_id
 			) VALUES (
 			#{a.userId}, #{a.termsId}, #{a.agreedYn}, #{a.agreementAction},
 			#{a.agreedVersion},
@@ -64,7 +67,9 @@
 			#{a.agreementSource, jdbcType=VARCHAR,
 			typeHandler=org.apache.ibatis.type.StringTypeHandler},
 			#{a.agreedContentSnapshot, jdbcType=CLOB},
-			SYSTIMESTAMP
+			SYSTIMESTAMP,
+	        #{a.creditAppId, jdbcType=NUMERIC},
+	        #{a.checkAppId,  jdbcType=NUMERIC}
 			)
 		</foreach>
 		SELECT 1 FROM DUAL
