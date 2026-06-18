@@ -1,11 +1,14 @@
 package com.bnk.domain.application.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.time.LocalDateTime;
 
-@Getter @Setter @NoArgsConstructor
+@Builder
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor 
 public class CheckCardApplication {
 
     private Long   checkAppId;
@@ -21,9 +24,11 @@ public class CheckCardApplication {
     private Long linkedAccountId;	   // 연결 계좌 ID
     
     // STEP 4 - 기본정보 + 신청정보
+    private Long versionId;
     private String applicantSnapshot;  // CLOB JSON
     private String paymentSnapshot;    // CLOB JSON
     private LocalDateTime appliedAt;
+    private String cardPasswordHash;
 
     // STEP 5 - 심사
     private String        rejectionReason;
