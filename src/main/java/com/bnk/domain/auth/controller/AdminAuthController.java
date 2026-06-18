@@ -1,6 +1,7 @@
 package com.bnk.domain.auth.controller;
 
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,6 +15,8 @@ import com.bnk.domain.auth.dto.response.AdminMeResponse;
 import com.bnk.domain.auth.dto.response.AuthTokenResult;
 import com.bnk.domain.auth.service.AuthService;
 import com.bnk.global.auth.CustomAdminDetails;
+import com.bnk.global.exception.BusinessException;
+import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.response.ApiResponse;
 import com.bnk.global.util.CookieUtil;
 
@@ -64,17 +67,12 @@ public class AdminAuthController {
             @AuthenticationPrincipal(errorOnInvalidType = false) CustomAdminDetails ad,
             HttpServletResponse response) {
 
-        // ad == null: 토큰 만료/미인증 상태 → DB revoke 생략, 쿠키만 삭제
         if (ad != null) {
-            authService.logout(ad.getAdminId());
+            authService.adminLogout(ad.getAdminId()); // ★ logout() → adminLogout()
         }
 
-        // 현재 path="/api/auth" 쿠키 삭제
         response.addHeader(HttpHeaders.SET_COOKIE, cookieUtil.deleteAccessCookie().toString());
-        response.addHeader(HttpHeaders.SET_COOKIE, cookieUtil.deleteRefreshCookie().toString());
-
-        // 구버전 path="/api/auth/refresh" 쿠키 잔류분 삭제 (과도기 대응)
-        response.addHeader(HttpHeaders.SET_COOKIE, cookieUtil.deleteLegacyRefreshCookie().toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, cookieUtil.deleteAdminRefreshCookie().toString()); // ★ 관리자 path
 
         return ApiResponse.toNoContent();
     }
@@ -102,5 +100,19 @@ public class AdminAuthController {
                     .toList())
                 .build()
         );
+    }
+    
+    @PostMapping("/refresh")
+    public ResponseEntity<ApiResponse<Void>> adminRefresh(
+            HttpServletRequest  httpRequest,
+            HttpServletResponse response) {
+
+        String refreshToken = CookieUtil.extractCookieValue(httpRequest, CookieUtil.REFRESH_TOKEN_COOKIE)
+                .orElseThrow(() -> new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID));
+
+        ResponseCookie newAccessCookie = authService.adminRefresh(refreshToken);
+        response.addHeader(HttpHeaders.SET_COOKIE, newAccessCookie.toString());
+
+        return ResponseEntity.ok(ApiResponse.message("토큰이 재발급되었습니다."));
     }
 }
