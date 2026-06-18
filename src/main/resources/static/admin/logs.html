@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>로그 조회 | BNK 관리자</title>
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/teal-theme.css">
+  <style>
+    body { background:#f0f2f7; font-family:'Pretendard',sans-serif; }
+    .wrap { max-width:1200px; margin:32px auto; padding:0 20px; }
+    .page-title {
+        font-size:20px; font-weight:700; color:#1a2340; margin-bottom:24px;
+        display:flex; align-items:center; gap:16px;
+    }
+    .page-title a {
+        font-size:13px; font-weight:500; color:#003087;
+        text-decoration:none;
+    }
+
+    /* 탭 */
+    .tab-bar { display:flex; gap:8px; margin-bottom:24px; }
+    .tab-btn {
+        padding:9px 20px; border:1px solid #dde3ef; border-radius:8px;
+        background:#fff; color:#555; font-size:14px; cursor:pointer;
+        font-weight:500; transition:all .18s;
+    }
+    .tab-btn.active { background:#003087; color:#fff; border-color:#003087; }
+
+    /* 필터 영역 */
+    .filter-card {
+        background:#fff; border-radius:10px; padding:18px 22px;
+        box-shadow:0 1px 4px rgba(0,0,0,.07); margin-bottom:20px;
+    }
+    .filter-row {
+        display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;
+    }
+    .filter-group { display:flex; flex-direction:column; gap:5px; }
+    .filter-group label { font-size:12px; font-weight:600; color:#666; }
+    .filter-group input,
+    .filter-group select {
+        padding:8px 12px; border:1px solid #dde3ef; border-radius:8px;
+        font-size:13px; outline:none; min-width:140px;
+    }
+    .filter-group input:focus,
+    .filter-group select:focus { border-color:#003087; }
+    .btn-search {
+        padding:9px 20px; background:#003087; color:#fff;
+        border:none; border-radius:8px; font-size:13px;
+        font-weight:600; cursor:pointer;
+    }
+    .btn-reset {
+        padding:9px 16px; background:#f0f2f6; color:#333;
+        border:none; border-radius:8px; font-size:13px; cursor:pointer;
+    }
+
+    /* 테이블 */
+    .table-card {
+        background:#fff; border-radius:10px; padding:20px 22px;
+        box-shadow:0 1px 4px rgba(0,0,0,.07);
+    }
+    .table-header {
+        display:flex; justify-content:space-between; align-items:center;
+        margin-bottom:16px; padding-bottom:10px;
+        border-bottom:1px solid #f0f2f7;
+    }
+    .table-header h3 { font-size:14px; font-weight:600; color:#1a2340; }
+    .table-header span { font-size:12px; color:#888; }
+    .data-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .data-table th {
+        text-align:left; padding:9px 10px; color:#888;
+        font-weight:600; font-size:12px; border-bottom:1px solid #f0f2f7;
+        white-space:nowrap;
+    }
+    .data-table td {
+        padding:10px 10px; border-bottom:1px solid #f8f9fc; color:#333;
+    }
+    .data-table tr:last-child td { border-bottom:none; }
+    .data-table tr:hover td { background:#f8faff; }
+
+    /* 배지 */
+    .badge {
+        display:inline-block; padding:2px 8px; border-radius:20px;
+        font-size:11px; font-weight:600;
+    }
+    .badge-success  { background:#e8f5e9; color:#2e7d32; }
+    .badge-fail     { background:#fff0f0; color:#c62828; }
+    .badge-super    { background:#fce4ec; color:#880e4f; }
+    .badge-manager  { background:#e8f5e9; color:#1b5e20; }
+    .badge-operator { background:#e3f2fd; color:#0d47a1; }
+
+    /* 페이지네이션 */
+    .pagination {
+        display:flex; justify-content:center; gap:6px; margin-top:20px;
+    }
+    .page-btn {
+        padding:6px 12px; border:1px solid #dde3ef; border-radius:6px;
+        background:#fff; color:#333; font-size:13px; cursor:pointer;
+    }
+    .page-btn.active {
+        background:#003087; color:#fff; border-color:#003087;
+        font-weight:600;
+    }
+    .page-btn:disabled { color:#ccc; cursor:default; }
+
+    /* 빈 상태 */
+    .empty-row td {
+        text-align:center; color:#aaa; padding:32px 0 !important;
+        font-size:13px;
+    }
+  </style>
+</head>
+<body>
+<div id="app-header"></div>
+
+<div class="wrap">
+  <div class="page-title">
+    로그 조회
+    <a href="/admin/dashboard.html">← 대시보드로</a>
+  </div>
+
+  <!-- 탭 -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('admin', this)">
+        관리자 활동 로그
+    </button>
+    <button class="tab-btn" onclick="switchTab('audit', this)">
+        감사 로그 (로그인/보안)
+    </button>
+    <button class="tab-btn" onclick="switchTab('user', this)">
+        회원 활동 로그
+    </button>
+  </div>
+
+  <!-- 필터 -->
+  <div class="filter-card">
+    <div class="filter-row" id="filter-row">
+      <!-- 탭별로 동적 렌더링 -->
+    </div>
+  </div>
+
+  <!-- 테이블 -->
+  <div class="table-card">
+    <div class="table-header">
+      <h3 id="table-title">관리자 활동 로그</h3>
+      <span id="table-count">총 0건</span>
+    </div>
+    <table class="data-table">
+      <thead id="table-head"></thead>
+      <tbody id="table-body">
+        <tr class="empty-row"><td colspan="7">불러오는 중...</td></tr>
+      </tbody>
+    </table>
+    <div class="pagination" id="pagination"></div>
+  </div>
+</div>
+
+<script>
+// ── 상태 ─────────────────────────────────────────────────────────────
+let currentTab  = 'admin';
+let currentPage = 0;
+const PAGE_SIZE = 20;
+
+// ── API 헬퍼 ─────────────────────────────────────────────────────────
+async function adminApi(method, url) {
+    const res  = await fetch(url, { method, credentials:'include' });
+    const json = await res.json().catch(() => ({}));
+    return { ok: res.ok, json };
+}
+
+// ── 탭 전환 ──────────────────────────────────────────────────────────
+function switchTab(tab, btn) {
+    currentTab  = tab;
+    currentPage = 0;
+    document.querySelectorAll('.tab-btn')
+            .forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderFilter();
+    loadLogs();
+}
+
+// ── 필터 렌더링 ───────────────────────────────────────────────────────
+function renderFilter() {
+    const row = document.getElementById('filter-row');
+
+    if (currentTab === 'admin') {
+        row.innerHTML = `
+            <div class="filter-group">
+                <label>관리자명</label>
+                <input type="text" id="f-admin-name" placeholder="이름 검색">
+            </div>
+            <div class="filter-group">
+                <label>역할</label>
+                <select id="f-role">
+                    <option value="">전체</option>
+                    <option value="SUPER_ADMIN">SUPER_ADMIN</option>
+                    <option value="MANAGER">MANAGER</option>
+                    <option value="OPERATOR">OPERATOR</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>결과</label>
+                <select id="f-result">
+                    <option value="">전체</option>
+                    <option value="S">성공</option>
+                    <option value="F">실패</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>시작일</label>
+                <input type="date" id="f-from">
+            </div>
+            <div class="filter-group">
+                <label>종료일</label>
+                <input type="date" id="f-to">
+            </div>
+            <button class="btn-search" onclick="search()">검색</button>
+            <button class="btn-reset"  onclick="reset()">초기화</button>
+        `;
+
+    } else if (currentTab === 'audit') {
+        row.innerHTML = `
+            <div class="filter-group">
+                <label>액션</label>
+                <select id="f-action">
+                    <option value="">전체</option>
+                    <option value="LOGIN">로그인</option>
+                    <option value="LOGOUT">로그아웃</option>
+                    <option value="SIGNUP">회원가입</option>
+                    <option value="PASSWORD_CHANGE">비밀번호 변경</option>
+                    <option value="TOKEN_REFRESH">토큰 재발급</option>
+                    <option value="SYSTEM_ERROR">시스템 오류</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>결과</label>
+                <select id="f-result">
+                    <option value="">전체</option>
+                    <option value="S">성공</option>
+                    <option value="F">실패</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>IP</label>
+                <input type="text" id="f-ip" placeholder="IP 검색">
+            </div>
+            <div class="filter-group">
+                <label>시작일</label>
+                <input type="date" id="f-from">
+            </div>
+            <div class="filter-group">
+                <label>종료일</label>
+                <input type="date" id="f-to">
+            </div>
+            <button class="btn-search" onclick="search()">검색</button>
+            <button class="btn-reset"  onclick="reset()">초기화</button>
+        `;
+
+    } else {
+        row.innerHTML = `
+            <div class="filter-group">
+                <label>액션</label>
+                <select id="f-action">
+                    <option value="">전체</option>
+                    <option value="CARD_APPLY">카드 신청</option>
+                    <option value="TERMS_AGREE">약관 동의</option>
+                    <option value="FILE_UPLOAD">파일 업로드</option>
+                    <option value="FILE_DOWNLOAD">파일 다운로드</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>결과</label>
+                <select id="f-result">
+                    <option value="">전체</option>
+                    <option value="S">성공</option>
+                    <option value="F">실패</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>시작일</label>
+                <input type="date" id="f-from">
+            </div>
+            <div class="filter-group">
+                <label>종료일</label>
+                <input type="date" id="f-to">
+            </div>
+            <button class="btn-search" onclick="search()">검색</button>
+            <button class="btn-reset"  onclick="reset()">초기화</button>
+        `;
+    }
+}
+
+// ── 검색 / 초기화 ─────────────────────────────────────────────────────
+function search() { currentPage = 0; loadLogs(); }
+function reset() {
+    document.querySelectorAll('.filter-card input, .filter-card select')
+            .forEach(el => el.value = '');
+    currentPage = 0;
+    loadLogs();
+}
+
+// ── 쿼리 파라미터 수집 ────────────────────────────────────────────────
+function buildParams() {
+    const p = new URLSearchParams({ page: currentPage, size: PAGE_SIZE });
+    const get = id => {
+        const el = document.getElementById(id);
+        return el ? el.value.trim() : '';
+    };
+
+    if (currentTab === 'admin') {
+        if (get('f-admin-name')) p.set('adminName', get('f-admin-name'));
+        if (get('f-role'))       p.set('roleCode',  get('f-role'));
+        if (get('f-result'))     p.set('result',    get('f-result'));
+        if (get('f-from'))       p.set('from',      get('f-from'));
+        if (get('f-to'))         p.set('to',        get('f-to'));
+
+    } else if (currentTab === 'audit') {
+        if (get('f-action')) p.set('action', get('f-action'));
+        if (get('f-result')) p.set('result', get('f-result'));
+        if (get('f-ip'))     p.set('ip',     get('f-ip'));
+        if (get('f-from'))   p.set('from',   get('f-from'));
+        if (get('f-to'))     p.set('to',     get('f-to'));
+
+    } else {
+        if (get('f-action')) p.set('action', get('f-action'));
+        if (get('f-result')) p.set('result', get('f-result'));
+        if (get('f-from'))   p.set('from',   get('f-from'));
+        if (get('f-to'))     p.set('to',     get('f-to'));
+    }
+    return p;
+}
+
+// ── 로그 조회 ─────────────────────────────────────────────────────────
+async function loadLogs() {
+    const tbody = document.getElementById('table-body');
+    tbody.innerHTML =
+        '<tr class="empty-row"><td colspan="7">불러오는 중...</td></tr>';
+
+    const params = buildParams();
+    const urlMap = {
+        admin: `/api/admin/logs/admin-activity?${params}`,
+        audit: `/api/admin/logs/audit?${params}`,
+        user:  `/api/admin/logs/user-activity?${params}`,
+    };
+
+    const r = await adminApi('GET', urlMap[currentTab]);
+    if (!r.ok) {
+        tbody.innerHTML =
+            '<tr class="empty-row"><td colspan="7">조회 실패</td></tr>';
+        return;
+    }
+
+    const data       = r.json.data ?? {};
+    const items      = data.content ?? data ?? [];
+    const totalCount = data.totalCount ?? items.length;
+
+    document.getElementById('table-count').textContent =
+        `총 ${totalCount.toLocaleString()}건`;
+
+    if (!items.length) {
+        renderHead();
+        tbody.innerHTML =
+            '<tr class="empty-row"><td colspan="7">조회된 데이터가 없습니다.</td></tr>';
+        renderPagination(0);
+        return;
+    }
+
+    renderHead();
+    renderRows(items);
+    renderPagination(totalCount);
+}
+
+// ── 테이블 헤더 ───────────────────────────────────────────────────────
+function renderHead() {
+    const head = document.getElementById('table-head');
+    const titleMap = {
+        admin: '관리자 활동 로그',
+        audit: '감사 로그',
+        user:  '회원 활동 로그',
+    };
+    document.getElementById('table-title').textContent = titleMap[currentTab];
+
+    const headers = {
+        admin: ['로그 ID','관리자','역할','액션','결과','대상','일시'],
+        audit: ['로그 ID','액션','결과','IP','URI','일시',''],
+        user:  ['로그 ID','액션','결과','대상','상세','IP','일시'],
+    };
+    head.innerHTML = `<tr>${headers[currentTab]
+        .map(h => `<th>${h}</th>`).join('')}</tr>`;
+}
+
+// ── 테이블 행 ─────────────────────────────────────────────────────────
+function renderRows(items) {
+    const tbody = document.getElementById('table-body');
+
+    if (currentTab === 'admin') {
+        tbody.innerHTML = items.map(d => `
+            <tr>
+                <td style="color:#aaa;font-size:12px;">
+                    ${d.logId      ?? d.LOG_ID      ?? '-'}</td>
+                <td><b>${d.adminName  ?? d.ADMIN_NAME  ?? '-'}</b></td>
+                <td>${roleBadge(d.roleCode ?? d.ROLE_CODE)}</td>
+                <td>${d.action     ?? d.ACTION     ?? '-'}</td>
+                <td>${resultBadge(d.result ?? d.RESULT)}</td>
+                <td style="font-size:12px;color:#888;">
+                    ${d.targetId   ?? d.TARGET_ID   ?? '-'}</td>
+                <td style="font-size:12px;color:#888;white-space:nowrap;">
+                    ${d.occurredAt ?? d.OCCURRED_AT ?? '-'}</td>
+            </tr>`).join('');
+
+    } else if (currentTab === 'audit') {
+        tbody.innerHTML = items.map(d => `
+            <tr>
+                <td style="color:#aaa;font-size:12px;">
+                    ${d.logId      ?? d.LOG_ID      ?? '-'}</td>
+                <td>${d.action     ?? d.ACTION      ?? '-'}</td>
+                <td>${resultBadge(d.result ?? d.RESULT)}</td>
+                <td style="font-size:12px;color:#888;">
+                    ${d.clientIp   ?? d.CLIENT_IP   ?? '-'}</td>
+                <td style="font-size:12px;color:#888;max-width:200px;
+                           overflow:hidden;text-overflow:ellipsis;">
+                    ${d.requestUri ?? d.REQUEST_URI ?? '-'}</td>
+                <td style="font-size:12px;color:#888;white-space:nowrap;">
+                    ${d.occurredAt ?? d.OCCURRED_AT ?? '-'}</td>
+                <td></td>
+            </tr>`).join('');
+
+    } else {
+        tbody.innerHTML = items.map(d => `
+            <tr>
+                <td style="color:#aaa;font-size:12px;">
+                    ${d.logId    ?? d.LOG_ID    ?? '-'}</td>
+                <td>${d.action   ?? d.ACTION    ?? '-'}</td>
+                <td>${resultBadge(d.result ?? d.RESULT)}</td>
+                <td style="font-size:12px;color:#888;">
+                    ${d.targetId ?? d.TARGET_ID ?? '-'}</td>
+                <td style="font-size:12px;color:#888;max-width:200px;
+                           overflow:hidden;text-overflow:ellipsis;">
+                    ${d.detail   ?? d.DETAIL    ?? '-'}</td>
+                <td style="font-size:12px;color:#888;">
+                    ${d.clientIp ?? d.CLIENT_IP ?? '-'}</td>
+                <td style="font-size:12px;color:#888;white-space:nowrap;">
+                    ${d.occurredAt ?? d.OCCURRED_AT ?? '-'}</td>
+            </tr>`).join('');
+    }
+}
+
+// ── 페이지네이션 ──────────────────────────────────────────────────────
+function renderPagination(totalCount) {
+    const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+    const pg = document.getElementById('pagination');
+    if (totalPages <= 1) { pg.innerHTML = ''; return; }
+
+    const start = Math.max(0, currentPage - 2);
+    const end   = Math.min(totalPages - 1, start + 4);
+    let html = `<button class="page-btn"
+                    ${currentPage === 0 ? 'disabled' : ''}
+                    onclick="goPage(${currentPage - 1})">이전</button>`;
+    for (let i = start; i <= end; i++) {
+        html += `<button class="page-btn ${i === currentPage ? 'active' : ''}"
+                         onclick="goPage(${i})">${i + 1}</button>`;
+    }
+    html += `<button class="page-btn"
+                 ${currentPage === totalPages - 1 ? 'disabled' : ''}
+                 onclick="goPage(${currentPage + 1})">다음</button>`;
+    pg.innerHTML = html;
+}
+
+function goPage(page) { currentPage = page; loadLogs(); }
+
+// ── 배지 헬퍼 ────────────────────────────────────────────────────────
+function roleBadge(code) {
+    const cls = code === 'SUPER_ADMIN' ? 'badge-super'
+              : code === 'MANAGER'     ? 'badge-manager'
+              : 'badge-operator';
+    return `<span class="badge ${cls}">${code ?? '-'}</span>`;
+}
+
+function resultBadge(result) {
+    const cls   = result === 'S' ? 'badge-success' : 'badge-fail';
+    const label = result === 'S' ? '성공' : '실패';
+    return `<span class="badge ${cls}">${label}</span>`;
+}
+
+// ── 초기화 ───────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    renderFilter();
+    loadLogs();
+});
+</script>
+
+<script src="/js/utils.js"></script>
+<script src="/js/header.js"></script>
+</body>
+</html>
