@@ -102,6 +102,7 @@ CREATE SEQUENCE SEQ_USER_PWD_HIST      START WITH 1 INCREMENT BY 1 NOCACHE NOCYC
 CREATE SEQUENCE SEQ_USER_CDD           START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
 CREATE SEQUENCE SEQ_TRUSTED_IPS        START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
 CREATE SEQUENCE SEQ_WATCHLIST          START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_ADMIN_SESSIONS 	   START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
 
 
 -- ── 테이블 ────────────────────────────────────────────────────────
@@ -293,6 +294,21 @@ COMMENT ON COLUMN WATCHLIST.ci_value          IS 'AES-256-GCM 암호화 저장';
 COMMENT ON COLUMN WATCHLIST.ci_value_hash     IS 'SHA-256(ci_value). 인덱스 기반 조회용';
 COMMENT ON COLUMN WATCHLIST.birth_date_hash   IS 'SHA-256(birth_date). 인덱스 기반 조회용';
 
+CREATE TABLE ADMIN_SESSIONS (
+    session_id      NUMBER(10)     PRIMARY KEY,
+    admin_id        NUMBER(10)     NOT NULL,
+    refresh_token   VARCHAR2(1000) NOT NULL,
+    ip_address      VARCHAR2(100),
+    user_agent      VARCHAR2(1000),
+    revoked_yn      CHAR(1)        DEFAULT 'N' CHECK (revoked_yn IN ('Y','N')),
+    revoked_at      TIMESTAMP,
+    expires_at      TIMESTAMP      NOT NULL,
+    created_at      TIMESTAMP      DEFAULT SYSTIMESTAMP,
+    CONSTRAINT FK_ADMIN_SESSIONS_ADMIN
+        FOREIGN KEY (admin_id) REFERENCES ADMIN_USERS(admin_id)
+);
+COMMENT ON TABLE ADMIN_SESSIONS IS '관리자 로그인 세션 (JWT Refresh Token)';
+
 
 -- ── 트리거 ────────────────────────────────────────────────────────
 
@@ -406,6 +422,7 @@ CREATE INDEX IDX_TRUSTED_IPS_INIT      ON USER_TRUSTED_IPS(user_id, is_initial);
 CREATE INDEX IDX_WATCHLIST_NAME        ON WATCHLIST(name);
 CREATE INDEX IDX_WATCHLIST_CI_HASH     ON WATCHLIST(ci_value_hash);
 CREATE INDEX IDX_WATCHLIST_NAME_BD     ON WATCHLIST(name, birth_date_hash);
-
+CREATE INDEX IDX_ADMIN_SESSIONS_ADMIN  ON ADMIN_SESSIONS(admin_id);
+CREATE INDEX IDX_ADMIN_SESSIONS_TOKEN  ON ADMIN_SESSIONS(refresh_token);
 
 COMMIT;

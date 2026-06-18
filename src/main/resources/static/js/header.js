@@ -359,21 +359,24 @@
 	    const btn = document.getElementById('hdrRefresh');
 	    if (btn) { btn.disabled = true; btn.textContent = '재발급 중...'; }
 
-	    const res = await BnkAPI.post('/api/auth/refresh');
+	    const refreshUrl = IS_ADMIN ? '/api/admin/auth/refresh' : '/api/auth/refresh';
+	    const redirectUrl = IS_ADMIN ? ADMIN_LOGIN_URL : LOGIN_URL;
+
+	    const res = await BnkAPI.post(refreshUrl);
 
 	    if (btn) { btn.disabled = false; btn.textContent = '토큰 재발급'; }
 
 	    if (res.ok) {
 	        sessionStorage.setItem(CACHE_KEY_LOGIN_AT, String(Date.now()));
-	        startTokenTimer(); // 타이머 재시작
+	        startTokenTimer();
 	        BnkToast.success('토큰이 재발급되었습니다.');
-		} else {
-		    const msg = BnkError.extract(res.data, '세션이 만료되었습니다. 다시 로그인해 주세요.');
-		    BnkToast.error(msg);
-		    clearCache();
-		    stopTokenTimer();
-		    setTimeout(() => location.replace(LOGIN_URL), 1500);
-		}
+	    } else {
+	        const msg = BnkError.extract(res.data, '세션이 만료되었습니다. 다시 로그인해 주세요.');
+	        BnkToast.error(msg);
+	        clearCache();
+	        stopTokenTimer();
+	        setTimeout(() => location.replace(redirectUrl), 1500); // ★ 관리자면 /admin/login
+	    }
 	}
 
     /* ─────────────────────────────────────────────────────────────
