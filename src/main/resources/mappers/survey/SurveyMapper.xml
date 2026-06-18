@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bnk.domain.survey.mapper.SurveyMapper">
+
+    <!-- 설문 저장 -->
+    <insert id="insertSurvey" parameterType="com.bnk.domain.survey.model.CardSurvey">
+        <selectKey keyProperty="surveyId" resultType="long" order="BEFORE">
+            SELECT SEQ_CARD_SURVEYS.NEXTVAL FROM DUAL
+        </selectKey>
+        INSERT INTO CARD_SURVEYS (
+            survey_id, user_id, submitted_at, reward_given_yn
+        ) VALUES (
+            #{surveyId},
+            #{userId},
+            SYSTIMESTAMP,
+            #{rewardGivenYn, jdbcType=VARCHAR,
+              typeHandler=org.apache.ibatis.type.StringTypeHandler}
+        )
+    </insert>
+
+    <!-- 설문 응답 저장 -->
+    <insert id="insertAnswer" parameterType="com.bnk.domain.survey.model.CardSurveyAnswer">
+        <selectKey keyProperty="answerId" resultType="long" order="BEFORE">
+            SELECT SEQ_CARD_SURVEY_ANSWERS.NEXTVAL FROM DUAL
+        </selectKey>
+        INSERT INTO CARD_SURVEY_ANSWERS (
+            answer_id, survey_id, question_code, answer_value
+        ) VALUES (
+            #{answerId},
+            #{surveyId},
+            #{questionCode, jdbcType=VARCHAR,
+              typeHandler=org.apache.ibatis.type.StringTypeHandler},
+            #{answerValue,  jdbcType=VARCHAR,
+              typeHandler=org.apache.ibatis.type.StringTypeHandler}
+        )
+    </insert>
+
+    <!-- 자유 의견 저장 -->
+    <insert id="insertComment" parameterType="com.bnk.domain.survey.model.CardSurveyComment">
+        <selectKey keyProperty="commentId" resultType="long" order="BEFORE">
+            SELECT SEQ_CARD_SURVEY_COMMENTS.NEXTVAL FROM DUAL
+        </selectKey>
+        INSERT INTO CARD_SURVEY_COMMENTS (
+            comment_id, survey_id, user_id, comment_text, created_at
+        ) VALUES (
+            #{commentId},
+            #{surveyId},
+            #{userId},
+            #{commentText, jdbcType=VARCHAR,
+              typeHandler=org.apache.ibatis.type.StringTypeHandler},
+            SYSTIMESTAMP
+        )
+    </insert>
+
+    <!-- 이번 달 제출 여부 -->
+    <select id="countThisMonth" resultType="int">
+        SELECT COUNT(*) FROM CARD_SURVEYS
+        WHERE user_id    = #{userId}
+          AND TRUNC(submitted_at, 'MM') = TRUNC(SYSDATE, 'MM')
+    </select>
+
+    <!-- 마지막 설문 조회 -->
+    <select id="findLastByUserId"
+            resultType="com.bnk.domain.survey.model.CardSurvey">
+        SELECT survey_id      AS surveyId,
+               user_id        AS userId,
+               submitted_at   AS submittedAt,
+               reward_given_yn AS rewardGivenYn
+        FROM CARD_SURVEYS
+        WHERE user_id = #{userId}
+        ORDER BY submitted_at DESC
+        FETCH FIRST 1 ROWS ONLY
+    </select>
+
+    <!-- 감정분석 안 된 댓글 목록 -->
+    <select id="findUnanalyzedComments"
+            resultType="com.bnk.domain.survey.model.CardSurveyComment">
+        SELECT comment_id   AS commentId,
+               survey_id    AS surveyId,
+               user_id      AS userId,
+               comment_text AS commentText,
+               created_at   AS createdAt
+        FROM CARD_SURVEY_COMMENTS
+        WHERE sentiment IS NULL
+          AND comment_text IS NOT NULL
+        ORDER BY created_at ASC
+        FETCH FIRST 50 ROWS ONLY
+    </select>
+
+    <!-- 감정분석 결과 업데이트 -->
+    <update id="updateSentiment">
+        UPDATE CARD_SURVEY_COMMENTS
+        SET sentiment       = #{sentiment, jdbcType=VARCHAR,
+                               typeHandler=org.apache.ibatis.type.StringTypeHandler},
+            sentiment_score = #{sentimentScore, jdbcType=NUMERIC},
+            analyzed_at     = SYSTIMESTAMP
+        WHERE comment_id = #{commentId}
+    </update>
+
+</mapper>

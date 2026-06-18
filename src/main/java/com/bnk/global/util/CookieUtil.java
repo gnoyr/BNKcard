@@ -104,4 +104,26 @@ public class CookieUtil {
                 .map(Cookie::getValue)
                 .findFirst();
     }
+    
+    /** 관리자 Refresh Token 쿠키 — path=/api/admin/auth */
+    public ResponseCookie createAdminRefreshCookie(String token, long maxAgeSec) {
+        return ResponseCookie.from(REFRESH_TOKEN_COOKIE, token)
+                .httpOnly(true)
+                .secure(secure)
+                .path("/api/admin/auth")   // 일반 /api/auth 와 분리
+                .maxAge(maxAgeSec)
+                .sameSite("Lax")
+                .build();
+    }
+
+    /** 관리자 Refresh Token 쿠키 삭제 */
+    public ResponseCookie deleteAdminRefreshCookie() {
+        return ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
+                .httpOnly(true)
+                .secure(secure)
+                .path("/api/admin/auth")
+                .maxAge(0)
+                .sameSite("Lax")
+                .build();
+    }
 }

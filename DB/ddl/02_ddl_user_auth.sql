@@ -1,0 +1,433 @@
+-- ================================================================
+-- BNK 부산은행 금융 상품 플랫폼
+-- [도메인 02] 회원 · 인증 · 보안
+-- Oracle 21c
+-- 포함 테이블:
+--   USERS (ALTER 포함: phone, ci_value, birth_date, name, 보안컬럼)
+--   USER_SESSIONS, LOGIN_HISTORIES, AUDIT_LOGS
+--   APPROVAL_REQUESTS, APPROVAL_LINES
+--   USER_PASSWORD_HISTORIES, USER_CDD_CHECKS
+--   USER_TRUSTED_IPS, WATCHLIST
+-- ================================================================
+
+
+-- ================================================================
+-- [SECTION 1] DROP (재실행 대비 — 의존 순서 역순)
+-- ================================================================
+
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_TRUSTED_IPS_BU';              EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_TRUSTED_IPS_BI';              EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_USER_CDD_BI';                 EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_USER_PWD_HIST_BI';            EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_APPROVAL_LINES_BI';           EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_APPROVAL_REQUESTS_BI';        EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_AUDIT_LOGS_NO_UPD';           EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_AUDIT_LOGS_NO_DEL';           EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_AUDIT_LOGS_BI';               EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_LOGIN_HISTORIES_BI';          EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_USER_SESSIONS_BI';            EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_USERS_BU';                    EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_USERS_BI';                    EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_WATCHLIST_BI';                EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE USER_TRUSTED_IPS         CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE USER_CDD_CHECKS          CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE USER_PASSWORD_HISTORIES  CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE APPROVAL_LINES           CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE APPROVAL_REQUESTS        CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE AUDIT_LOGS               CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE LOGIN_HISTORIES          CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE USER_SESSIONS            CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE USERS                    CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE WATCHLIST                CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE ADMIN_SESSIONS CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_ADMIN_SESSIONS'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_TRUSTED_IPS';         EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_USER_CDD';            EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_USER_PWD_HIST';       EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_APPROVAL_LINES';      EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_APPROVAL_REQUESTS';   EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_AUDIT_LOGS';          EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_LOGIN_HISTORIES';     EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_USER_SESSIONS';       EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_USERS';               EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_WATCHLIST';           EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+
+
+-- ================================================================
+-- [SECTION 2] CREATE
+-- ================================================================
+
+-- ── 시퀀스 ────────────────────────────────────────────────────────
+CREATE SEQUENCE SEQ_USERS              START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_USER_SESSIONS      START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_LOGIN_HISTORIES    START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_AUDIT_LOGS         START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_APPROVAL_REQUESTS  START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_APPROVAL_LINES     START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_USER_PWD_HIST      START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_USER_CDD           START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_TRUSTED_IPS        START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_WATCHLIST          START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_ADMIN_SESSIONS 	   START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+
+
+-- ── 테이블 ────────────────────────────────────────────────────────
+
+-- 08. USERS
+-- [최종 컬럼 상태: ALTER 이력 통합]
+--   - phone      VARCHAR2(300)   ← AES 암호화 저장 (원래 20 → 300으로 확장)
+--   - ci_value   VARCHAR2(500)   ← AES 암호화 저장 (원래 200 → 500으로 확장)
+--   - birth_date VARCHAR2(200)   ← 문자열 'YYYY-MM-DD' (원래 DATE → VARCHAR2로 변환)
+--   - name       VARCHAR2(100 CHAR) ← 한글 지원 확장
+--   - password_version, mfa_enabled, mfa_secret, cdd_status_code 추가
+CREATE TABLE USERS (
+    user_id                     NUMBER(10)       PRIMARY KEY,
+    email                       VARCHAR2(100)    NOT NULL UNIQUE,
+    password_hash               VARCHAR2(255)    NOT NULL,
+    name                        VARCHAR2(100 CHAR) NOT NULL,
+    phone                       VARCHAR2(300),   -- AES 암호화 저장
+    birth_date                  VARCHAR2(200),   -- 'YYYY-MM-DD' 형식 문자열
+    ci_value                    VARCHAR2(500),   -- AES 암호화 저장
+    job                         VARCHAR2(50),
+    income_level_code           VARCHAR2(50),
+    credit_score                NUMBER(4)        DEFAULT 0,
+    status_code                 VARCHAR2(50)     DEFAULT 'ACTIVE',
+    login_fail_count            NUMBER(5)        DEFAULT 0,
+    locked_until                TIMESTAMP,
+    last_login_at               TIMESTAMP,
+    last_password_changed_at    TIMESTAMP,
+    is_email_verified           CHAR(1)          DEFAULT 'N' CHECK (is_email_verified  IN ('Y','N')),
+    is_phone_verified           CHAR(1)          DEFAULT 'N' CHECK (is_phone_verified  IN ('Y','N')),
+    push_enabled                CHAR(1)          DEFAULT 'Y' CHECK (push_enabled       IN ('Y','N')),
+    marketing_agree             CHAR(1)          DEFAULT 'N' CHECK (marketing_agree    IN ('Y','N')),
+    privacy_agree               CHAR(1)          DEFAULT 'Y' CHECK (privacy_agree      IN ('Y','N')),
+    dormant_at                  TIMESTAMP,
+    withdrawn_at                TIMESTAMP,
+    -- 보안 확장 컬럼 (step1_ddl.sql ALTER 통합)
+    password_version            NUMBER(3)        DEFAULT 1,
+    mfa_enabled                 CHAR(1)          DEFAULT 'N' CHECK (mfa_enabled IN ('Y','N')),
+    mfa_secret                  VARCHAR2(300),
+    cdd_status_code             VARCHAR2(20)     DEFAULT 'PENDING'
+                                    CHECK (cdd_status_code IN ('PENDING','VERIFIED','REJECTED','ENHANCED')),
+    created_at                  TIMESTAMP        DEFAULT SYSTIMESTAMP,
+    created_by                  NUMBER(10),
+    updated_at                  TIMESTAMP,
+    updated_by                  NUMBER(10),
+    deleted_yn                  CHAR(1)          DEFAULT 'N' CHECK (deleted_yn IN ('Y','N')),
+    deleted_at                  TIMESTAMP
+);
+COMMENT ON TABLE  USERS                    IS '일반 사용자 회원 정보';
+COMMENT ON COLUMN USERS.phone              IS 'AES-256-GCM 암호화 저장. 조회 시 Java에서 복호화';
+COMMENT ON COLUMN USERS.ci_value           IS 'AES-256-GCM 암호화 저장. 본인확인 연계정보';
+COMMENT ON COLUMN USERS.birth_date         IS 'YYYY-MM-DD 문자열. AES 암호화 가능';
+COMMENT ON COLUMN USERS.cdd_status_code    IS 'PENDING/VERIFIED/REJECTED/ENHANCED';
+
+-- 09. USER_SESSIONS
+CREATE TABLE USER_SESSIONS (
+    session_id      NUMBER(10)     PRIMARY KEY,
+    user_id         NUMBER(10)     NOT NULL,
+    refresh_token   VARCHAR2(1000) NOT NULL,
+    device_info     VARCHAR2(500),
+    ip_address      VARCHAR2(100),
+    user_agent      VARCHAR2(1000),
+    revoked_yn      CHAR(1)        DEFAULT 'N' CHECK (revoked_yn IN ('Y','N')),
+    revoked_at      TIMESTAMP,
+    expires_at      TIMESTAMP      NOT NULL,
+    created_at      TIMESTAMP      DEFAULT SYSTIMESTAMP,
+    CONSTRAINT FK_USER_SESSIONS_USER FOREIGN KEY (user_id) REFERENCES USERS(user_id)
+);
+COMMENT ON TABLE USER_SESSIONS IS '사용자 로그인 세션 (JWT Refresh Token)';
+
+-- 10. LOGIN_HISTORIES
+CREATE TABLE LOGIN_HISTORIES (
+    history_id          NUMBER(10)     PRIMARY KEY,
+    user_type_code      VARCHAR2(50),
+    user_id             NUMBER(10),
+    login_result_code   VARCHAR2(50),
+    fail_reason         VARCHAR2(500),
+    ip_address          VARCHAR2(100),
+    device_info         VARCHAR2(500),
+    user_agent          VARCHAR2(1000),
+    login_at            TIMESTAMP      DEFAULT SYSTIMESTAMP
+);
+COMMENT ON TABLE LOGIN_HISTORIES IS '로그인 시도 이력';
+
+-- 11. AUDIT_LOGS
+CREATE TABLE AUDIT_LOGS (
+    audit_log_id        NUMBER(10)     PRIMARY KEY,
+    actor_type_code     VARCHAR2(50),
+    actor_id            NUMBER(10),
+    action_type_code    VARCHAR2(100),
+    target_type_code    VARCHAR2(100),
+    target_id           NUMBER(10),
+    description         VARCHAR2(4000),
+    ip_address          VARCHAR2(100),
+    user_agent          VARCHAR2(1000),
+    created_at          TIMESTAMP      DEFAULT SYSTIMESTAMP
+);
+COMMENT ON TABLE AUDIT_LOGS IS '보안 감사 로그 (삭제·수정 불가)';
+
+-- 12. APPROVAL_REQUESTS
+CREATE TABLE APPROVAL_REQUESTS (
+    approval_id             NUMBER(10)     PRIMARY KEY,
+    request_type_code       VARCHAR2(50),
+    requester_admin_id      NUMBER(10)     NOT NULL,
+    target_id               NUMBER(10),
+    status_code             VARCHAR2(50),
+    request_comment         VARCHAR2(2000),
+    requested_at            TIMESTAMP      DEFAULT SYSTIMESTAMP,
+    completed_at            TIMESTAMP,
+    CONSTRAINT FK_APPROVAL_REQUEST_ADMIN FOREIGN KEY (requester_admin_id) REFERENCES ADMIN_USERS(admin_id)
+);
+COMMENT ON TABLE APPROVAL_REQUESTS IS '관리자 결재 요청';
+
+-- 13. APPROVAL_LINES
+CREATE TABLE APPROVAL_LINES (
+    approval_line_id    NUMBER(10)     PRIMARY KEY,
+    approval_id         NUMBER(10)     NOT NULL,
+    approver_admin_id   NUMBER(10)     NOT NULL,
+    approval_order      NUMBER(3)      NOT NULL,
+    status_code         VARCHAR2(50),
+    comment_text        VARCHAR2(2000),
+    approved_at         TIMESTAMP,
+    CONSTRAINT FK_APPROVAL_LINE_APPROVAL FOREIGN KEY (approval_id)       REFERENCES APPROVAL_REQUESTS(approval_id),
+    CONSTRAINT FK_APPROVAL_LINE_ADMIN    FOREIGN KEY (approver_admin_id) REFERENCES ADMIN_USERS(admin_id)
+);
+COMMENT ON TABLE APPROVAL_LINES IS '결재 승인 라인';
+
+-- 보안 확장: USER_PASSWORD_HISTORIES
+CREATE TABLE USER_PASSWORD_HISTORIES (
+    history_id    NUMBER(19)     PRIMARY KEY,
+    user_id       NUMBER(10)     NOT NULL,
+    password_hash VARCHAR2(255)  NOT NULL,
+    created_at    TIMESTAMP      DEFAULT SYSTIMESTAMP,
+    CONSTRAINT FK_PWD_HIST_USER FOREIGN KEY (user_id) REFERENCES USERS(user_id)
+);
+COMMENT ON TABLE USER_PASSWORD_HISTORIES IS '비밀번호 이력 (재사용 방지)';
+
+-- 보안 확장: USER_CDD_CHECKS
+CREATE TABLE USER_CDD_CHECKS (
+    cdd_id               NUMBER(19)    PRIMARY KEY,
+    user_id              NUMBER(10)    NOT NULL,
+    cdd_level            VARCHAR2(20)  DEFAULT 'SIMPLE'
+                             CHECK (cdd_level IN ('SIMPLE','NORMAL','ENHANCED')),
+    identity_verified_at TIMESTAMP,
+    transaction_purpose  VARCHAR2(200),
+    pep_yn               CHAR(1)       DEFAULT 'N' CHECK (pep_yn IN ('Y','N')),
+    check_result_code    VARCHAR2(50),
+    checked_at           TIMESTAMP,
+    created_at           TIMESTAMP     DEFAULT SYSTIMESTAMP,
+    CONSTRAINT FK_CDD_USER FOREIGN KEY (user_id) REFERENCES USERS(user_id)
+);
+COMMENT ON TABLE USER_CDD_CHECKS IS '고객 확인 의무(CDD/EDD) 이력';
+
+-- 보안 확장: USER_TRUSTED_IPS
+CREATE TABLE USER_TRUSTED_IPS (
+    trust_id         NUMBER(19)    PRIMARY KEY,
+    user_id          NUMBER(10)    NOT NULL,
+    ip_address_hash  VARCHAR2(64)  NOT NULL,   -- SHA-256(ip_address)
+    label            VARCHAR2(100),
+    status_code      VARCHAR2(20)  DEFAULT 'ACTIVE' CHECK (status_code IN ('ACTIVE','DISABLED')),
+    is_initial       CHAR(1)       DEFAULT 'N' CHECK (is_initial IN ('Y','N')),
+    registered_via   VARCHAR2(50),             -- SIGNUP / EMAIL_VERIFY / CI_VERIFY / ADMIN
+    registered_at    TIMESTAMP     DEFAULT SYSTIMESTAMP,
+    last_used_at     TIMESTAMP,
+    updated_at       TIMESTAMP,
+    deleted_yn       CHAR(1)       DEFAULT 'N' CHECK (deleted_yn IN ('Y','N')),
+    CONSTRAINT FK_TRUSTED_IPS_USER FOREIGN KEY (user_id) REFERENCES USERS(user_id)
+);
+COMMENT ON TABLE  USER_TRUSTED_IPS               IS '사용자 신뢰 IP 목록';
+COMMENT ON COLUMN USER_TRUSTED_IPS.ip_address_hash IS 'SHA-256(ip_address) 해시. 실제 IP는 저장하지 않음';
+COMMENT ON COLUMN USER_TRUSTED_IPS.status_code     IS 'ACTIVE / DISABLED';
+COMMENT ON COLUMN USER_TRUSTED_IPS.registered_via  IS '등록 경로: SIGNUP / EMAIL_VERIFY / CI_VERIFY / ADMIN';
+
+-- 보안 확장: WATCHLIST (요주의 인물 차단 목록)
+CREATE TABLE WATCHLIST (
+    watchlist_id     NUMBER(19)    PRIMARY KEY,
+    name             VARCHAR2(100) NOT NULL,
+    birth_date       VARCHAR2(200),             -- AES-256-GCM 암호화 저장
+    ci_value         VARCHAR2(500),             -- AES-256-GCM 암호화 저장
+    ci_value_hash    VARCHAR2(64),              -- SHA-256(ci_value) — 인덱스 조회용
+    birth_date_hash  VARCHAR2(64),              -- SHA-256(birth_date) — 인덱스 조회용
+    reason           VARCHAR2(500),
+    risk_level       VARCHAR2(20)  DEFAULT 'HIGH' CHECK (risk_level IN ('HIGH','MEDIUM')),
+    registered_at    TIMESTAMP     DEFAULT SYSTIMESTAMP,
+    registered_by    NUMBER(10),
+    deleted_yn       CHAR(1)       DEFAULT 'N' CHECK (deleted_yn IN ('Y','N'))
+);
+COMMENT ON TABLE  WATCHLIST                   IS '미가입 요주의 인물 사전 차단 목록';
+COMMENT ON COLUMN WATCHLIST.ci_value          IS 'AES-256-GCM 암호화 저장';
+COMMENT ON COLUMN WATCHLIST.ci_value_hash     IS 'SHA-256(ci_value). 인덱스 기반 조회용';
+COMMENT ON COLUMN WATCHLIST.birth_date_hash   IS 'SHA-256(birth_date). 인덱스 기반 조회용';
+
+CREATE TABLE ADMIN_SESSIONS (
+    session_id      NUMBER(10)     PRIMARY KEY,
+    admin_id        NUMBER(10)     NOT NULL,
+    refresh_token   VARCHAR2(1000) NOT NULL,
+    ip_address      VARCHAR2(100),
+    user_agent      VARCHAR2(1000),
+    revoked_yn      CHAR(1)        DEFAULT 'N' CHECK (revoked_yn IN ('Y','N')),
+    revoked_at      TIMESTAMP,
+    expires_at      TIMESTAMP      NOT NULL,
+    created_at      TIMESTAMP      DEFAULT SYSTIMESTAMP,
+    CONSTRAINT FK_ADMIN_SESSIONS_ADMIN
+        FOREIGN KEY (admin_id) REFERENCES ADMIN_USERS(admin_id)
+);
+COMMENT ON TABLE ADMIN_SESSIONS IS '관리자 로그인 세션 (JWT Refresh Token)';
+
+
+-- ── 트리거 ────────────────────────────────────────────────────────
+
+-- BEFORE INSERT — PK 자동 채번
+CREATE OR REPLACE TRIGGER TRG_USERS_BI
+BEFORE INSERT ON USERS FOR EACH ROW WHEN (NEW.user_id IS NULL)
+BEGIN :NEW.user_id := SEQ_USERS.NEXTVAL; END TRG_USERS_BI;
+/
+
+CREATE OR REPLACE TRIGGER TRG_USER_SESSIONS_BI
+BEFORE INSERT ON USER_SESSIONS FOR EACH ROW WHEN (NEW.session_id IS NULL)
+BEGIN :NEW.session_id := SEQ_USER_SESSIONS.NEXTVAL; END TRG_USER_SESSIONS_BI;
+/
+
+CREATE OR REPLACE TRIGGER TRG_LOGIN_HISTORIES_BI
+BEFORE INSERT ON LOGIN_HISTORIES FOR EACH ROW WHEN (NEW.history_id IS NULL)
+BEGIN :NEW.history_id := SEQ_LOGIN_HISTORIES.NEXTVAL; END TRG_LOGIN_HISTORIES_BI;
+/
+
+CREATE OR REPLACE TRIGGER TRG_AUDIT_LOGS_BI
+BEFORE INSERT ON AUDIT_LOGS FOR EACH ROW WHEN (NEW.audit_log_id IS NULL)
+BEGIN :NEW.audit_log_id := SEQ_AUDIT_LOGS.NEXTVAL; END TRG_AUDIT_LOGS_BI;
+/
+
+CREATE OR REPLACE TRIGGER TRG_APPROVAL_REQUESTS_BI
+BEFORE INSERT ON APPROVAL_REQUESTS FOR EACH ROW WHEN (NEW.approval_id IS NULL)
+BEGIN :NEW.approval_id := SEQ_APPROVAL_REQUESTS.NEXTVAL; END TRG_APPROVAL_REQUESTS_BI;
+/
+
+CREATE OR REPLACE TRIGGER TRG_APPROVAL_LINES_BI
+BEFORE INSERT ON APPROVAL_LINES FOR EACH ROW WHEN (NEW.approval_line_id IS NULL)
+BEGIN :NEW.approval_line_id := SEQ_APPROVAL_LINES.NEXTVAL; END TRG_APPROVAL_LINES_BI;
+/
+
+CREATE OR REPLACE TRIGGER TRG_USER_PWD_HIST_BI
+BEFORE INSERT ON USER_PASSWORD_HISTORIES FOR EACH ROW
+BEGIN
+    IF :NEW.history_id IS NULL THEN
+        SELECT SEQ_USER_PWD_HIST.NEXTVAL INTO :NEW.history_id FROM DUAL;
+    END IF;
+END TRG_USER_PWD_HIST_BI;
+/
+
+CREATE OR REPLACE TRIGGER TRG_USER_CDD_BI
+BEFORE INSERT ON USER_CDD_CHECKS FOR EACH ROW
+BEGIN
+    IF :NEW.cdd_id IS NULL THEN
+        SELECT SEQ_USER_CDD.NEXTVAL INTO :NEW.cdd_id FROM DUAL;
+    END IF;
+END TRG_USER_CDD_BI;
+/
+
+CREATE OR REPLACE TRIGGER TRG_TRUSTED_IPS_BI
+BEFORE INSERT ON USER_TRUSTED_IPS FOR EACH ROW WHEN (NEW.trust_id IS NULL)
+BEGIN :NEW.trust_id := SEQ_TRUSTED_IPS.NEXTVAL; END TRG_TRUSTED_IPS_BI;
+/
+
+CREATE OR REPLACE TRIGGER TRG_WATCHLIST_BI
+BEFORE INSERT ON WATCHLIST FOR EACH ROW
+BEGIN
+    IF :NEW.watchlist_id IS NULL THEN
+        SELECT SEQ_WATCHLIST.NEXTVAL INTO :NEW.watchlist_id FROM DUAL;
+    END IF;
+END TRG_WATCHLIST_BI;
+/
+
+-- BEFORE UPDATE — updated_at 자동 갱신
+CREATE OR REPLACE TRIGGER TRG_USERS_BU
+BEFORE UPDATE ON USERS FOR EACH ROW
+BEGIN :NEW.updated_at := SYSTIMESTAMP; END TRG_USERS_BU;
+/
+
+CREATE OR REPLACE TRIGGER TRG_TRUSTED_IPS_BU
+BEFORE UPDATE ON USER_TRUSTED_IPS FOR EACH ROW
+BEGIN :NEW.updated_at := SYSTIMESTAMP; END TRG_TRUSTED_IPS_BU;
+/
+
+-- AUDIT_LOGS 무결성 보장 — DELETE / UPDATE 차단
+CREATE OR REPLACE TRIGGER TRG_AUDIT_LOGS_NO_DEL
+BEFORE DELETE ON AUDIT_LOGS FOR EACH ROW
+BEGIN
+    RAISE_APPLICATION_ERROR(-20100, '[AUDIT_LOGS] 감사 로그는 삭제할 수 없습니다.');
+END TRG_AUDIT_LOGS_NO_DEL;
+/
+
+CREATE OR REPLACE TRIGGER TRG_AUDIT_LOGS_NO_UPD
+BEFORE UPDATE ON AUDIT_LOGS FOR EACH ROW
+BEGIN
+    RAISE_APPLICATION_ERROR(-20101, '[AUDIT_LOGS] 감사 로그는 수정할 수 없습니다.');
+END TRG_AUDIT_LOGS_NO_UPD;
+/
+
+
+-- ── 인덱스 ────────────────────────────────────────────────────────
+CREATE INDEX IDX_USERS_STATUS          ON USERS(status_code);
+CREATE INDEX IDX_USERS_PHONE           ON USERS(phone);
+CREATE INDEX IDX_USERS_NAME            ON USERS(name);
+CREATE INDEX IDX_USER_SESSIONS_USER    ON USER_SESSIONS(user_id);
+CREATE INDEX IDX_USER_SESSIONS_TOKEN   ON USER_SESSIONS(refresh_token);
+CREATE INDEX IDX_LOGIN_HIST_USER       ON LOGIN_HISTORIES(user_id);
+CREATE INDEX IDX_LOGIN_HIST_DATE       ON LOGIN_HISTORIES(login_at);
+CREATE INDEX IDX_AUDIT_LOGS_ACTOR      ON AUDIT_LOGS(actor_id);
+CREATE INDEX IDX_AUDIT_LOGS_TARGET     ON AUDIT_LOGS(target_id);
+CREATE INDEX IDX_AUDIT_LOGS_ACTION     ON AUDIT_LOGS(action_type_code);
+CREATE INDEX IDX_APPROVAL_REQ_STATUS   ON APPROVAL_REQUESTS(status_code);
+CREATE INDEX IDX_APPROVAL_LINES_APPR   ON APPROVAL_LINES(approval_id);
+CREATE INDEX IDX_PWD_HIST_USER         ON USER_PASSWORD_HISTORIES(user_id, created_at DESC);
+CREATE INDEX IDX_TRUSTED_IPS_HASH      ON USER_TRUSTED_IPS(user_id, ip_address_hash, status_code, deleted_yn);
+CREATE INDEX IDX_TRUSTED_IPS_USER      ON USER_TRUSTED_IPS(user_id, status_code, deleted_yn);
+CREATE INDEX IDX_TRUSTED_IPS_INIT      ON USER_TRUSTED_IPS(user_id, is_initial);
+CREATE INDEX IDX_WATCHLIST_NAME        ON WATCHLIST(name);
+CREATE INDEX IDX_WATCHLIST_CI_HASH     ON WATCHLIST(ci_value_hash);
+CREATE INDEX IDX_WATCHLIST_NAME_BD     ON WATCHLIST(name, birth_date_hash);
+CREATE INDEX IDX_ADMIN_SESSIONS_ADMIN  ON ADMIN_SESSIONS(admin_id);
+CREATE INDEX IDX_ADMIN_SESSIONS_TOKEN  ON ADMIN_SESSIONS(refresh_token);
+
+COMMIT;
