@@ -15,6 +15,7 @@ import static org.mockito.Mockito.never;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.Month;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
@@ -89,6 +90,10 @@ class AuthServiceTest {
     @Mock private AuditLogger              auditLogger;
     @Mock private IpTrustService		   ipTrustService;
     @Mock private Clock                    clock;
+    private static final LocalDateTime FIXED_FUTURE = LocalDateTime.of(2099, Month.DECEMBER, 31, 0, 0);
+    private static final LocalDateTime FIXED_PAST     = LocalDateTime.of(2024, Month.JANUARY, 14, 0, 0); // -1일
+
+
 
     @InjectMocks
     private AuthService authService;
@@ -464,24 +469,23 @@ class AuthServiceTest {
     @DisplayName("Access Token 재발급 [refresh]")
     class Refresh {
 
-        @Test
-        @DisplayName("[정상] 유효한 세션 → 새 AccessCookie 반환")
-        void 정상_토큰재발급() {
-            UserSession session = new UserSession();
-            ReflectionTestUtils.setField(session, "userId", USER_ID);
-            // 시스템 시간 대신 mock 클락 사용으로 수정
-            ReflectionTestUtils.setField(session, "expiresAt", LocalDateTime.now(clock).plusDays(7));
+    	@Test
+    	@DisplayName("[정상] 유효한 세션 → 새 AccessCookie 반환")
+    	void 정상_토큰재발급() {
+    	    UserSession session = new UserSession();
+    	    ReflectionTestUtils.setField(session, "userId",    USER_ID);
+    	    ReflectionTestUtils.setField(session, "expiresAt", FIXED_FUTURE); // 2024-01-22
 
-            given(userSessionMapper.findByRefreshToken("valid-rt")).willReturn(Optional.of(session));
-            given(jwtTokenProvider.generateAccessToken(USER_ID, "ROLE_USER")).willReturn("new-access-token");
-            given(jwtTokenProvider.getAccessExpirationSec()).willReturn(1800L);
-            given(cookieUtil.createAccessCookie("new-access-token", 1800L))
-                    .willReturn(ResponseCookie.from("access_token", "new-access-token").path("/").build());
+    	    given(userSessionMapper.findByRefreshToken("valid-rt")).willReturn(Optional.of(session));
+    	    given(jwtTokenProvider.generateAccessToken(USER_ID, "ROLE_USER")).willReturn("new-access-token");
+    	    given(jwtTokenProvider.getAccessExpirationSec()).willReturn(1800L);
+    	    given(cookieUtil.createAccessCookie("new-access-token", 1800L))
+    	            .willReturn(ResponseCookie.from("access_token", "new-access-token").path("/").build());
 
-            ResponseCookie cookie = authService.refresh("valid-rt");
+    	    ResponseCookie cookie = authService.refresh("valid-rt");
 
-            assertThat(cookie).isNotNull();
-        }
+    	    assertThat(cookie).isNotNull();
+    	}
 
         @Test
         @DisplayName("[실패] 세션 없음 → REFRESH_TOKEN_INVALID")
@@ -499,8 +503,7 @@ class AuthServiceTest {
         void 실패_세션만료() {
             UserSession expired = new UserSession();
             ReflectionTestUtils.setField(expired, "userId",    USER_ID);
-            // 시스템 시간이나 외부 상수 대신 mock 클락 기준으로 과거 시간 생성되도록 수정
-            ReflectionTestUtils.setField(expired, "expiresAt", LocalDateTime.now(clock).minusDays(1));
+            ReflectionTestUtils.setField(expired, "expiresAt", FIXED_PAST); // 2024-01-14
 
             given(userSessionMapper.findByRefreshToken("expired-rt")).willReturn(Optional.of(expired));
 

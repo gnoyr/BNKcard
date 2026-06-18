@@ -1,0 +1,563 @@
+-- ================================================================
+-- BNK 부산은행 금융 상품 플랫폼
+-- [도메인 03] 카드 상품
+-- Oracle 21c
+-- 포함 테이블:
+--   CARD_CATEGORIES, CARDS (FN_GEN_CARD_ID + 전용 시퀀스 4개)
+--   CARD_BENEFITS, CARD_IMAGES, CARD_CONTENTS
+--   CARD_ATTRIBUTE_DEFINITIONS, CARD_ATTRIBUTE_VALUES
+--   CARD_TAGS, CARD_TAG_MAP
+--   CARD_PROMOTIONS, CARD_STATUS_HISTORIES, CARD_VERSIONS
+--   MERCHANT_CATEGORY_MAP
+--   USER_CARDS (발급카드 — credit_app_id / check_app_id는 05번 파일에서 ALTER)
+--
+-- ■ 변경 이력
+--   2026-06-17  CARDS 테이블 컬럼을 CardMapper.xml / 관리자화면 실제 사용 기준으로 정합화
+--               추가: brand_name, annual_fee_domestic, annual_fee_overseas,
+--                     previous_month_spend, minimum_age, maximum_age,
+--                     target_user, summary_description,
+--                     searchable_yn, visible_yn, approval_required_yn,
+--                     view_count, application_count
+--               CARD_CATEGORIES 컬럼 정합화
+--               추가: category_code, icon_code
+--               (기존 category_icon은 유지, icon_code와 동의어로 관리)
+-- ================================================================
+
+
+-- ================================================================
+-- [SECTION 1] DROP (재실행 대비 — 의존 순서 역순)
+-- ================================================================
+
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_CARDS_BU';                    EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_CARDS_BI';                    EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_USER_CARDS_BI';               EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_MERCHANT_CATEGORY_BI';        EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_CARD_VERSIONS_BI';            EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_CARD_STATUS_HIST_BI';         EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_CARD_PROMOTIONS_BI';          EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_CARD_TAG_MAP_BI';             EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_CARD_TAGS_BI';                EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_CARD_ATTR_VAL_BI';            EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_CARD_ATTR_DEF_BI';            EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_CARD_CONTENTS_BI';            EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_CARD_IMAGES_BI';              EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_CARD_BENEFITS_BI';            EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TRIGGER TRG_CARD_CATEGORIES_BI';          EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP FUNCTION FN_GEN_CARD_ID';                 EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE USER_CARDS             CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE MERCHANT_CATEGORY_MAP  CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE CARD_VERSIONS          CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE CARD_STATUS_HISTORIES  CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE CARD_PROMOTIONS        CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE CARD_TAG_MAP           CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE CARD_TAGS              CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE CARD_ATTRIBUTE_VALUES  CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE CARD_ATTRIBUTE_DEFINITIONS CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE CARD_CONTENTS          CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE CARD_IMAGES            CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE CARD_BENEFITS          CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE CARDS                  CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE CARD_CATEGORIES        CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_USER_CARDS';               EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_MERCHANT_CATEGORY_MAP';    EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_CARD_VERSIONS';            EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_CARD_STATUS_HISTORIES';    EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_CARD_PROMOTIONS';          EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_CARD_TAG_MAP';             EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_CARD_TAGS';                EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_CARD_ATTRIBUTE_VALUES';    EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_CARD_ATTRIBUTE_DEFINITIONS'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_CARD_CONTENTS';            EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_CARD_IMAGES';              EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_CARD_BENEFITS';            EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_CARD_CATEGORIES';          EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_CARD_SERIAL_HYBRID';       EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_CARD_SERIAL_PREPAID';      EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_CARD_SERIAL_CHECK';        EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_CARD_SERIAL_CREDIT';       EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+
+
+-- ================================================================
+-- [SECTION 2] CREATE
+-- ================================================================
+
+-- ── 시퀀스 ────────────────────────────────────────────────────────
+CREATE SEQUENCE SEQ_CARD_CATEGORIES          START WITH 1  INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_CARD_BENEFITS            START WITH 1  INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_CARD_IMAGES              START WITH 1  INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_CARD_CONTENTS            START WITH 1  INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_CARD_ATTRIBUTE_DEFINITIONS START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_CARD_ATTRIBUTE_VALUES    START WITH 1  INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_CARD_TAGS               START WITH 1  INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_CARD_TAG_MAP             START WITH 1  INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_CARD_PROMOTIONS          START WITH 1  INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_CARD_STATUS_HISTORIES    START WITH 1  INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_CARD_VERSIONS            START WITH 1  INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_USER_CARDS               START WITH 1  INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_MERCHANT_CATEGORY_MAP    START WITH 1  INCREMENT BY 1 NOCACHE NOCYCLE;
+
+-- ── 카드 PK 전용 시퀀스 ──────────────────────────────────────────
+-- card_id = [대분류(3자리)] × 100000 + [카드사코드(2자리)] × 1000 + [일련번호(3자리)]
+CREATE SEQUENCE SEQ_CARD_SERIAL_CREDIT  START WITH 1 MAXVALUE 999 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_CARD_SERIAL_CHECK   START WITH 1 MAXVALUE 999 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_CARD_SERIAL_PREPAID START WITH 1 MAXVALUE 999 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE SEQ_CARD_SERIAL_HYBRID  START WITH 1 MAXVALUE 999 INCREMENT BY 1 NOCACHE NOCYCLE;
+
+
+-- ── 카드 PK 생성 함수 ─────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION FN_GEN_CARD_ID (
+    p_card_type     VARCHAR2,
+    p_company_code  NUMBER DEFAULT 1
+) RETURN NUMBER IS
+    v_type_code  NUMBER;
+    v_serial     NUMBER;
+BEGIN
+    CASE UPPER(p_card_type)
+        WHEN 'CREDIT'  THEN v_type_code := 101; SELECT SEQ_CARD_SERIAL_CREDIT.NEXTVAL  INTO v_serial FROM DUAL;
+        WHEN 'CHECK'   THEN v_type_code := 102; SELECT SEQ_CARD_SERIAL_CHECK.NEXTVAL   INTO v_serial FROM DUAL;
+        WHEN 'PREPAID' THEN v_type_code := 103; SELECT SEQ_CARD_SERIAL_PREPAID.NEXTVAL INTO v_serial FROM DUAL;
+        WHEN 'HYBRID'  THEN v_type_code := 104; SELECT SEQ_CARD_SERIAL_HYBRID.NEXTVAL  INTO v_serial FROM DUAL;
+        ELSE RAISE_APPLICATION_ERROR(-20001, 'FN_GEN_CARD_ID: 지원하지 않는 카드 유형 → ' || p_card_type);
+    END CASE;
+    RETURN (v_type_code * 100000) + (p_company_code * 1000) + v_serial;
+END FN_GEN_CARD_ID;
+/
+
+
+-- ── 테이블 ────────────────────────────────────────────────────────
+
+-- 14. CARD_CATEGORIES
+-- ★ category_code, icon_code 컬럼 추가 (CardCategoryMapper.xml, SpendingPatternMapper.xml 참조)
+--   category_icon 은 category_icon 그대로 유지, icon_code 와 동의어로 관리
+CREATE TABLE CARD_CATEGORIES (
+    category_id     NUMBER(19)    PRIMARY KEY,
+    category_code   VARCHAR2(50)  UNIQUE,               -- ★ CardCategoryMapper.xml insertCategory/updateCategory
+    category_name   VARCHAR2(100) NOT NULL UNIQUE,
+    category_icon   VARCHAR2(300),                      -- card_dummy_insert.sql 기준 컬럼
+    icon_code       VARCHAR2(300),                      -- ★ CardCategoryMapper.xml / SpendingPatternMapper.xml
+    display_order   NUMBER(5),
+    use_yn          CHAR(1)       DEFAULT 'Y' CHECK (use_yn IN ('Y','N')),
+    created_at      TIMESTAMP     DEFAULT SYSTIMESTAMP
+);
+COMMENT ON TABLE  CARD_CATEGORIES              IS '카드 혜택 카테고리 (교통, 쇼핑, 식음료 등)';
+COMMENT ON COLUMN CARD_CATEGORIES.category_code IS '카테고리 식별 코드. 예: TRAVEL, DINING, SHOPPING';
+COMMENT ON COLUMN CARD_CATEGORIES.icon_code     IS 'CardCategoryMapper.xml 참조 아이콘 코드. category_icon과 동의어';
+
+-- 15. CARDS
+-- ★ CardMapper.xml insertCard/updateCard 실제 컬럼 기준으로 정합화
+CREATE TABLE CARDS (
+    card_id                     NUMBER(10)      PRIMARY KEY,
+    card_code                   VARCHAR2(50)    NOT NULL UNIQUE,
+    card_type                   VARCHAR2(30)    NOT NULL
+                                    CHECK (card_type IN ('CREDIT','CHECK','PREPAID','HYBRID')),
+    company_code                VARCHAR2(10)    DEFAULT '01',
+    company_name                VARCHAR2(100)   NOT NULL,
+    card_name                   VARCHAR2(200)   NOT NULL,
+    card_name_en                VARCHAR2(200),
+    -- ★ brand_name: CardMapper.xml insertCard/updateCard 참조
+    brand_name                  VARCHAR2(30),
+    card_status                 VARCHAR2(30)    DEFAULT 'DRAFT'
+                                    CHECK (card_status IN ('DRAFT','REVIEW','APPROVED','PUBLISHED','SUSPENDED','DISCONTINUED')),
+    -- ★ annual_fee_domestic / annual_fee_overseas: CardMapper.xml 참조
+    annual_fee_domestic         NUMBER(10),
+    annual_fee_overseas         NUMBER(10),
+    annual_fee_waiver_condition VARCHAR2(1000),
+    -- ★ previous_month_spend: CardMapper.xml 참조 (전월 실적 조건)
+    previous_month_spend        NUMBER(15),
+    -- ★ minimum_age / maximum_age: CardMapper.xml 참조
+    minimum_age                 NUMBER(3),
+    maximum_age                 NUMBER(3),
+    credit_limit_min            NUMBER(15),
+    credit_limit_max            NUMBER(15),
+    domestic_network            VARCHAR2(30),
+    overseas_network            VARCHAR2(30),
+    -- ★ target_user: CardMapper.xml 참조 (발급 대상 고객 설명)
+    target_user                 VARCHAR2(500),
+    -- ★ summary_description: CardMapper.xml insertCard/updateCard 참조
+    summary_description         VARCHAR2(2000),
+    card_summary                VARCHAR2(2000),
+    card_description            CLOB,
+    partnership_info            VARCHAR2(1000),
+    -- ★ searchable_yn / visible_yn / approval_required_yn: CardMapper.xml 참조
+    searchable_yn               CHAR(1)         DEFAULT 'Y' CHECK (searchable_yn        IN ('Y','N')),
+    visible_yn                  CHAR(1)         DEFAULT 'Y' CHECK (visible_yn           IN ('Y','N')),
+    approval_required_yn        CHAR(1)         DEFAULT 'Y' CHECK (approval_required_yn IN ('Y','N')),
+    -- ★ view_count / application_count: CardMapper.xml incrementViewCount/incrementApplicationCount 참조
+    view_count                  NUMBER(15)      DEFAULT 0,
+    application_count           NUMBER(15)      DEFAULT 0,
+    publish_start_at            TIMESTAMP,
+    publish_end_at              TIMESTAMP,
+    created_by                  NUMBER(19),
+    created_at                  TIMESTAMP       DEFAULT SYSTIMESTAMP,
+    updated_at                  TIMESTAMP,
+    updated_by                  NUMBER(19),
+    deleted_yn                  CHAR(1)         DEFAULT 'N' CHECK (deleted_yn IN ('Y','N')),
+    deleted_at                  TIMESTAMP
+);
+COMMENT ON TABLE  CARDS                       IS '카드 상품';
+COMMENT ON COLUMN CARDS.card_id               IS 'FN_GEN_CARD_ID()로 자동 채번. [대분류3자리][카드사코드2자리][일련번호3자리]';
+COMMENT ON COLUMN CARDS.card_status           IS 'DRAFT→REVIEW→APPROVED→PUBLISHED→SUSPENDED/DISCONTINUED';
+COMMENT ON COLUMN CARDS.brand_name            IS '카드 브랜드. VISA/MASTER/AMEX/LOCAL/UNIONPAY 등';
+COMMENT ON COLUMN CARDS.annual_fee_domestic   IS '국내 발급 기준 연회비(원)';
+COMMENT ON COLUMN CARDS.annual_fee_overseas   IS '해외 발급 기준 연회비(원)';
+COMMENT ON COLUMN CARDS.previous_month_spend  IS '혜택 적용 전월 최소 이용금액 조건(원)';
+COMMENT ON COLUMN CARDS.target_user           IS '발급 대상 고객 설명. 예: 개인(가족회원), 법인';
+COMMENT ON COLUMN CARDS.summary_description   IS '카드 한줄 요약 (CardMapper.xml 기준)';
+COMMENT ON COLUMN CARDS.card_summary          IS '카드 요약 (card_dummy_insert.sql 기준)';
+COMMENT ON COLUMN CARDS.searchable_yn         IS '검색 결과 노출 여부';
+COMMENT ON COLUMN CARDS.visible_yn            IS '카드 목록 노출 여부';
+COMMENT ON COLUMN CARDS.approval_required_yn  IS '게시 전 관리자 결재 필요 여부';
+COMMENT ON COLUMN CARDS.view_count            IS '카드 상세 조회수. incrementViewCount SQL 참조';
+COMMENT ON COLUMN CARDS.application_count     IS '카드 신청 건수. incrementApplicationCount SQL 참조';
+
+-- 16. CARD_BENEFITS
+CREATE TABLE CARD_BENEFITS (
+    benefit_id              NUMBER(19)     PRIMARY KEY,
+    card_id                 NUMBER(10)     NOT NULL,
+    category_id             NUMBER(19)     NOT NULL,
+    benefit_title           VARCHAR2(200)  NOT NULL,
+    benefit_type            VARCHAR2(30)   NOT NULL
+                                CHECK (benefit_type IN ('RATE_DISCOUNT','FIXED_DISCOUNT','POINT','CASHBACK','FREE')),
+    discount_rate           NUMBER(5,4),
+    discount_amount         NUMBER(12),
+    point_rate              NUMBER(5,4),
+    cashback_rate           NUMBER(5,4),
+    monthly_limit_amount    NUMBER(12),
+    daily_limit_amount      NUMBER(12),
+    minimum_payment_amount  NUMBER(12),
+    benefit_condition       CLOB,
+    display_text            VARCHAR2(300),
+    display_order           NUMBER(5),
+    visible_yn              CHAR(1)        DEFAULT 'Y' CHECK (visible_yn IN ('Y','N')),
+    created_at              TIMESTAMP      DEFAULT SYSTIMESTAMP,
+    updated_at              TIMESTAMP,
+    CONSTRAINT FK_CARD_BENEFITS_CARD     FOREIGN KEY (card_id)     REFERENCES CARDS(card_id)          ON DELETE CASCADE,
+    CONSTRAINT FK_CARD_BENEFITS_CATEGORY FOREIGN KEY (category_id) REFERENCES CARD_CATEGORIES(category_id)
+);
+COMMENT ON TABLE CARD_BENEFITS IS '카드 혜택 정보';
+
+-- 17. CARD_IMAGES
+CREATE TABLE CARD_IMAGES (
+    image_id        NUMBER(19)     PRIMARY KEY,
+    card_id         NUMBER(10)     NOT NULL,
+    image_type      VARCHAR2(30)   NOT NULL CHECK (image_type IN ('FRONT','BACK','THUMBNAIL','DETAIL')),
+    image_url       VARCHAR2(1000) NOT NULL,
+    original_name   VARCHAR2(300),
+    stored_name     VARCHAR2(300),
+    file_size       NUMBER(15),
+    mime_type       VARCHAR2(100),
+    image_width     NUMBER(5),
+    image_height    NUMBER(5),
+    sort_order      NUMBER(5)      DEFAULT 1,
+    created_at      TIMESTAMP      DEFAULT SYSTIMESTAMP,
+    CONSTRAINT FK_CARD_IMAGES_CARD FOREIGN KEY (card_id) REFERENCES CARDS(card_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE CARD_IMAGES IS '카드 이미지';
+
+-- 18. CARD_CONTENTS
+CREATE TABLE CARD_CONTENTS (
+    content_id      NUMBER(19)     PRIMARY KEY,
+    card_id         NUMBER(10)     NOT NULL,
+    content_type    VARCHAR2(50)   NOT NULL,
+    content_title   VARCHAR2(300),
+    content_body    CLOB,
+    display_order   NUMBER(5),
+    visible_yn      CHAR(1)        DEFAULT 'Y' CHECK (visible_yn IN ('Y','N')),
+    created_at      TIMESTAMP      DEFAULT SYSTIMESTAMP,
+    updated_at      TIMESTAMP,
+    CONSTRAINT FK_CARD_CONTENTS_CARD FOREIGN KEY (card_id) REFERENCES CARDS(card_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE CARD_CONTENTS IS '카드 상세 콘텐츠';
+
+-- 19. CARD_ATTRIBUTE_DEFINITIONS
+CREATE TABLE CARD_ATTRIBUTE_DEFINITIONS (
+    attr_def_id     NUMBER(19)     PRIMARY KEY,
+    attr_code       VARCHAR2(50)   NOT NULL UNIQUE,
+    attr_name       VARCHAR2(100)  NOT NULL,
+    attr_type       VARCHAR2(30)   NOT NULL CHECK (attr_type IN ('TEXT','NUMBER','BOOLEAN','DATE','JSON')),
+    description     VARCHAR2(500),
+    created_at      TIMESTAMP      DEFAULT SYSTIMESTAMP
+);
+COMMENT ON TABLE CARD_ATTRIBUTE_DEFINITIONS IS '카드 속성 정의';
+
+-- 20. CARD_ATTRIBUTE_VALUES
+CREATE TABLE CARD_ATTRIBUTE_VALUES (
+    attr_val_id     NUMBER(19)     PRIMARY KEY,
+    card_id         NUMBER(10)     NOT NULL,
+    attr_def_id     NUMBER(19)     NOT NULL,
+    attr_value      VARCHAR2(2000),
+    created_at      TIMESTAMP      DEFAULT SYSTIMESTAMP,
+    updated_at      TIMESTAMP,
+    CONSTRAINT UK_CARD_ATTR_VAL     UNIQUE (card_id, attr_def_id),
+    CONSTRAINT FK_CARD_ATTR_VAL_CARD FOREIGN KEY (card_id)     REFERENCES CARDS(card_id) ON DELETE CASCADE,
+    CONSTRAINT FK_CARD_ATTR_VAL_DEF  FOREIGN KEY (attr_def_id) REFERENCES CARD_ATTRIBUTE_DEFINITIONS(attr_def_id)
+);
+COMMENT ON TABLE CARD_ATTRIBUTE_VALUES IS '카드 속성 값';
+
+-- 21. CARD_TAGS
+CREATE TABLE CARD_TAGS (
+    tag_id      NUMBER(19)     PRIMARY KEY,
+    tag_name    VARCHAR2(100)  NOT NULL UNIQUE,
+    use_yn      CHAR(1)        DEFAULT 'Y' CHECK (use_yn IN ('Y','N')),
+    created_at  TIMESTAMP      DEFAULT SYSTIMESTAMP
+);
+COMMENT ON TABLE CARD_TAGS IS '카드 태그';
+
+-- 22. CARD_TAG_MAP
+CREATE TABLE CARD_TAG_MAP (
+    card_tag_map_id  NUMBER(19)  PRIMARY KEY,
+    card_id          NUMBER(10)  NOT NULL,
+    tag_id           NUMBER(19)  NOT NULL,
+    created_at       TIMESTAMP   DEFAULT SYSTIMESTAMP,
+    CONSTRAINT UK_CARD_TAG_MAP      UNIQUE(card_id, tag_id),
+    CONSTRAINT FK_CARD_TAG_MAP_CARD FOREIGN KEY (card_id) REFERENCES CARDS(card_id)     ON DELETE CASCADE,
+    CONSTRAINT FK_CARD_TAG_MAP_TAG  FOREIGN KEY (tag_id)  REFERENCES CARD_TAGS(tag_id)
+);
+COMMENT ON TABLE CARD_TAG_MAP IS '카드 태그 연결';
+
+-- 23. CARD_PROMOTIONS
+CREATE TABLE CARD_PROMOTIONS (
+    promotion_id        NUMBER(19)     PRIMARY KEY,
+    card_id             NUMBER(10)     NOT NULL,
+    promotion_title     VARCHAR2(300)  NOT NULL,
+    promotion_summary   VARCHAR2(1000),
+    promotion_content   CLOB,
+    banner_image_url    VARCHAR2(1000),
+    start_date          DATE           NOT NULL,
+    end_date            DATE,
+    promotion_status    VARCHAR2(30)   DEFAULT 'READY'
+                            CHECK (promotion_status IN ('READY','ACTIVE','ENDED','STOPPED')),
+    visible_yn          CHAR(1)        DEFAULT 'Y' CHECK (visible_yn IN ('Y','N')),
+    created_by          NUMBER(19),
+    created_at          TIMESTAMP      DEFAULT SYSTIMESTAMP,
+    updated_at          TIMESTAMP,
+    CONSTRAINT CHK_CARD_PROMO_DATE  CHECK (end_date IS NULL OR end_date >= start_date),
+    CONSTRAINT FK_CARD_PROMO_CARD   FOREIGN KEY (card_id) REFERENCES CARDS(card_id) ON DELETE CASCADE
+);
+COMMENT ON TABLE CARD_PROMOTIONS IS '카드 이벤트 및 프로모션';
+
+-- 24. CARD_STATUS_HISTORIES
+CREATE TABLE CARD_STATUS_HISTORIES (
+    history_id      NUMBER(19)     PRIMARY KEY,
+    card_id         NUMBER(10)     NOT NULL,
+    previous_status VARCHAR2(30),
+    changed_status  VARCHAR2(30)   NOT NULL,
+    changed_by      NUMBER(19),
+    changed_reason  VARCHAR2(1000),
+    changed_at      TIMESTAMP      DEFAULT SYSTIMESTAMP,
+    CONSTRAINT FK_CARD_STATUS_HIST_CARD FOREIGN KEY (card_id) REFERENCES CARDS(card_id)
+);
+COMMENT ON TABLE CARD_STATUS_HISTORIES IS '카드 상태 변경 이력';
+
+-- 25. CARD_VERSIONS
+CREATE TABLE CARD_VERSIONS (
+    version_id      NUMBER(19)     PRIMARY KEY,
+    card_id         NUMBER(10)     NOT NULL,
+    version_no      VARCHAR2(30)   NOT NULL,
+    version_status  VARCHAR2(30)   DEFAULT 'DRAFT'
+                        CHECK (version_status IN ('DRAFT','REVIEW','APPROVED','PUBLISHED','ARCHIVED')),
+    snapshot_json   CLOB           NOT NULL,
+    change_summary  VARCHAR2(2000),
+    created_by      NUMBER(19),
+    created_at      TIMESTAMP      DEFAULT SYSTIMESTAMP,
+    approved_by     NUMBER(19),
+    approved_at     TIMESTAMP,
+    published_at    TIMESTAMP,
+    CONSTRAINT FK_CARD_VERSIONS_CARD FOREIGN KEY (card_id) REFERENCES CARDS(card_id)
+);
+COMMENT ON TABLE CARD_VERSIONS IS '카드 버전 이력 (결재 스냅샷)';
+
+-- 26. USER_CARDS (발급 카드)
+-- [주의] credit_app_id, check_app_id, card_password_hash 컬럼은
+--        05_ddl_card_application.sql 에서 ALTER TABLE로 추가됨
+CREATE TABLE USER_CARDS (
+    user_card_id            NUMBER(19)     PRIMARY KEY,
+    user_id                 NUMBER(19)     NOT NULL,
+    card_id                 NUMBER(10)     NOT NULL,
+    masked_card_number      VARCHAR2(30)   NOT NULL,
+    card_nickname           VARCHAR2(100),
+    issue_date              DATE           NOT NULL,
+    expire_date             DATE           NOT NULL,
+    card_status             VARCHAR2(30)   DEFAULT 'ACTIVE'
+                                CHECK (card_status IN ('ACTIVE','LOST','STOPPED','EXPIRED','REISSUED')),
+    usable_yn               CHAR(1)        DEFAULT 'Y' CHECK (usable_yn            IN ('Y','N')),
+    daily_limit_amount      NUMBER(15),
+    monthly_limit_amount    NUMBER(15),
+    overseas_enabled_yn     CHAR(1)        DEFAULT 'Y' CHECK (overseas_enabled_yn  IN ('Y','N')),
+    contactless_enabled_yn  CHAR(1)        DEFAULT 'Y' CHECK (contactless_enabled_yn IN ('Y','N')),
+    issued_by               NUMBER(19),
+    issued_at               TIMESTAMP      DEFAULT SYSTIMESTAMP,
+    updated_at              TIMESTAMP,
+    deleted_yn              CHAR(1)        DEFAULT 'N' CHECK (deleted_yn IN ('Y','N')),
+    deleted_at              TIMESTAMP,
+    CONSTRAINT CHK_USER_CARD_DATE  CHECK (expire_date >= issue_date),
+    CONSTRAINT FK_USER_CARDS_USER  FOREIGN KEY (user_id) REFERENCES USERS(user_id),
+    CONSTRAINT FK_USER_CARDS_CARD  FOREIGN KEY (card_id) REFERENCES CARDS(card_id)
+);
+COMMENT ON TABLE USER_CARDS IS '실제 발급 카드';
+
+-- 27. MERCHANT_CATEGORY_MAP
+CREATE TABLE MERCHANT_CATEGORY_MAP (
+    map_id      NUMBER(19)     PRIMARY KEY,
+    keyword     VARCHAR2(100)  NOT NULL,
+    category_id NUMBER(19)     NOT NULL,
+    priority    NUMBER(5)      DEFAULT 1,
+    use_yn      CHAR(1)        DEFAULT 'Y' CHECK (use_yn IN ('Y','N')),
+    created_at  TIMESTAMP      DEFAULT SYSTIMESTAMP,
+    CONSTRAINT FK_MERCHANT_CATEGORY FOREIGN KEY (category_id) REFERENCES CARD_CATEGORIES(category_id)
+);
+COMMENT ON TABLE MERCHANT_CATEGORY_MAP IS '가맹점 자동 카테고리 분류 키워드';
+
+
+-- ── 트리거 ────────────────────────────────────────────────────────
+
+CREATE OR REPLACE TRIGGER TRG_CARD_CATEGORIES_BI
+BEFORE INSERT ON CARD_CATEGORIES FOR EACH ROW WHEN (NEW.category_id IS NULL)
+BEGIN :NEW.category_id := SEQ_CARD_CATEGORIES.NEXTVAL; END TRG_CARD_CATEGORIES_BI;
+/
+
+-- CARDS — FN_GEN_CARD_ID() 호출 (구조화 PK)
+CREATE OR REPLACE TRIGGER TRG_CARDS_BI
+BEFORE INSERT ON CARDS FOR EACH ROW WHEN (NEW.card_id IS NULL)
+BEGIN
+    :NEW.card_id := FN_GEN_CARD_ID(:NEW.card_type, NVL(TO_NUMBER(:NEW.company_code), 1));
+END TRG_CARDS_BI;
+/
+
+CREATE OR REPLACE TRIGGER TRG_CARDS_BU
+BEFORE UPDATE ON CARDS FOR EACH ROW
+BEGIN :NEW.updated_at := SYSTIMESTAMP; END TRG_CARDS_BU;
+/
+
+CREATE OR REPLACE TRIGGER TRG_CARD_BENEFITS_BI
+BEFORE INSERT ON CARD_BENEFITS FOR EACH ROW WHEN (NEW.benefit_id IS NULL)
+BEGIN :NEW.benefit_id := SEQ_CARD_BENEFITS.NEXTVAL; END TRG_CARD_BENEFITS_BI;
+/
+
+CREATE OR REPLACE TRIGGER TRG_CARD_IMAGES_BI
+BEFORE INSERT ON CARD_IMAGES FOR EACH ROW WHEN (NEW.image_id IS NULL)
+BEGIN :NEW.image_id := SEQ_CARD_IMAGES.NEXTVAL; END TRG_CARD_IMAGES_BI;
+/
+
+CREATE OR REPLACE TRIGGER TRG_CARD_CONTENTS_BI
+BEFORE INSERT ON CARD_CONTENTS FOR EACH ROW WHEN (NEW.content_id IS NULL)
+BEGIN :NEW.content_id := SEQ_CARD_CONTENTS.NEXTVAL; END TRG_CARD_CONTENTS_BI;
+/
+
+CREATE OR REPLACE TRIGGER TRG_CARD_ATTR_DEF_BI
+BEFORE INSERT ON CARD_ATTRIBUTE_DEFINITIONS FOR EACH ROW WHEN (NEW.attr_def_id IS NULL)
+BEGIN :NEW.attr_def_id := SEQ_CARD_ATTRIBUTE_DEFINITIONS.NEXTVAL; END TRG_CARD_ATTR_DEF_BI;
+/
+
+CREATE OR REPLACE TRIGGER TRG_CARD_ATTR_VAL_BI
+BEFORE INSERT ON CARD_ATTRIBUTE_VALUES FOR EACH ROW WHEN (NEW.attr_val_id IS NULL)
+BEGIN :NEW.attr_val_id := SEQ_CARD_ATTRIBUTE_VALUES.NEXTVAL; END TRG_CARD_ATTR_VAL_BI;
+/
+
+CREATE OR REPLACE TRIGGER TRG_CARD_TAGS_BI
+BEFORE INSERT ON CARD_TAGS FOR EACH ROW WHEN (NEW.tag_id IS NULL)
+BEGIN :NEW.tag_id := SEQ_CARD_TAGS.NEXTVAL; END TRG_CARD_TAGS_BI;
+/
+
+CREATE OR REPLACE TRIGGER TRG_CARD_TAG_MAP_BI
+BEFORE INSERT ON CARD_TAG_MAP FOR EACH ROW WHEN (NEW.card_tag_map_id IS NULL)
+BEGIN :NEW.card_tag_map_id := SEQ_CARD_TAG_MAP.NEXTVAL; END TRG_CARD_TAG_MAP_BI;
+/
+
+CREATE OR REPLACE TRIGGER TRG_CARD_PROMOTIONS_BI
+BEFORE INSERT ON CARD_PROMOTIONS FOR EACH ROW WHEN (NEW.promotion_id IS NULL)
+BEGIN :NEW.promotion_id := SEQ_CARD_PROMOTIONS.NEXTVAL; END TRG_CARD_PROMOTIONS_BI;
+/
+
+CREATE OR REPLACE TRIGGER TRG_CARD_STATUS_HIST_BI
+BEFORE INSERT ON CARD_STATUS_HISTORIES FOR EACH ROW WHEN (NEW.history_id IS NULL)
+BEGIN :NEW.history_id := SEQ_CARD_STATUS_HISTORIES.NEXTVAL; END TRG_CARD_STATUS_HIST_BI;
+/
+
+CREATE OR REPLACE TRIGGER TRG_CARD_VERSIONS_BI
+BEFORE INSERT ON CARD_VERSIONS FOR EACH ROW WHEN (NEW.version_id IS NULL)
+BEGIN :NEW.version_id := SEQ_CARD_VERSIONS.NEXTVAL; END TRG_CARD_VERSIONS_BI;
+/
+
+CREATE OR REPLACE TRIGGER TRG_USER_CARDS_BI
+BEFORE INSERT ON USER_CARDS FOR EACH ROW WHEN (NEW.user_card_id IS NULL)
+BEGIN :NEW.user_card_id := SEQ_USER_CARDS.NEXTVAL; END TRG_USER_CARDS_BI;
+/
+
+CREATE OR REPLACE TRIGGER TRG_MERCHANT_CATEGORY_BI
+BEFORE INSERT ON MERCHANT_CATEGORY_MAP FOR EACH ROW WHEN (NEW.map_id IS NULL)
+BEGIN :NEW.map_id := SEQ_MERCHANT_CATEGORY_MAP.NEXTVAL; END TRG_MERCHANT_CATEGORY_BI;
+/
+
+
+-- ── 인덱스 ────────────────────────────────────────────────────────
+CREATE INDEX IDX_CARDS_STATUS          ON CARDS(card_status);
+CREATE INDEX IDX_CARDS_NAME            ON CARDS(card_name);
+CREATE INDEX IDX_CARDS_TYPE            ON CARDS(card_type);
+CREATE INDEX IDX_CARDS_COMPANY         ON CARDS(company_name);
+CREATE INDEX IDX_CARDS_PUBLISH         ON CARDS(publish_start_at);
+CREATE INDEX IDX_CARDS_SEARCHABLE      ON CARDS(searchable_yn, visible_yn);
+CREATE INDEX IDX_CARD_BENEFITS_CARD    ON CARD_BENEFITS(card_id);
+CREATE INDEX IDX_CARD_IMAGES_CARD      ON CARD_IMAGES(card_id);
+CREATE INDEX IDX_CARD_CONTENTS_CARD    ON CARD_CONTENTS(card_id);
+CREATE INDEX IDX_CARD_PROMOS_CARD      ON CARD_PROMOTIONS(card_id);
+CREATE INDEX IDX_CARD_STATUS_HIST_CARD ON CARD_STATUS_HISTORIES(card_id);
+CREATE INDEX IDX_CARD_VERSIONS_CARD    ON CARD_VERSIONS(card_id);
+CREATE INDEX IDX_USER_CARDS_USER       ON USER_CARDS(user_id);
+CREATE INDEX IDX_USER_CARDS_CARD       ON USER_CARDS(card_id);
+CREATE INDEX IDX_MERCH_CAT_KEYWORD     ON MERCHANT_CATEGORY_MAP(keyword);
+CREATE INDEX IDX_CARD_TAG_MAP_CARD     ON CARD_TAG_MAP(card_id);
+CREATE INDEX IDX_CARD_TAG_MAP_TAG      ON CARD_TAG_MAP(tag_id);
+CREATE INDEX IDX_CAT_CODE              ON CARD_CATEGORIES(category_code);
+
+
+COMMIT;

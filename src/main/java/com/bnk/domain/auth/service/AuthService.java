@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.bnk.domain.admin.mapper.AdminUserMapper;
+import com.bnk.domain.admin.model.AdminUser;
 import com.bnk.domain.application.service.CddService;
 import com.bnk.domain.auth.dto.request.AdminLoginRequest;
 import com.bnk.domain.auth.dto.request.EmailVerifyRequest;
@@ -25,7 +26,9 @@ import com.bnk.domain.auth.dto.request.SendVerifyCodeRequest;
 import com.bnk.domain.auth.dto.request.SignupRequest;
 import com.bnk.domain.auth.dto.response.AuthTokenResult;
 import com.bnk.domain.auth.dto.response.FindIdResponse;
+import com.bnk.domain.auth.mapper.AdminSessionMapper;
 import com.bnk.domain.auth.mapper.UserSessionMapper;
+import com.bnk.domain.auth.model.AdminSession;
 import com.bnk.domain.auth.model.UserSession;
 import com.bnk.domain.ipauth.service.IpTrustService;
 import com.bnk.domain.terms.mapper.TermsMapper;
@@ -70,6 +73,7 @@ public class AuthService {
 	private final TokenSecurityService tokenSecurityService;
 	private final AuditLogger auditLogger;
 	private final IpTrustService ipTrustService;
+	private final AdminSessionMapper adminSessionMapper;
 
 	// ──────────────────────────────────────────────────────────────────
 	// KEY_VERIFY : 인증코드 임시 저장 "email:verify:{email}"
@@ -334,14 +338,20 @@ public class AuthService {
 		return cookieUtil.createAccessCookie(newAccessToken, expirationSec);
 	}
 
-	// ──────────────────────────────────────────────────────────────────
-	// 로그아웃
-	// ──────────────────────────────────────────────────────────────────
+	// ── 일반 회원 로그아웃 ────────────────────────────────────────────
 	@Transactional
 	public void logout(Long userId) {
-		userSessionMapper.revokeAllByUserId(userId);
-		auditLogger.success(AuditLogger.AUTH, AuditLogger.LOGOUT, userId, null, null);
+	    userSessionMapper.revokeAllByUserId(userId);
+	    auditLogger.success(AuditLogger.AUTH, AuditLogger.LOGOUT, userId, null, null);
 	}
+	
+	// ── 관리자 로그아웃 ───────────────────────────────────────────────
+	@Transactional
+	public void adminLogout(Long adminId) {
+	    adminSessionMapper.revokeAllByAdminId(adminId);
+	    auditLogger.adminSuccess(AuditLogger.ADMIN, AuditLogger.LOGOUT, adminId, null, null);
+	}
+
 
 	// ──────────────────────────────────────────────────────────────────
 	// 아이디 찾기
@@ -401,58 +411,73 @@ public class AuthService {
 				userId, null, "비밀번호 재설정 완료");
 	}
 
-	// ──────────────────────────────────────────────────────────────────
-	// 관리자 로그인
-	// ──────────────────────────────────────────────────────────────────
+	// ── 관리자 로그인 ──────────────────────────────────────────────────
 	@Transactional(noRollbackFor = BusinessException.class)
 	public AuthTokenResult adminLogin(AdminLoginRequest request, HttpServletRequest httpRequest) {
-		String ipAddress = resolveClientIp(httpRequest);
-		String userAgent = httpRequest.getHeader("User-Agent");
+	    String ipAddress = resolveClientIp(httpRequest);
+	    String userAgent = httpRequest.getHeader("User-Agent");
 
-		com.bnk.domain.admin.model.AdminUser admin = adminUserMapper.findByUsername(request.getUsername())
-				.orElseGet(() -> {
-					auditLogger.adminFailure(AuditLogger.ADMIN, AuditLogger.LOGIN,
-							null, null, "존재하지 않는 관리자 계정: " + request.getUsername());
-					throw new BusinessException(ErrorCode.USER_NOT_FOUND);
-				});
+	    AdminUser admin = adminUserMapper.findByUsername(request.getUsername())
+	            .orElseGet(() -> {
+	                auditLogger.adminFailure(AuditLogger.ADMIN, AuditLogger.LOGIN,
+	                        null, null, "존재하지 않는 관리자 계정: " + request.getUsername());
+	                throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+	            });
 
-		if (!passwordEncoder.matches(request.getPassword(), admin.getPasswordHash())) {
-			auditLogger.adminFailure(AuditLogger.ADMIN, AuditLogger.LOGIN,
-					admin.getAdminId(), null, "비밀번호 불일치");
-			throw new BusinessException(ErrorCode.INVALID_PASSWORD);
-		}
+	    if (!passwordEncoder.matches(request.getPassword(), admin.getPasswordHash())) {
+	        auditLogger.adminFailure(AuditLogger.ADMIN, AuditLogger.LOGIN,
+	                admin.getAdminId(), null, "비밀번호 불일치");
+	        throw new BusinessException(ErrorCode.INVALID_PASSWORD);
+	    }
 
-		adminUserMapper.updateLastLoginAt(admin.getAdminId(), LocalDateTime.now(TimeConstants.KST));
-		auditLogger.adminSuccess(AuditLogger.ADMIN, AuditLogger.LOGIN,
-				admin.getAdminId(), null, null);
+	    adminUserMapper.updateLastLoginAt(admin.getAdminId(), LocalDateTime.now(TimeConstants.KST));
+	    auditLogger.adminSuccess(AuditLogger.ADMIN, AuditLogger.LOGIN,
+	            admin.getAdminId(), null, null);
 
-		String roles = (admin.getRoleCodes() != null && !admin.getRoleCodes().isEmpty())
-		        ? String.join(",", admin.getRoleCodes())
-		        : "";
+	    String roles = (admin.getRoleCodes() != null && !admin.getRoleCodes().isEmpty())
+	            ? String.join(",", admin.getRoleCodes()) : "";
 
-		String accessToken = jwtTokenProvider.generateAdminAccessToken(admin.getAdminId(), roles);
+	    String accessToken = jwtTokenProvider.generateAdminAccessToken(admin.getAdminId(), roles);
 
-		return buildAuthCookies(accessToken, admin.getAdminId(), null, ipAddress, userAgent);
+	    return buildAdminAuthCookies(accessToken, admin.getAdminId(), ipAddress, userAgent);
 	}
+	
+	@Transactional
+	public ResponseCookie adminRefresh(String refreshToken) {
+	    AdminSession session = adminSessionMapper.findByRefreshToken(refreshToken)
+	            .orElseThrow(() -> {
+	                // 탈취 감지 — ADMIN_SESSIONS 기준으로 조회
+	                adminSessionMapper.findAnyByRefreshToken(refreshToken).ifPresent(s -> {
+	                    adminSessionMapper.revokeAllByAdminId(s.getAdminId());
+	                    auditLogger.adminFailure(AuditLogger.ADMIN, AuditLogger.TOKEN_REFRESH,
+	                            s.getAdminId(), null, "Refresh Token 재사용 감지 — 전 세션 강제 만료");
+	                });
+	                throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
+	            });
+
+	    if (session.getExpiresAt().isBefore(LocalDateTime.now(TimeConstants.KST))) {
+	        auditLogger.adminFailure(AuditLogger.ADMIN, AuditLogger.TOKEN_REFRESH,
+	                session.getAdminId(), null, "Refresh Token 만료");
+	        throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
+	    }
+
+	    // roles 재조회
+	    AdminUser admin = adminUserMapper.findById(session.getAdminId())
+	            .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+	    String roles = (admin.getRoleCodes() != null && !admin.getRoleCodes().isEmpty())
+	            ? String.join(",", admin.getRoleCodes()) : "";
+
+	    String newAccessToken = jwtTokenProvider.generateAdminAccessToken(session.getAdminId(), roles);
+	    auditLogger.adminSuccess(AuditLogger.ADMIN, AuditLogger.TOKEN_REFRESH,
+	            session.getAdminId(), null, null);
+
+	    return cookieUtil.createAccessCookie(newAccessToken, jwtTokenProvider.getAccessExpirationSec());
+	}
+
 
 	// ──────────────────────────────────────────────────────────────────
 	// private helpers
 	// ──────────────────────────────────────────────────────────────────
-
-	private AuthTokenResult buildAuthCookies(String accessToken, Long userId, String deviceInfo, String ipAddress,
-			String userAgent) {
-		String refreshToken = jwtTokenProvider.generateRefreshToken(userId);
-		long refreshExpSec = jwtTokenProvider.getRefreshExpirationSec();
-
-		userSessionMapper.insertSession(UserSession.builder().userId(userId).refreshToken(refreshToken)
-				.deviceInfo(deviceInfo).ipAddress(ipAddress).userAgent(userAgent)
-				.expiresAt(LocalDateTime.now(TimeConstants.KST).plusSeconds(refreshExpSec)).build());
-
-		AuthTokenResult result = new AuthTokenResult();
-		result.setAccessCookie(cookieUtil.createAccessCookie(accessToken, jwtTokenProvider.getAccessExpirationSec()));
-		result.setRefreshCookie(cookieUtil.createRefreshCookie(refreshToken, refreshExpSec));
-		return result;
-	}
 
 	private void validateUserStatus(User user) {
 	    if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(LocalDateTime.now(TimeConstants.KST)))
@@ -480,5 +505,48 @@ public class AuthService {
 
 	private String resolveClientIp(HttpServletRequest request) {
 	    return request.getRemoteAddr();
+	}
+	
+	/** 일반 회원용 — USER_SESSIONS */
+	private AuthTokenResult buildAuthCookies(String accessToken, Long userId,
+	        String deviceInfo, String ipAddress, String userAgent) {
+	    String refreshToken  = jwtTokenProvider.generateRefreshToken(userId);
+	    long   refreshExpSec = jwtTokenProvider.getRefreshExpirationSec();
+
+	    userSessionMapper.insertSession(UserSession.builder()
+	            .userId(userId)
+	            .refreshToken(refreshToken)
+	            .deviceInfo(deviceInfo)
+	            .ipAddress(ipAddress)
+	            .userAgent(userAgent)
+	            .expiresAt(LocalDateTime.now(TimeConstants.KST).plusSeconds(refreshExpSec))
+	            .build());
+
+	    AuthTokenResult result = new AuthTokenResult();
+	    result.setAccessCookie(cookieUtil.createAccessCookie(accessToken,
+	            jwtTokenProvider.getAccessExpirationSec()));
+	    result.setRefreshCookie(cookieUtil.createRefreshCookie(refreshToken, refreshExpSec));
+	    return result;
+	}
+
+	/** 관리자용 — ADMIN_SESSIONS, Refresh 쿠키 path=/api/admin/auth */
+	private AuthTokenResult buildAdminAuthCookies(String accessToken, Long adminId,
+	        String ipAddress, String userAgent) {
+	    String refreshToken  = jwtTokenProvider.generateRefreshToken(adminId);
+	    long   refreshExpSec = jwtTokenProvider.getRefreshExpirationSec();
+
+	    adminSessionMapper.insertSession(AdminSession.builder()
+	            .adminId(adminId)
+	            .refreshToken(refreshToken)
+	            .ipAddress(ipAddress)
+	            .userAgent(userAgent)
+	            .expiresAt(LocalDateTime.now(TimeConstants.KST).plusSeconds(refreshExpSec))
+	            .build());
+
+	    AuthTokenResult result = new AuthTokenResult();
+	    result.setAccessCookie(cookieUtil.createAccessCookie(accessToken,
+	            jwtTokenProvider.getAccessExpirationSec()));
+	    result.setRefreshCookie(cookieUtil.createAdminRefreshCookie(refreshToken, refreshExpSec));
+	    return result;
 	}
 }
