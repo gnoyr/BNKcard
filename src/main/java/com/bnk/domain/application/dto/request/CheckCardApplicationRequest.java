@@ -37,7 +37,5 @@ public class CheckCardApplicationRequest {
     public static class AgreedTermsItem {
         private Long   termsId;
         private String agreedYn;
-        private String agreedVersion;
-        private String agreedContentSnapshot;
     }
 }
