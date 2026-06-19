@@ -18,16 +18,15 @@ public interface CheckCardApplicationMapper {
     int updateIdVerified(@Param("checkAppId") Long checkAppId,
                          @Param("idVerifiedYn") String idVerifiedYn);
 
-    // STEP 3 - 계좌 선택
-    // UPDATE: linked_account_id
-    int updateLinkedAccount(@Param("checkAppId") Long checkAppId,
-                            @Param("linkedAccountId") Long linkedAccountId);
+    // STEP 3 - 기본정보
+    // UPDATE: applicant_snapshot(AES)
+    int updateApplicantInfo(CheckCardApplication application);
 
-    // STEP 4 - 기본정보 + 신청정보
-    // UPDATE: applicant_snapshot(AES), payment_snapshot, application_status('REQUESTED'), applied_at
+    // STEP 4 - 신청정보
+    // UPDATE: payment_snapshot, linked_account_id, application_status('REQUESTED'), applied_at
     int updatePaymentInfo(CheckCardApplication application);
     
-    Long findCurrentVersionId(@Param("cardId") Long cardId);
+    Long findCurrentVersionId(@Param("cardId") Long cardId);  //신청 시점 현재 PUBLISHED 버전 조회
 
     // STEP 5 - 심사
     // UPDATE: application_status, reviewed_at, reviewed_by

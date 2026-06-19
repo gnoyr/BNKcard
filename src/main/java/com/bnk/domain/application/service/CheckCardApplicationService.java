@@ -8,16 +8,25 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.bnk.domain.application.dto.CheckApplicantSnapshotDto;
+import com.bnk.domain.application.dto.PaymentSnapshotDto;
 import com.bnk.domain.application.dto.request.CheckCardApplicationRequest;
 import com.bnk.domain.application.dto.request.ScreeningResultRequest;
+import com.bnk.domain.application.dto.response.CheckApplicationResponse;
 import com.bnk.domain.application.mapper.CheckCardApplicationMapper;
 import com.bnk.domain.application.mapper.UserCardMapper;
 import com.bnk.domain.application.model.CheckCardApplication;
 import com.bnk.domain.application.model.UserCard;
+import com.bnk.domain.card.mapper.CardImageMapper;
+import com.bnk.domain.card.mapper.CardMapper;
+import com.bnk.domain.card.model.Card;
+import com.bnk.domain.card.model.CardImage;
 import com.bnk.domain.terms.mapper.TermsMapper;
 import com.bnk.domain.terms.mapper.UserTermsAgreementMapper;
 import com.bnk.domain.terms.model.Terms;
 import com.bnk.domain.terms.model.UserTermsAgreement;
+import com.bnk.global.exception.BusinessException;
+import com.bnk.global.exception.ErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
@@ -51,7 +60,7 @@ public class CheckCardApplicationService {
         List<UserTermsAgreement> agreements = request.getAgreedTerms().stream()
                 .map(agreedItem -> {
                     Terms terms = termsMapper.findById(agreedItem.getTermsId())
-                            .orElseThrow(() -> new IllegalArgumentException("약관을 찾을 수 없습니다: termsId=" + agreedItem.getTermsId()));
+                            .orElseThrow(() -> new BusinessException(ErrorCode.TERMS_NOT_FOUND));
 
                     return UserTermsAgreement.builder()
                             .userId(userId)
@@ -77,20 +86,29 @@ public class CheckCardApplicationService {
     public void verifyIdentity(Long checkAppId, String idVerifiedYn) {
         int updated = checkCardApplicationMapper.updateIdVerified(checkAppId, idVerifiedYn);
         if (updated == 0) {
-            throw new IllegalStateException("본인확인 실패: checkAppId=" + checkAppId);
+        	throw new BusinessException(ErrorCode.APP_NOT_FOUND);
         }
     }
 
     // ----------------------------------------------------------------
-    // STEP 3 - 계좌 선택
+    // STEP 3 - 기본정보 저장
     // ----------------------------------------------------------------
-    public void saveLinkedAccount(CheckCardApplicationRequest request) {
+    public void saveApplicantInfo(CheckCardApplicationRequest request) {
         validateIdVerified(request.getCheckAppId());
-        checkCardApplicationMapper.updateLinkedAccount(request.getCheckAppId(), request.getLinkedAccountId());
+
+        try {
+            CheckCardApplication application = CheckCardApplication.builder()
+                    .checkAppId(request.getCheckAppId())
+                    .applicantSnapshot(objectMapper.writeValueAsString(request.getApplicantSnapshot()))
+                    .build();
+            checkCardApplicationMapper.updateApplicantInfo(application);
+        } catch (Exception e) {
+            throw new RuntimeException("applicantSnapshot 직렬화 실패", e);
+        }
     }
 
     // ----------------------------------------------------------------
-    // STEP 4 - 기본정보 + 신청정보 저장 + 신청 완료(REQUESTED)
+    // STEP 4 - 신청정보 저장 + 신청 완료(REQUESTED)
     // ----------------------------------------------------------------
     public void submitApplication(CheckCardApplicationRequest request) {
         validateIdVerified(request.getCheckAppId());
@@ -102,8 +120,8 @@ public class CheckCardApplicationService {
             CheckCardApplication application = CheckCardApplication.builder()
                     .checkAppId(request.getCheckAppId())
                     .versionId(versionId)
-                    .applicantSnapshot(objectMapper.writeValueAsString(request.getApplicantSnapshot()))
                     .paymentSnapshot(objectMapper.writeValueAsString(request.getPaymentSnapshot()))
+                    .linkedAccountId(request.getLinkedAccountId())
                     .cardPasswordHash(passwordEncoder.encode(request.getCardPassword()))
                     .build();
             // applicantSnapshot { name, nameEn, mobileNo, address, email, jobType, transactionPurpose, fundSource }
@@ -140,7 +158,7 @@ public class CheckCardApplicationService {
         CheckCardApplication app = findOrThrow(checkAppId);
 
         if (!"APPROVED".equals(app.getApplicationStatus())) {
-            throw new IllegalStateException("승인 상태가 아닙니다: checkAppId=" + checkAppId);
+        	throw new BusinessException(ErrorCode.NOT_APPROVED_STATUS);
         }
 
         LocalDate issueDate  = LocalDate.now();
@@ -165,6 +183,32 @@ public class CheckCardApplicationService {
 
         log.info("[체크카드] 발급 완료: checkAppId={}, userCardId={}", checkAppId, userCard.getUserCardId());
     }
+    
+    
+
+    // ----------------------------------------------------------------
+    // 사용자 조회
+    // ---------------------------------------------------------------- 
+    private final CardMapper      cardMapper;
+    private final CardImageMapper cardImageMapper;
+    
+    // 신청 단건 조회(상세)
+    public CheckApplicationResponse findOne(Long checkAppId, Long userId) {
+        CheckCardApplication app = findOrThrow(checkAppId);
+        if (!app.getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.APP_NOT_FOUND);
+        }
+        return toResponse(app);
+    }
+    
+	// 내 신청 목록 조회
+    public List<CheckApplicationResponse> findMyApplications(Long userId) {
+        List<CheckCardApplication> apps = checkCardApplicationMapper.findByUserId(userId);
+        return apps.stream().map(this::toResponse).collect(Collectors.toList());
+    }
+    
+    
+    
 
     // ----------------------------------------------------------------
     // private helpers
@@ -172,15 +216,50 @@ public class CheckCardApplicationService {
     private void validateIdVerified(Long checkAppId) {
         CheckCardApplication app = findOrThrow(checkAppId);
         if (!"Y".equals(app.getIdVerifiedYn())) {
-            throw new IllegalStateException("본인확인이 완료되지 않았습니다: checkAppId=" + checkAppId);
+        	throw new BusinessException(ErrorCode.IDENTITY_NOT_VERIFIED);
         }
     }
 
     private CheckCardApplication findOrThrow(Long checkAppId) {
         CheckCardApplication app = checkCardApplicationMapper.findById(checkAppId);
         if (app == null) {
-            throw new IllegalArgumentException("신청 정보를 찾을 수 없습니다: checkAppId=" + checkAppId);
+        	throw new BusinessException(ErrorCode.APP_NOT_FOUND);
         }
         return app;
+    }
+    
+    private CheckApplicationResponse toResponse(CheckCardApplication app) {
+        try {
+            Card card = cardMapper.findById(app.getCardId());
+
+            PaymentSnapshotDto paymentSnapshot = app.getPaymentSnapshot() != null
+                    ? objectMapper.readValue(app.getPaymentSnapshot(), PaymentSnapshotDto.class)
+                    : null;
+
+            String cardImageUrl = null;
+            if (paymentSnapshot != null && paymentSnapshot.getCardDesignId() != null) {
+                CardImage selectedImage = cardImageMapper.findByImageId(Long.parseLong(paymentSnapshot.getCardDesignId()));
+                cardImageUrl = selectedImage != null ? selectedImage.getImageUrl() : null;
+            }
+
+            CheckApplicantSnapshotDto applicantSnapshot = app.getApplicantSnapshot() != null
+                    ? objectMapper.readValue(app.getApplicantSnapshot(), CheckApplicantSnapshotDto.class)
+                    : null;
+
+            return CheckApplicationResponse.builder()
+                    .checkAppId(app.getCheckAppId())
+                    .cardId(app.getCardId())
+                    .cardName(card != null ? card.getCardName() : null)
+                    .cardImageUrl(cardImageUrl)
+                    .applicationStatus(app.getApplicationStatus())
+                    .applicantSnapshot(applicantSnapshot)
+                    .paymentSnapshot(paymentSnapshot)
+                    .rejectionReason(app.getRejectionReason())
+                    .appliedAt(app.getAppliedAt())
+                    .createdAt(app.getCreatedAt())
+                    .build();
+        } catch (Exception e) {
+            throw new RuntimeException("snapshot 역직렬화 실패", e);
+        }
     }
 }
