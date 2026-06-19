@@ -86,6 +86,11 @@
     ════════════════════════════════════════════ */
     const login = {
         init() {
+			// 자동완성 강제 초기화
+			setTimeout(() => {
+			    document.getElementById('email').value    = '';
+			    document.getElementById('password').value = '';
+			}, 50);
             document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 await this._submit();
