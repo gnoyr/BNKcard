@@ -14,10 +14,11 @@
         <!-- STEP 3 -->
         <result property="linkedAccountId"    column="linked_account_id"/>
         <!-- STEP 4 -->
+        <result property="versionId" 		  column="version_id"/>
         <result property="applicantSnapshot"  column="applicant_snapshot"
                 typeHandler="aesTypeHandler"/>
-        <result property="paymentSnapshot"    column="payment_snapshot"
-                typeHandler="aesTypeHandler"/>
+        <result property="paymentSnapshot"    column="payment_snapshot"/>
+        <result property="cardPasswordHash"   column="card_password_hash"/>
         <result property="appliedAt"          column="applied_at"/>
         <!-- STEP 5 -->
         <result property="rejectionReason"    column="rejection_reason"/>
@@ -29,7 +30,6 @@
     </resultMap>
 
     <!-- STEP 1 - INSERT (DRAFT) -->
-    <!-- check_app_id: TRG_CHECK_CARD_APP_BI 트리거로 SEQ_CHECK_CARD_APPLICATIONS.NEXTVAL 자동 채번 -->
     <insert id="insertApplication" useGeneratedKeys="false">
         <selectKey keyProperty="checkAppId" resultType="long" order="AFTER">
             SELECT SEQ_CHECK_CARD_APPLICATIONS.CURRVAL FROM DUAL
@@ -58,12 +58,23 @@
     <!-- STEP 4 - 기본정보 + 신청정보 + 신청 완료 -->
     <update id="updatePaymentInfo">
         UPDATE CHECK_CARD_APPLICATIONS
-        SET    applicant_snapshot  = #{applicantSnapshot, typeHandler=aesTypeHandler},
-               payment_snapshot    = #{paymentSnapshot, typeHandler=aesTypeHandler},
+        SET    version_id 		   = #{versionId},
+        	   applicant_snapshot  = #{applicantSnapshot, typeHandler=aesTypeHandler},
+               payment_snapshot    = #{paymentSnapshot},
+               card_password_hash  = #{cardPasswordHash},
                application_status  = 'REQUESTED',
                applied_at          = SYSTIMESTAMP
         WHERE  check_app_id        = #{checkAppId}
     </update>
+    
+    <select id="findCurrentVersionId" resultType="long">
+	    SELECT version_id
+	    FROM   CARD_VERSIONS
+	    WHERE  card_id        = #{cardId}
+	      AND  version_status = 'PUBLISHED'
+	    ORDER BY published_at DESC
+	    FETCH FIRST 1 ROWS ONLY
+	</select>
 
     <!-- STEP 5 - 심사 결과 -->
     <update id="updateReviewResult">
