@@ -42,6 +42,15 @@
         WHERE CARD_ID = #{cardId}
         ORDER BY SORT_ORDER ASC NULLS LAST
     </select>
+    
+    <!-- 이미지 단건 조회 -->
+    <select id="findByImageId" resultMap="cardImageMap">
+	    SELECT IMAGE_ID, CARD_ID, IMAGE_TYPE, IMAGE_URL,
+	           ORIGINAL_NAME, STORED_NAME, FILE_SIZE, MIME_TYPE,
+	           IMAGE_WIDTH, IMAGE_HEIGHT, SORT_ORDER, CREATED_AT
+	    FROM CARD_IMAGES
+	    WHERE IMAGE_ID = #{imageId}
+	</select>
 
     <!-- 카드 단건 특정 타입 이미지 조회 -->
     <select id="findByCardIdAndType" resultMap="cardImageMap">
