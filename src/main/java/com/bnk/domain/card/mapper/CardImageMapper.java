@@ -12,6 +12,9 @@ public interface CardImageMapper {
 
 	/** 카드 단건의 이미지 전체 조회 (sortOrder ASC) */
 	List<CardImage> findByCardId(@Param("cardId") Long cardId);
+	
+	// 이미지 단건 조회
+	CardImage findByImageId(@Param("imageId") Long imageId);
 
 	/** 카드 단건의 특정 타입 이미지 조회 (FRONT / BACK / THUMBNAIL / DETAIL) */
 	CardImage findByCardIdAndType(@Param("cardId") Long cardId, @Param("imageType") String imageType);
