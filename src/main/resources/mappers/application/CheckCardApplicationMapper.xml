@@ -12,12 +12,12 @@
         <!-- STEP 2 -->
         <result property="idVerifiedYn"       column="id_verified_yn"/>
         <!-- STEP 3 -->
-        <result property="linkedAccountId"    column="linked_account_id"/>
-        <!-- STEP 4 -->
-        <result property="versionId" 		  column="version_id"/>
         <result property="applicantSnapshot"  column="applicant_snapshot"
                 typeHandler="aesTypeHandler"/>
+        <!-- STEP 4 -->
+        <result property="versionId" 		  column="version_id"/>
         <result property="paymentSnapshot"    column="payment_snapshot"/>
+        <result property="linkedAccountId"    column="linked_account_id"/>
         <result property="cardPasswordHash"   column="card_password_hash"/>
         <result property="appliedAt"          column="applied_at"/>
         <!-- STEP 5 -->
@@ -48,19 +48,19 @@
         WHERE  check_app_id   = #{checkAppId}
     </update>
 
-    <!-- STEP 3 - 계좌 선택 -->
-    <update id="updateLinkedAccount">
-        UPDATE CHECK_CARD_APPLICATIONS
-        SET    linked_account_id = #{linkedAccountId}
-        WHERE  check_app_id      = #{checkAppId}
-    </update>
+    <!-- STEP 3 - 기본정보 저장 -->
+	<update id="updateApplicantInfo">
+	    UPDATE CHECK_CARD_APPLICATIONS
+	    SET    applicant_snapshot = #{applicantSnapshot, typeHandler=aesTypeHandler}
+	    WHERE  check_app_id       = #{checkAppId}
+	</update>
 
-    <!-- STEP 4 - 기본정보 + 신청정보 + 신청 완료 -->
+    <!-- STEP 4 - 신청정보 + 신청 완료 -->
     <update id="updatePaymentInfo">
         UPDATE CHECK_CARD_APPLICATIONS
         SET    version_id 		   = #{versionId},
-        	   applicant_snapshot  = #{applicantSnapshot, typeHandler=aesTypeHandler},
                payment_snapshot    = #{paymentSnapshot},
+               linked_account_id   = #{linkedAccountId},
                card_password_hash  = #{cardPasswordHash},
                application_status  = 'REQUESTED',
                applied_at          = SYSTIMESTAMP
@@ -105,7 +105,7 @@
 
     <select id="findByUserId" resultMap="checkAppMap">
         SELECT * FROM CHECK_CARD_APPLICATIONS
-        WHERE  user_id = #{userId}
+        WHERE  user_id = #{userId} AND application_status != 'DRAFT'
         ORDER BY created_at DESC
     </select>
 

@@ -8,17 +8,26 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.bnk.domain.application.dto.CreditApplicantSnapshotDto;
+import com.bnk.domain.application.dto.PaymentSnapshotDto;
 import com.bnk.domain.application.dto.request.CreditCardApplicationRequest;
 import com.bnk.domain.application.dto.request.ReviewResultRequest;
 import com.bnk.domain.application.dto.request.ScreeningResultRequest;
+import com.bnk.domain.application.dto.response.CreditApplicationResponse;
 import com.bnk.domain.application.mapper.CreditCardApplicationMapper;
 import com.bnk.domain.application.mapper.UserCardMapper;
 import com.bnk.domain.application.model.CreditCardApplication;
 import com.bnk.domain.application.model.UserCard;
+import com.bnk.domain.card.mapper.CardImageMapper;
+import com.bnk.domain.card.mapper.CardMapper;
+import com.bnk.domain.card.model.Card;
+import com.bnk.domain.card.model.CardImage;
 import com.bnk.domain.terms.mapper.TermsMapper;
 import com.bnk.domain.terms.mapper.UserTermsAgreementMapper;
 import com.bnk.domain.terms.model.Terms;
 import com.bnk.domain.terms.model.UserTermsAgreement;
+import com.bnk.global.exception.BusinessException;
+import com.bnk.global.exception.ErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
@@ -52,7 +61,7 @@ public class CreditCardApplicationService {
         List<UserTermsAgreement> agreements = request.getAgreedTerms().stream()
                 .map(agreedItem -> {
                     Terms terms = termsMapper.findById(agreedItem.getTermsId())
-                            .orElseThrow(() -> new IllegalArgumentException("약관을 찾을 수 없습니다: termsId=" + agreedItem.getTermsId()));
+                            .orElseThrow(() -> new BusinessException(ErrorCode.TERMS_NOT_FOUND));
 
                     return UserTermsAgreement.builder()
                             .userId(userId)
@@ -78,7 +87,7 @@ public class CreditCardApplicationService {
     public void verifyIdentity(Long creditAppId, String idVerifiedYn) {
         int updated = creditCardApplicationMapper.updateIdVerified(creditAppId, idVerifiedYn);
         if (updated == 0) {
-            throw new IllegalStateException("본인확인 실패: creditAppId=" + creditAppId);
+        	throw new BusinessException(ErrorCode.APP_NOT_FOUND);
         }
     }
  
@@ -113,13 +122,11 @@ public class CreditCardApplicationService {
 	    validateIdVerified(request.getCreditAppId());
 	    
 	    // STEP 5 - 기존고객 여부 체크
-	    boolean isExisting = creditCardApplicationMapper.isExistingCustomer(
-            findOrThrow(request.getCreditAppId()).getUserId()
-        );
+	    boolean isExisting = checkExistingCustomer(request.getCreditAppId());
 	    if (!isExisting) {
 	    	// 신규고객 - 서류 확인
 	        if (request.getIncomeDocKey() == null || request.getJobDocKey() == null) {
-	            throw new IllegalStateException("신규고객은 서류 업로드가 필요합니다.");
+	        	throw new BusinessException(ErrorCode.DOCS_REQUIRED);
 	        }
 	        // 서류 저장
 	        CreditCardApplication docs = CreditCardApplication.builder()
@@ -159,6 +166,7 @@ public class CreditCardApplicationService {
                 .docVerifiedYn(request.getDocVerifiedYn())
                 .rejectionReason(request.getRejectionReason())
                 .applicationStatus(request.getApplicationStatus())
+                .reviewedBy(request.getReviewedBy())
                 .build();
         creditCardApplicationMapper.updateScreeningResult(application);
     }
@@ -217,7 +225,7 @@ public class CreditCardApplicationService {
         CreditCardApplication app = findOrThrow(creditAppId);
  
         if (!"APPROVED".equals(app.getApplicationStatus())) {
-            throw new IllegalStateException("승인 상태가 아닙니다: creditAppId=" + creditAppId + ", status=" + app.getApplicationStatus());
+        	throw new BusinessException(ErrorCode.NOT_APPROVED_STATUS);
         }
  
         LocalDate issueDate  = LocalDate.now();
@@ -242,6 +250,36 @@ public class CreditCardApplicationService {
  
         log.info("[신용카드] 발급 완료: creditAppId={}, userCardId={}", creditAppId, userCard.getUserCardId());
     }
+    
+    // 기존고객 여부 체크 (페이지 진입 시 UI 결정용)
+    public boolean checkExistingCustomer(Long creditAppId) {
+        CreditCardApplication app = findOrThrow(creditAppId);
+        return creditCardApplicationMapper.isExistingCustomer(app.getUserId());
+    }
+    
+    
+    // ----------------------------------------------------------------
+    // 사용자 조회
+    // ---------------------------------------------------------------- 
+    private final CardMapper      cardMapper;
+    private final CardImageMapper cardImageMapper;
+    
+    // 신청 단건 조회(상세)
+    public CreditApplicationResponse findOne(Long creditAppId, Long userId) {
+        CreditCardApplication app = findOrThrow(creditAppId);
+        if (!app.getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.APP_NOT_FOUND);
+        }
+        return toResponse(app);
+    }
+    
+	// 내 신청 목록 조회
+    public List<CreditApplicationResponse> findMyApplications(Long userId) {
+        List<CreditCardApplication> apps = creditCardApplicationMapper.findByUserId(userId);
+        return apps.stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    
  
     // ----------------------------------------------------------------
     // private helpers
@@ -251,16 +289,57 @@ public class CreditCardApplicationService {
     private void validateIdVerified(Long creditAppId) {
         CreditCardApplication app = findOrThrow(creditAppId);
         if (!"Y".equals(app.getIdVerifiedYn())) {
-            throw new IllegalStateException("본인확인이 완료되지 않았습니다: creditAppId=" + creditAppId);
+        	throw new BusinessException(ErrorCode.IDENTITY_NOT_VERIFIED);
         }
     }
  
     private CreditCardApplication findOrThrow(Long creditAppId) {
         CreditCardApplication app = creditCardApplicationMapper.findById(creditAppId);
         if (app == null) {
-            throw new IllegalArgumentException("신청 정보를 찾을 수 없습니다: creditAppId=" + creditAppId);
+        	throw new BusinessException(ErrorCode.APP_NOT_FOUND);
         }
         return app;
     }
+    
+    // 사용자 신청서 조회
+    private CreditApplicationResponse toResponse(CreditCardApplication app) {
+        try {
+            Card card = cardMapper.findById(app.getCardId());
+
+            PaymentSnapshotDto paymentSnapshot = app.getPaymentSnapshot() != null
+                    ? objectMapper.readValue(app.getPaymentSnapshot(), PaymentSnapshotDto.class)
+                    : null;
+
+            // 신청 시 선택한 카드 디자인 이미지 조회
+            String cardImageUrl = null;
+            if (paymentSnapshot != null && paymentSnapshot.getCardDesignId() != null) {
+                CardImage selectedImage = cardImageMapper.findByImageId(Long.parseLong(paymentSnapshot.getCardDesignId()));
+                cardImageUrl = selectedImage != null ? selectedImage.getImageUrl() : null;
+            }
+
+            CreditApplicantSnapshotDto applicantSnapshot = app.getApplicantSnapshot() != null
+                    ? objectMapper.readValue(app.getApplicantSnapshot(), CreditApplicantSnapshotDto.class)
+                    : null;
+
+            return CreditApplicationResponse.builder()
+                    .creditAppId(app.getCreditAppId())
+                    .cardId(app.getCardId())
+                    .cardName(card != null ? card.getCardName() : null)
+                    .cardImageUrl(cardImageUrl)
+                    .applicationStatus(app.getApplicationStatus())
+                    .applicantSnapshot(applicantSnapshot)
+                    .paymentSnapshot(paymentSnapshot)
+                    .approvedLimit(app.getApprovedLimit())
+                    .requestedLimit(app.getRequestedLimit())
+                    .rejectionReason(app.getRejectionReason())
+                    .appliedAt(app.getAppliedAt())
+                    .createdAt(app.getCreatedAt())
+                    .build();
+        } catch (Exception e) {
+            throw new RuntimeException("snapshot 역직렬화 실패", e);
+        }
+    }   
+    
+    
 
 }

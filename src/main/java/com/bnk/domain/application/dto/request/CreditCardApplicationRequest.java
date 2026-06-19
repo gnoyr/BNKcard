@@ -26,8 +26,8 @@ public class CreditCardApplicationRequest {
 
     // STEP 3 - 기본정보 + 직업/소득
     private CreditApplicantSnapshotDto applicantSnapshot;   // { name, name_en, mobile_no, address, email, id_issue_date, income_type, health_insurance_type, has_real_estate, has_own_vehicle }
-    private String                     annualIncomeBand;
-    private String                     creditScoreBand;
+    private String                     annualIncomeBand;	// 소득 구간
+    private String                     creditScoreBand;		// 신용 점수 구간
     private Long                       linkedAccountId;     // 연회비 자동이체 계좌 ID
 
     // STEP 4 - 신청정보
