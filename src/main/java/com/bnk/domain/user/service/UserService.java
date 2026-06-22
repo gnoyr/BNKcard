@@ -26,7 +26,8 @@ import com.bnk.global.util.audit.AuditLogger;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
+import com.bnk.domain.user.dto.response.MonthlySpendingResponse;
+import java.util.Map;
 @Slf4j
 @Service
 @Validated
@@ -162,4 +163,37 @@ public class UserService {
                 .applications(appDtos)
                 .build();
     }
+    
+    /**
+     * 월별 카드별 이용금액 집계
+     * GET /api/users/me/spending?year=&month=
+     */
+    @Transactional(readOnly = true)
+    public MonthlySpendingResponse getMonthlySpending(Long userId, int year, int month) {
+        List<Map<String, Object>> rows = userMapper.selectMonthlySpending(userId, year, month);
+
+        // 임시 디버깅 - 키 이름 확인
+        if (!rows.isEmpty()) {
+            rows.get(0).forEach((k, v) -> System.out.println("KEY: " + k + " = " + v));
+        } else {
+            System.out.println("rows is EMPTY - userId=" + userId + " year=" + year + " month=" + month);
+        }
+        
+        List<MonthlySpendingResponse.CardSpending> cards = rows.stream()
+        		.map(r -> MonthlySpendingResponse.CardSpending.builder()
+        		        .userCardId(((Number) r.get("USERCARDID")).longValue())
+        		        .cardName((String) r.get("CARDNAME"))
+        		        .amount(((Number) r.get("AMOUNT")).longValue())
+        		        .build())
+                .collect(Collectors.toList());
+
+        long total = cards.stream().mapToLong(MonthlySpendingResponse.CardSpending::getAmount).sum();
+
+        return MonthlySpendingResponse.builder()
+                .totalAmount(total)
+                .cards(cards)
+                .build();
+    }
+    
+    
 }
