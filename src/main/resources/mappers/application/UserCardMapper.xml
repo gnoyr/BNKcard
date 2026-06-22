@@ -23,6 +23,17 @@
 	    <result property="deletedYn"            column="deleted_yn"/>
 	    <result property="deletedAt"            column="deleted_at"/>
 	</resultMap>
+	
+	<resultMap id="myCardApplicationMap" type="com.bnk.domain.application.dto.response.MyCardApplicationResponse">
+        <result property="appId"             column="app_id"/>
+        <result property="cardType"          column="card_type"/>
+        <result property="cardId"            column="card_id"/>
+        <result property="cardName"          column="card_name"/>
+        <result property="applicationStatus" column="application_status"/>
+        <result property="rejectionReason"   column="rejection_reason"/>
+        <result property="appliedAt"         column="applied_at"/>
+        <result property="createdAt"         column="created_at"/>
+    </resultMap>
 
 	<!-- STEP 7,8 - APPROVED 시 자동 발급 -->
 	<!-- card_password_hash: 서비스 레이어에서 BCrypt 해시 후 전달 -->
@@ -61,5 +72,41 @@
                updated_at  = SYSTIMESTAMP
         WHERE  user_card_id = #{userCardId}
     </update>
+    
+    <!-- 신용/체크카드 통합 신청 현황 조회 -->
+    <select id="findMyAllApplications" resultMap="myCardApplicationMap">
+        SELECT app_id, card_type, card_id, card_name,
+               application_status, rejection_reason, applied_at, created_at
+        FROM (
+            SELECT cca.credit_app_id      AS app_id,
+                   'CREDIT'                AS card_type,
+                   cca.card_id            AS card_id,
+                   c.card_name            AS card_name,
+                   cca.application_status AS application_status,
+                   cca.rejection_reason   AS rejection_reason,
+                   cca.applied_at         AS applied_at,
+                   cca.created_at         AS created_at
+            FROM   CREDIT_CARD_APPLICATIONS cca
+            JOIN   CARDS c ON cca.card_id = c.card_id
+            WHERE  cca.user_id = #{userId}
+              AND  cca.application_status != 'DRAFT'
+
+            UNION ALL
+
+            SELECT cha.check_app_id       AS app_id,
+                   'CHECK'                 AS card_type,
+                   cha.card_id            AS card_id,
+                   c.card_name            AS card_name,
+                   cha.application_status AS application_status,
+                   cha.rejection_reason   AS rejection_reason,
+                   cha.applied_at         AS applied_at,
+                   cha.created_at         AS created_at
+            FROM   CHECK_CARD_APPLICATIONS cha
+            JOIN   CARDS c ON cha.card_id = c.card_id
+            WHERE  cha.user_id = #{userId}
+              AND  cha.application_status != 'DRAFT'
+        )
+        ORDER BY created_at DESC
+    </select>
 
 </mapper>
