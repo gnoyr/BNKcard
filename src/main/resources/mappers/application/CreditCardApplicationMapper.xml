@@ -136,7 +136,7 @@
     <!-- STEP 7 - 한도 검증 -->
     <!-- 월 평균 결제액 기반 월소득 추정 -->
 	<select id="calculateEstimatedMonthlyIncome" resultType="long">
-	    SELECT ROUND(AVG(monthly_amount) / 0.35)
+	    SELECT NVL(ROUND(AVG(monthly_amount) / 0.35), 0)
 	    FROM (
 	        SELECT paid_year, paid_month, SUM(ct.amount) AS monthly_amount
 	        FROM   CARD_TRANSACTIONS ct
