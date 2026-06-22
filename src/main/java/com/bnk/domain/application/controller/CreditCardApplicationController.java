@@ -5,7 +5,6 @@ import com.bnk.domain.application.dto.request.ReviewResultRequest;
 import com.bnk.domain.application.dto.request.ScreeningResultRequest;
 import com.bnk.domain.application.dto.response.CreditApplicationResponse;
 import com.bnk.domain.application.service.CreditCardApplicationService;
-import com.bnk.domain.card.mapper.CardMapper;
 import com.bnk.global.auth.CustomUserDetails;
 import com.bnk.global.response.ApiResponse;
 import com.bnk.global.util.FileStorageService;
