@@ -395,5 +395,26 @@
 		#{source},
 		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul')
 	</insert>
+	
+	<!-- 월별 카드별 이용금액 집계 -->
+	<select id="selectMonthlySpending" resultType="map">
+	    SELECT
+	        uc.user_card_id   AS userCardId,
+	        c.card_name       AS cardName,
+	        NVL(SUM(t.amount), 0) AS amount
+	    FROM USER_CARDS uc
+	    INNER JOIN CARD_VERSIONS cv ON uc.version_id = cv.version_id
+	    INNER JOIN CARDS c          ON cv.card_id = c.card_id
+	    LEFT JOIN CARD_TRANSACTIONS t
+	        ON t.user_card_id = uc.user_card_id
+	        AND t.paid_year   = #{year}
+	        AND t.paid_month  = #{month}
+	        AND t.status      = 'APPROVED'
+	    WHERE uc.user_id   = #{userId}
+	      AND uc.deleted_yn = 'N'
+	    GROUP BY uc.user_card_id, c.card_name
+	    ORDER BY amount DESC
+	</select>
+	
 
 </mapper>
