@@ -99,7 +99,7 @@
             #survey-widget {
                 position: fixed;
                 top: 50%;
-                right: 24px;
+                left: 24px;
                 transform: translateY(-50%);
                 width: 280px;
                 background: #fff;
@@ -110,10 +110,10 @@
                 border: 1px solid var(--teal-100);
                 animation: sw-slideIn .3s ease;
             }
-            @keyframes sw-slideIn {
-                from { opacity:0; transform:translateY(-50%) translateX(20px); }
-                to   { opacity:1; transform:translateY(-50%) translateX(0); }
-            }
+			@keyframes sw-slideIn {
+			    from { opacity:0; transform:translateY(-50%) translateX(-20px); }
+			    to   { opacity:1; transform:translateY(-50%) translateX(0); }
+			}
             .sw-header {
                 background: linear-gradient(135deg, var(--teal-900) 0%, var(--teal-600) 100%);
                 padding: 12px 14px;
