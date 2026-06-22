@@ -394,54 +394,54 @@ function renderRows(items) {
     const tbody = document.getElementById('table-body');
 
     if (currentTab === 'admin') {
-        tbody.innerHTML = items.map(d => `
-            <tr>
-                <td style="color:#aaa;font-size:12px;">
-                    ${d.logId      ?? d.LOG_ID      ?? '-'}</td>
-                <td><b>${d.adminName  ?? d.ADMIN_NAME  ?? '-'}</b></td>
-                <td>${roleBadge(d.roleCode ?? d.ROLE_CODE)}</td>
-                <td>${d.action     ?? d.ACTION     ?? '-'}</td>
-                <td>${resultBadge(d.result ?? d.RESULT)}</td>
-                <td style="font-size:12px;color:#888;">
-                    ${d.targetId   ?? d.TARGET_ID   ?? '-'}</td>
-                <td style="font-size:12px;color:#888;white-space:nowrap;">
-                    ${d.occurredAt ?? d.OCCURRED_AT ?? '-'}</td>
-            </tr>`).join('');
+    	tbody.innerHTML = items.map(d => `
+        <tr>
+            <td style="color:#aaa;font-size:12px;">
+                ${d.LOGID      ?? d.logId      ?? '-'}</td>
+            <td><b>${d.ADMINNAME ?? d.adminName ?? '-'}</b></td>
+            <td>${roleBadge(d.ROLECODE ?? d.roleCode)}</td>
+            <td>${d.ACTION     ?? d.action     ?? '-'}</td>
+            <td>${resultBadge(d.RESULT ?? d.result)}</td>
+            <td style="font-size:12px;color:#888;">
+                ${d.TARGETID   ?? d.targetId   ?? '-'}</td>
+            <td style="font-size:12px;color:#888;white-space:nowrap;">
+                ${d.OCCURREDAT ?? d.occurredAt ?? '-'}</td>
+        </tr>`).join('');
 
     } else if (currentTab === 'audit') {
         tbody.innerHTML = items.map(d => `
             <tr>
                 <td style="color:#aaa;font-size:12px;">
-                    ${d.logId      ?? d.LOG_ID      ?? '-'}</td>
-                <td>${d.action     ?? d.ACTION      ?? '-'}</td>
-                <td>${resultBadge(d.result ?? d.RESULT)}</td>
+                    ${d.LOGID       ?? d.logId      ?? '-'}</td>
+                <td>${d.ACTION      ?? d.action     ?? '-'}</td>
+                <td>${d.RESULT      ?? d.result     ?? '-'}</td>
                 <td style="font-size:12px;color:#888;">
-                    ${d.clientIp   ?? d.CLIENT_IP   ?? '-'}</td>
+                    ${d.CLIENTIP    ?? d.clientIp   ?? '-'}</td>
                 <td style="font-size:12px;color:#888;max-width:200px;
                            overflow:hidden;text-overflow:ellipsis;">
-                    ${d.requestUri ?? d.REQUEST_URI ?? '-'}</td>
+                    ${d.REQUESTURI  ?? d.requestUri ?? '-'}</td>
                 <td style="font-size:12px;color:#888;white-space:nowrap;">
-                    ${d.occurredAt ?? d.OCCURRED_AT ?? '-'}</td>
+                    ${d.OCCURREDAT  ?? d.occurredAt ?? '-'}</td>
                 <td></td>
             </tr>`).join('');
 
     } else {
-        tbody.innerHTML = items.map(d => `
-            <tr>
-                <td style="color:#aaa;font-size:12px;">
-                    ${d.logId    ?? d.LOG_ID    ?? '-'}</td>
-                <td>${d.action   ?? d.ACTION    ?? '-'}</td>
-                <td>${resultBadge(d.result ?? d.RESULT)}</td>
-                <td style="font-size:12px;color:#888;">
-                    ${d.targetId ?? d.TARGET_ID ?? '-'}</td>
-                <td style="font-size:12px;color:#888;max-width:200px;
-                           overflow:hidden;text-overflow:ellipsis;">
-                    ${d.detail   ?? d.DETAIL    ?? '-'}</td>
-                <td style="font-size:12px;color:#888;">
-                    ${d.clientIp ?? d.CLIENT_IP ?? '-'}</td>
-                <td style="font-size:12px;color:#888;white-space:nowrap;">
-                    ${d.occurredAt ?? d.OCCURRED_AT ?? '-'}</td>
-            </tr>`).join('');
+    	tbody.innerHTML = items.map(d => `
+        <tr>
+            <td style="color:#aaa;font-size:12px;">
+                ${d.LOGID      ?? d.logId      ?? '-'}</td>
+            <td>${d.ACTION     ?? d.action     ?? '-'}</td>
+            <td>${resultBadge(d.RESULT ?? d.result)}</td>
+            <td style="font-size:12px;color:#888;">
+                ${d.TARGETID   ?? d.targetId   ?? '-'}</td>
+            <td style="font-size:12px;color:#888;max-width:200px;
+                       overflow:hidden;text-overflow:ellipsis;">
+                ${d.DETAIL     ?? d.detail     ?? '-'}</td>
+            <td style="font-size:12px;color:#888;">
+                ${d.CLIENTIP   ?? d.clientIp   ?? '-'}</td>
+            <td style="font-size:12px;color:#888;white-space:nowrap;">
+                ${d.OCCURREDAT ?? d.occurredAt ?? '-'}</td>
+        </tr>`).join('');
     }
 }
 
@@ -477,6 +477,9 @@ function roleBadge(code) {
 }
 
 function resultBadge(result) {
+    if (!result || result === '-' || result === null) {
+        return `<span class="badge" style="background:#f5f5f5;color:#888;">-</span>`;
+    }
     const cls   = result === 'S' ? 'badge-success' : 'badge-fail';
     const label = result === 'S' ? '성공' : '실패';
     return `<span class="badge ${cls}">${label}</span>`;
