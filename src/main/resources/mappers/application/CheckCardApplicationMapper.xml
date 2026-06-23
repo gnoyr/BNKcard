@@ -11,6 +11,7 @@
         <result property="applicationStatus"  column="application_status"/>
         <!-- STEP 2 -->
         <result property="idVerifiedYn"       column="id_verified_yn"/>
+        <result property="ciValue" 			  column="ci_value"/>
         <!-- STEP 3 -->
         <result property="applicantSnapshot"  column="applicant_snapshot"
                 typeHandler="aesTypeHandler"/>
@@ -44,14 +45,17 @@
     <!-- STEP 2 - 본인확인 결과 -->
     <update id="updateIdVerified">
         UPDATE CHECK_CARD_APPLICATIONS
-        SET    id_verified_yn = #{idVerifiedYn}
+    	SET    id_verified_yn = #{idVerifiedYn},
+	           ci_value       = #{ciValue},
+	           updated_at     = SYSTIMESTAMP
         WHERE  check_app_id   = #{checkAppId}
     </update>
 
     <!-- STEP 3 - 기본정보 저장 -->
 	<update id="updateApplicantInfo">
 	    UPDATE CHECK_CARD_APPLICATIONS
-	    SET    applicant_snapshot = #{applicantSnapshot, typeHandler=aesTypeHandler}
+	    SET    applicant_snapshot = #{applicantSnapshot, typeHandler=aesTypeHandler},
+	    	   updated_at         = SYSTIMESTAMP
 	    WHERE  check_app_id       = #{checkAppId}
 	</update>
 

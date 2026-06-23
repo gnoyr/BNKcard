@@ -1,12 +1,15 @@
 package com.bnk.domain.application.service;
 
+import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import com.bnk.domain.application.dto.CreditApplicantSnapshotDto;
 import com.bnk.domain.application.dto.PaymentSnapshotDto;
@@ -28,7 +31,10 @@ import com.bnk.domain.terms.model.Terms;
 import com.bnk.domain.terms.model.UserTermsAgreement;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
+import com.bnk.global.util.AesCryptoUtil;
+import com.bnk.global.util.MaskingUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.api.client.util.Value;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,7 +50,12 @@ public class CreditCardApplicationService {
     private final TermsMapper termsMapper;
     private final PasswordEncoder passwordEncoder;
     private final ObjectMapper objectMapper;
-	
+    private final RestTemplate restTemplate;
+    private final AesCryptoUtil aesCryptoUtil;
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    
+    @Value("${verification.server.url}")
+    private String verificationServerUrl;
 	
 	// ----------------------------------------------------------------
     // STEP 1 - 약관 동의
@@ -84,11 +95,35 @@ public class CreditCardApplicationService {
     // ----------------------------------------------------------------
     // STEP 2 - 본인확인 결과 저장 (심사 서버에서 받아서)
     // ----------------------------------------------------------------
-    public void verifyIdentity(Long creditAppId, String idVerifiedYn) {
-        int updated = creditCardApplicationMapper.updateIdVerified(creditAppId, idVerifiedYn);
+    public String verifyIdentity(CreditCardApplicationRequest request) {
+        Map response = restTemplate.postForObject(
+            verificationServerUrl + "/api/mydata/id-verification",
+            Map.of(
+                "creditAppId",  request.getCreditAppId(),
+                "idType",       request.getIdType(),
+                "idName",       request.getIdName(),
+                "idResidentNo", request.getIdResidentNo(),
+                "idAddress",    request.getIdAddress(),
+                "idIssueDate",  request.getIdIssueDate()
+            ),
+            Map.class
+        );
+
+        String idVerifiedYn = (String) response.get("idVerifiedYn");
+        String ciValue      = (String) response.get("ciValue");
+        
+        CreditCardApplication application = CreditCardApplication.builder()
+                .creditAppId(request.getCreditAppId())
+                .idVerifiedYn(idVerifiedYn)
+                .ciValue(ciValue)
+                .build();
+
+        int updated = creditCardApplicationMapper.updateIdVerified(application);
         if (updated == 0) {
-        	throw new BusinessException(ErrorCode.APP_NOT_FOUND);
+            throw new BusinessException(ErrorCode.APP_NOT_FOUND);
         }
+
+        return idVerifiedYn;
     }
  
     // ----------------------------------------------------------------
@@ -149,36 +184,85 @@ public class CreditCardApplicationService {
 	                .requestedLimit(request.getRequestedLimit())
 	                .cardPasswordHash(passwordEncoder.encode(request.getCardPassword()))
 	                .build();
-	        // payment_snapshot { card_brand, card_design_id, payment_day, combined_transit_yn, tx_alert_type, statement_method, overseas_dcc_block_yn }
-	        creditCardApplicationMapper.updatePaymentInfo(application);
+	        // payment_snapshot { card_brand, card_design_id, payment_day, combined_transit_yn, tx_alert_type, statement_method }
+	        creditCardApplicationMapper.updatePaymentInfo(application);	        
+
 	    } catch (Exception e) {
 	        throw new RuntimeException("paymentSnapshot 직렬화 실패", e);
+	    }	    
+
+        // 마이데이터로 심사 의뢰 추가
+        requestScreeningReview(request.getCreditAppId());
+	}
+    
+
+	private void requestScreeningReview(Long creditAppId) {
+	    try {
+	        CreditCardApplication app = findOrThrow(creditAppId);
+	
+	        restTemplate.postForEntity(
+	            verificationServerUrl + "/review/request/credit/" + creditAppId,
+	            Map.of(
+	                    "creditAppId",     creditAppId,
+	                    "ciValue",         app.getCiValue(),
+	                    "requestedLimit",  app.getRequestedLimit(),
+	                    "creditScoreBand", app.getCreditScoreBand(),
+	                    "annualIncomeBand", app.getAnnualIncomeBand(),
+	                    "incomeDocKey",    app.getIncomeDocKey() != null ? app.getIncomeDocKey() : "",
+	                    "assetDocKey",     app.getAssetDocKey()  != null ? app.getAssetDocKey()  : "",
+	                    "jobDocKey",       app.getJobDocKey()    != null ? app.getJobDocKey()    : ""
+	                ),
+	            Void.class
+	        );
+	    } catch (Exception e) {
+	        log.error("[신용카드] 심사 의뢰 실패: creditAppId={}", creditAppId, e);
 	    }
 	}
     
     // ----------------------------------------------------------------
     // STEP 6 - 1차 심사 결과 저장 (심사서버 콜백)
     // ----------------------------------------------------------------
-    public void saveScreeningResult(ScreeningResultRequest request) {
-    	CreditCardApplication application = CreditCardApplication.builder()
-                .creditAppId(request.getAppId())
-                .screeningResult(request.getScreeningResult())
-                .docVerifiedYn(request.getDocVerifiedYn())
-                .rejectionReason(request.getRejectionReason())
-                .applicationStatus(request.getApplicationStatus())
-                .reviewedBy(request.getReviewedBy())
-                .build();
-        creditCardApplicationMapper.updateScreeningResult(application);
-    }
+	public void saveScreeningResult(ScreeningResultRequest request) {
+	    CreditCardApplication application = CreditCardApplication.builder()
+	            .creditAppId(request.getAppId())
+	            .screeningResult(request.getScreeningResult())
+	            .docVerifiedYn(request.getDocVerifiedYn())
+	            .rejectionReason(request.getRejectionReason())
+	            .applicationStatus(request.getApplicationStatus())
+	            .reviewedBy(request.getReviewedBy())
+	            .estimatedMonthlyIncome(request.getEstimatedMonthlyIncome())
+	            .build();
+	    creditCardApplicationMapper.updateScreeningResult(application);
+
+	    if (!"REJECTED".equals(request.getApplicationStatus())) {
+	        checkLimit(request.getAppId(), request);  // ← request 통째로 넘김
+	    }
+	}
     
     // ----------------------------------------------------------------
-    // STEP 7 - 한도 검증 (결제내역 기반 월소득 추정 후 한도 검증)
+    // STEP 7 - 한도 검증 (심사서버에서 데이터 받아서)
     // ----------------------------------------------------------------
-    public void checkLimit(Long creditAppId) {
+    public void checkLimit(Long creditAppId, ScreeningResultRequest screeningData) {
         CreditCardApplication app = findOrThrow(creditAppId);
+        
+        Long estimatedMonthlyIncome = app.getEstimatedMonthlyIncome();
+        Long   creditScore            = screeningData.getCreditScore();
+        Integer vehicleCount          = screeningData.getVehicleCount();
+        Long   loanBalance            = screeningData.getLoanBalance();
+        Double delinquencyRate        = screeningData.getDelinquencyRate();
+        Integer multipleDebtCount     = screeningData.getMultipleDebtCount();
+        String jobType                = screeningData.getJobType();
+        
+        if (estimatedMonthlyIncome == null || estimatedMonthlyIncome == 0) {
+            // 추정소득 없음(완전 신규) → 심사서버가 서류 보고 판단
+            app.setLimitCheckResult("MANUAL_REQUIRED");
+            app.setApplicationStatus("REVIEWING");
+            creditCardApplicationMapper.updateLimitCheck(app);
+            requestAdditionalReview(creditAppId);
+            return;
+        }
 
-        Long estimatedMonthlyIncome = creditCardApplicationMapper.calculateEstimatedMonthlyIncome(app.getUserId());
-
+        // 추정소득 있으면 한도 검증
         long threshold = (long)(estimatedMonthlyIncome * 0.3);
 
         if (app.getRequestedLimit() <= threshold) {
@@ -189,15 +273,30 @@ public class CreditCardApplicationService {
             app.setLimitCheckResult("MANUAL_REQUIRED");
             app.setApplicationStatus("REVIEWING");
         }
-        app.setEstimatedMonthlyIncome(estimatedMonthlyIncome);
         creditCardApplicationMapper.updateLimitCheck(app);
-        
-        // PASS → 자동 발급
+
         if ("APPROVED".equals(app.getApplicationStatus())) {
             issueCard(creditAppId);
+        } else {
+            requestAdditionalReview(creditAppId);  // 한도 초과시 심사서버 전달
         }
     }
     
+    // RestTemplate 심사서버 전달
+    private void requestAdditionalReview(Long creditAppId) {
+        try {
+            restTemplate.postForEntity(
+                verificationServerUrl + "/review/request/" + creditAppId,
+                Map.of(
+                    "creditAppId", creditAppId  // 1차 심사와 동일한 서버
+                ),
+                Void.class
+            );
+        } catch (Exception e) {
+            log.error("[신용카드] 추가심사 요청 실패: creditAppId={}", creditAppId, e);
+        }
+    }
+   
     // ----------------------------------------------------------------
     // STEP 8 - 추가 심사 결과 저장 (심사서버 콜백, REVIEWING 케이스만)
     // ----------------------------------------------------------------
@@ -232,22 +331,44 @@ public class CreditCardApplicationService {
         LocalDate expireDate = issueDate.plusYears(10);
 
         // 16자리 랜덤 카드번호 생성
-        String cardNumber = String.format("%016d", 
-            (long)(Math.random() * 9_000_000_000_000_000L) + 1_000_000_000_000_000L);
+        long min = 1_000_000_000_000_000L;
+        long max = 9_999_999_999_999_999L;
+        long rawNumber = min + (long)(SECURE_RANDOM.nextDouble() * (max - min + 1));
+        String rawCardNumber = String.format("%016d", rawNumber);
 
-        UserCard userCard = new UserCard();
-        userCard.setUserId(app.getUserId());
-        userCard.setVersionId(app.getVersionId());
-        userCard.setCreditAppId(app.getCreditAppId());
-        userCard.setCardPasswordHash(app.getCardPasswordHash());
-        userCard.setCardNumber(cardNumber);
-        userCard.setIssueDate(issueDate);
-        userCard.setExpireDate(expireDate);
-        userCard.setCardStatus("ACTIVE");
+        PaymentSnapshotDto snap = null;
+        try {
+            snap = objectMapper.readValue(app.getPaymentSnapshot(), PaymentSnapshotDto.class);
+        } catch (Exception e) {
+            throw new RuntimeException("paymentSnapshot 역직렬화 실패", e);
+        }
+
+	     UserCard userCard = new UserCard();
+	     userCard.setUserId(app.getUserId());
+	     userCard.setVersionId(app.getVersionId());
+	     userCard.setCreditAppId(app.getCreditAppId());   // 신용카드
+	     // ── 카드번호
+	     userCard.setEncryptedCardNumber(aesCryptoUtil.encrypt(rawCardNumber));
+	     userCard.setMaskedCardNumber(MaskingUtil.maskCardNumber(rawCardNumber));
+	     userCard.setIssueDate(issueDate);
+	     userCard.setExpireDate(expireDate);
+	     userCard.setCardStatus("ACTIVE");
+	     userCard.setUsableYn("Y");
+	     userCard.setCardPasswordHash(app.getCardPasswordHash());
+	     userCard.setLinkedAccountId(app.getLinkedAccountId());
+	     userCard.setDailyLimitAmount(1_000_000L);
+	     userCard.setMonthlyLimitAmount(app.getApprovedLimit());
+	     // ── payment_snapshot
+	     userCard.setCardBrand(snap.getCardBrand());
+	     userCard.setCardDesignId(snap.getCardDesignId() != null ? Long.parseLong(snap.getCardDesignId()) : null);
+	     userCard.setPaymentDay(snap.getPaymentDay());
+	     userCard.setCombinedTransitYn(snap.getCombinedTransitYn());
+	     userCard.setTxAlertType(snap.getTxAlertType());
+	     userCard.setStatementMethod(snap.getStatementMethod());
+
         userCardMapper.insertUserCard(userCard);
-
         creditCardApplicationMapper.updateStatus(creditAppId, "ISSUED");
- 
+
         log.info("[신용카드] 발급 완료: creditAppId={}, userCardId={}", creditAppId, userCard.getUserCardId());
     }
     
@@ -340,6 +461,7 @@ public class CreditCardApplicationService {
         }
     }   
     
+
     
 
 }
