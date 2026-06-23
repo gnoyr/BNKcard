@@ -10,23 +10,31 @@ import java.util.List;
 public interface CheckCardApplicationMapper {
 
     // STEP 1 - 약관 동의
+    // INSERT: user_id, card_id, application_status('DRAFT')
     int insertApplication(CheckCardApplication application);
 
     // STEP 2 - 본인확인
+    // UPDATE: id_verified_yn
     int updateIdVerified(@Param("checkAppId") Long checkAppId,
                          @Param("idVerifiedYn") String idVerifiedYn);
 
-    // STEP 3 - 계좌 선택
-    int updateLinkedAccount(@Param("checkAppId") Long checkAppId,
-                            @Param("linkedAccountId") Long linkedAccountId);
+    // STEP 3 - 기본정보
+    // UPDATE: applicant_snapshot(AES)
+    int updateApplicantInfo(CheckCardApplication application);
 
-    // STEP 4 - 기본정보 + 신청정보
+    // STEP 4 - 신청정보
+    // UPDATE: payment_snapshot, linked_account_id, application_status('REQUESTED'), applied_at
     int updatePaymentInfo(CheckCardApplication application);
+    
+    Long findCurrentVersionId(@Param("cardId") Long cardId);  //신청 시점 현재 PUBLISHED 버전 조회
 
     // STEP 5 - 심사
+    // UPDATE: application_status, reviewed_at, reviewed_by
+    //         거절 시 → rejection_reason
     int updateReviewResult(CheckCardApplication application);
 
     // STEP 6 - 발급
+    // UPDATE: application_status('ISSUED')
     int updateStatus(@Param("checkAppId") Long checkAppId,
                      @Param("applicationStatus") String applicationStatus);
 

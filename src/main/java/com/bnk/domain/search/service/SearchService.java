@@ -31,26 +31,45 @@ import com.bnk.domain.search.model.SearchKeyword;
 import com.bnk.domain.search.model.SearchLog;
 import com.bnk.global.response.PageResponse;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * 카드 검색 서비스.
+ *
+ */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class SearchService {
 
-    private final SearchKeywordMapper searchKeywordMapper;
-    private final SearchLogMapper searchLogMapper;
-    private final CardMapper cardMapper;
-    private final CardImageMapper cardImageMapper;
-    private final CardBenefitMapper cardBenefitMapper;
+    private final SearchKeywordMapper  searchKeywordMapper;
+    private final SearchLogMapper      searchLogMapper;
+    private final CardMapper           cardMapper;
+    private final CardImageMapper      cardImageMapper;
+    private final CardBenefitMapper    cardBenefitMapper;
 
-    // ai.enabled=false 환경 대비 optional 주입
-    @Autowired(required = false)
-    private VectorStore vectorStore;
+    /**
+     * ai.enabled=false 환경에서는 VectorStore / ChatClient.Builder 빈 미등록.
+     * 생성자 파라미터 @Autowired(required = false) 로 null 주입 허용.
+     */
+    private final VectorStore          vectorStore;
+    private final ChatClient.Builder   chatClientBuilder;
 
-    @Autowired(required = false)
-    private ChatClient.Builder chatClientBuilder;
+    public SearchService(
+            SearchKeywordMapper searchKeywordMapper,
+            SearchLogMapper searchLogMapper,
+            CardMapper cardMapper,
+            CardImageMapper cardImageMapper,
+            CardBenefitMapper cardBenefitMapper,
+            @Autowired(required = false) VectorStore vectorStore,
+            @Autowired(required = false) ChatClient.Builder chatClientBuilder) {
+        this.searchKeywordMapper  = searchKeywordMapper;
+        this.searchLogMapper      = searchLogMapper;
+        this.cardMapper           = cardMapper;
+        this.cardImageMapper      = cardImageMapper;
+        this.cardBenefitMapper    = cardBenefitMapper;
+        this.vectorStore          = vectorStore;
+        this.chatClientBuilder    = chatClientBuilder;
+    }
 
     /**
      * F-13 카드 검색 — 키워드 0건 시 AI 의미 검색 + 오타 교정 fallback
@@ -89,10 +108,8 @@ public class SearchService {
                 if (correctedQuery != null
                         && !correctedQuery.isBlank()
                         && !correctedQuery.equalsIgnoreCase(q)) {
-                    // 오타 교정된 경우 — "약관으로 검색한 결과입니다"
                     aiSearchMessage = "'" + correctedQuery + "'으로 검색한 결과입니다.";
                 } else {
-                    // 오타는 없지만 의미 검색으로 찾은 경우
                     aiSearchMessage = "AI 의미 검색 결과입니다.";
                 }
             }
@@ -191,24 +208,24 @@ public class SearchService {
                             교정된 단어 하나만 반환해. 설명 없이.
                             오타가 없거나 확실하지 않으면 원본 그대로 반환해.
                             절대로 새로운 문장을 만들지 마.
-                            
+
                             예시:
                             - "딩댕" → "딩딩"
                             - "해외여핼" → "해외여행"
                             - "싸인카드" → "사인카드"
-                            
+
                             검색어: {query}
                             """)
                             .param("query", q))
                     .call()
                     .content();
-            
+
             // 교정 결과가 원본보다 2배 이상 길면 무시 (문장으로 바뀐 경우)
             if (result != null && result.trim().length() > q.length() * 2) {
                 log.warn("[Search] 오타 교정 결과가 너무 길어 무시: {} → {}", q, result.trim());
                 return null;
             }
-            
+
             return result != null ? result.trim() : null;
         } catch (Exception e) {
             log.warn("[Search] 오타 교정 실패 (무시): {}", e.getMessage());
@@ -228,20 +245,20 @@ public class SearchService {
                             .similarityThreshold(0.4)
                             .build()
             );
-            
+
             log.warn("[SemanticFallback] Qdrant 결과: {}건", docs.size());
-            
+
             if (docs.isEmpty()) return Collections.emptyList();
 
             List<Long> cardIds = docs.stream()
                     .map(d -> {
                         Object id = d.getMetadata().get("card_id");
                         log.warn("[SemanticFallback] card_id raw: {}, type: {}",
-                            id, id != null ? id.getClass().getSimpleName() : "null");
+                                id, id != null ? id.getClass().getSimpleName() : "null");
                         if (id == null) return null;
-                        if (id instanceof Number) return ((Number) id).longValue();
-                        if (id instanceof String) {
-                            try { return Long.parseLong((String) id); }
+                        if (id instanceof Number n) return n.longValue();
+                        if (id instanceof String s) {
+                            try { return Long.parseLong(s); }
                             catch (Exception e) { return null; }
                         }
                         try { return Long.parseLong(String.valueOf(id)); }
@@ -249,9 +266,9 @@ public class SearchService {
                     })
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
-            
+
             log.warn("[SemanticFallback] 최종 cardIds: {}", cardIds);
-            
+
             return cardIds.isEmpty()
                     ? Collections.emptyList()
                     : cardMapper.findByIds(cardIds);

@@ -4,59 +4,60 @@
 
 <mapper namespace="com.bnk.domain.application.mapper.UserCardMapper">
 
-    <resultMap id="userCardMap" type="com.bnk.domain.application.model.UserCard">
-        <id     property="userCardId"             column="user_card_id"/>
-        <result property="userId"                 column="user_id"/>
-        <result property="cardId"                 column="card_id"/>
-        <result property="creditAppId"            column="credit_app_id"/>
-        <result property="checkAppId"             column="check_app_id"/>
-        <result property="cardPasswordHash"       column="card_password_hash"/>
-        <result property="maskedCardNumber"       column="masked_card_number"/>
-        <result property="cardNickname"           column="card_nickname"/>
-        <result property="issueDate"              column="issue_date"/>
-        <result property="expireDate"             column="expire_date"/>
-        <result property="cardStatus"             column="card_status"/>
-        <result property="usableYn"               column="usable_yn"/>
-        <result property="dailyLimitAmount"       column="daily_limit_amount"/>
-        <result property="monthlyLimitAmount"     column="monthly_limit_amount"/>
-        <result property="overseasEnabledYn"      column="overseas_enabled_yn"/>
-        <result property="contactlessEnabledYn"   column="contactless_enabled_yn"/>
-        <result property="issuedBy"               column="issued_by"/>
-        <result property="issuedAt"               column="issued_at"/>
-        <result property="updatedAt"              column="updated_at"/>
-        <result property="deletedYn"              column="deleted_yn"/>
-        <result property="deletedAt"              column="deleted_at"/>
+	<resultMap id="userCardMap" type="com.bnk.domain.application.model.UserCard">
+	    <id     property="userCardId"           column="user_card_id"/>
+	    <result property="userId"               column="user_id"/>
+	    <result property="versionId"            column="version_id"/>
+	    <result property="creditAppId"          column="credit_app_id"/>
+	    <result property="checkAppId"           column="check_app_id"/>
+	    <result property="cardPasswordHash"     column="card_password_hash"/>
+	    <result property="cardNumber"           column="card_number"/>
+	    <result property="issueDate"            column="issue_date"/>
+	    <result property="expireDate"           column="expire_date"/>
+	    <result property="cardStatus"           column="card_status"/>
+	    <result property="usableYn"             column="usable_yn"/>
+	    <result property="overseasEnabledYn"    column="overseas_enabled_yn"/>
+	    <result property="contactlessEnabledYn" column="contactless_enabled_yn"/>
+	    <result property="issuedAt"             column="issued_at"/>
+	    <result property="updatedAt"            column="updated_at"/>
+	    <result property="deletedYn"            column="deleted_yn"/>
+	    <result property="deletedAt"            column="deleted_at"/>
+	</resultMap>
+	
+	<resultMap id="myCardApplicationMap" type="com.bnk.domain.application.dto.response.MyCardApplicationResponse">
+        <result property="appId"             column="app_id"/>
+        <result property="cardType"          column="card_type"/>
+        <result property="cardId"            column="card_id"/>
+        <result property="cardName"          column="card_name"/>
+        <result property="applicationStatus" column="application_status"/>
+        <result property="rejectionReason"   column="rejection_reason"/>
+        <result property="appliedAt"         column="applied_at"/>
+        <result property="createdAt"         column="created_at"/>
     </resultMap>
 
-    <!-- STEP 9 - 신용카드 발급 -->
-    <!-- card_password_hash: 서비스 레이어에서 BCrypt 해시 후 전달 -->
-    <insert id="insertUserCard" useGeneratedKeys="false">
-        <selectKey keyProperty="userCardId" resultType="long" order="AFTER">
-            SELECT SEQ_USER_CARDS.CURRVAL FROM DUAL
-        </selectKey>
-        INSERT INTO USER_CARDS (
-            user_id, card_id,
-            credit_app_id, check_app_id,
-            card_password_hash,
-            masked_card_number, card_nickname,
-            issue_date, expire_date,
-            card_status, usable_yn,
-            overseas_enabled_yn, contactless_enabled_yn,
-            issued_by, issued_at, updated_at, deleted_yn
-        ) VALUES (
-            #{userId}, #{cardId},
-            #{creditAppId,      jdbcType=NUMERIC},
-            #{checkAppId,       jdbcType=NUMERIC},
-            #{cardPasswordHash, jdbcType=VARCHAR},
-            #{maskedCardNumber},
-            #{cardNickname,     jdbcType=VARCHAR},
-            #{issueDate}, #{expireDate},
-            #{cardStatus}, 'Y',
-            'Y', 'Y',
-            #{issuedBy, jdbcType=NUMERIC},
-            SYSTIMESTAMP, SYSTIMESTAMP, 'N'
-        )
-    </insert>
+	<!-- STEP 7,8 - APPROVED 시 자동 발급 -->
+	<!-- card_password_hash: 서비스 레이어에서 BCrypt 해시 후 전달 -->
+	<insert id="insertUserCard" useGeneratedKeys="false">
+	    <selectKey keyProperty="userCardId" resultType="long" order="AFTER">
+	        SELECT SEQ_USER_CARDS.CURRVAL FROM DUAL
+	    </selectKey>
+	    INSERT INTO USER_CARDS (
+	        user_id, version_id,
+	        credit_app_id, check_app_id,
+	        card_password_hash,
+	        card_number,
+	        issue_date, expire_date,
+	        card_status
+	    ) VALUES (
+	        #{userId}, #{versionId},
+	        #{creditAppId, jdbcType=NUMERIC},
+	        #{checkAppId,  jdbcType=NUMERIC},
+	        #{cardPasswordHash},
+	        #{cardNumber},
+	        #{issueDate}, #{expireDate},
+	        #{cardStatus}
+	    )
+	</insert>
 
     <select id="findByUserId" resultMap="userCardMap">
         SELECT * FROM USER_CARDS
@@ -71,5 +72,41 @@
                updated_at  = SYSTIMESTAMP
         WHERE  user_card_id = #{userCardId}
     </update>
+    
+    <!-- 신용/체크카드 통합 신청 현황 조회 -->
+    <select id="findMyAllApplications" resultMap="myCardApplicationMap">
+        SELECT app_id, card_type, card_id, card_name,
+               application_status, rejection_reason, applied_at, created_at
+        FROM (
+            SELECT cca.credit_app_id      AS app_id,
+                   'CREDIT'                AS card_type,
+                   cca.card_id            AS card_id,
+                   c.card_name            AS card_name,
+                   cca.application_status AS application_status,
+                   cca.rejection_reason   AS rejection_reason,
+                   cca.applied_at         AS applied_at,
+                   cca.created_at         AS created_at
+            FROM   CREDIT_CARD_APPLICATIONS cca
+            JOIN   CARDS c ON cca.card_id = c.card_id
+            WHERE  cca.user_id = #{userId}
+              AND  cca.application_status != 'DRAFT'
+
+            UNION ALL
+
+            SELECT cha.check_app_id       AS app_id,
+                   'CHECK'                 AS card_type,
+                   cha.card_id            AS card_id,
+                   c.card_name            AS card_name,
+                   cha.application_status AS application_status,
+                   cha.rejection_reason   AS rejection_reason,
+                   cha.applied_at         AS applied_at,
+                   cha.created_at         AS created_at
+            FROM   CHECK_CARD_APPLICATIONS cha
+            JOIN   CARDS c ON cha.card_id = c.card_id
+            WHERE  cha.user_id = #{userId}
+              AND  cha.application_status != 'DRAFT'
+        )
+        ORDER BY created_at DESC
+    </select>
 
 </mapper>

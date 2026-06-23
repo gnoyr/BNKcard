@@ -1,6 +1,7 @@
 package com.bnk.domain.user.mapper;
 
 import java.math.BigDecimal;
+import java.util.Map;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -77,4 +78,10 @@ public interface UserMapper {
 
 	// CDD 상태 변경
 	int updateCddStatus(@Param("userId") Long userId, @Param("cddStatusCode") String cddStatusCode);
+	
+	List<Map<String, Object>> selectMonthlySpending(
+		    @Param("userId") Long userId,
+		    @Param("year")   int year,
+		    @Param("month")  int month
+		);
 }

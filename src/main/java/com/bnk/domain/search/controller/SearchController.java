@@ -9,14 +9,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.bnk.domain.card.dto.response.CardListResponse;
 import com.bnk.domain.search.dto.response.PopularKeywordResponse;
 import com.bnk.domain.search.dto.response.SearchResultResponse;
 import com.bnk.domain.search.model.SearchKeyword;
 import com.bnk.domain.search.service.SearchService;
 import com.bnk.global.auth.CustomUserDetails;
 import com.bnk.global.response.ApiResponse;
-import com.bnk.global.response.PageResponse;
 
 import lombok.RequiredArgsConstructor;
 

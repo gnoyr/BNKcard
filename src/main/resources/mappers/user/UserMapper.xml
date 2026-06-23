@@ -301,51 +301,68 @@
 		UPDATE USERS
 		SET cdd_status_code = #{cddStatusCode,
 		typeHandler=org.apache.ibatis.type.StringTypeHandler},
-		updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+		updated_at =
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		WHERE user_id = #{userId}
 	</update>
 
-	<select id="selectOwnedCards" resultMap="ownedCardRowMap">
-		SELECT uc.user_card_id,
-		uc.card_id, c.card_name,
-		ci.image_url AS card_image_url, uc.issued_at
+	<select id="selectOwnedCards" parameterType="long"
+		resultType="com.bnk.domain.user.dto.query.OwnedCardRow">
+		SELECT
+		uc.user_card_id,
+		cv.card_id,
+		c.card_name,
+		c.company_name,
+		ci.image_url AS card_image_url,
+		uc.card_status,
+		uc.card_number,
+		uc.issued_at
 		FROM USER_CARDS uc
+		INNER JOIN CARD_VERSIONS cv
+		ON uc.version_id = cv.version_id
 		INNER JOIN CARDS c
-		ON uc.card_id = c.card_id
-		LEFT JOIN
-		CARD_IMAGES ci ON c.card_id =
-		ci.card_id AND ci.image_type =
-		'THUMBNAIL'
+		ON cv.card_id = c.card_id
+		LEFT JOIN CARD_IMAGES ci
+		ON c.card_id = ci.card_id
+		AND ci.image_type = 'THUMBNAIL'
 		WHERE uc.user_id = #{userId}
+		AND uc.deleted_yn = 'N'
 		ORDER BY uc.issued_at DESC
 	</select>
-
+	
 	<!-- 카드 신청 수정 - 신용, 체크 신청서에서 각 조회 후 union -->
-	<select id="selectCardApplications" resultType="com.bnk.domain.user.dto.query.CardApplicationRow">
-	    SELECT
-	        ca.credit_app_id   AS applicationId,
-	        ca.card_id,
-	        c.card_name        AS cardName,
-	        ci.image_url       AS cardImageUrl,
-	        ca.application_status AS applicationStatus,
-	        ca.applied_at      AS appliedAt
-	    FROM CREDIT_CARD_APPLICATIONS ca
-	    INNER JOIN CARDS c ON ca.card_id = c.card_id
-	    LEFT JOIN CARD_IMAGES ci ON ci.card_id = c.card_id AND ci.image_type = 'THUMBNAIL'
-	    WHERE ca.user_id = #{userId}
-	    UNION ALL
-	    SELECT
-	        ca.check_app_id    AS applicationId,
-	        ca.card_id,
-	        c.card_name        AS cardName,
-	        ci.image_url       AS cardImageUrl,
-	        ca.application_status AS applicationStatus,
-	        ca.applied_at      AS appliedAt
-	    FROM CHECK_CARD_APPLICATIONS ca
-	    INNER JOIN CARDS c ON ca.card_id = c.card_id
-	    LEFT JOIN CARD_IMAGES ci ON ci.card_id = c.card_id AND ci.image_type = 'THUMBNAIL'
-	    WHERE ca.user_id = #{userId}
-	    ORDER BY appliedAt DESC
+	<select id="selectCardApplications"
+		resultType="com.bnk.domain.user.dto.query.CardApplicationRow">
+		SELECT
+		ca.credit_app_id AS applicationId,
+		ca.card_id,
+		c.card_name AS cardName,
+		ci.image_url AS cardImageUrl,
+		ca.application_status AS applicationStatus,
+		ca.applied_at AS appliedAt
+		FROM CREDIT_CARD_APPLICATIONS ca
+		INNER JOIN CARDS c ON ca.card_id =
+		c.card_id
+		LEFT JOIN CARD_IMAGES ci ON ci.card_id = c.card_id AND
+		ci.image_type =
+		'THUMBNAIL'
+		WHERE ca.user_id = #{userId}
+		UNION ALL
+		SELECT
+		ca.check_app_id AS applicationId,
+		ca.card_id,
+		c.card_name AS cardName,
+		ci.image_url AS cardImageUrl,
+		ca.application_status AS
+		applicationStatus,
+		ca.applied_at AS appliedAt
+		FROM
+		CHECK_CARD_APPLICATIONS ca
+		INNER JOIN CARDS c ON ca.card_id = c.card_id
+		LEFT JOIN CARD_IMAGES ci ON ci.card_id = c.card_id AND ci.image_type =
+		'THUMBNAIL'
+		WHERE ca.user_id = #{userId}
+		ORDER BY appliedAt DESC
 	</select>
 
 	<select id="selectSpendingPatterns"
@@ -378,5 +395,26 @@
 		#{source},
 		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul')
 	</insert>
+	
+	<!-- 월별 카드별 이용금액 집계 -->
+	<select id="selectMonthlySpending" resultType="map">
+	    SELECT
+	        uc.user_card_id   AS userCardId,
+	        c.card_name       AS cardName,
+	        NVL(SUM(t.amount), 0) AS amount
+	    FROM USER_CARDS uc
+	    INNER JOIN CARD_VERSIONS cv ON uc.version_id = cv.version_id
+	    INNER JOIN CARDS c          ON cv.card_id = c.card_id
+	    LEFT JOIN CARD_TRANSACTIONS t
+	        ON t.user_card_id = uc.user_card_id
+	        AND t.paid_year   = #{year}
+	        AND t.paid_month  = #{month}
+	        AND t.status      = 'APPROVED'
+	    WHERE uc.user_id   = #{userId}
+	      AND uc.deleted_yn = 'N'
+	    GROUP BY uc.user_card_id, c.card_name
+	    ORDER BY amount DESC
+	</select>
+	
 
 </mapper>

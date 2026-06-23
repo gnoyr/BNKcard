@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bnk.domain.admin.mapper.DashboardMapper">
+
+    <!-- ── SUPER_ADMIN 전용 ────────────────────────────────────────── -->
+
+    <!-- 카드 상태별 수 -->
+    <select id="countCardsByStatus" resultType="map">
+        SELECT card_status AS status, COUNT(*) AS cnt
+        FROM CARDS
+        WHERE deleted_yn = 'N'
+        GROUP BY card_status
+    </select>
+
+    <!-- 관리자 역할별 수 -->
+    <select id="countAdminsByRole" resultType="map">
+        SELECT ar.role_code AS roleCode, COUNT(*) AS cnt
+        FROM ADMIN_USERS au
+        JOIN ADMIN_USER_ROLES aur ON au.admin_id = aur.admin_id
+            AND aur.deleted_yn = 'N'
+        JOIN ADMIN_ROLES ar ON aur.role_id = ar.role_id
+            AND ar.deleted_yn = 'N'
+        WHERE au.deleted_yn = 'N'
+        GROUP BY ar.role_code
+    </select>
+
+	<!-- 최근 7일 결재 처리 건수 (일별 승인/반려) -->
+	<select id="countApprovalsByDay" resultType="map">
+	    SELECT
+	        TO_CHAR(completed_at, 'MM-DD') AS day,
+	        status_code                     AS status,
+	        COUNT(*)                        AS cnt
+	    FROM APPROVAL_REQUESTS
+	    WHERE completed_at >= SYSTIMESTAMP - INTERVAL '7' DAY
+	      AND status_code IN ('APPROVED', 'REJECTED')
+	    GROUP BY TO_CHAR(completed_at, 'MM-DD'), status_code
+	    ORDER BY day
+	</select>
+
+    <!-- 최근 7일 회원 가입 추이 -->
+    <select id="countUserSignupByDay" resultType="map">
+        SELECT
+            TO_CHAR(created_at, 'MM-DD') AS day,
+            COUNT(*) AS cnt
+        FROM USERS
+        WHERE created_at >= SYSTIMESTAMP - INTERVAL '7' DAY
+          AND deleted_yn = 'N'
+        GROUP BY TO_CHAR(created_at, 'MM-DD')
+        ORDER BY day
+    </select>
+
+    <!-- 전체 회원 수 -->
+    <select id="countTotalUsers" resultType="long">
+        SELECT COUNT(*) FROM USERS WHERE deleted_yn = 'N'
+    </select>
+
+    <!-- 오늘 가입자 수 -->
+    <select id="countTodaySignup" resultType="long">
+        SELECT COUNT(*) FROM USERS
+        WHERE TRUNC(created_at) = TRUNC(SYSDATE)
+          AND deleted_yn = 'N'
+    </select>
+
+    <!-- 정지 계정 수 -->
+    <select id="countSuspendedUsers" resultType="long">
+        SELECT COUNT(*) FROM USERS
+        WHERE status_code = 'SUSPENDED'
+          AND deleted_yn  = 'N'
+    </select>
+
+	<!-- 최근 관리자 활동 로그 -->
+	<select id="findRecentAdminActivity" resultType="map">
+	    SELECT
+	        aal.activity_id  AS logId,
+	        au.name          AS adminName,
+	        ar.role_code     AS roleCode,
+	        aal.action       AS action,
+	        aal.result       AS result,
+	        aal.target_id    AS targetId,
+	        aal.detail       AS detail,
+	        TO_CHAR(aal.occurred_at, 'YYYY-MM-DD HH24:MI:SS') AS occurredAt
+	    FROM ADMIN_ACTIVITY_LOG aal
+	    JOIN ADMIN_USERS au ON aal.admin_id = au.admin_id
+	    JOIN ADMIN_USER_ROLES aur ON au.admin_id = aur.admin_id
+	        AND aur.deleted_yn = 'N'
+	    JOIN ADMIN_ROLES ar ON aur.role_id = ar.role_id
+	        AND ar.deleted_yn = 'N'
+	    ORDER BY aal.occurred_at DESC
+	    FETCH FIRST 20 ROWS ONLY
+	</select>
+
+    <!-- ── MANAGER 전용 ─────────────────────────────────────────────── -->
+
+	<!-- 대기중 결재 목록 -->
+	<select id="findPendingApprovals" resultType="map">
+	    SELECT
+	        ar.approval_id      AS approvalId,
+	        ar.request_type_code AS approvalType,
+	        ar.target_id        AS targetName,
+	        au.name             AS requesterName,
+	        TO_CHAR(ar.requested_at, 'YYYY-MM-DD HH24:MI') AS createdAt
+	    FROM APPROVAL_REQUESTS ar
+	    JOIN ADMIN_USERS au ON ar.requester_admin_id = au.admin_id
+	    WHERE ar.status_code = 'PENDING'
+	    ORDER BY ar.requested_at ASC
+	    FETCH FIRST 20 ROWS ONLY
+	</select>
+
+	<!-- 이번달 내 결재 처리 현황 (일별) -->
+	<select id="countMyApprovalsByDay" resultType="map">
+	    SELECT
+	        TO_CHAR(completed_at, 'MM-DD') AS day,
+	        status_code                     AS status,
+	        COUNT(*)                        AS cnt
+	    FROM APPROVAL_REQUESTS
+	    WHERE requester_admin_id = #{adminId}
+	      AND status_code IN ('APPROVED', 'REJECTED')
+	      AND TRUNC(completed_at, 'MM') = TRUNC(SYSDATE, 'MM')
+	    GROUP BY TO_CHAR(completed_at, 'MM-DD'), status_code
+	    ORDER BY day
+	</select>
+
+    <!-- 약관 상태별 수 -->
+    <select id="countTermsByStatus" resultType="map">
+        SELECT status, COUNT(*) AS cnt
+        FROM TERMS
+        GROUP BY status
+    </select>
+
+    <!-- 내 최근 활동 -->
+    <select id="findMyRecentActivity" resultType="map">
+        SELECT
+            action      AS action,
+            result      AS result,
+            target_id   AS targetId,
+            detail      AS detail,
+            TO_CHAR(occurred_at, 'YYYY-MM-DD HH24:MI:SS') AS occurredAt
+        FROM ADMIN_ACTIVITY_LOG
+        WHERE admin_id = #{adminId}
+        ORDER BY occurred_at DESC
+        FETCH FIRST 10 ROWS ONLY
+    </select>
+
+    <!-- ── OPERATOR 전용 ────────────────────────────────────────────── -->
+
+    <!-- 최근 7일 로그인 성공/실패 추이 -->
+    <select id="countLoginByDay" resultType="map">
+        SELECT
+            TO_CHAR(created_at, 'MM-DD') AS day,
+            action_result                 AS result,
+            COUNT(*)                      AS cnt
+        FROM AUDIT_LOGS
+        WHERE action_type = 'LOGIN'
+          AND created_at >= SYSTIMESTAMP - INTERVAL '7' DAY
+        GROUP BY TO_CHAR(created_at, 'MM-DD'), action_result
+        ORDER BY day
+    </select>
+
+    <!-- 오늘 검색 키워드 TOP 5 -->
+    <select id="findTopKeywordsToday" resultType="map">
+        SELECT keyword, COUNT(*) AS cnt
+        FROM SEARCH_LOGS
+        WHERE TRUNC(searched_at) = TRUNC(SYSDATE)
+        GROUP BY keyword
+        ORDER BY cnt DESC
+        FETCH FIRST 5 ROWS ONLY
+    </select>
+
+    <!-- 회원 상태별 분포 -->
+    <select id="countUsersByStatus" resultType="map">
+        SELECT status_code AS status, COUNT(*) AS cnt
+        FROM USERS
+        WHERE deleted_yn = 'N'
+        GROUP BY status_code
+    </select>
+
+    <!-- 잠금 회원 목록 -->
+    <select id="findLockedUsers" resultType="map">
+        SELECT
+            user_id     AS userId,
+            name        AS name,
+            login_fail_count AS failCount,
+            TO_CHAR(locked_until, 'YYYY-MM-DD HH24:MI') AS lockedUntil
+        FROM USERS
+        WHERE status_code = 'LOCKED'
+          AND deleted_yn  = 'N'
+        ORDER BY locked_until DESC
+        FETCH FIRST 20 ROWS ONLY
+    </select>
+
+</mapper>

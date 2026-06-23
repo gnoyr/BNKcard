@@ -18,9 +18,10 @@
         <result property="applicantSnapshot"  column="applicant_snapshot"
                 typeHandler="aesTypeHandler"/>
         <!-- STEP 4 -->
-        <result property="paymentSnapshot"    column="payment_snapshot"
-                typeHandler="aesTypeHandler"/>
+        <result property="versionId" 		  column="version_id"/>
+        <result property="paymentSnapshot"    column="payment_snapshot"/>
         <result property="requestedLimit"     column="requested_limit"/>
+        <result property="cardPasswordHash"   column="card_password_hash"/>
         <result property="appliedAt"          column="applied_at"/>
         <!-- STEP 5 -->
         <result property="incomeDocKey"       column="income_doc_key"/>
@@ -74,12 +75,23 @@
     <!-- STEP 4 - 신청정보 + 신청 완료 -->
     <update id="updatePaymentInfo">
         UPDATE CREDIT_CARD_APPLICATIONS
-        SET    payment_snapshot    = #{paymentSnapshot, typeHandler=aesTypeHandler},
+        SET    version_id 		   = #{versionId},
+        	   payment_snapshot    = #{paymentSnapshot},
+           	   card_password_hash  = #{cardPasswordHash},
                requested_limit     = #{requestedLimit},
                application_status  = 'REQUESTED',
                applied_at          = SYSTIMESTAMP
         WHERE  credit_app_id       = #{creditAppId}
     </update>
+    
+    <select id="findCurrentVersionId" resultType="long">
+	    SELECT version_id
+	    FROM   CARD_VERSIONS
+	    WHERE  card_id        = #{cardId}
+	      AND  version_status = 'PUBLISHED'
+	    ORDER BY published_at DESC
+	    FETCH FIRST 1 ROWS ONLY
+	</select>
 
     <!-- STEP 5 - 서류 -->
     <update id="updateDocs">
@@ -89,12 +101,28 @@
                job_doc_key     = #{jobDocKey}
         WHERE  credit_app_id   = #{creditAppId}
     </update>
+    
+    <!-- 기존 고객 확인 - 3년치 결제내역 중 월 10건+ 달이 있는지 -->
+	<select id="isExistingCustomer" resultType="boolean">
+	    SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+	    FROM (
+	        SELECT paid_year, paid_month
+	        FROM   CARD_TRANSACTIONS ct
+	        JOIN   USER_CARDS uc ON ct.user_card_id = uc.user_card_id
+	        WHERE  uc.user_id  = #{userId}
+	          AND  ct.status   = 'APPROVED'
+	          AND  ct.paid_at >= SYSTIMESTAMP - INTERVAL '3' YEAR
+	        GROUP BY paid_year, paid_month
+	        HAVING COUNT(*) >= 10
+	    )
+	</select>
 
     <!-- STEP 6 - 1차 심사 -->
     <update id="updateScreeningResult">
         UPDATE CREDIT_CARD_APPLICATIONS
         SET    screening_result    = #{screeningResult},
                doc_verified_yn     = #{docVerifiedYn},
+               reviewed_by         = #{reviewedBy},
                <if test="rejectionReason != null">
                rejection_reason    = #{rejectionReason},
                </if>
@@ -106,6 +134,20 @@
     </update>
 
     <!-- STEP 7 - 한도 검증 -->
+    <!-- 월 평균 결제액 기반 월소득 추정 -->
+	<select id="calculateEstimatedMonthlyIncome" resultType="long">
+	    SELECT NVL(ROUND(AVG(monthly_amount) / 0.35), 0)
+	    FROM (
+	        SELECT paid_year, paid_month, SUM(ct.amount) AS monthly_amount
+	        FROM   CARD_TRANSACTIONS ct
+	        JOIN   USER_CARDS uc ON ct.user_card_id = uc.user_card_id
+	        WHERE  uc.user_id    = #{userId}
+	          AND  ct.status     = 'APPROVED'
+	          AND  ct.paid_at   >= SYSTIMESTAMP - INTERVAL '3' YEAR
+	        GROUP BY paid_year, paid_month
+	    )
+	</select>
+	
     <update id="updateLimitCheck">
         UPDATE CREDIT_CARD_APPLICATIONS
         SET    estimated_monthly_income = #{estimatedMonthlyIncome},
@@ -121,6 +163,7 @@
         WHERE  credit_app_id            = #{creditAppId}
     </update>
 
+	
     <!-- STEP 8 - 추가 심사 (REVIEWING 케이스) -->
     <update id="updateReviewResult">
         UPDATE CREDIT_CARD_APPLICATIONS
@@ -153,7 +196,7 @@
 
     <select id="findByUserId" resultMap="creditAppMap">
         SELECT * FROM CREDIT_CARD_APPLICATIONS
-        WHERE  user_id = #{userId}
+        WHERE  user_id = #{userId} AND  application_status != 'DRAFT'
         ORDER BY created_at DESC
     </select>
 

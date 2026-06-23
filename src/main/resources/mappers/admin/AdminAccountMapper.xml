@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bnk.domain.admin.mapper.AdminAccountMapper">
+
+    <resultMap id="adminAccountMap" type="com.bnk.domain.admin.model.AdminAccount">
+        <id     property="adminId"       column="ADMIN_ID"/>
+        <result property="username"      column="USERNAME"
+                jdbcType="VARCHAR"
+                typeHandler="org.apache.ibatis.type.StringTypeHandler"/>
+        <result property="passwordHash"  column="PASSWORD_HASH"
+                jdbcType="VARCHAR"
+                typeHandler="org.apache.ibatis.type.StringTypeHandler"/>
+        <result property="name"          column="NAME"
+                jdbcType="VARCHAR"
+                typeHandler="org.apache.ibatis.type.StringTypeHandler"/>
+        <result property="email"         column="EMAIL"
+                jdbcType="VARCHAR"
+                typeHandler="org.apache.ibatis.type.StringTypeHandler"/>
+        <result property="phone"         column="PHONE"
+                jdbcType="VARCHAR"
+                typeHandler="org.apache.ibatis.type.StringTypeHandler"/>
+        <result property="statusCode"    column="STATUS_CODE"
+                jdbcType="VARCHAR"
+                typeHandler="org.apache.ibatis.type.StringTypeHandler"/>
+        <result property="roleCode"      column="ROLE_CODE"
+                jdbcType="VARCHAR"
+                typeHandler="org.apache.ibatis.type.StringTypeHandler"/>
+        <result property="roleName"      column="ROLE_NAME"
+                jdbcType="VARCHAR"
+                typeHandler="org.apache.ibatis.type.StringTypeHandler"/>
+        <result property="roleId"        column="ROLE_ID"/>
+        <result property="lastLoginAt"   column="LAST_LOGIN_AT"/>
+        <result property="createdAt"     column="CREATED_AT"/>
+    </resultMap>
+
+    <!-- 전체 목록 조회 -->
+	<select id="findAll" resultMap="adminAccountMap">
+	    SELECT au.admin_id, au.username, au.name, au.email, au.phone,
+	           au.status_code, au.last_login_at, au.created_at,
+	           ar.role_id, ar.role_code, ar.role_name
+	    FROM ADMIN_USERS au
+	    LEFT JOIN ADMIN_USER_ROLES aur ON au.admin_id = aur.admin_id
+	        AND aur.deleted_yn = 'N'
+	    LEFT JOIN ADMIN_ROLES ar ON aur.role_id = ar.role_id
+	        AND ar.deleted_yn = 'N'
+	    WHERE au.deleted_yn = 'N'
+	    ORDER BY ar.role_id ASC, au.admin_id ASC
+	</select>
+
+    <!-- 단건 조회 -->
+    <select id="findById" resultMap="adminAccountMap">
+        SELECT au.admin_id, au.username, au.name, au.email, au.phone,
+               au.status_code, au.last_login_at, au.created_at,
+               ar.role_id, ar.role_code, ar.role_name
+        FROM ADMIN_USERS au
+        LEFT JOIN ADMIN_USER_ROLES aur ON au.admin_id = aur.admin_id
+            AND aur.deleted_yn = 'N'
+        LEFT JOIN ADMIN_ROLES ar ON aur.role_id = ar.role_id
+            AND ar.deleted_yn = 'N'
+        WHERE au.admin_id  = #{adminId}
+          AND au.deleted_yn = 'N'
+    </select>
+
+    <!-- 관리자 등록 -->
+    <insert id="insertAdmin" parameterType="com.bnk.domain.admin.model.AdminAccount">
+        <selectKey keyProperty="adminId" resultType="long" order="BEFORE">
+            SELECT SEQ_ADMIN_USERS.NEXTVAL FROM DUAL
+        </selectKey>
+        INSERT INTO ADMIN_USERS (
+            admin_id, username, password_hash, name, email, phone,
+            status_code, created_at, created_by
+        ) VALUES (
+            #{adminId},
+            #{username,     jdbcType=VARCHAR,
+              typeHandler=org.apache.ibatis.type.StringTypeHandler},
+            #{passwordHash, jdbcType=VARCHAR,
+              typeHandler=org.apache.ibatis.type.StringTypeHandler},
+            #{name,         jdbcType=VARCHAR,
+              typeHandler=org.apache.ibatis.type.StringTypeHandler},
+            #{email,        jdbcType=VARCHAR,
+              typeHandler=org.apache.ibatis.type.StringTypeHandler},
+            #{phone,        jdbcType=VARCHAR,
+              typeHandler=org.apache.ibatis.type.StringTypeHandler},
+            'ACTIVE',
+            SYSTIMESTAMP,
+            #{createdBy,    jdbcType=NUMERIC}
+        )
+    </insert>
+
+    <!-- 역할 변경 -->
+	<update id="updateRole">
+	    UPDATE ADMIN_USER_ROLES
+	    SET role_id     = #{roleId}
+	    WHERE admin_id   = #{adminId}
+	      AND deleted_yn = 'N'
+	</update>
+
+    <!-- 상태 변경 -->
+    <update id="updateStatus">
+        UPDATE ADMIN_USERS
+        SET status_code = #{statusCode,
+                           jdbcType=VARCHAR,
+                           typeHandler=org.apache.ibatis.type.StringTypeHandler},
+            updated_at  = SYSTIMESTAMP
+        WHERE admin_id = #{adminId}
+    </update>
+
+    <!-- 역할 코드로 roleId 조회 -->
+    <select id="findRoleIdByCode" resultType="long">
+        SELECT role_id FROM ADMIN_ROLES
+        WHERE role_code  = #{roleCode,
+                            jdbcType=VARCHAR,
+                            typeHandler=org.apache.ibatis.type.StringTypeHandler}
+          AND deleted_yn = 'N'
+    </select>
+
+    <!-- username 중복 확인 -->
+    <select id="countByUsername" resultType="int">
+        SELECT COUNT(*) FROM ADMIN_USERS
+        WHERE username   = #{username,
+                            jdbcType=VARCHAR,
+                            typeHandler=org.apache.ibatis.type.StringTypeHandler}
+          AND deleted_yn = 'N'
+    </select>
+
+    <!-- 권한 목록 조회 -->
+    <select id="findPermissionsByAdminId" resultType="string">
+        SELECT ap.permission_code
+        FROM ADMIN_USER_ROLES aur
+        JOIN ROLE_PERMISSIONS rp ON aur.role_id = rp.role_id
+            AND rp.deleted_yn = 'N'
+        JOIN ADMIN_PERMISSIONS ap ON rp.permission_id = ap.permission_id
+            AND ap.deleted_yn = 'N'
+        WHERE aur.admin_id   = #{adminId}
+          AND aur.deleted_yn = 'N'
+    </select>
+    
+    <!-- 역할 매핑 INSERT -->
+	<insert id="insertUserRole">
+	    INSERT INTO ADMIN_USER_ROLES (
+	        admin_user_role_id, admin_id, role_id, assigned_at, assigned_by, deleted_yn
+	    ) VALUES (
+	        SEQ_ADMIN_USER_ROLES.NEXTVAL,
+	        #{adminId},
+	        #{roleId},
+	        SYSTIMESTAMP,
+	        #{createdBy, jdbcType=NUMERIC},
+	        'N'
+	    )
+	</insert>
+	    
+
+</mapper>
