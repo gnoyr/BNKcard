@@ -42,7 +42,8 @@ import com.bnk.global.response.PageResponse;
 
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
-
+import com.bnk.domain.card.dto.response.CardTermsResponse;
+import com.bnk.domain.card.mapper.CardTermsMapper;
 @Service
 @Validated
 @Slf4j
@@ -55,7 +56,7 @@ public class CardService {
     private final SpendingPatternMapper spendingPatternMapper;
     private final SearchLogMapper searchLogMapper;
     private final TermsMapper termsMapper;
-    
+    private final CardTermsMapper cardTermsMapper;
     private final VectorStore vectorStore;
     
     public CardService(
@@ -66,7 +67,8 @@ public class CardService {
             SpendingPatternMapper spendingPatternMapper,
             SearchLogMapper searchLogMapper,
             TermsMapper termsMapper,
-            @Autowired(required = false) VectorStore vectorStore) {  
+            @Autowired(required = false) VectorStore vectorStore,
+            CardTermsMapper cardTermsMapper) {  
         this.cardMapper            = cardMapper;
         this.cardBenefitMapper     = cardBenefitMapper;
         this.cardImageMapper       = cardImageMapper;
@@ -75,6 +77,7 @@ public class CardService {
         this.searchLogMapper       = searchLogMapper;
         this.termsMapper           = termsMapper;
         this.vectorStore           = vectorStore; // ai.enabled=false 시 null
+        this.cardTermsMapper = cardTermsMapper;
     }
     // ────────────────────────────────────────────────────────────────
     // 홈 배너 조회
@@ -570,5 +573,21 @@ public class CardService {
             log.error("[SemanticSearch] 오류 발생 (빈 결과 반환): {}", e.getMessage());
             return Collections.emptyList();
         }
+    }
+    
+    /**
+     * 카드별 연결 약관 목록 조회 (카드 상세 화면 — 약관보기/신청 동의용).
+     */
+    @Transactional(readOnly = true)
+    public List<CardTermsResponse> getCardTerms(Long cardId) {
+        return cardTermsMapper.findByCardId(cardId).stream()
+                .map(ct -> CardTermsResponse.builder()
+                        .termsId(ct.getTermsId())
+                        .title(ct.getTitle())
+                        .version(ct.getVersion())
+                        .requiredYn(ct.getRequiredYn())
+                        .displayOrder(ct.getDisplayOrder())
+                        .build())
+                .collect(Collectors.toList());
     }
 }

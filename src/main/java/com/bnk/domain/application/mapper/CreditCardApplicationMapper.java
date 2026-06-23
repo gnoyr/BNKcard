@@ -32,7 +32,7 @@ public interface CreditCardApplicationMapper {
     // UPDATE: income_doc_key, asset_doc_key(선택), job_doc_key
     int updateDocs(CreditCardApplication application);
     
-    boolean isExistingCustomer(@Param("userId") Long userId); //만들어야됨
+    boolean isExistingCustomer(@Param("userId") Long userId);
 
     // STEP 6 - 1차 심사 (심사서버)
     // UPDATE: screening_result, doc_verified_yn

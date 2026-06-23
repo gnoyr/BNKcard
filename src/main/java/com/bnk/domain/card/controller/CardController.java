@@ -30,7 +30,7 @@ import com.bnk.global.response.PageResponse;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-
+import com.bnk.domain.card.dto.response.CardTermsResponse;
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
@@ -102,5 +102,13 @@ public class CardController {
 	public ResponseEntity<ApiResponse<List<SimulationResponse>>> simulateBenefits(
 			@RequestBody @Valid CardSimulationRequest request) {
 		return ApiResponse.toOk(cardService.simulateBenefits(request));
+	}
+	
+	/**
+	 * 카드별 연결 약관 목록 조회. 카드 상세 화면에서 약관보기/신청 동의 흐름에 사용.
+	 */
+	@GetMapping("/cards/{cardId}/terms")
+	public ResponseEntity<ApiResponse<List<CardTermsResponse>>> getCardTerms(@PathVariable Long cardId) {
+	    return ApiResponse.toOk(cardService.getCardTerms(cardId));
 	}
 }

@@ -70,7 +70,16 @@ public enum ErrorCode {
     IP_INITIAL_DELETE_FORBIDDEN("IP004","최초 등록 기기는 삭제할 수 없습니다.",               HttpStatus.BAD_REQUEST),
     IP_ALREADY_TRUSTED        ("IP005", "이미 등록된 IP입니다.",                           HttpStatus.CONFLICT),
     IP_MAX_LIMIT_EXCEEDED     ("IP006", "신뢰 IP는 최대 10개까지 등록할 수 있습니다.",        HttpStatus.BAD_REQUEST),
-    IP_NOT_FOUND ("IP008", "등록된 기기를 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
+    IP_NOT_FOUND ("IP008", "등록된 기기를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+
+	// 카드 신청
+	APP_NOT_FOUND("CA001", "신청 정보를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+	IDENTITY_NOT_VERIFIED("CA002", "본인확인이 완료되지 않았습니다.", HttpStatus.BAD_REQUEST),
+	IDENTITY_VERIFY_FAILED("CA003", "본인확인에 실패했습니다.", HttpStatus.BAD_REQUEST),
+	NOT_APPROVED_STATUS("CA004", "승인 상태가 아닙니다.", HttpStatus.BAD_REQUEST),
+	DOCS_REQUIRED("CA005", "신규고객은 서류 업로드가 필요합니다.", HttpStatus.BAD_REQUEST),
+	VERSION_NOT_FOUND("CA006", "현재 신청 가능한 카드 버전이 없습니다.", HttpStatus.NOT_FOUND);
+	
 
 	private final String code;
 	private final String message;
