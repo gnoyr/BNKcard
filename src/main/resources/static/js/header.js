@@ -7,13 +7,15 @@
  * ▸ 401 수신 시 POST /api/auth/refresh 자동 시도 후 재확인
  * ▸ 관리자 페이지(/admin/) : GET /api/admin/auth/me 로 인증 확인
  *
+ * [변경] renderAdminNav() — 헤더 렌더 후 관리자 서브 네비 자동 주입
  * =====================================================================
  */
 (() => {
 
-    const BnkAPI = window.BnkAPI;
+    const BnkAPI   = window.BnkAPI;
     const BnkError = window.BnkError;
     const BnkToast = window.BnkToast;
+
     /* ─────────────────────────────────────────────────────────────
        페이지 타입 판별
     ──────────────────────────────────────────────────────────────── */
@@ -21,31 +23,44 @@
 
     const IS_ADMIN_LOGIN = path === '/admin/login';
     const IS_ADMIN = path.startsWith('/admin') && !IS_ADMIN_LOGIN;
-	const IS_AUTH = [
-	    '/login', '/signup', '/find-id', '/reset-password',
-	    '/admin/login',
-	].includes(path);
-    const IS_MYPAGE = path.startsWith('/mypage');
-    const NEED_AUTH = IS_ADMIN || IS_MYPAGE;
+    const IS_AUTH = [
+        '/login', '/signup', '/find-id', '/reset-password',
+        '/admin/login',
+    ].includes(path);
+    const IS_MYPAGE  = path.startsWith('/mypage');
+    const NEED_AUTH  = IS_ADMIN || IS_MYPAGE;
 
-	const REDIRECT_IF_LOGGED_IN = ['/login', '/signup'];
+    const REDIRECT_IF_LOGGED_IN = ['/login', '/signup'];
 
-    const LOGIN_URL = '/login';
+    const LOGIN_URL       = '/login';
     const ADMIN_LOGIN_URL = '/admin/login';
-    const HOME_URL = '/';
+    const HOME_URL        = '/';
 
-    const CACHE_KEY_NAME = 'bnk_user_name';
+    const CACHE_KEY_NAME     = 'bnk_user_name';
     const CACHE_KEY_LOGIN_AT = 'bnk_login_at';
-    const CACHE_TTL_MS = 10 * 60 * 1000; // 10분
+    const CACHE_TTL_MS       = 10 * 60 * 1000; // 10분
 
     const ACCESS_TOKEN_TTL_MS = 2 * 60 * 60 * 1000;
-    const WARN_THRESHOLD_MS = 5 * 60 * 1000;
+    const WARN_THRESHOLD_MS   = 5 * 60 * 1000;
 
     let _tokenTimerInterval = null;
 
     /* ─────────────────────────────────────────────────────────────
-       푸터 FOUC 방지 — 헤더 스크립트 로드 즉시 푸터 숨김
-       renderFooter() 완료 후 visibility 복원
+       관리자 서브 네비 메뉴 목록
+       href 와 현재 pathname 을 prefix 매칭해 active 클래스 부여
+    ──────────────────────────────────────────────────────────────── */
+    const ADMIN_NAV_ITEMS = [
+        { label: '대시보드',      href: '/admin/dashboard.html'          },
+        { label: '카드/약관 관리', href: '/admin/cardManage.html'          },
+        { label: '결재 관리',     href: '/admin/approvals'               },
+        { label: '회원 관리',     href: '/admin/users'                   },
+        { label: '관리자 계정',   href: '/admin/admins.html'             },
+        { label: '알림 관리',     href: '/admin/notificationManage.html' },
+        { label: '로그 조회',     href: '/admin/logs.html'               },
+    ];
+
+    /* ─────────────────────────────────────────────────────────────
+       푸터 FOUC 방지
     ──────────────────────────────────────────────────────────────── */
     function hideFooerNav() {
         const footerNav = document.querySelector('.site-footer__nav');
@@ -81,14 +96,13 @@
     }
 
     /* ─────────────────────────────────────────────────────────────
-       세션 캐시 — name + loginAt 반드시 쌍으로 검증
+       세션 캐시
     ──────────────────────────────────────────────────────────────── */
     function readCache() {
-        const name = sessionStorage.getItem(CACHE_KEY_NAME);
-        const loginAt = sessionStorage.getItem(CACHE_KEY_LOGIN_AT);
-        // 둘 중 하나라도 없으면 오염된 상태 → 캐시 미사용
+        const name    = sessionStorage.getItem(CACHE_KEY_NAME);
+        const loginAt = Number(sessionStorage.getItem(CACHE_KEY_LOGIN_AT) ?? 0);
         if (!name || !loginAt) return null;
-        if (Date.now() - Number(loginAt) >= CACHE_TTL_MS) return null;
+        if (Date.now() - loginAt > CACHE_TTL_MS) { clearCache(); return null; }
         return name;
     }
 
@@ -100,72 +114,41 @@
     function clearCache() {
         sessionStorage.removeItem(CACHE_KEY_NAME);
         sessionStorage.removeItem(CACHE_KEY_LOGIN_AT);
-        sessionStorage.removeItem('bnk_is_admin');
     }
 
     /* ─────────────────────────────────────────────────────────────
-       Refresh Token 재발급 시도
-    ──────────────────────────────────────────────────────────────── */
-    async function tryRefresh() {
-        const res = await BnkAPI.post('/api/auth/refresh');
-        if (res.ok) {
-            // loginAt만 갱신 (name은 유지)
-            sessionStorage.setItem(CACHE_KEY_LOGIN_AT, String(Date.now()));
-        }
-        return res.ok;
-    }
-
-    /* ─────────────────────────────────────────────────────────────
-       인증 상태 확인
+       일반 사용자 인증 확인
     ──────────────────────────────────────────────────────────────── */
     async function checkUserAuth() {
-        let name = null;
+        let name = readCache();
 
-        // 쌍 검증 캐시 읽기
-        const cached = readCache();
-        if (cached) {
-            name = cached;
-        } else {
-            // 캐시가 없거나 오염 → 서버 확인 시도
-            // NEED_AUTH 페이지가 아닌 경우, 세션이 없으면 비로그인 처리(불필요한 401 방지)
-            const hadLoginAt = !!sessionStorage.getItem(CACHE_KEY_LOGIN_AT);
+        if (name === null) {
+            try {
+                const res = await fetch('/api/users/me', { credentials: 'include' });
 
-            if (!hadLoginAt && !NEED_AUTH) {
-                // 비인증 페이지에서 이전 세션 흔적 없음 → 비로그인 처리
-                // (불필요한 /api/users/me 호출 생략)
-            } else {
-                try {
-                    let res = await fetch('/api/users/me', { credentials: 'include' });
-
-                    // access_token 만료 → refresh 시도
-                    if (res.status === 401) {
-                        const refreshed = await tryRefresh();
-                        if (refreshed) {
-                            res = await fetch('/api/users/me', { credentials: 'include' });
+                if (res.ok) {
+                    const json = await res.json().catch(() => ({}));
+                    name = json.data?.name ?? json.name ?? '회원';
+                    writeCache(name);
+                } else if (res.status === 401) {
+                    // 자동 토큰 재발급 시도
+                    const rr = await fetch('/api/auth/refresh', {
+                        method: 'POST', credentials: 'include',
+                    });
+                    if (rr.ok) {
+                        writeCache(CACHE_KEY_LOGIN_AT, String(Date.now()));
+                        const rr2 = await fetch('/api/users/me', { credentials: 'include' });
+                        if (rr2.ok) {
+                            const json2 = await rr2.json().catch(() => ({}));
+                            name = json2.data?.name ?? json2.name ?? '회원';
+                            writeCache(name);
                         }
                     }
-
-                    // refresh 후에도 401 → 세션 완전 만료
-                    if (res.status === 401) {
-                        clearCache();
-                        if (NEED_AUTH) {
-                            const next = encodeURIComponent(location.pathname + location.search);
-                            location.replace(`${LOGIN_URL}?next=${next}`);
-                            return;
-                        }
-                        // 비인증 페이지는 비로그인 상태로 계속
-                    } else if (res.ok) {
-                        const json = await res.json().catch(() => ({}));
-                        name = json.data?.name ?? json.name ?? '회원';
-                        writeCache(name); // [FIX-1] 쌍으로 저장
-                    } else {
-                        // 5xx 등 서버 오류 → BnkAPI가 Toast 처리함
-                        clearCache();
-                    }
-                } catch {
-                    // 네트워크 오류 → 비로그인 처리
+                } else {
                     clearCache();
                 }
+            } catch {
+                clearCache();
             }
         }
 
@@ -185,7 +168,9 @@
         renderFooter(loggedIn);
     }
 
-    /* 관리자 인증 확인 */
+    /* ─────────────────────────────────────────────────────────────
+       관리자 인증 확인
+    ──────────────────────────────────────────────────────────────── */
     async function checkAdminAuth() {
         let authenticated = false;
         try {
@@ -214,7 +199,7 @@
     }
 
     /* ─────────────────────────────────────────────────────────────
-       헤더 내비 렌더링
+       헤더 내비 렌더링 (일반 사용자)
     ──────────────────────────────────────────────────────────────── */
     function renderNav(loggedIn, name) {
         const nav = document.getElementById('headerNav');
@@ -240,6 +225,10 @@
         markActiveLink(nav);
     }
 
+    /* ─────────────────────────────────────────────────────────────
+       관리자 헤더 + 서브 네비 렌더링
+       [변경] 헤더 nav 렌더 후 site-header 바로 아래에 서브 네비 주입
+    ──────────────────────────────────────────────────────────────── */
     function renderAdminNav(name) {
         const nav = document.getElementById('headerNav');
         if (!nav) return;
@@ -252,11 +241,63 @@
         document.getElementById('hdrLogout').addEventListener('click', adminLogout);
         markActiveLink(nav);
         startTokenTimer();
+
+        /* ── 서브 네비 주입 ── */
+        injectAdminSubNav();
+    }
+
+    /* ─────────────────────────────────────────────────────────────
+       관리자 서브 네비 주입
+       기존에 이미 #admin-sub-nav 가 있으면 덮어쓰지 않음 (중복 방지)
+    ──────────────────────────────────────────────────────────────── */
+    /* ─────────────────────────────────────────────────────────────
+       서브 네비를 표시하지 않는 페이지
+       자체 사이드바/네비가 있어 상단 서브 네비가 불필요한 페이지
+    ──────────────────────────────────────────────────────────────── */
+    const ADMIN_SUB_NAV_EXCLUDE = [
+        '/admin/cardManage.html',  // 좌측 사이드바 자체 보유
+        '/admin/cards',            // CleanUrl 매핑
+    ];
+
+    function injectAdminSubNav() {
+        /* 자체 사이드바가 있는 페이지는 상단 서브 네비 주입 안 함 */
+        const currentPath = location.pathname.replace(/\/$/, '');
+        const excluded = ADMIN_SUB_NAV_EXCLUDE.some(p =>
+            currentPath === p || currentPath === p.replace(/\.html$/, ''));
+        if (excluded) return;
+
+        /* 이미 존재하면 active 클래스만 갱신 */
+        let subNav = document.getElementById('admin-sub-nav');
+        if (!subNav) {
+            subNav = document.createElement('nav');
+            subNav.id = 'admin-sub-nav';
+            subNav.className = 'admin-sub-nav';
+            subNav.setAttribute('aria-label', '관리자 메뉴');
+
+            /* app-header div 바로 뒤에 삽입 */
+            const appHeader = document.getElementById('app-header');
+            if (appHeader && appHeader.nextSibling) {
+                appHeader.parentNode.insertBefore(subNav, appHeader.nextSibling);
+            } else if (appHeader) {
+                appHeader.insertAdjacentElement('afterend', subNav);
+            } else {
+                document.body.prepend(subNav);
+            }
+        }
+
+        subNav.innerHTML = ADMIN_NAV_ITEMS.map(item => {
+            const itemPath  = item.href.replace(/\.html$/, '');
+            const isActive  = currentPath === item.href
+                           || currentPath === itemPath
+                           || currentPath.startsWith(itemPath + '/');
+            return `<a href="${item.href}"
+                       class="admin-sub-nav__link${isActive ? ' admin-sub-nav__link--active' : ''}"
+                       ${isActive ? 'aria-current="page"' : ''}>${item.label}</a>`;
+        }).join('');
     }
 
     /* ─────────────────────────────────────────────────────────────
        푸터 nav 렌더링
-       visibility 복원으로 FOUC 제거
     ──────────────────────────────────────────────────────────────── */
     function renderFooter(loggedIn) {
         const footerNav = document.querySelector('.site-footer__nav');
@@ -274,13 +315,11 @@
         <a href="/mypage">마이페이지</a>`;
         }
 
-        // 정확한 상태 렌더링 후 표시
         footerNav.style.visibility = '';
     }
 
     /* ─────────────────────────────────────────────────────────────
-       markActiveLink — clean URL + .html 경로 모두 처리
-       예) /mypage 접근 시 href="/mypage/index.html" 도 active 처리
+       markActiveLink
     ──────────────────────────────────────────────────────────────── */
     function markActiveLink(nav) {
         const currentPath = location.pathname;
@@ -290,12 +329,10 @@
 
             const isExact = currentPath === href;
 
-            // /mypage/index.html ↔ /mypage 양방향 매칭
             const hrefClean = href.replace(/\/index\.html$/, '') || '/';
             const pathClean = currentPath.replace(/\/index\.html$/, '') || '/';
             const isClean = hrefClean !== '/' && (pathClean === hrefClean || currentPath === hrefClean);
 
-            // 디렉토리 prefix 매칭 (예: /mypage/* → /mypage/index.html 활성)
             const isParent = href !== '/' &&
                 !href.endsWith('.html') &&
                 currentPath.startsWith(href + '/');
@@ -315,69 +352,60 @@
             if (!timerEl) { stopTokenTimer(); return; }
 
             const loginAt = Number(sessionStorage.getItem(CACHE_KEY_LOGIN_AT) ?? 0);
-            const elapsed = Date.now() - loginAt;
+            if (!loginAt) { timerEl.textContent = '--:--:--'; return; }
+
+            const elapsed   = Date.now() - loginAt;
             const remaining = ACCESS_TOKEN_TTL_MS - elapsed;
 
             if (remaining <= 0) {
+                timerEl.textContent = '00:00:00';
+                timerEl.style.color = '#ef4444';
                 stopTokenTimer();
-                BnkToast.error('세션이 만료되었습니다. 다시 로그인해 주세요.');
-                clearCache();
-                setTimeout(() => location.replace(LOGIN_URL), 1500);
                 return;
             }
 
             const h = Math.floor(remaining / 3_600_000);
             const m = Math.floor((remaining % 3_600_000) / 60_000);
             const s = Math.floor((remaining % 60_000) / 1_000);
-            timerEl.textContent =
-                `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 
-            if (remaining < WARN_THRESHOLD_MS) {
-                timerEl.style.color = '#ea580c';
-                timerEl.style.background = '#fff7ed';
-            } else {
-                timerEl.style.color = '';
-                timerEl.style.background = '';
-            }
+            timerEl.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            timerEl.style.color = remaining < WARN_THRESHOLD_MS ? '#f97316' : '';
         }
 
         tick();
-        _tokenTimerInterval = setInterval(tick, 1_000);
+        _tokenTimerInterval = setInterval(tick, 1000);
     }
 
     function stopTokenTimer() {
-        if (_tokenTimerInterval) {
-            clearInterval(_tokenTimerInterval);
-            _tokenTimerInterval = null;
-        }
+        if (_tokenTimerInterval) { clearInterval(_tokenTimerInterval); _tokenTimerInterval = null; }
     }
 
     /* ─────────────────────────────────────────────────────────────
-       토큰 수동 재발급
+       토큰 재발급 (수동)
     ──────────────────────────────────────────────────────────────── */
-	async function manualRefresh() {
-	    const btn = document.getElementById('hdrRefresh');
-	    if (btn) { btn.disabled = true; btn.textContent = '재발급 중...'; }
+    async function manualRefresh() {
+        const btn = document.getElementById('hdrRefresh');
+        if (btn) { btn.disabled = true; btn.textContent = '재발급 중...'; }
 
-	    const refreshUrl = IS_ADMIN ? '/api/admin/auth/refresh' : '/api/auth/refresh';
-	    const redirectUrl = IS_ADMIN ? ADMIN_LOGIN_URL : LOGIN_URL;
+        const refreshUrl  = IS_ADMIN ? '/api/admin/auth/refresh' : '/api/auth/refresh';
+        const redirectUrl = IS_ADMIN ? ADMIN_LOGIN_URL : LOGIN_URL;
 
-	    const res = await BnkAPI.post(refreshUrl);
+        const res = await BnkAPI.post(refreshUrl);
 
-	    if (btn) { btn.disabled = false; btn.textContent = '토큰 재발급'; }
+        if (btn) { btn.disabled = false; btn.textContent = '토큰 재발급'; }
 
-	    if (res.ok) {
-	        sessionStorage.setItem(CACHE_KEY_LOGIN_AT, String(Date.now()));
-	        startTokenTimer();
-	        BnkToast.success('토큰이 재발급되었습니다.');
-	    } else {
-	        const msg = BnkError.extract(res.data, '세션이 만료되었습니다. 다시 로그인해 주세요.');
-	        BnkToast.error(msg);
-	        clearCache();
-	        stopTokenTimer();
-	        setTimeout(() => location.replace(redirectUrl), 1500); // ★ 관리자면 /admin/login
-	    }
-	}
+        if (res.ok) {
+            sessionStorage.setItem(CACHE_KEY_LOGIN_AT, String(Date.now()));
+            startTokenTimer();
+            BnkToast.success('토큰이 재발급되었습니다.');
+        } else {
+            const msg = BnkError.extract(res.data, '세션이 만료되었습니다. 다시 로그인해 주세요.');
+            BnkToast.error(msg);
+            clearCache();
+            stopTokenTimer();
+            setTimeout(() => location.replace(redirectUrl), 1500);
+        }
+    }
 
     /* ─────────────────────────────────────────────────────────────
        로그아웃
@@ -402,8 +430,9 @@
             location.replace(ADMIN_LOGIN_URL);
         }
     }
+
     /* ─────────────────────────────────────────────────────────────
-       XSS 방어용 이스케이프
+       XSS 방어
     ──────────────────────────────────────────────────────────────── */
     function esc(str) {
         return String(str ?? '')
@@ -417,10 +446,9 @@
     /* ─────────────────────────────────────────────────────────────
        초기화
     ──────────────────────────────────────────────────────────────── */
-    hideFooerNav();     // 푸터 즉시 숨김 (FOUC 방지)
-    injectHeader();     // 헤더 뼈대 즉시 삽입
-    checkAuth();        // 인증 확인 → renderNav + renderFooter
+    hideFooerNav();
+    injectHeader();
+    checkAuth();
 
-    // 하위 호환
     window.showToast = (msg, type = 'info') => BnkToast[type]?.(msg) ?? BnkToast.info(msg);
 })();

@@ -167,11 +167,12 @@ public class SecurityConfig {
                 .contentSecurityPolicy(csp -> csp
                     .policyDirectives(
                         "default-src 'self'; " +
-                        "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; " +
+                        "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://t1.daumcdn.net; " +
                         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
                         "font-src 'self' https://fonts.gstatic.com; " +
                         "img-src 'self' data: https:; " +
                         "connect-src 'self'; " +
+                        "frame-src 'self' https://t1.daumcdn.net https://ssl.daumcdn.net http://postcode.map.kakao.com https://postcode.map.kakao.com; " +
                         "frame-ancestors 'none';"
                     ))
             )
