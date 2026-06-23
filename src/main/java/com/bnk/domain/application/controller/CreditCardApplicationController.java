@@ -46,12 +46,12 @@ public class CreditCardApplicationController {
     // ----------------------------------------------------------------
     // STEP 2 - 본인확인 결과 수신 (심사서버가 호출)
     // ----------------------------------------------------------------
-    @PostMapping("/verify-identity-result")
-    public ResponseEntity<ApiResponse<Void>> verifyIdentityResult(
-    		@RequestParam Long creditAppId, @RequestParam String idVerifiedYn) {
+    @PostMapping("/verify-identity")
+    public ResponseEntity<ApiResponse<String>> verifyIdentity(
+            @RequestBody CreditCardApplicationRequest request) {
 
-        creditCardApplicationService.verifyIdentity(creditAppId, idVerifiedYn);
-        return ResponseEntity.ok(ApiResponse.message("본인확인이 완료되었습니다."));
+        String idVerifiedYn = creditCardApplicationService.verifyIdentity(request);
+        return ApiResponse.toOk(idVerifiedYn);
     }
 
     // ----------------------------------------------------------------
@@ -88,6 +88,7 @@ public class CreditCardApplicationController {
     //  서류 업로드 (신규고객만)
     @PostMapping("/docs")
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadDocs(
+            @RequestParam Long creditAppId,
             @RequestParam("incomeDoc") MultipartFile incomeDoc,
             @RequestParam(value = "assetDoc", required = false) MultipartFile assetDoc,
             @RequestParam("jobDoc") MultipartFile jobDoc) throws Exception {
@@ -106,6 +107,8 @@ public class CreditCardApplicationController {
         // 직업확인서류
         FileStorageService.UploadResult jobMeta = fileStorageService.extractMeta(jobDoc, "docs/job");
         String jobDocKey = objectStorageService.upload(jobMeta.getObjectName(), jobDoc.getBytes(), jobMeta.getMimeType());
+
+        log.info("[신용카드] 서류 업로드 완료: creditAppId={}", creditAppId);
 
         Map<String, String> response = new HashMap<>();
         response.put("incomeDocKey", incomeDocKey);
@@ -127,15 +130,15 @@ public class CreditCardApplicationController {
     }
 
     // ----------------------------------------------------------------
-    // STEP 7 - 한도 검증
+    // STEP 7 - 한도 검증 : 6단계 서비스에서 자동
     // ----------------------------------------------------------------
-    @PostMapping("/limit-check")
-    public ResponseEntity<ApiResponse<Void>> checkLimit(
-            @RequestParam Long creditAppId) {
-
-        creditCardApplicationService.checkLimit(creditAppId);
-        return ApiResponse.toNoContent();
-    }
+//    @PostMapping("/limit-check")
+//    public ResponseEntity<ApiResponse<Void>> checkLimit(
+//            @RequestParam Long creditAppId) {
+//
+//        creditCardApplicationService.checkLimit(creditAppId);
+//        return ApiResponse.toNoContent();
+//    }
 
     // ----------------------------------------------------------------
     // STEP 8 - 추가 심사 결과 수신 (심사서버가 호출)
