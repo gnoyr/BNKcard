@@ -59,4 +59,16 @@ public class MaskingUtil {
         if (name.length() == 2) return name.charAt(0) + "*";
         return name.charAt(0) + "*".repeat(name.length() - 2) + name.charAt(name.length() - 1);
     }
+    
+    /**
+     * 카드번호 마스킹
+     * 1234567890123456 → 1234-56**-****-3456
+     */
+    public static String maskCardNumber(String cardNumber) {
+        if (cardNumber == null || cardNumber.length() != 16) return cardNumber;
+        return cardNumber.substring(0, 4) + "-"
+             + cardNumber.substring(4, 6) + "**-"
+             + "****-"
+             + cardNumber.substring(12);
+    }
 }
