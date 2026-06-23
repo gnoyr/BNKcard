@@ -1,0 +1,73 @@
+/* ================================================================
+   admin-nav.css  |  BNK 관리자 서브 네비게이션
+   header.js의 injectAdminSubNav() 가 주입하는 #admin-sub-nav 스타일
+   components.css / teal-theme.css 다음에 로드
+================================================================ */
+
+/* ── 서브 네비 바 ── */
+.admin-sub-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 20px;
+  height: 44px;
+  background: #fff;
+  border-bottom: 2px solid #E0F4F7;
+  position: sticky;
+  top: 60px;        /* site-header--admin 높이(60px)만큼 offset */
+  z-index: 90;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.admin-sub-nav::-webkit-scrollbar { display: none; }
+
+/* ── 링크 기본 ── */
+.admin-sub-nav__link {
+  display: inline-flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #5C7A83;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;   /* border-bottom 이 컨테이너 border 위로 겹침 */
+  white-space: nowrap;
+  transition: color .15s, border-color .15s, background .15s;
+  border-radius: 6px 6px 0 0;
+  font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+}
+
+/* ── hover ── */
+.admin-sub-nav__link:hover {
+  color: #00677F;
+  background: #E0F4F7;
+}
+
+/* ── 현재 페이지 (active) ── */
+.admin-sub-nav__link--active {
+  color: #00677F;
+  font-weight: 700;
+  border-bottom-color: #00677F;
+  background: transparent;
+}
+
+
+/* ── cardManage.html 사이드바 바로가기 링크 ── */
+.nav-link-item {
+  display: block;
+  padding: 7px 10px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #5C7A83;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: background .15s, color .15s;
+  font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+}
+.nav-link-item:hover {
+  background: #E0F4F7;
+  color: #00677F;
+}

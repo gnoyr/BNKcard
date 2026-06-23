@@ -21,7 +21,8 @@ import com.bnk.global.response.ApiResponse;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-
+import com.bnk.domain.user.dto.response.MonthlySpendingResponse;
+import org.springframework.web.bind.annotation.RequestParam;
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
@@ -71,4 +72,23 @@ public class UserController {
         requireAuth(ud);
         return ApiResponse.toOk(userService.getMyCards(ud.getUserId()));
     }
+    
+    /** 월별 카드별 이용금액 집계 */
+    @GetMapping("/me/monthly-spending")
+    public ResponseEntity<ApiResponse<MonthlySpendingResponse>> getMonthlySpending(
+            @RequestParam(defaultValue = "0") int year,
+            @RequestParam(defaultValue = "0") int month,
+            @AuthenticationPrincipal(errorOnInvalidType = false) CustomUserDetails ud) {
+        requireAuth(ud);
+
+        // year/month 미입력 시 현재 년월로 자동 설정
+        if (year == 0 || month == 0) {
+            java.time.LocalDate now = java.time.LocalDate.now();
+            year  = now.getYear();
+            month = now.getMonthValue();
+        }
+
+        return ApiResponse.toOk(userService.getMonthlySpending(ud.getUserId(), year, month));
+    }
+    
 }
