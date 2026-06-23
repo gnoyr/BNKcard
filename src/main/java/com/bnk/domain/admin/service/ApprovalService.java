@@ -24,6 +24,7 @@ import com.bnk.domain.card.mapper.CardVersionMapper;
 import com.bnk.domain.card.model.Card;
 import com.bnk.domain.card.model.CardStatusHistory;
 import com.bnk.domain.card.model.CardVersion;
+import com.bnk.domain.notification.service.NotificationService;  // ← 추가
 import com.bnk.domain.terms.mapper.TermsMapper;
 import com.bnk.domain.terms.model.Terms;
 import com.bnk.global.exception.BusinessException;
@@ -52,6 +53,7 @@ public class ApprovalService {
 	private final ObjectMapper objectMapper;
 	private final TermsMapper termsMapper;
 	private final AuditLogger auditLogger;
+	private final NotificationService notificationService;  // ← 추가
 
 	// ── 결재 상태 코드 ────────────────────────────────────────────────
 	private static final String STATUS_PENDING = "PENDING";
@@ -238,7 +240,7 @@ public class ApprovalService {
         }
 
         String previousStatus = terms.getStatus();
-        
+
         // 1. TERMS status → PUBLISHED
         termsMapper.updateTermsStatus(termsId, TERMS_STATUS_PUBLISHED, adminId);
 
@@ -250,13 +252,21 @@ public class ApprovalService {
         // 3. 같은 terms_master_id의 기존 PUBLISHED → SUPERSEDED 처리
         termsMapper.supersedePreviousPublished(terms.getTermsMasterId(), termsId);
 
-        // 4. 재동의 알림
+        // 4. 재동의 알림 (기존 EMAIL 이력 저장)
         if ("Y".equals(terms.getReconsentRequiredYn())) {
             List<Long> userIds = termsMapper.findUserIdsForReconsent(termsId);
             userIds.forEach(uid ->
                     termsMapper.insertNotificationHistory(termsId, uid, "EMAIL"));
             auditLogger.adminSuccess(AuditLogger.TERMS, AuditLogger.AGREE,
                     adminId, String.valueOf(termsId), "재동의 알림 발송: " + userIds.size() + "명");
+        }
+
+        // 5. 인앱 알림 발송 ← 추가
+        try {
+            String termsTitle = terms.getTitle() != null ? terms.getTitle() : "약관";
+            notificationService.notifyTermsChanged(termsId, termsTitle);
+        } catch (Exception e) {
+            log.error("[ApprovalService] 약관 변경 알림 발송 실패 termsId={}", termsId, e);
         }
 
         auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.APPROVAL_APPROVE,
@@ -326,6 +336,14 @@ public class ApprovalService {
                             .changedBy(adminId)
                             .changedReason("결재 승인 완료: approvalId=" + approvalId)
                             .build());
+
+            // 카드 보유자 인앱 알림 발송 ← 추가
+            try {
+                String cardName = snapshotCard.getCardName() != null ? snapshotCard.getCardName() : "카드";
+                notificationService.notifyCardUpdated(cardId, cardName);
+            } catch (Exception e) {
+                log.error("[ApprovalService] 카드 변경 알림 발송 실패 cardId={}", cardId, e);
+            }
 
             auditLogger.adminSuccess(AuditLogger.CARD, AuditLogger.APPROVAL_APPROVE,
                     adminId, String.valueOf(cardId), "카드 결재 승인 완료: approvalId=" + approvalId);
@@ -425,7 +443,7 @@ public class ApprovalService {
             String previousStatus = Optional.ofNullable(
                     cardMapper.findById(cardVersion.getCardId()))
                     .map(Card::getCardStatus)
-                    .orElse(CARD_STATUS_REVIEW); 
+                    .orElse(CARD_STATUS_REVIEW);
 
             // CARDS → REVIEW
             cardMapper.updateCardStatus(cardVersion.getCardId(), CARD_STATUS_REVIEW);
