@@ -1,6 +1,7 @@
 package com.bnk.domain.application.mapper;
 
 import com.bnk.domain.application.model.CheckCardApplication;
+
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -15,8 +16,7 @@ public interface CheckCardApplicationMapper {
 
     // STEP 2 - 본인확인
     // UPDATE: id_verified_yn
-    int updateIdVerified(@Param("checkAppId") Long checkAppId,
-                         @Param("idVerifiedYn") String idVerifiedYn);
+    int updateIdVerified(CheckCardApplication application);
 
     // STEP 3 - 기본정보
     // UPDATE: applicant_snapshot(AES)
