@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.bnk.domain.application.dto.request.CheckCardApplicationRequest;
@@ -45,19 +44,19 @@ public class CheckCardApplicationController {
     // ----------------------------------------------------------------
     // STEP 2 - 본인확인 결과 수신 (심사서버가 호출)
     // ----------------------------------------------------------------
-    @PostMapping("/verify-identity-result")
-    public ResponseEntity<ApiResponse<Void>> verifyIdentityResult(
-            @RequestParam Long checkAppId, @RequestParam String idVerifiedYn) {
-
-        checkCardApplicationService.verifyIdentity(checkAppId, idVerifiedYn);
-        return ResponseEntity.ok(ApiResponse.message("본인확인이 완료되었습니다."));
+    @PostMapping("/verify-identity")
+    public ResponseEntity<ApiResponse<String>> verifyIdentity(
+            @RequestBody CheckCardApplicationRequest request) {
+    	
+        String idVerifiedYn = checkCardApplicationService.verifyIdentity(request);
+        return ApiResponse.toOk(idVerifiedYn);
     }
 
     // ----------------------------------------------------------------
     // STEP 3 - 기본정보
     // ----------------------------------------------------------------
     @PostMapping("/applicant-info")
-    public ResponseEntity<ApiResponse<Void>> saveLinkedAccount(
+    public ResponseEntity<ApiResponse<Void>> saveApplicantInfo(
             @RequestBody CheckCardApplicationRequest request) {
 
         checkCardApplicationService.saveApplicantInfo(request);

@@ -15,8 +15,7 @@ public interface CreditCardApplicationMapper {
 
     // STEP 2 - 본인확인
     // UPDATE: id_verified_yn
-    int updateIdVerified(@Param("creditAppId") Long creditAppId,
-                         @Param("idVerifiedYn") String idVerifiedYn);
+    int updateIdVerified(CreditCardApplication application);
 
     // STEP 3 - 기본정보 + 직업/소득
     // UPDATE: applicant_snapshot(AES), annual_income_band, credit_score_band, linked_account_id
@@ -43,9 +42,8 @@ public interface CreditCardApplicationMapper {
     // UPDATE: estimated_monthly_income, limit_check_result
     //         PASS            → approved_limit, application_status('APPROVED')
     //         MANUAL_REQUIRED → application_status('REVIEWING')
-    int updateLimitCheck(CreditCardApplication application);
-    
-    Long calculateEstimatedMonthlyIncome(@Param("userId") Long userId); // 결제내역 기반 월소득 추정
+    int updateLimitCheck(CreditCardApplication application);    
+//    Long calculateEstimatedMonthlyIncome(@Param("userId") Long userId); // 결제내역 기반 월소득 추정
 
     // STEP 8 - 추가 심사 (심사서버, REVIEWING 케이스만)
     // UPDATE: application_status('APPROVED' or 'REJECTED'), reviewed_at, reviewed_by

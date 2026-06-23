@@ -18,6 +18,7 @@ public class CreditCardApplication {
     
     // STEP 2 - 본인확인
     private String idVerifiedYn;        // Y / N
+    private String ciValue;
 
     // STEP 3 - 소득/신용
     private String annualIncomeBand;    // LV1/LV2/LV3/LV4

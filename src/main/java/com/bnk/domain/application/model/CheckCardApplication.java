@@ -19,13 +19,14 @@ public class CheckCardApplication {
 
     // STEP 2 - 본인확인
     private String idVerifiedYn;
+    private String ciValue;
     
     // STEP 3
-    private Long linkedAccountId;	   // 연결 계좌 ID
+    private String applicantSnapshot;  // CLOB JSON
     
     // STEP 4 - 기본정보 + 신청정보
+    private Long linkedAccountId;	   // 연결 계좌 ID
     private Long versionId;
-    private String applicantSnapshot;  // CLOB JSON
     private String paymentSnapshot;    // CLOB JSON
     private LocalDateTime appliedAt;
     private String cardPasswordHash;

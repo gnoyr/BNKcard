@@ -1,12 +1,15 @@
 package com.bnk.domain.application.service;
 
+import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import com.bnk.domain.application.dto.CheckApplicantSnapshotDto;
 import com.bnk.domain.application.dto.PaymentSnapshotDto;
@@ -27,7 +30,10 @@ import com.bnk.domain.terms.model.Terms;
 import com.bnk.domain.terms.model.UserTermsAgreement;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
+import com.bnk.global.util.AesCryptoUtil;
+import com.bnk.global.util.MaskingUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +49,13 @@ public class CheckCardApplicationService {
     private final TermsMapper 				 termsMapper;
     private final PasswordEncoder            passwordEncoder;
     private final ObjectMapper               objectMapper;
+    private final RestTemplate restTemplate;
+    private final AesCryptoUtil aesCryptoUtil;
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    
+
+    @Value("${verification.server.url}")
+    private String verificationServerUrl;
 
     // ----------------------------------------------------------------
     // STEP 1 - 약관 동의
@@ -83,11 +96,35 @@ public class CheckCardApplicationService {
     // ----------------------------------------------------------------
     // STEP 2 - 본인확인 결과 저장
     // ----------------------------------------------------------------
-    public void verifyIdentity(Long checkAppId, String idVerifiedYn) {
-        int updated = checkCardApplicationMapper.updateIdVerified(checkAppId, idVerifiedYn);
+    public String verifyIdentity(CheckCardApplicationRequest request) {
+        Map response = restTemplate.postForObject(
+            verificationServerUrl + "/api/mydata/id-verification",
+            Map.of(
+                "checkAppId",   request.getCheckAppId(),
+                "idType",       request.getIdType(),
+                "idName",       request.getIdName(),
+                "idResidentNo", request.getIdResidentNo(),
+                "idAddress",    request.getIdAddress(),
+                "idIssueDate",  request.getIdIssueDate()
+            ),
+            Map.class
+        );
+
+        String idVerifiedYn = (String) response.get("idVerifiedYn");
+        String ciValue      = (String) response.get("ciValue");
+
+        CheckCardApplication application = CheckCardApplication.builder()
+                .checkAppId(request.getCheckAppId())
+                .idVerifiedYn(idVerifiedYn)
+                .ciValue(ciValue)
+                .build();
+
+        int updated = checkCardApplicationMapper.updateIdVerified(application);
         if (updated == 0) {
-        	throw new BusinessException(ErrorCode.APP_NOT_FOUND);
+            throw new BusinessException(ErrorCode.APP_NOT_FOUND);
         }
+
+        return idVerifiedYn;
     }
 
     // ----------------------------------------------------------------
@@ -125,10 +162,29 @@ public class CheckCardApplicationService {
                     .cardPasswordHash(passwordEncoder.encode(request.getCardPassword()))
                     .build();
             // applicantSnapshot { name, nameEn, mobileNo, address, email, jobType, transactionPurpose, fundSource }
-            // paymentSnapshot { card_brand, card_design_id, payment_day, combined_transit_yn, tx_alert_type, statement_method, overseas_dcc_block_yn }
+            // paymentSnapshot { card_brand, card_design_id, payment_day, combined_transit_yn, tx_alert_type, statement_method }
             checkCardApplicationMapper.updatePaymentInfo(application);
         } catch (Exception e) {
             throw new RuntimeException("snapshot 직렬화 실패", e);
+        }
+       
+        requestScreeningReview(request.getCheckAppId());  // 심사 의뢰
+    }
+    
+    private void requestScreeningReview(Long checkAppId) {
+        try {
+            CheckCardApplication app = findOrThrow(checkAppId);
+
+            restTemplate.postForEntity(
+                verificationServerUrl + "/review/request/check/" + checkAppId,
+                Map.of(
+                    "checkAppId", checkAppId,
+                    "ciValue",    app.getCiValue()
+                ),
+                Void.class
+            );
+        } catch (Exception e) {
+            log.error("[체크카드] 심사 의뢰 실패: checkAppId={}", checkAppId, e);
         }
     }
 
@@ -165,22 +221,49 @@ public class CheckCardApplicationService {
         LocalDate expireDate = issueDate.plusYears(10);
 
         // 16자리 랜덤 카드번호 생성
-        String cardNumber = String.format("%016d",
-            (long)(Math.random() * 9_000_000_000_000_000L) + 1_000_000_000_000_000L);
+        long min = 1_000_000_000_000_000L;
+        long max = 9_999_999_999_999_999L;
+        long rawNumber = min + (long)(SECURE_RANDOM.nextDouble() * (max - min + 1));
+        String rawCardNumber = String.format("%016d", rawNumber);
 
+        // payment_snapshot 파싱
+        PaymentSnapshotDto snap;
+        try {
+            snap = objectMapper.readValue(app.getPaymentSnapshot(), PaymentSnapshotDto.class);
+        } catch (Exception e) {
+            throw new RuntimeException("paymentSnapshot 역직렬화 실패", e);
+        }
+ 
         UserCard userCard = new UserCard();
+ 
+        // ── 식별자
         userCard.setUserId(app.getUserId());
         userCard.setVersionId(app.getVersionId());
-        userCard.setCheckAppId(app.getCheckAppId());
-        userCard.setCardPasswordHash(app.getCardPasswordHash());
-        userCard.setCardNumber(cardNumber);
+        userCard.setCheckAppId(app.getCheckAppId());  // 체크카드 전용
+ 
+        userCard.setEncryptedCardNumber(aesCryptoUtil.encrypt(rawCardNumber));
+        userCard.setMaskedCardNumber(MaskingUtil.maskCardNumber(rawCardNumber));
+ 
         userCard.setIssueDate(issueDate);
         userCard.setExpireDate(expireDate);
         userCard.setCardStatus("ACTIVE");
+        userCard.setUsableYn("Y");
+        userCard.setCardPasswordHash(app.getCardPasswordHash());
+        userCard.setLinkedAccountId(app.getLinkedAccountId());
+        userCard.setDailyLimitAmount(1_000_000L);
+ 
+        // ── payment_snapshot 항목
+        userCard.setCardBrand(snap.getCardBrand());
+        userCard.setCardDesignId(snap.getCardDesignId() != null
+            ? Long.parseLong(snap.getCardDesignId()) : null);
+        userCard.setPaymentDay(snap.getPaymentDay());
+        userCard.setCombinedTransitYn(snap.getCombinedTransitYn());
+        userCard.setTxAlertType(snap.getTxAlertType());
+        userCard.setStatementMethod(snap.getStatementMethod());
+ 
         userCardMapper.insertUserCard(userCard);
-
         checkCardApplicationMapper.updateStatus(checkAppId, "ISSUED");
-
+ 
         log.info("[체크카드] 발급 완료: checkAppId={}, userCardId={}", checkAppId, userCard.getUserCardId());
     }
     
@@ -262,4 +345,7 @@ public class CheckCardApplicationService {
             throw new RuntimeException("snapshot 역직렬화 실패", e);
         }
     }
+    
+
+
 }
