@@ -7,6 +7,7 @@
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/css/components.css">
   <link rel="stylesheet" href="/css/mypage.css">
+  <link rel="stylesheet" href="/css/notification.css">
   <link rel="stylesheet" href="/css/teal-theme.css">
 </head>
 <body data-page="mypage-main">
@@ -104,12 +105,52 @@
         </div>
       </div>
     </section>
-
+	
+	<section class="mp-notif-section" aria-labelledby="lbl-notif" id="mp-notif-section">
+ 
+  <div class="mp-notif-head">
+    <h2 class="mp-notif-head__label" id="lbl-notif">
+      최근 알림
+      <span class="notif-hdr-badge" id="mp-notif-badge"
+            style="display:none;position:relative;top:auto;right:auto;
+                   margin-left:6px;font-size:10px;vertical-align:middle">0</span>
+    </h2>
+    <a href="/mypage/notifications" class="mp-notif-head__more">전체보기</a>
+  </div>
+ 
+  <div class="mp-notif-card">
+    <ul id="mp-notif-list" role="list" aria-label="최근 알림 목록">
+      <!-- JS로 채워짐 -->
+      <li class="mp-notif-skeleton">
+        <div class="mp-sk mp-sk-circle"></div>
+        <div class="mp-sk-lines">
+          <div class="mp-sk mp-sk-line mp-sk-line--long"></div>
+          <div class="mp-sk mp-sk-line mp-sk-line--short"></div>
+        </div>
+      </li>
+      <li class="mp-notif-skeleton">
+        <div class="mp-sk mp-sk-circle"></div>
+        <div class="mp-sk-lines">
+          <div class="mp-sk mp-sk-line mp-sk-line--long"></div>
+          <div class="mp-sk mp-sk-line mp-sk-line--short"></div>
+        </div>
+      </li>
+      <li class="mp-notif-skeleton">
+        <div class="mp-sk mp-sk-circle"></div>
+        <div class="mp-sk-lines">
+          <div class="mp-sk mp-sk-line mp-sk-line--long"></div>
+          <div class="mp-sk mp-sk-line mp-sk-line--short"></div>
+        </div>
+      </li>
+    </ul>
+  </div>
+</section>
   </main>
 
   <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
   <script src="/js/utils.js"></script>
   <script src="/js/header.js"></script>
   <script src="/js/mypage.js"></script>
+  <script src="/js/notification.js" defer></script>
 </body>
 </html>

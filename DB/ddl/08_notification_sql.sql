@@ -1,0 +1,114 @@
+-- ================================================================
+-- 알림(Notification) 시스템 DDL  ★최종 수정본★
+-- 수정 사항:
+--   1. ADMINS → ADMIN_USERS  (실제 테이블명 교정)
+--   2. NOTIFICATION_BATCHES를 먼저 생성  (FK 순서)
+--   3. NOT NULL DEFAULT → DEFAULT NOT NULL  (ORA-03076)
+--   4. 재실행 안전 DROP 블록 추가
+-- ================================================================
+
+-- ── 0. 재실행 안전 처리 ──────────────────────────────────────────
+BEGIN EXECUTE IMMEDIATE 'DROP INDEX IDX_NOTIF_USER_READ';      EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP INDEX IDX_NOTIF_BATCH';           EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP INDEX IDX_NBATCH_STATUS';         EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE NOTIFICATIONS         CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE NOTIFICATION_BATCHES  CASCADE CONSTRAINTS PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_NOTIFICATIONS';        EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_NOTIFICATION_BATCHES'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+
+-- ── 1. NOTIFICATION_BATCHES (먼저 생성 — NOTIFICATIONS가 FK 참조) ─
+CREATE TABLE NOTIFICATION_BATCHES (
+    batch_id              NUMBER(10)    PRIMARY KEY,
+    notification_category VARCHAR2(30)  NOT NULL,
+    title                 VARCHAR2(200) NOT NULL,
+    message               CLOB          NOT NULL,
+    link_url              VARCHAR2(500),
+    channels              VARCHAR2(50)  DEFAULT 'INAPP' NOT NULL,
+    target_type           VARCHAR2(30)  DEFAULT 'ALL'   NOT NULL,
+    target_ref_id         NUMBER(10),
+    status                VARCHAR2(20)  DEFAULT 'DRAFT' NOT NULL,
+    scheduled_at          TIMESTAMP,
+    sent_at               TIMESTAMP,
+    recipient_count       NUMBER(10)    DEFAULT 0,
+    success_count         NUMBER(10)    DEFAULT 0,
+    fail_count            NUMBER(10)    DEFAULT 0,
+    created_by            NUMBER(10)    NOT NULL,
+    sent_by               NUMBER(10),
+    created_at            TIMESTAMP     DEFAULT SYSTIMESTAMP NOT NULL,
+    -- ★ ADMINS → ADMIN_USERS
+    CONSTRAINT FK_NBATCH_CREATOR FOREIGN KEY (created_by) REFERENCES ADMIN_USERS(admin_id),
+    CONSTRAINT FK_NBATCH_SENDER  FOREIGN KEY (sent_by)    REFERENCES ADMIN_USERS(admin_id)
+);
+
+COMMENT ON TABLE  NOTIFICATION_BATCHES            IS '관리자 알림 발송 배치';
+COMMENT ON COLUMN NOTIFICATION_BATCHES.target_type   IS 'ALL/TERMS_AGREED/CARD_OWNER/MARKETING_AGREE/CUSTOM_USER_IDS';
+COMMENT ON COLUMN NOTIFICATION_BATCHES.target_ref_id IS '약관ID 또는 카드ID';
+COMMENT ON COLUMN NOTIFICATION_BATCHES.channels      IS '콤마구분 발송채널 (INAPP,PUSH,EMAIL)';
+COMMENT ON COLUMN NOTIFICATION_BATCHES.status        IS 'DRAFT/SCHEDULED/SENDING/DONE/FAILED';
+
+CREATE SEQUENCE SEQ_NOTIFICATION_BATCHES START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE INDEX IDX_NBATCH_STATUS ON NOTIFICATION_BATCHES(status, scheduled_at);
+
+-- ── 2. NOTIFICATIONS ─────────────────────────────────────────────
+CREATE TABLE NOTIFICATIONS (
+    notification_id       NUMBER(10)    PRIMARY KEY,
+    user_id               NUMBER(10)    NOT NULL,
+    notification_category VARCHAR2(30)  NOT NULL,
+    channel               VARCHAR2(10)  DEFAULT 'INAPP' NOT NULL,
+    title                 VARCHAR2(200) NOT NULL,
+    message               CLOB,
+    link_url              VARCHAR2(500),
+    sent_yn               CHAR(1)       DEFAULT 'N' NOT NULL CHECK (sent_yn IN ('Y','N')),
+    sent_at               TIMESTAMP,
+    read_yn               CHAR(1)       DEFAULT 'N' NOT NULL CHECK (read_yn IN ('Y','N')),
+    read_at               TIMESTAMP,
+    batch_id              NUMBER(10),
+    created_at            TIMESTAMP     DEFAULT SYSTIMESTAMP NOT NULL,
+    CONSTRAINT FK_NOTIF_USER  FOREIGN KEY (user_id)  REFERENCES USERS(user_id),
+    CONSTRAINT FK_NOTIF_BATCH FOREIGN KEY (batch_id) REFERENCES NOTIFICATION_BATCHES(batch_id)
+);
+
+COMMENT ON TABLE  NOTIFICATIONS                       IS '통합 알림 이력';
+COMMENT ON COLUMN NOTIFICATIONS.notification_category IS 'TERMS_CHANGED/CARD_UPDATED/EVENT/NOTICE/SYSTEM';
+COMMENT ON COLUMN NOTIFICATIONS.channel               IS 'INAPP/PUSH/EMAIL/SMS';
+COMMENT ON COLUMN NOTIFICATIONS.batch_id              IS '관리자 일괄발송 배치 ID';
+
+CREATE SEQUENCE SEQ_NOTIFICATIONS START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE INDEX IDX_NOTIF_USER_READ ON NOTIFICATIONS(user_id, read_yn, created_at DESC);
+CREATE INDEX IDX_NOTIF_BATCH     ON NOTIFICATIONS(batch_id);
+
+-- ── 3. USERS.push_token (중복 방지) ──────────────────────────────
+DECLARE
+    v_cnt NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_cnt
+    FROM   user_tab_columns
+    WHERE  table_name  = 'USERS'
+    AND    column_name = 'PUSH_TOKEN';
+    IF v_cnt = 0 THEN
+        EXECUTE IMMEDIATE 'ALTER TABLE USERS ADD push_token VARCHAR2(500)';
+        EXECUTE IMMEDIATE q'[COMMENT ON COLUMN USERS.push_token IS 'FCM 디바이스 푸시 토큰']';
+    END IF;
+END;
+/
+
+-- ── 4. NOTIFICATION_BATCHES PK 자동채번 트리거 ───────────────────
+CREATE OR REPLACE TRIGGER TRG_NOTIFICATION_BATCHES_BI
+BEFORE INSERT ON NOTIFICATION_BATCHES FOR EACH ROW WHEN (NEW.batch_id IS NULL)
+BEGIN :NEW.batch_id := SEQ_NOTIFICATION_BATCHES.NEXTVAL; END TRG_NOTIFICATION_BATCHES_BI;
+/
+
+-- ── 5. NOTIFICATIONS PK 자동채번 트리거 ──────────────────────────
+CREATE OR REPLACE TRIGGER TRG_NOTIFICATIONS_BI
+BEFORE INSERT ON NOTIFICATIONS FOR EACH ROW WHEN (NEW.notification_id IS NULL)
+BEGIN :NEW.notification_id := SEQ_NOTIFICATIONS.NEXTVAL; END TRG_NOTIFICATIONS_BI;
+/
+
+COMMIT;
