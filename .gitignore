@@ -39,3 +39,6 @@ out/
 
 src/main/resources/application-local.properties
 application-test.properties
+
+**/service-account.json
+src/main/resources/firebase/
