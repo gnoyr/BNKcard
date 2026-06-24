@@ -89,9 +89,9 @@ public class CreditCardApplicationController {
     @PostMapping("/docs")
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadDocs(
             @RequestParam Long creditAppId,
-            @RequestParam("incomeDoc") MultipartFile incomeDoc,
-            @RequestParam(value = "assetDoc", required = false) MultipartFile assetDoc,
-            @RequestParam("jobDoc") MultipartFile jobDoc) throws Exception {
+            @RequestParam MultipartFile incomeDoc,
+            @RequestParam(required = false) MultipartFile assetDoc,
+            @RequestParam MultipartFile jobDoc) throws Exception {
 
         // 소득확인서류
         FileStorageService.UploadResult incomeMeta = fileStorageService.extractMeta(incomeDoc, "docs/income");

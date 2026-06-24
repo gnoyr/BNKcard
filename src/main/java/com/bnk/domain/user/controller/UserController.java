@@ -2,6 +2,7 @@ package com.bnk.domain.user.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -34,7 +35,7 @@ public class UserController {
         if (ud == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
     }
 
-    /** F-24 | 내 정보 조회 */
+    /* 내 정보 조회 */
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> getMyInfo(
             @AuthenticationPrincipal(errorOnInvalidType = false) CustomUserDetails ud) {
@@ -43,7 +44,7 @@ public class UserController {
     }
 
     /**
-     * F-25 | 내 정보 수정
+     * 내 정보 수정
      * phone 변경 시 request.currentPassword BCrypt 검증 후 저장
      */
     @PutMapping("/me")
@@ -55,7 +56,7 @@ public class UserController {
         return ApiResponse.toOk(null);
     }
 
-    /** F-26 | 비밀번호 변경 */
+    /* 비밀번호 변경 */
     @PatchMapping("/me/password")
     public ResponseEntity<ApiResponse<Void>> changePassword(
             @RequestBody @Valid PasswordChangeRequest request,
@@ -65,7 +66,7 @@ public class UserController {
         return ApiResponse.toOk(null);
     }
 
-    /** RQ-F17 | 보유 카드 및 신청 현황 */
+    /* 보유 카드 및 신청 현황 */
     @GetMapping("/me/cards")
     public ResponseEntity<ApiResponse<CardStatusResponse>> getMyCards(
             @AuthenticationPrincipal(errorOnInvalidType = false) CustomUserDetails ud) {
@@ -89,6 +90,25 @@ public class UserController {
         }
 
         return ApiResponse.toOk(userService.getMonthlySpending(ud.getUserId(), year, month));
+    }
+    
+    /** 푸시 토큰 등록 */
+    @PutMapping("/me/push-token")
+    public ResponseEntity<ApiResponse<Void>> registerPushToken(
+            @RequestBody java.util.Map<String, String> body,
+            @AuthenticationPrincipal(errorOnInvalidType = false) CustomUserDetails ud) {
+        requireAuth(ud);
+        userService.updatePushToken(ud.getUserId(), body.get("pushToken"));
+        return ApiResponse.toOk(null);
+    }
+
+    /** 푸시 토큰 해제 */
+    @DeleteMapping("/me/push-token")
+    public ResponseEntity<ApiResponse<Void>> clearPushToken(
+            @AuthenticationPrincipal(errorOnInvalidType = false) CustomUserDetails ud) {
+        requireAuth(ud);
+        userService.clearPushToken(ud.getUserId());
+        return ApiResponse.toOk(null);
     }
     
 }
