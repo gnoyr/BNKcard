@@ -238,5 +238,20 @@
     "name": "migration.enabled",
     "type": "java.lang.String",
     "description": "마이그레이션 수행 허용 여부"
+  },
+  {
+    "name": "verification.server.url",
+    "type": "java.lang.String",
+    "description": "외부 검증 서버의 URL 주소입니다."
+  },
+  {
+    "name": "fcm.enabled",
+    "type": "java.lang.Boolean",
+    "description": "Firebase Cloud Messaging(FCM) 기능 활성화 여부."
+  },
+  {
+    "name": "fcm.service-account-path",
+    "type": "java.lang.String",
+    "description": "FCM 서비스 계정 키 파일(JSON)의 경로입니다."
   }
 ]}

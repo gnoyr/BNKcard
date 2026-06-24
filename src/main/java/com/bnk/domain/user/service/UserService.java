@@ -195,5 +195,17 @@ public class UserService {
                 .build();
     }
     
+    @Transactional
+    public void updatePushToken(Long userId, String pushToken) {
+        if (pushToken == null || pushToken.isBlank())
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "푸시 토큰이 비어 있습니다.");
+        userMapper.updatePushToken(userId, pushToken);
+    }
+
+    @Transactional
+    public void clearPushToken(Long userId) {
+        userMapper.clearPushToken(userId);
+    }
+    
     
 }

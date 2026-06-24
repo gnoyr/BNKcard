@@ -7,11 +7,14 @@ import com.bnk.domain.notification.dto.response.NotificationResponse;
 import com.bnk.domain.notification.mapper.NotificationMapper;
 import com.bnk.domain.notification.model.Notification;
 import com.bnk.domain.notification.model.NotificationBatch;
+import com.bnk.global.email.EmailService;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.response.PageResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,8 +29,10 @@ import java.util.stream.Collectors;
 public class NotificationService {
 
     private final NotificationMapper notificationMapper;
+    private final ObjectProvider<FcmService> fcmServiceProvider;
+    private final EmailService emailService;
 
-    private static final int BATCH_CHUNK = 500; // INSERT ALL Oracle 제한 고려
+    private static final int BATCH_CHUNK = 500; // INSERT ALL / IN-list(Oracle 1000) 제한 고려
 
     // ================================================================
     // 사용자 API — 알림 목록 / 읽음 처리
@@ -215,8 +220,8 @@ public class NotificationService {
     /**
      * 실제 알림 저장 + 채널별 발송
      * INAPP: DB INSERT
-     * PUSH:  push_enabled='Y' 필터 후 FCM 호출 (stub — 실제 FCM SDK 연동 시 구현)
-     * EMAIL: EmailService 위임 (stub)
+     * PUSH:  push_enabled='Y' + 토큰 보유자에게 FCM 발송 (fcm.enabled=false 시 자동 skip)
+     * EMAIL: 대상자 이메일로 EmailService 발송 (Teal 테마 HTML)
      */
     private void dispatchToUsers(List<Long> userIds,
                                   String category,
@@ -250,20 +255,37 @@ public class NotificationService {
             }
         }
 
-        // PUSH 채널: push_enabled='Y' 필터 후 FCM 발송 (stub)
+        // PUSH 채널: push_enabled='Y' 필터 후 FCM 발송
         if (channels.contains("PUSH")) {
-            log.info("[Notification] PUSH 발송 stub — {}명 대상, 실제 FCM SDK 연동 필요", userIds.size());
-            // TODO: FCM SDK 연동
-            // List<Long> pushTargets = userIds.stream()
-            //     .filter(uid -> "Y".equals(userMapper.findById(uid).getPushEnabled()))
-            //     .toList();
-            // pushTargets.forEach(uid -> fcmService.send(uid, title, message));
+            FcmService fcm = fcmServiceProvider.getIfAvailable();
+            if (fcm == null) {
+                log.info("[Notification] PUSH 비활성(fcm.enabled=false) — {}명 건너뜀", userIds.size());
+            } else {
+                int sent = 0, total = 0;
+                for (int i = 0; i < userIds.size(); i += BATCH_CHUNK) {
+                    List<Long> chunk = userIds.subList(i, Math.min(i + BATCH_CHUNK, userIds.size()));
+                    var targets = notificationMapper.findPushTargets(chunk);
+                    total += targets.size();
+                    for (var t : targets) {
+                        if (fcm.sendToToken(t.getUserId(), t.getPushToken(), title, message, linkUrl)) sent++;
+                    }
+                }
+                log.info("[Notification] PUSH 발송 완료 {}/{}건", sent, total);
+            }
         }
 
-        // EMAIL 채널: EmailService 위임 (stub)
+        // EMAIL 채널: 대상자 이메일로 발송 (각 건은 EmailService 내부에서 @Async 처리)
         if (channels.contains("EMAIL")) {
-            log.info("[Notification] EMAIL 발송 stub — {}명 대상, EmailService 연동 필요", userIds.size());
-            // TODO: emailService.sendBulk(userIds, title, message);
+            int sent = 0;
+            for (int i = 0; i < userIds.size(); i += BATCH_CHUNK) {
+                List<Long> chunk = userIds.subList(i, Math.min(i + BATCH_CHUNK, userIds.size()));
+                List<String> emails = notificationMapper.findEmailsByUserIds(chunk);
+                for (String email : emails) {
+                    emailService.sendNotificationEmail(email, title, message, linkUrl);
+                    sent++;
+                }
+            }
+            log.info("[Notification] EMAIL 발송 요청 {}건 (비동기 큐잉)", sent);
         }
     }
 }
