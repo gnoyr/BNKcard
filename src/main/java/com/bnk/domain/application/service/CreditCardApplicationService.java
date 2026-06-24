@@ -285,10 +285,13 @@ public class CreditCardApplicationService {
     // RestTemplate 심사서버 전달
     private void requestAdditionalReview(Long creditAppId) {
         try {
+        	CreditCardApplication app = findOrThrow(creditAppId);
+        	 
             restTemplate.postForEntity(
                 verificationServerUrl + "/review/request/" + creditAppId,
                 Map.of(
-                    "creditAppId", creditAppId  // 1차 심사와 동일한 서버
+                    "creditAppId", creditAppId,  // 1차 심사와 동일한 서버
+                    "ciValue",     app.getCiValue()
                 ),
                 Void.class
             );

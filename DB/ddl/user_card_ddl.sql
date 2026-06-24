@@ -37,7 +37,7 @@ CREATE TABLE USER_CARDS (
     card_brand                VARCHAR2(20  BYTE)                     NULL,      -- 카드 브랜드: VISA / MASTER / LOCAL / AMEX / UPI
     card_design_id            NUMBER(19)                             NULL,      -- FK: CARD_IMAGES (신청 시 선택한 디자인)
     payment_day               NUMBER(2)                              NULL,      -- 월 결제일 (1~31)
-    combined_transit_yn       CHAR(1       BYTE) DEFAULT 'N'         NULL,      -- 교통카드 결합 여부 Y/N
+    combined_transit_yn       CHAR(1       BYTE)                     NULL,      -- 교통카드 결합 여부 Y/N
     tx_alert_type             VARCHAR2(20  BYTE)                     NULL,      -- 거래 알림 방식: SMS / PUSH / NONE
     statement_method          VARCHAR2(20  BYTE)                     NULL,      -- 명세서 수령: EMAIL / APP / PAPER
 
