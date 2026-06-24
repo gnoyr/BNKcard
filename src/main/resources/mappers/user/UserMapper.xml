@@ -1,1 +1,420 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.bnk.domain.user.mapper.UserMapper">
+
+	<resultMap id="userMap" type="com.bnk.domain.user.model.User">
+		<id property="userId" column="user_id" />
+		<result property="email" column="email"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="passwordHash" column="password_hash"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="name" column="name"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="phone" column="phone"
+			typeHandler="aesTypeHandler" />
+		<result property="ciValue" column="ci_value"
+			typeHandler="aesTypeHandler" />
+		<result property="birthDate" column="birth_date"
+			typeHandler="aesBirthDateTypeHandler" />
+		<result property="job" column="job"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="incomeLevelCode" column="income_level_code"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="creditScore" column="credit_score" />
+		<result property="statusCode" column="status_code"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="loginFailCount" column="login_fail_count" />
+		<result property="lockedUntil" column="locked_until" />
+		<result property="lastLoginAt" column="last_login_at" />
+		<result property="lastPasswordChangedAt"
+			column="last_password_changed_at" />
+		<result property="isEmailVerified" column="is_email_verified"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="isPhoneVerified" column="is_phone_verified"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="pushEnabled" column="push_enabled"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="marketingAgree" column="marketing_agree"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="privacyAgree" column="privacy_agree"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="dormantAt" column="dormant_at" />
+		<result property="withdrawnAt" column="withdrawn_at" />
+		<result property="createdAt" column="created_at" />
+		<result property="updatedAt" column="updated_at" />
+		<result property="deletedYn" column="deleted_yn"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="cddStatusCode" column="cdd_status_code"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+	</resultMap>
+
+	<resultMap id="ownedCardRowMap"
+		type="com.bnk.domain.user.dto.query.OwnedCardRow">
+		<result column="user_card_id" property="userCardId" />
+		<result column="card_id" property="cardId" />
+		<result column="card_name" property="cardName" />
+		<result column="card_image_url" property="cardImageUrl" />
+		<result column="issued_at" property="issuedAt" />
+	</resultMap>
+
+	<resultMap id="cardApplicationRowMap"
+		type="com.bnk.domain.user.dto.query.CardApplicationRow">
+		<result column="application_id" property="applicationId" />
+		<result column="card_id" property="cardId" />
+		<result column="card_name" property="cardName" />
+		<result column="card_image_url" property="cardImageUrl" />
+		<result column="application_status"
+			property="applicationStatus" />
+		<result column="applied_at" property="appliedAt" />
+	</resultMap>
+
+	<resultMap id="spendingPatternRowMap"
+		type="com.bnk.domain.user.dto.query.SpendingPatternRow">
+		<result column="category_id" property="categoryId" />
+		<result column="category_name" property="categoryName" />
+		<result column="monthly_amount" property="monthlyAmount" />
+		<result column="icon_code" property="iconCode" />
+	</resultMap>
+
+	<select id="findByEmail" resultMap="userMap">
+		SELECT * FROM USERS WHERE
+		email = #{email, typeHandler=org.apache.ibatis.type.StringTypeHandler}
+		AND deleted_yn = 'N'
+	</select>
+
+	<select id="findById" resultMap="userMap">
+		SELECT * FROM USERS WHERE
+		user_id = #{userId} AND deleted_yn = 'N'
+	</select>
+
+	<select id="findByName" resultMap="userMap">
+		SELECT * FROM USERS WHERE name
+		= #{name, typeHandler=org.apache.ibatis.type.StringTypeHandler} AND
+		deleted_yn = 'N'
+	</select>
+
+	<select id="findByEmailAndName" resultMap="userMap">
+		SELECT * FROM USERS
+		WHERE email = #{email,
+		typeHandler=org.apache.ibatis.type.StringTypeHandler}
+		AND name =
+		#{name, typeHandler=org.apache.ibatis.type.StringTypeHandler}
+		AND
+		deleted_yn = 'N'
+	</select>
+
+	<select id="existsByEmail" resultType="int">
+		SELECT COUNT(1) FROM USERS
+		WHERE email = #{email,
+		typeHandler=org.apache.ibatis.type.StringTypeHandler}
+	</select>
+
+	<!-- phone 암호화로 WHERE phone = 불가 → 전체 조회 후 Service에서 중복 판단 -->
+	<select id="findAllPhones" resultMap="userMap">
+		SELECT user_id, phone FROM
+		USERS
+		WHERE phone IS NOT NULL AND deleted_yn = 'N'
+	</select>
+
+	<insert id="insertUser">
+		<selectKey keyProperty="userId" resultType="long"
+			order="BEFORE">
+			SELECT SEQ_USERS.NEXTVAL FROM DUAL
+		</selectKey>
+		INSERT INTO USERS (
+		user_id,
+		email, password_hash, name,
+		phone, ci_value,
+		birth_date,
+		job, income_level_code, credit_score,
+		marketing_agree,
+		privacy_agree,
+		status_code, is_email_verified, is_phone_verified,
+		push_enabled, login_fail_count, created_at, deleted_yn
+		) VALUES (
+		#{userId},
+		#{email},
+		#{passwordHash},
+		#{name},
+		#{phone,
+		typeHandler=AesTypeHandler},
+		#{ciValue, typeHandler=AesTypeHandler},
+		#{birthDate, typeHandler=AesBirthDateTypeHandler},
+		#{job,
+		jdbcType=VARCHAR,
+		typeHandler=org.apache.ibatis.type.StringTypeHandler},
+		#{incomeLevelCode, jdbcType=VARCHAR,
+		typeHandler=org.apache.ibatis.type.StringTypeHandler},
+		#{creditScore,
+		jdbcType=NUMERIC},
+		#{marketingAgree, jdbcType=CHAR,
+		typeHandler=org.apache.ibatis.type.StringTypeHandler},
+		'Y',
+		'ACTIVE',
+		'N', 'N',
+		'Y', 0,
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul', 'N'
+		)
+	</insert>
+
+	<update id="updateUser">
+		UPDATE USERS
+		<set>
+			<if test="name != null">name = #{name},</if>
+			<if test="phone != null">phone = #{phone, typeHandler=AesTypeHandler},</if>
+			<if test="job != null">job = #{job},</if>
+			<if test="incomeLevelCode != null">income_level_code = #{incomeLevelCode},</if>
+			<if test="creditScore != null">credit_score = #{creditScore},</if>
+			<if test="pushEnabled != null">push_enabled = #{pushEnabled},</if>
+			<if test="marketingAgree != null">marketing_agree = #{marketingAgree, jdbcType=CHAR,
+				typeHandler=org.apache.ibatis.type.StringTypeHandler},
+			</if>
+			updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+		</set>
+		WHERE user_id = #{userId} AND deleted_yn = 'N'
+	</update>
+
+	<update id="updateEmailVerified">
+		UPDATE USERS
+		SET is_email_verified =
+		#{isEmailVerified, jdbcType=CHAR},
+		updated_at = SYSTIMESTAMP AT TIME
+		ZONE 'Asia/Seoul'
+		WHERE user_id = #{userId, jdbcType=NUMERIC}
+	</update>
+
+	<update id="updatePhoneVerified">
+		UPDATE USERS
+		SET is_phone_verified =
+		#{isPhoneVerified},
+		updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+		WHERE user_id = #{userId}
+	</update>
+
+	<update id="updatePassword">
+		UPDATE USERS
+		SET password_hash = #{passwordHash},
+		last_password_changed_at = #{lastPasswordChangedAt},
+		updated_at =
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+		WHERE user_id = #{userId}
+	</update>
+
+	<update id="incrementLoginFailCount">
+		UPDATE USERS SET login_fail_count = login_fail_count
+		+ 1 WHERE user_id = #{userId}
+	</update>
+
+	<select id="getLoginFailCount" resultType="int">
+		SELECT
+		login_fail_count FROM USERS WHERE user_id = #{userId}
+	</select>
+
+	<update id="resetLoginFailCount">
+		UPDATE USERS SET login_fail_count = 0, locked_until =
+		NULL WHERE user_id = #{userId}
+	</update>
+
+	<update id="updateLockedUntil">
+		UPDATE USERS SET locked_until = #{lockedUntil} WHERE
+		user_id = #{userId}
+	</update>
+
+	<update id="updateLastLoginAt">
+		UPDATE USERS SET last_login_at = #{lastLoginAt} WHERE
+		user_id = #{userId}
+	</update>
+
+	<update id="revokeOtherSessions">
+		UPDATE USER_SESSIONS
+		SET revoked_yn = 'Y', revoked_at
+		= SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+		WHERE user_id = #{userId}
+		AND
+		session_id != #{currentSessionId}
+		AND revoked_yn = 'N'
+	</update>
+
+	<update id="revokeAllSessions">
+		UPDATE USER_SESSIONS
+		SET revoked_yn = 'Y', revoked_at
+		= SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+		WHERE user_id = #{userId} AND
+		revoked_yn = 'N'
+	</update>
+
+	<insert id="insertAuditLog">
+		INSERT INTO AUDIT_LOGS (
+		actor_type_code, actor_id,
+		action_type_code,
+		target_type_code, target_id, description,
+		ip_address,
+		created_at
+		) VALUES (
+		#{actorType}, #{actorId}, #{actionType},
+		#{targetType},
+		#{targetId, jdbcType=NUMERIC},
+		#{description,
+		jdbcType=VARCHAR,
+		typeHandler=org.apache.ibatis.type.StringTypeHandler},
+		#{ipAddress,
+		jdbcType=VARCHAR,
+		typeHandler=org.apache.ibatis.type.StringTypeHandler},
+		SYSTIMESTAMP AT
+		TIME ZONE 'Asia/Seoul'
+		)
+	</insert>
+
+	<insert id="insertPasswordHistory">
+		INSERT INTO USER_PASSWORD_HISTORIES (user_id,
+		password_hash, created_at)
+		VALUES (#{userId}, #{passwordHash},
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul')
+	</insert>
+
+	<select id="findRecentPasswordHashes" resultType="string">
+		SELECT
+		password_hash
+		FROM USER_PASSWORD_HISTORIES
+		WHERE user_id = #{userId}
+		ORDER BY created_at DESC
+		FETCH FIRST #{limit} ROWS ONLY
+	</select>
+
+	<delete id="deleteOldPasswordHistories">
+		DELETE FROM USER_PASSWORD_HISTORIES
+		WHERE user_id =
+		#{userId}
+		AND history_id NOT IN (
+		SELECT history_id FROM
+		USER_PASSWORD_HISTORIES
+		WHERE user_id = #{userId}
+		ORDER BY created_at
+		DESC
+		FETCH FIRST 5 ROWS ONLY
+		)
+	</delete>
+
+	<update id="updateCddStatus">
+		UPDATE USERS
+		SET cdd_status_code = #{cddStatusCode,
+		typeHandler=org.apache.ibatis.type.StringTypeHandler},
+		updated_at =
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+		WHERE user_id = #{userId}
+	</update>
+
+	<select id="selectOwnedCards" parameterType="long"
+		resultType="com.bnk.domain.user.dto.query.OwnedCardRow">
+		SELECT
+		uc.user_card_id,
+		cv.card_id,
+		c.card_name,
+		c.company_name,
+		ci.image_url AS card_image_url,
+		uc.card_status,
+		uc.card_number,
+		uc.issued_at
+		FROM USER_CARDS uc
+		INNER JOIN CARD_VERSIONS cv
+		ON uc.version_id = cv.version_id
+		INNER JOIN CARDS c
+		ON cv.card_id = c.card_id
+		LEFT JOIN CARD_IMAGES ci
+		ON c.card_id = ci.card_id
+		AND ci.image_type = 'THUMBNAIL'
+		WHERE uc.user_id = #{userId}
+		AND uc.deleted_yn = 'N'
+		ORDER BY uc.issued_at DESC
+	</select>
+	
+	<!-- 카드 신청 수정 - 신용, 체크 신청서에서 각 조회 후 union -->
+	<select id="selectCardApplications"
+		resultType="com.bnk.domain.user.dto.query.CardApplicationRow">
+		SELECT
+		ca.credit_app_id AS applicationId,
+		ca.card_id,
+		c.card_name AS cardName,
+		ci.image_url AS cardImageUrl,
+		ca.application_status AS applicationStatus,
+		ca.applied_at AS appliedAt
+		FROM CREDIT_CARD_APPLICATIONS ca
+		INNER JOIN CARDS c ON ca.card_id =
+		c.card_id
+		LEFT JOIN CARD_IMAGES ci ON ci.card_id = c.card_id AND
+		ci.image_type =
+		'THUMBNAIL'
+		WHERE ca.user_id = #{userId}
+		UNION ALL
+		SELECT
+		ca.check_app_id AS applicationId,
+		ca.card_id,
+		c.card_name AS cardName,
+		ci.image_url AS cardImageUrl,
+		ca.application_status AS
+		applicationStatus,
+		ca.applied_at AS appliedAt
+		FROM
+		CHECK_CARD_APPLICATIONS ca
+		INNER JOIN CARDS c ON ca.card_id = c.card_id
+		LEFT JOIN CARD_IMAGES ci ON ci.card_id = c.card_id AND ci.image_type =
+		'THUMBNAIL'
+		WHERE ca.user_id = #{userId}
+		ORDER BY appliedAt DESC
+	</select>
+
+	<select id="selectSpendingPatterns"
+		resultMap="spendingPatternRowMap">
+		SELECT usp.category_id, cc.category_name,
+		usp.monthly_amount, cc.icon_code
+		FROM USER_SPENDING_PATTERNS usp
+		INNER
+		JOIN CARD_CATEGORIES cc ON usp.category_id = cc.category_id
+		WHERE
+		usp.user_id = #{userId}
+		ORDER BY usp.monthly_amount DESC
+	</select>
+
+	<insert id="upsertSpendingPattern">
+		MERGE INTO USER_SPENDING_PATTERNS usp
+		USING DUAL
+		ON
+		(usp.user_id = #{userId} AND usp.category_id = #{categoryId})
+		WHEN
+		MATCHED THEN
+		UPDATE SET monthly_amount = #{monthlyAmount}, source =
+		#{source},
+		updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+		WHEN NOT
+		MATCHED THEN
+		INSERT (user_id, category_id, monthly_amount, source,
+		created_at)
+		VALUES (#{userId}, #{categoryId}, #{monthlyAmount},
+		#{source},
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul')
+	</insert>
+	
+	<!-- 월별 카드별 이용금액 집계 -->
+	<select id="selectMonthlySpending" resultType="map">
+	    SELECT
+	        uc.user_card_id   AS userCardId,
+	        c.card_name       AS cardName,
+	        NVL(SUM(t.amount), 0) AS amount
+	    FROM USER_CARDS uc
+	    INNER JOIN CARD_VERSIONS cv ON uc.version_id = cv.version_id
+	    INNER JOIN CARDS c          ON cv.card_id = c.card_id
+	    LEFT JOIN CARD_TRANSACTIONS t
+	        ON t.user_card_id = uc.user_card_id
+	        AND t.paid_year   = #{year}
+	        AND t.paid_month  = #{month}
+	        AND t.status      = 'APPROVED'
+	    WHERE uc.user_id   = #{userId}
+	      AND uc.deleted_yn = 'N'
+	    GROUP BY uc.user_card_id, c.card_name
+	    ORDER BY amount DESC
+	</select>
+	
+
+</mapper>

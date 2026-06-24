@@ -1,1 +1,121 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.bnk.domain.search.mapper.SearchKeywordMapper">
+
+    <resultMap id="keywordMap" type="com.bnk.domain.search.model.SearchKeyword">
+        <id     property="keywordId"    column="keyword_id"/>
+        <result property="keyword"      column="keyword"/>
+        <result property="categoryId"   column="category_id"/>
+        <result property="useYn"        column="use_yn"/>
+        <result property="displayOrder" column="display_order"/>
+        <result property="createdAt"    column="created_at"/>
+        <result property="createdBy"    column="created_by"/>
+        <result property="updatedAt"    column="updated_at"/>
+        <result property="updatedBy"    column="updated_by"/>
+        <result property="deletedYn"    column="deleted_yn"/>
+        <result property="deletedAt"    column="deleted_at"/>
+    </resultMap>
+
+    <!-- 추천 검색어: use_yn=Y, display_order ASC, LIMIT 10 -->
+    <select id="findSuggestKeywords" resultMap="keywordMap">
+        SELECT * FROM SEARCH_KEYWORDS
+        WHERE  use_yn    = 'Y'
+          AND  deleted_yn = 'N'
+        ORDER  BY display_order ASC NULLS LAST
+        FETCH FIRST 10 ROWS ONLY
+    </select>
+
+    <select id="findByKeywordLike" resultMap="keywordMap">
+        SELECT * FROM SEARCH_KEYWORDS
+        WHERE  keyword   LIKE '%' || #{keyword} || '%'
+          AND  use_yn    = 'Y'
+          AND  deleted_yn = 'N'
+    </select>
+
+    <select id="findByKeyword" resultMap="keywordMap">
+        SELECT * FROM SEARCH_KEYWORDS
+        WHERE  keyword   = #{keyword}
+          AND  deleted_yn = 'N'
+        FETCH FIRST 1 ROWS ONLY
+    </select>
+
+    <select id="findById" resultMap="keywordMap">
+        SELECT * FROM SEARCH_KEYWORDS
+        WHERE  keyword_id = #{keywordId}
+          AND  deleted_yn  = 'N'
+    </select>
+
+    <insert id="insertKeyword">
+	    <selectKey keyProperty="keywordId" resultType="long" order="AFTER">
+	        SELECT SEQ_SEARCH_KEYWORDS.CURRVAL FROM DUAL
+	    </selectKey>
+	    INSERT INTO SEARCH_KEYWORDS (
+	        keyword, category_id, use_yn, display_order,
+	        created_at, created_by, deleted_yn
+	    ) VALUES (
+	        #{keyword},
+	        #{categoryId,    jdbcType=NUMERIC},
+	        #{useYn},
+	        #{displayOrder,  jdbcType=NUMERIC},
+	        SYSTIMESTAMP,
+	        #{createdBy,     jdbcType=NUMERIC},
+	        'N'
+	    )
+	</insert>
+
+    <update id="updateKeyword">
+        UPDATE SEARCH_KEYWORDS
+        <set>
+            <if test="categoryId   != null">category_id   = #{categoryId},</if>
+            <if test="useYn        != null">use_yn        = #{useYn},</if>
+            <if test="displayOrder != null">display_order = #{displayOrder},</if>
+            updated_at = SYSTIMESTAMP,
+            <if test="updatedBy    != null">updated_by    = #{updatedBy},</if>
+        </set>
+        WHERE  keyword_id = #{keywordId}
+          AND  deleted_yn  = 'N'
+    </update>
+
+    <!-- 논리 삭제 -->
+    <update id="deleteKeyword">
+        UPDATE SEARCH_KEYWORDS
+        SET    deleted_yn = 'Y',
+               deleted_at = SYSTIMESTAMP,
+               updated_by = #{deletedBy}
+        WHERE  keyword_id = #{keywordId}
+    </update>
+
+    <!-- CARD_KEYWORDS: NOT EXISTS 중복 방지 INSERT -->
+    <insert id="insertCardKeyword">
+        INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by)
+        SELECT #{cardId}, #{keywordId}, SYSTIMESTAMP, #{createdBy, jdbcType=NUMERIC}
+        FROM   DUAL
+        WHERE  NOT EXISTS (
+            SELECT 1 FROM CARD_KEYWORDS
+            WHERE  card_id    = #{cardId}
+              AND  keyword_id  = #{keywordId}
+              AND  deleted_yn  = 'N'
+        )
+    </insert>
+
+    <select id="existsCardKeyword" resultType="boolean">
+        SELECT CASE WHEN COUNT(1) > 0 THEN 1 ELSE 0 END
+        FROM   CARD_KEYWORDS
+        WHERE  card_id    = #{cardId}
+          AND  keyword_id  = #{keywordId}
+          AND  deleted_yn  = 'N'
+    </select>
+
+    <select id="findCardIdsByKeywordIds" resultType="long">
+        SELECT DISTINCT card_id
+        FROM   CARD_KEYWORDS
+        WHERE  keyword_id IN
+        <foreach collection="keywordIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        AND deleted_yn = 'N'
+    </select>
+
+</mapper>

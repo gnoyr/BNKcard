@@ -1,5 +1,148 @@
 package com.bnk.global.auth;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+
+import javax.crypto.SecretKey;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.UnsupportedJwtException;
+import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+@Component
 public class JwtTokenProvider {
 
+    private final SecretKey secretKey;
+    private final long accessExpiration;    // ms  (application.properties: 7200000 = 2h)
+    private final long refreshExpiration;   // ms  (application.properties: 604800000 = 7d)
+
+    public JwtTokenProvider(
+            @Value("${jwt.secret}") String secret,
+            @Value("${jwt.access-expiration}") long accessExpiration,
+            @Value("${jwt.refresh-expiration}") long refreshExpiration) {
+        this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        this.accessExpiration = accessExpiration;
+        this.refreshExpiration = refreshExpiration;
+    }
+
+    // ── 일반 사용자 Access Token ──────────────────────────
+    public String generateAccessToken(Long userId, String role) {
+        Date now = new Date();
+        return Jwts.builder()
+                .subject(String.valueOf(userId))
+                .claim("role", role)
+                .claim("type", "ACCESS")
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + accessExpiration))
+                .signWith(secretKey)
+                .compact();
+    }
+
+    // ── Refresh Token (최소 클레임) ───────────────────────
+    public String generateRefreshToken(Long userId) {
+        Date now = new Date();
+        return Jwts.builder()
+                .subject(String.valueOf(userId))
+                .claim("type", "REFRESH")
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + refreshExpiration))
+                .signWith(secretKey)
+                .compact();
+    }
+
+    // ── 관리자 Access Token (다중 역할 콤마 구분) ─────────
+    public String generateAdminAccessToken(Long adminId, String roles) {
+        Date now = new Date();
+        return Jwts.builder()
+                .subject(String.valueOf(adminId))
+                .claim("roles", roles)          // "SUPER_ADMIN,CARD_MANAGER"
+                .claim("type", "ADMIN_ACCESS")
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + accessExpiration))
+                .signWith(secretKey)
+                .compact();
+    }
+
+    // ── 유효성 검증 ───────────────────────────────────────
+    public boolean validateToken(String token) {
+        try {
+            parseClaims(token);
+            return true;
+        } catch (ExpiredJwtException e) {
+            log.debug("만료된 JWT: {}", e.getMessage());
+        } catch (UnsupportedJwtException | MalformedJwtException e) {
+            log.warn("잘못된 JWT: {}", e.getMessage());
+        } catch (JwtException | IllegalArgumentException e) {
+            log.warn("JWT 검증 실패: {}", e.getMessage());
+        }
+        return false;
+    }
+
+    // ── Claims 파싱 ───────────────────────────────────────
+    public Claims parseClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+
+    public Long getUserId(String token) {
+        return Long.valueOf(parseClaims(token).getSubject());
+    }
+
+    /**
+     * 단일 역할 반환.
+     * 일반 사용자 토큰: "role" 클레임(단수) → "ROLE_USER"
+     * 관리자 토큰:     "role" 없으면 "roles" 클레임(복수) fallback
+     *                 → "SUPER_ADMIN,CARD_MANAGER" (콤마 구분 문자열)
+     */
+    public String getRole(String token) {
+        Claims claims = parseClaims(token);
+        // 일반 사용자 토큰: "role" 클레임
+        String role = claims.get("role", String.class);
+        if (role != null) return role;
+        // 관리자 토큰 fallback: "roles" 클레임
+        return claims.get("roles", String.class);
+    }
+
+    /**
+     *  관리자 토큰 전용 — 다중 역할 목록 반환.
+     * "SUPER_ADMIN,CARD_MANAGER" → List.of("SUPER_ADMIN", "CARD_MANAGER")
+     *
+     * 일반 사용자 토큰이 잘못 호출된 경우 "role" 클레임을 단일 원소 리스트로 반환.
+     */
+    public List<String> getRoleList(String token) {
+        Claims claims = parseClaims(token);
+        String roles = claims.get("roles", String.class);
+        if (roles != null && !roles.isBlank()) {
+            return Arrays.asList(roles.split(","));
+        }
+        // 일반 사용자 토큰 fallback
+        String role = claims.get("role", String.class);
+        return role != null ? List.of(role) : List.of();
+    }
+
+    public String getTokenType(String token) {
+        return parseClaims(token).get("type", String.class);
+    }
+
+    public long getAccessExpirationSec() {
+        return accessExpiration / 1000;
+    }
+
+    public long getRefreshExpirationSec() {
+        return refreshExpiration / 1000;
+    }
 }

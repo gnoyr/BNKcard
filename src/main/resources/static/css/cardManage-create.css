@@ -1,0 +1,638 @@
+@charset "UTF-8";
+
+/* ============================================================
+   cardManage.css — 등록 화면
+   #page-create-card (STEP 1~3)  #page-create-terms
+   ============================================================ */
+
+/* ── 등록 페이지 공통 — ← 목록으로 버튼 ── */
+#page-create-card > div#create-step-1 > button:first-child,
+#page-create-card > div#create-step-2 > button:first-child,
+#page-create-card > div#create-step-3 > button:first-child,
+#page-create-terms > button:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  color: var(--gray-600);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--ease), border-color var(--ease);
+  margin-bottom: 20px;
+}
+#page-create-card > div > button:first-child:hover,
+#page-create-terms > button:first-child:hover {
+  background: var(--teal-50);
+  border-color: var(--teal-400);
+  color: var(--teal-800);
+}
+
+/* ── h3 스텝 타이틀 ── */
+#page-create-card h3,
+#page-create-terms h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--teal-800);
+  border-left: 3px solid var(--teal-600);
+  padding-left: 10px;
+  margin: 4px 0 18px;
+}
+
+/* ── 안내 문구 ── */
+#page-create-card p,
+#page-create-terms p {
+  font-size: 12.5px;
+  color: var(--gray-400);
+  margin-bottom: 12px;
+}
+
+/* br 숨김 */
+#page-create-card br,
+#page-create-terms br { display: none; }
+
+/* ============================================================
+   스텝 인디케이터
+   ============================================================ */
+#create-step-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-sm);
+  padding: 16px 28px;
+  margin-bottom: 24px;
+  width: fit-content;
+}
+
+/* 화살표 구분자 */
+#create-step-indicator > span:not([id]) {
+  color: var(--gray-400);
+  font-size: 14px;
+  margin: 0 10px;
+}
+
+/* 스텝 라벨 공통 */
+#create-step-indicator > span[id] {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-400);
+  padding: 6px 16px;
+  border-radius: var(--radius-sm);
+  transition: background var(--ease), color var(--ease);
+}
+
+/* 현재 스텝 (JS가 [ ] 로 감싸고 font-weight:bold 인라인 적용) */
+#csi-1[style*="bold"],
+#csi-2[style*="bold"],
+#csi-3[style*="bold"] {
+  background: var(--teal-600) !important;
+  color: var(--white) !important;
+  font-weight: 700 !important;
+  border-radius: var(--radius-sm);
+  padding: 6px 16px;
+}
+
+/* ============================================================
+   STEP 1 — 기본정보 폼 테이블
+   ============================================================ */
+#create-step-1 > table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--white);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: none !important;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 20px;
+}
+
+#create-step-1 table th {
+  width: 160px;
+  padding: 11px 16px;
+  background: var(--gray-50);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--gray-600);
+  border: none !important;
+  border-bottom: 1px solid var(--gray-100) !important;
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* 필수 별표 */
+#create-step-1 table th span[style*="red"] {
+  color: #E53E3E !important;
+  margin-left: 2px;
+}
+
+#create-step-1 table td {
+  padding: 9px 16px;
+  border: none !important;
+  border-bottom: 1px solid var(--gray-100) !important;
+  vertical-align: middle;
+}
+
+#create-step-1 table tr:last-child th,
+#create-step-1 table tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* input / select 공통 */
+#create-step-1 input[type="text"],
+#create-step-1 input[type="number"],
+#create-step-1 input[type="datetime-local"],
+#create-step-1 select {
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--gray-800);
+  background: var(--white);
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--ease), box-shadow var(--ease);
+}
+#create-step-1 input:focus,
+#create-step-1 select:focus {
+  border-color: var(--teal-400);
+  box-shadow: 0 0 0 3px rgba(58,175,196,.15);
+}
+
+/* 비활성화 (체크/선불 시 연회비) */
+#create-step-1 input:disabled,
+#create-step-1 select:disabled {
+  background: var(--gray-100);
+  color: var(--gray-400);
+  cursor: not-allowed;
+  border-color: var(--gray-200);
+}
+
+/* select 화살표 */
+#create-step-1 select {
+  appearance: none;
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239BB4BB' stroke-width='1.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+/* 단위 텍스트 (원, 세) */
+#create-step-1 td > span:not([style]),
+#create-step-1 td > small {
+  font-size: 12px;
+  color: var(--gray-400);
+  margin-left: 6px;
+}
+
+/* 라디오 그룹 */
+#create-step-1 label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--gray-800);
+  cursor: pointer;
+  margin-right: 16px;
+}
+#create-step-1 input[type="radio"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--teal-600);
+  cursor: pointer;
+}
+
+/* textarea */
+#create-step-1 textarea {
+  padding: 8px 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--gray-800);
+  resize: vertical;
+  outline: none;
+  transition: border-color var(--ease);
+}
+#create-step-1 textarea:focus {
+  border-color: var(--teal-400);
+  box-shadow: 0 0 0 3px rgba(58,175,196,.15);
+}
+
+/* ============================================================
+   STEP 2 / 3 — 인라인 편집 테이블 (혜택 / 이미지)
+   수정 페이지와 동일한 wide 테이블 스타일
+   ============================================================ */
+#create-step-2 > table,
+#create-step-3 > table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--white);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: none !important;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 18px;
+  display: block;
+  overflow-x: auto;
+}
+
+#create-step-2 table thead tr,
+#create-step-3 table thead tr {
+  background: var(--teal-800);
+}
+
+#create-step-2 table thead th,
+#create-step-3 table thead th {
+  padding: 10px 12px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--white);
+  border: none !important;
+  white-space: nowrap;
+  text-align: left;
+}
+
+#create-step-2 table tbody tr,
+#create-step-3 table tbody tr {
+  border-bottom: 1px solid var(--gray-100);
+}
+#create-step-2 table tbody tr:last-child,
+#create-step-3 table tbody tr:last-child { border-bottom: none; }
+#create-step-2 table tbody tr:hover,
+#create-step-3 table tbody tr:hover { background: var(--teal-50); }
+
+#create-step-2 table tbody td,
+#create-step-3 table tbody td {
+  padding: 8px 10px;
+  border: none !important;
+  vertical-align: middle;
+}
+
+/* 인라인 input */
+#create-step-2 table input,
+#create-step-3 table input {
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--gray-800);
+  background: var(--white);
+  outline: none;
+  transition: border-color var(--ease);
+}
+#create-step-2 table input:focus,
+#create-step-3 table input:focus {
+  border-color: var(--teal-400);
+  box-shadow: 0 0 0 2px rgba(58,175,196,.12);
+}
+#create-step-2 table input:disabled,
+#create-step-3 table input[readonly] {
+  background: var(--gray-100);
+  color: var(--gray-400);
+  cursor: not-allowed;
+}
+
+/* 인라인 select */
+#create-step-2 table select,
+#create-step-3 table select {
+  height: 30px;
+  padding: 0 22px 0 8px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--gray-800);
+  background: var(--white);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239BB4BB' stroke-width='1.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  outline: none;
+  cursor: pointer;
+}
+
+/* 행 삭제 버튼 */
+#create-step-2 table button,
+#create-step-3 table button {
+  height: 28px;
+  padding: 0 10px;
+  background: var(--white);
+  color: #C0392B;
+  border: 1px solid #FADBD8;
+  border-radius: var(--radius-sm);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--ease);
+}
+#create-step-2 table button:hover,
+#create-step-3 table button:hover { background: #FADBD8; }
+
+/* 미리보기 이미지 */
+#create-image-tbody img {
+  height: 40px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-200);
+  object-fit: cover;
+  vertical-align: middle;
+}
+
+/* + 행 추가 버튼 */
+#create-step-2 > button:nth-child(3),
+#create-step-3 > button:nth-child(3) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: var(--white);
+  border: 1px solid var(--teal-400);
+  border-radius: var(--radius-sm);
+  color: var(--teal-600);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  margin-bottom: 14px;
+  transition: background var(--ease), color var(--ease);
+}
+#create-step-2 > button:nth-child(3):hover,
+#create-step-3 > button:nth-child(3):hover {
+  background: var(--teal-600);
+  color: var(--white);
+}
+
+/* ============================================================
+   STEP 3 — 결재 요청 사유 + 하단 버튼
+   ============================================================ */
+#create-step-3 > label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-600);
+  display: block;
+  margin-bottom: 8px;
+}
+
+#c-changeSummary {
+  height: 36px;
+  width: 400px !important;
+  padding: 0 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--gray-800);
+  outline: none;
+  transition: border-color var(--ease), box-shadow var(--ease);
+  margin-bottom: 16px;
+  display: block;
+}
+#c-changeSummary:focus {
+  border-color: var(--teal-600);
+  box-shadow: 0 0 0 3px rgba(0,103,127,.12);
+}
+
+/* 하단 버튼 그룹 — 이전 / 결재요청 / 취소 */
+#create-step-1 > button:not(:first-child),
+#create-step-2 > button:not(:nth-child(3)):not(:first-child),
+#create-step-3 > button:not(:nth-child(3)):not(:first-child) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 20px;
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  margin-right: 8px;
+  margin-top: 4px;
+  transition: background var(--ease), transform var(--ease);
+}
+
+/* 이전 버튼 */
+#create-step-2 > button:last-of-type,
+#create-step-3 > button:first-of-type {
+  background: var(--white);
+  color: var(--gray-600);
+  border: 1px solid var(--gray-200);
+}
+#create-step-2 > button:last-of-type:hover,
+#create-step-3 > button:first-of-type:hover {
+  background: var(--gray-100);
+}
+
+/* 다음 / 결재요청 버튼 */
+#create-step-1 > button:last-child,
+#create-step-2 > button:last-child,
+#c-btn-submit {
+  background: var(--teal-600) !important;
+  color: var(--white) !important;
+  border: none !important;
+}
+#create-step-1 > button:last-child:hover,
+#create-step-2 > button:last-child:hover,
+#c-btn-submit:hover {
+  background: var(--teal-800) !important;
+  transform: translateY(-1px);
+}
+#c-btn-submit:disabled {
+  background: var(--gray-400) !important;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 취소 버튼 (STEP3 마지막) */
+#create-step-3 > button:last-of-type {
+  background: var(--white);
+  color: var(--gray-600);
+  border: 1px solid var(--gray-200);
+}
+#create-step-3 > button:last-of-type:hover {
+  background: var(--gray-100);
+}
+
+/* 완료 메시지 */
+#c-msg {
+  margin-top: 16px;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  font-size: 13.5px;
+  line-height: 1.7;
+  display: none;
+}
+#c-msg:not(:empty) {
+  display: block;
+  background: var(--teal-50);
+  border: 1px solid var(--teal-200);
+  color: var(--teal-800);
+}
+
+/* ============================================================
+   약관 등록 — page-create-terms
+   ============================================================ */
+#page-create-terms > table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--white);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: none !important;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 20px;
+}
+
+#page-create-terms table th {
+  width: 180px;
+  padding: 11px 16px;
+  background: var(--gray-50);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--gray-600);
+  border: none !important;
+  border-bottom: 1px solid var(--gray-100) !important;
+  text-align: left;
+  vertical-align: top;
+  padding-top: 13px;
+  white-space: nowrap;
+}
+
+#page-create-terms table th span[style*="red"] {
+  color: #E53E3E !important;
+  margin-left: 2px;
+}
+
+#page-create-terms table td {
+  padding: 9px 16px;
+  border: none !important;
+  border-bottom: 1px solid var(--gray-100) !important;
+  vertical-align: middle;
+}
+
+#page-create-terms table tr:last-child th,
+#page-create-terms table tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* input / select */
+#page-create-terms input[type="text"],
+#page-create-terms input[type="date"],
+#page-create-terms select {
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--gray-800);
+  background: var(--white);
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--ease), box-shadow var(--ease);
+}
+#page-create-terms input:focus,
+#page-create-terms select:focus {
+  border-color: var(--teal-400);
+  box-shadow: 0 0 0 3px rgba(58,175,196,.15);
+}
+
+#page-create-terms select {
+  appearance: none;
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239BB4BB' stroke-width='1.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  cursor: pointer;
+}
+
+/* textarea */
+#page-create-terms textarea {
+  padding: 8px 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--gray-800);
+  resize: vertical;
+  outline: none;
+  transition: border-color var(--ease);
+}
+#page-create-terms textarea:focus {
+  border-color: var(--teal-400);
+  box-shadow: 0 0 0 3px rgba(58,175,196,.15);
+}
+
+/* 파일 업로드 */
+#page-create-terms input[type="file"] {
+  height: auto;
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  cursor: pointer;
+}
+#page-create-terms table td small {
+  display: block;
+  font-size: 11.5px;
+  color: var(--gray-400);
+  margin-top: 4px;
+}
+
+/* 결재요청 / 취소 버튼 */
+#page-create-terms > button:nth-child(6) {
+  padding: 9px 22px;
+  background: var(--teal-600);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  margin-right: 10px;
+  transition: background var(--ease), transform var(--ease);
+}
+#page-create-terms > button:nth-child(6):hover {
+  background: var(--teal-800);
+  transform: translateY(-1px);
+}
+#page-create-terms > button:last-of-type {
+  padding: 9px 18px;
+  background: var(--white);
+  color: var(--gray-600);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--ease);
+}
+#page-create-terms > button:last-of-type:hover {
+  background: var(--gray-100);
+}
+
+/* 결과 메시지 */
+#ct-msg {
+  margin-top: 14px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+}
+#ct-msg:not(:empty) {
+  background: var(--teal-50);
+  border: 1px solid var(--teal-200);
+  color: var(--teal-800);
+}

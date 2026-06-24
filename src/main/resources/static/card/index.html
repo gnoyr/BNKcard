@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>카드 상세 | BNK 부산은행</title>
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/chatbot.css">
+  <link rel="stylesheet" href="/css/card.css">
+  <link rel="stylesheet" href="/css/teal-theme.css">
+</head>
+<body>
+
+  <div id="app-header"></div>
+
+  <div id="main-wrap">
+    <div class="loading-wrap">
+      <div class="loading-spinner"></div>
+      <p>카드 정보를 불러오는 중...</p>
+    </div>
+  </div>
+
+  <!-- 하단 고정 신청 바 (JS가 초기화) -->
+  <div class="sticky-bar" id="sticky-apply-bar">
+    <div class="sticky-info">
+      <div class="sticky-title" id="sticky-card-name">-</div>
+      <div class="sticky-fee"   id="sticky-card-fee">-</div>
+    </div>
+    <button class="btn-sticky-apply" id="btn-sticky-trigger">발급 신청</button>
+  </div>
+
+  <!-- 이미지 확대 모달 -->
+  <div class="img-modal" id="img-modal" onclick="handleImgModalClick(event)">
+    <button class="img-modal-close" onclick="closeImgModal()" aria-label="닫기">✕</button>
+    <button class="img-modal-prev" onclick="imgModalSlide(-1)">&#8249;</button>
+    <img id="img-modal-src" src="" alt="카드 이미지 확대" onclick="event.stopPropagation()">
+    <button class="img-modal-next" onclick="imgModalSlide(1)">&#8250;</button>
+  </div>
+
+  <!-- AI 챗봇 위젯 -->
+  <div id="bnk-ai-chatbot"
+       data-api-url="/api/chat"
+       data-bot-image="https://objectstorage.ap-chuncheon-1.oraclecloud.com/n/axa1llzzkj5q/b/terms/o/images%2Fimageshachi-fotor-2026052617514.png">
+    <button class="chat-toggle" type="button" aria-label="AI 챗봇 열기">
+      <img src="" alt="AI 챗봇">
+    </button>
+    <div class="chat-window">
+      <div class="chat-header">
+        <span>BNK AI 챗봇</span>
+        <button class="chat-close" type="button" aria-label="챗봇 닫기">✕</button>
+      </div>
+      <div class="chat-messages"></div>
+      <form class="chat-input-area">
+        <input class="chat-input" type="text" placeholder="무엇이든 물어보세요..." autocomplete="off">
+        <button class="chat-send" type="button">전송</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 스크립트 로드 순서: utils → header → card → chatbot → widget-toggle -->
+  <script src="/js/utils.js"></script>
+  <script src="/js/header.js"></script>
+  <script src="/js/card.js"></script>
+  <script src="/js/chatbot.js"></script>
+  <script src="/js/widget-toggle.js"></script>
+</body>
+</html>

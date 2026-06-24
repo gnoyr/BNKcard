@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>내 정보 수정 | 부산은행</title>
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/mypage.css">
+  <link rel="stylesheet" href="/css/teal-theme.css">
+</head>
+<body data-page="mypage-edit">
+
+  <nav class="sub-nav" aria-label="페이지 이동">
+    <button class="sub-nav__back" type="button">마이페이지</button>
+    <span class="sub-nav__sep" aria-hidden="true">›</span>
+    <span class="sub-nav__title" aria-current="page">내 정보 수정</span>
+  </nav>
+
+  <main class="page-wrap">
+
+    <header class="page-title">
+      <h1>내 정보 수정</h1>
+      <p>변경할 항목을 선택하고 정보를 수정하세요.</p>
+    </header>
+
+    <div class="edit-tabs" id="editTabs" role="tablist" aria-label="정보 수정 탭">
+      <button class="edit-tab active" data-tab="basic"
+              role="tab" aria-selected="true" aria-controls="panel-basic">기본 정보</button>
+      <button class="edit-tab" data-tab="address"
+              role="tab" aria-selected="false" aria-controls="panel-address">주소 변경</button>
+      <button class="edit-tab" data-tab="income"
+              role="tab" aria-selected="false" aria-controls="panel-income">소득 정보</button>
+      <button class="edit-tab" data-tab="notify"
+              role="tab" aria-selected="false" aria-controls="panel-notify">알림 설정</button>
+    </div>
+
+    <!-- 기본 정보 탭 -->
+    <section class="tab-panel active" id="panel-basic" role="tabpanel" aria-labelledby="tab-basic-btn">
+      <form class="card" id="formBasic" novalidate>
+        <h2 class="card__head">기본 정보</h2>
+
+        <div class="form-group">
+          <span class="form-label">이메일 <span class="form-label__note">(변경 불가)</span></span>
+          <p class="field-readonly" id="displayEmail">
+            <span id="currentEmail">불러오는 중...</span>
+            <span class="readonly-badge">고정</span>
+          </p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="name">이름 <span class="req" aria-label="필수">*</span></label>
+          <input class="form-control" type="text" id="name"
+                 placeholder="이름 입력" maxlength="20" autocomplete="name">
+          <span class="form-error" id="name-err" role="alert"></span>
+        </div>
+
+        <div class="form-group">
+          <span class="form-label">현재 휴대폰 번호</span>
+          <p class="form-current-value" id="currentPhone">불러오는 중...</p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="phone">새 휴대폰 번호</label>
+          <input class="form-control" type="tel" id="phone"
+                 placeholder="01012345678" maxlength="11" autocomplete="tel">
+          <span class="form-error" id="phone-err" role="alert"></span>
+        </div>
+
+        <div class="form-actions">
+          <a href="/mypage" class="btn btn-outline">취소</a>
+          <button type="button" class="btn btn-primary" id="basicSubmitBtn">저장하기</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- 주소 변경 탭 -->
+    <section class="tab-panel" id="panel-address" role="tabpanel" aria-labelledby="tab-address-btn">
+
+      <p class="ci-notice">
+        <span class="ci-notice__icon" aria-hidden="true">i</span>
+        <span class="ci-notice__text">
+          <strong>주소 변경 시 CI값이 자동으로 갱신됩니다.</strong><br>
+          변경된 주소는 신용 조회 및 본인 인증 시 사용되므로 정확히 입력해주세요.
+        </span>
+      </p>
+
+      <form class="card" id="formAddress" novalidate>
+        <h2 class="card__head">
+          주소 변경
+          <span class="ci-refresh-badge" id="ciRefreshBadge">CI 갱신 완료</span>
+        </h2>
+
+        <div class="form-group">
+          <span class="form-label">현재 주소</span>
+          <p class="form-current-value" id="currentAddr">불러오는 중...</p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="postcode">우편번호 <span class="req" aria-label="필수">*</span></label>
+          <span class="addr-search-wrap">
+            <input class="form-control" type="text" id="postcode"
+                   placeholder="우편번호" autocomplete="postal-code" readonly>
+            <button type="button" class="btn-addr" id="addrSearchBtn">주소 검색</button>
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="addrMain">기본 주소 <span class="req" aria-label="필수">*</span></label>
+          <input class="form-control" type="text" id="addrMain"
+                 placeholder="도로명 주소" autocomplete="street-address" readonly>
+          <span class="form-error" id="addr-err" role="alert"></span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="addrDetail">상세 주소</label>
+          <input class="form-control" type="text" id="addrDetail"
+                 placeholder="동·호수 등 상세 주소 입력" maxlength="100"
+                 autocomplete="address-line2">
+        </div>
+
+        <div class="form-actions">
+          <a href="/mypage" class="btn btn-outline">취소</a>
+          <button type="button" class="btn btn-primary" id="addrSubmitBtn">주소 변경 및 CI 갱신</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- 소득 정보 탭 -->
+    <section class="tab-panel" id="panel-income" role="tabpanel" aria-labelledby="tab-income-btn">
+      <form class="card" id="formIncome" novalidate>
+        <h2 class="card__head">소득 · 직업 정보</h2>
+
+        <div class="form-group">
+          <label class="form-label" for="job">직업</label>
+          <select class="form-control" id="job">
+            <option value="">선택 안함</option>
+            <option value="EMPLOYED">직장인</option>
+            <option value="SELF_EMPLOYED">자영업</option>
+            <option value="STUDENT">학생</option>
+            <option value="UNEMPLOYED">무직</option>
+            <option value="OTHER">기타</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="incomeLevelCode">소득 등급</label>
+          <select class="form-control" id="incomeLevelCode">
+            <option value="">선택 안함</option>
+            <option value="LV1">LV1 — 연 3천만 원 미만</option>
+            <option value="LV2">LV2 — 연 3천~5천만 원</option>
+            <option value="LV3">LV3 — 연 5천만~1억 원</option>
+            <option value="LV4">LV4 — 연 1억 원 이상</option>
+          </select>
+        </div>
+
+        <p class="form-note">소득 등급은 카드 신청 심사 시 참고됩니다. 실제 소득과 다르게 입력하면 카드 심사에 불이익이 있을 수 있습니다.</p>
+
+        <div class="form-actions">
+          <a href="/mypage" class="btn btn-outline">취소</a>
+          <button type="button" class="btn btn-primary" id="incomeSubmitBtn">저장하기</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- 알림 설정 탭 -->
+    <section class="tab-panel" id="panel-notify" role="tabpanel" aria-labelledby="tab-notify-btn">
+
+      <label class="toggle-card">
+        <span class="toggle-card__info">
+          <span class="toggle-card__title">푸시 알림</span>
+          <span class="toggle-card__desc">카드 혜택 및 공지사항 알림을 받습니다</span>
+        </span>
+        <span class="toggle-switch" aria-hidden="true">
+          <input type="checkbox" id="pushEnabled">
+          <span class="toggle-slider"></span>
+        </span>
+      </label>
+
+      <label class="toggle-card">
+        <span class="toggle-card__info">
+          <span class="toggle-card__title">마케팅 정보 수신</span>
+          <span class="toggle-card__desc">이벤트·프로모션 등 혜택 정보를 받습니다</span>
+        </span>
+        <span class="toggle-switch" aria-hidden="true">
+          <input type="checkbox" id="marketingAgree">
+          <span class="toggle-slider"></span>
+        </span>
+      </label>
+
+      <div class="form-actions form-actions--top">
+        <a href="/mypage" class="btn btn-outline">취소</a>
+        <button type="button" class="btn btn-primary" id="notifySubmitBtn">저장하기</button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 비밀번호 확인 모달 -->
+  <div class="modal-overlay" id="pwConfirmModal"
+       role="dialog" aria-modal="true" aria-labelledby="pwModalTitle" hidden>
+    <div class="modal">
+      <h2 class="modal__title" id="pwModalTitle">비밀번호 확인</h2>
+      <div class="modal__body">
+        <p class="modal-desc">휴대폰 번호 변경 시 현재 비밀번호를 확인합니다.</p>
+        <span class="pw-field">
+          <input class="form-control" type="password" id="confirmModalPw"
+                 placeholder="현재 비밀번호" autocomplete="current-password">
+          <button type="button" class="pw-toggle" data-target="confirmModalPw">표시</button>
+        </span>
+        <span class="form-error" id="modalPw-err" role="alert"></span>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn-outline" id="pwCancelBtn" type="button">취소</button>
+        <button class="btn btn-primary" id="pwConfirmBtn" type="button">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+  <script src="/js/utils.js"></script>
+  <script src="/js/header.js"></script>
+  <script src="/js/mypage.js"></script>
+</body>
+</html>

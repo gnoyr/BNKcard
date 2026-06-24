@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.bnk.domain.admin.mapper.WatchlistMapper">
+
+	<resultMap id="watchlistMap"
+		type="com.bnk.domain.admin.model.Watchlist">
+		<id property="watchlistId" column="watchlist_id" />
+		<result property="name" column="name"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+
+		<result property="ciValue" column="ci_value"
+			typeHandler="aesTypeHandler" />
+		<result property="birthDate" column="birth_date"
+			typeHandler="aesTypeHandler" />
+
+		<result property="ciValueHash" column="ci_value_hash" />
+		<result property="birthDateHash" column="birth_date_hash" />
+
+		<result property="reason" column="reason"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="riskLevel" column="risk_level"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+		<result property="registeredAt" column="registered_at" />
+		<result property="registeredBy" column="registered_by" />
+		<result property="deletedYn" column="deleted_yn"
+			typeHandler="org.apache.ibatis.type.StringTypeHandler" />
+	</resultMap>
+
+	<!-- CI값 해시로 단건 조회 — 평문 해시 컬럼 직접 비교 -->
+	<select id="findByCiValueHash" resultMap="watchlistMap">
+		SELECT *
+		FROM WATCHLIST
+		WHERE ci_value_hash = #{ciValueHash}
+		AND deleted_yn = 'N'
+		FETCH FIRST 1
+		ROWS ONLY
+	</select>
+
+	<!-- 이름 + 생년월일 해시로 조회 -->
+	<select id="findByNameAndBirthDateHash" resultMap="watchlistMap">
+		SELECT *
+		FROM
+		WATCHLIST
+		WHERE name = #{name}
+		AND birth_date_hash = #{birthDateHash}
+		AND deleted_yn = 'N'
+	</select>
+
+	<!-- 전체 목록 (관리자 화면) -->
+	<select id="findAll" resultMap="watchlistMap">
+		SELECT *
+		FROM WATCHLIST
+		WHERE
+		deleted_yn = 'N'
+		ORDER BY registered_at DESC
+	</select>
+
+	<!-- 등록 ci_value, birth_date → AES 암호화 (typeHandler 명시) ci_value_hash, birth_date_hash 
+		→ 평문 SHA-256 해시 (typeHandler 없음) -->
+	<insert id="insert">
+		INSERT INTO WATCHLIST (
+		name,
+		birth_date,
+		ci_value,
+		ci_value_hash,
+		birth_date_hash,
+		reason,
+		risk_level,
+		registered_by,
+		registered_at,
+		deleted_yn
+		) VALUES (
+		#{name},
+		#{birthDate,
+		typeHandler=AesTypeHandler},
+		#{ciValue, typeHandler=AesTypeHandler},
+		#{ciValueHash},
+		#{birthDateHash},
+		#{reason, jdbcType=VARCHAR},
+		#{riskLevel,
+		jdbcType=VARCHAR},
+		#{registeredBy},
+		#{registeredAt},
+		'N'
+		)
+	</insert>
+
+	<!-- 논리 삭제 -->
+	<update id="delete">
+		UPDATE WATCHLIST
+		SET deleted_yn = 'Y',
+		registered_by =
+		#{registeredBy}
+		WHERE watchlist_id = #{watchlistId}
+	</update>
+
+</mapper>

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>결재 관리 | BNK 관리자</title>
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/teal-theme.css">
+  <link rel="stylesheet" href="/css/admin-nav.css">
+  <link rel="stylesheet" href="/css/approvalManage.css">
+</head>
+<body>
+
+<div id="app-header"></div>
+
+<!-- ═══════════════════════════════════════════
+     목록 페이지
+════════════════════════════════════════════ -->
+<div id="listPage" class="page-wrap">
+
+  <div class="page-header">
+    <h2>결재 목록</h2>
+  </div>
+
+  <!-- 필터 -->
+  <div class="filter-bar">
+    <span class="total-label">총 <strong id="totalCount">0</strong>건</span>
+
+    <label>
+      <select id="statusFilter">
+        <option value="">전체 상태</option>
+        <option value="PENDING">PENDING</option>
+        <option value="APPROVED">APPROVED</option>
+        <option value="REJECTED">REJECTED</option>
+      </select>
+    </label>
+
+    <label>
+      <select id="typeFilter">
+        <option value="">전체 유형</option>
+        <option value="CARD_PUBLISH">카드 등록</option>
+        <option value="CARD_UPDATE">카드 수정</option>
+        <option value="TERMS_PUBLISH">약관 등록</option>
+      </select>
+    </label>
+
+    <button type="button" onclick="searchApprovals()" class="btn-search">검색</button>
+    <button type="button" onclick="resetFilters()"    class="btn-reset">초기화</button>
+  </div>
+
+  <!-- 테이블 -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>결재 ID</th>
+          <th>유형</th>
+          <th>카드명 / 약관명</th>
+          <th>요청자</th>
+          <th>상태</th>
+          <th>요청일시</th>
+        </tr>
+      </thead>
+      <tbody id="approvalTbody">
+        <tr><td colspan="6" class="empty-cell">로딩 중...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div id="pagination" class="pagination"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     상세 페이지
+════════════════════════════════════════════ -->
+<div id="detailPage" class="page-wrap" style="display:none;">
+
+  <div class="page-header">
+    <h2>결재 상세</h2>
+    <p><a href="/admin/approvals">← 결재 목록</a></p>
+  </div>
+
+  <!-- 기본 정보 -->
+  <h3>기본 정보</h3>
+  <table id="infoTable">
+    <tr><td>로딩 중...</td></tr>
+  </table>
+
+  <br>
+
+  <!-- 결재 라인 -->
+  <h3>결재 라인</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>순서</th>
+        <th>결재자</th>
+        <th>상태</th>
+        <th>의견</th>
+        <th>처리일시</th>
+      </tr>
+    </thead>
+    <tbody id="linesTable"></tbody>
+  </table>
+
+  <br>
+
+  <!-- 카드 스냅샷 -->
+  <div id="snapshotSection" style="display:none;">
+
+    <h3>카드 기본 정보 (결재 당시 스냅샷)</h3>
+    <table id="snapshotTable"></table>
+
+    <br>
+
+    <h3>혜택 목록</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>혜택 ID</th><th>카테고리</th><th>혜택명</th><th>혜택 유형</th>
+          <th>표시 텍스트</th><th>할인율</th><th>할인액</th><th>포인트율</th>
+          <th>캐시백율</th><th>월 한도</th><th>일 한도</th><th>최소 결제액</th>
+          <th>혜택 조건</th><th>노출 순서</th><th>노출 여부</th>
+          <th>생성일시</th><th>수정일시</th>
+        </tr>
+      </thead>
+      <tbody id="benefitTbody"></tbody>
+    </table>
+
+    <br>
+
+    <h3>이미지 목록</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>이미지 ID</th><th>유형</th><th>미리보기</th><th>원본 파일명</th>
+          <th>저장 파일명</th><th>MIME 타입</th><th>가로(px)</th>
+          <th>세로(px)</th><th>정렬 순서</th><th>생성일시</th><th>URL</th>
+        </tr>
+      </thead>
+      <tbody id="imageTbody"></tbody>
+    </table>
+
+    <br>
+  </div>
+
+  <!-- 결재 처리 -->
+  <div id="actionArea" style="display:none;">
+    <h3>결재 처리</h3>
+    <label>
+      의견 (반려 시 필수):
+      <input type="text" id="commentInput" placeholder="결재 의견 입력">
+    </label>
+    <br><br>
+    <button onclick="doApprove()">✔ 승인</button>
+    &nbsp;
+    <button onclick="doReject()">✗ 반려</button>
+  </div>
+
+  <br>
+  <div id="msg"></div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/utils.js"></script>
+<script src="/js/header.js"></script>
+<script src="/js/admin-approval.js"></script>
+</body>
+</html>

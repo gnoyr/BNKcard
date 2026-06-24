@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>알림 발송 관리 | BNK 관리자</title>
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/teal-theme.css">
+  <link rel="stylesheet" href="/css/notification.css">
+  <link rel="stylesheet" href="/css/admin-nav.css">
+</head>
+<body>
+<div id="app-header"></div>
+
+<!-- 서브 네비 -->
+
+
+<div class="wrap">
+
+  <!-- 탭 -->
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tabBtnList"  onclick="switchTab('list')">발송 이력</button>
+    <button class="tab-btn"        id="tabBtnCreate" onclick="switchTab('create')">새 알림 작성</button>
+  </div>
+
+  <!-- ====================================================
+       탭 1: 발송 이력 목록
+       ==================================================== -->
+  <div id="tabList">
+    <div class="toolbar">
+      <span class="total-label">전체 <strong id="totalCount">-</strong>건</span>
+      <button class="btn-primary btn-sm" onclick="switchTab('create')">＋ 새 알림 작성</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>카테고리</th>
+            <th>제목</th>
+            <th>대상</th>
+            <th>채널</th>
+            <th>수신자</th>
+            <th>상태</th>
+            <th>발송일시</th>
+            <th>작성자</th>
+            <th>관리</th>
+          </tr>
+        </thead>
+        <tbody id="batchTbody">
+          <tr><td colspan="10" class="empty-cell">불러오는 중...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pagination" id="pagination"></div>
+  </div>
+
+  <!-- ====================================================
+       탭 2: 새 알림 작성 / 상세
+       ==================================================== -->
+  <div id="tabCreate" style="display:none">
+    <div class="form-card">
+      <h2 class="form-title" id="formTitle">새 알림 작성</h2>
+
+      <!-- 알림 카테고리 -->
+      <div class="form-row">
+        <label class="form-label required">알림 카테고리</label>
+        <div class="form-group">
+          <select id="fCategory" class="form-control">
+            <option value="">-- 선택 --</option>
+            <option value="TERMS_CHANGED">약관 변경</option>
+            <option value="CARD_UPDATED">카드 정보 변경</option>
+            <option value="EVENT">이벤트/프로모션</option>
+            <option value="NOTICE">공지사항</option>
+            <option value="SYSTEM">시스템 안내</option>
+          </select>
+          <span class="form-error" id="err-category"></span>
+        </div>
+      </div>
+
+      <!-- 제목 -->
+      <div class="form-row">
+        <label class="form-label required">알림 제목</label>
+        <div class="form-group">
+          <input type="text" id="fTitle" class="form-control" placeholder="예: 이용약관이 변경되었습니다" maxlength="200">
+          <span class="char-count"><span id="titleLen">0</span>/200</span>
+          <span class="form-error" id="err-title"></span>
+        </div>
+      </div>
+
+      <!-- 내용 -->
+      <div class="form-row">
+        <label class="form-label required">알림 내용</label>
+        <div class="form-group">
+          <textarea id="fMessage" class="form-control textarea" rows="5"
+                    placeholder="회원에게 전달할 상세 내용을 입력하세요.&#10;&#10;예) 2025년 7월 1일부터 개인정보 처리방침이 변경됩니다. 주요 변경사항을 확인해 주세요."></textarea>
+          <span class="form-error" id="err-message"></span>
+        </div>
+      </div>
+
+      <!-- 링크 URL -->
+      <div class="form-row">
+        <label class="form-label">링크 URL <span class="optional">(선택)</span></label>
+        <div class="form-group">
+          <input type="text" id="fLinkUrl" class="form-control" placeholder="예: /terms/123  또는  /events/abc">
+          <p class="help-text">알림 클릭 시 이동할 URL. 비워두면 알림 센터로만 이동합니다.</p>
+        </div>
+      </div>
+
+      <!-- 발송 채널 -->
+      <div class="form-row">
+        <label class="form-label required">발송 채널</label>
+        <div class="form-group channel-group">
+          <label class="checkbox-item">
+            <input type="checkbox" id="chInapp" value="INAPP" checked> 인앱 알림
+            <span class="channel-desc">알림 센터에 표시됩니다</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="chPush" value="PUSH"> 푸시 알림
+            <span class="channel-desc">push_enabled='Y' 회원만</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="chEmail" value="EMAIL"> 이메일
+            <span class="channel-desc">EmailService 연동 필요</span>
+          </label>
+          <span class="form-error" id="err-channels"></span>
+        </div>
+      </div>
+
+      <!-- 수신 대상 -->
+      <div class="form-row">
+        <label class="form-label required">수신 대상</label>
+        <div class="form-group">
+          <select id="fTargetType" class="form-control" onchange="onTargetTypeChange()">
+            <option value="">-- 선택 --</option>
+            <option value="ALL">전체 회원</option>
+            <option value="TERMS_AGREED">특정 약관 동의자</option>
+            <option value="CARD_OWNER">특정 카드 보유자</option>
+            <option value="MARKETING_AGREE">마케팅 동의자</option>
+          </select>
+          <span class="form-error" id="err-target"></span>
+
+          <!-- 약관/카드 ID 입력 (targetType에 따라 노출) -->
+          <div id="refIdWrap" style="display:none; margin-top:10px;">
+            <input type="number" id="fTargetRefId" class="form-control"
+                   placeholder="약관 ID 또는 카드 ID를 입력하세요">
+            <p class="help-text" id="refIdHelp"></p>
+          </div>
+
+          <!-- 예상 수신자 수 미리보기 -->
+          <div id="recipientPreview" style="display:none; margin-top:10px;">
+            <span class="preview-badge" id="recipientCount">조회 중...</span>
+            <button type="button" class="btn-outline btn-sm" onclick="previewRecipients()">수신자 수 확인</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 발송 방식 -->
+      <div class="form-row">
+        <label class="form-label">발송 방식</label>
+        <div class="form-group send-mode-group">
+          <label class="radio-item">
+            <input type="radio" name="sendMode" value="immediate" checked onchange="onSendModeChange()">
+            즉시 발송
+          </label>
+          <label class="radio-item">
+            <input type="radio" name="sendMode" value="scheduled" onchange="onSendModeChange()">
+            예약 발송
+          </label>
+          <div id="scheduledAtWrap" style="display:none; margin-top:10px;">
+            <input type="datetime-local" id="fScheduledAt" class="form-control" style="max-width:280px">
+          </div>
+        </div>
+      </div>
+
+      <!-- 발송 전 미리보기 패널 -->
+      <div class="preview-panel" id="previewPanel" style="display:none">
+        <h4 class="preview-title">발송 미리보기</h4>
+        <div class="preview-notif-card">
+          <div class="preview-badge-cat" id="prevCategory">카테고리</div>
+          <div class="preview-notif-title" id="prevTitle">제목</div>
+          <div class="preview-notif-msg"   id="prevMessage">내용</div>
+          <div class="preview-notif-link"  id="prevLink"></div>
+        </div>
+        <div class="preview-summary">
+          <span>채널: <strong id="prevChannels">-</strong></span>
+          <span>대상: <strong id="prevTarget">-</strong></span>
+        </div>
+      </div>
+
+      <!-- 액션 버튼 -->
+      <div class="form-actions">
+        <button type="button" class="btn-outline" onclick="switchTab('list')">취소</button>
+        <button type="button" class="btn-secondary" id="btnPreview" onclick="togglePreview()">미리보기</button>
+        <button type="button" class="btn-primary" id="btnSend" onclick="submitBatch()">발송하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 발송 상세 모달 -->
+  <div class="modal-overlay" id="detailModal" style="display:none">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">발송 상세</h3>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body" id="detailBody">
+        <!-- JS로 채움 -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn-outline" onclick="closeModal()">닫기</button>
+        <button class="btn-primary" id="btnModalSend" onclick="sendBatchFromModal()">즉시 발송</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<div id="toast-container"></div>
+<script src="/js/utils.js"></script>
+<script src="/js/header.js"></script>
+<script src="/js/notification.js"></script>
+</body>
+</html>
