@@ -93,9 +93,9 @@ public class AuthController {
 
 	    Optional<String> challengeOpt = authService.checkIpChallenge(userId, clientIp);
 	    if (challengeOpt.isPresent()) {
-	        // 미등록 IP → 쿠키 미발급, 챌린지 정보 반환
 	        return ResponseEntity.ok(ApiResponse.ok(Map.of(
 	            "requireIpVerify",   true,
+	            "userId",            userId,
 	            "challengeToken",    challengeOpt.get(),
 	            "availableMethods",  List.of("EMAIL", "CI")
 	        )));
