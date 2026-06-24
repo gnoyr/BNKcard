@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.bnk.domain.application.mapper.CheckCardApplicationMapper">
+
+    <resultMap id="checkAppMap" type="com.bnk.domain.application.model.CheckCardApplication">
+        <id     property="checkAppId"         column="check_app_id"/>
+        <result property="userId"             column="user_id"/>
+        <result property="cardId"             column="card_id"/>
+        <result property="applicationStatus"  column="application_status"/>
+        <!-- STEP 2 -->
+        <result property="idVerifiedYn"       column="id_verified_yn"/>
+        <result property="ciValue" 			  column="ci_value"/>
+        <!-- STEP 3 -->
+        <result property="applicantSnapshot"  column="applicant_snapshot"
+                typeHandler="aesTypeHandler"/>
+        <!-- STEP 4 -->
+        <result property="versionId" 		  column="version_id"/>
+        <result property="paymentSnapshot"    column="payment_snapshot"/>
+        <result property="linkedAccountId"    column="linked_account_id"/>
+        <result property="cardPasswordHash"   column="card_password_hash"/>
+        <result property="appliedAt"          column="applied_at"/>
+        <!-- STEP 5 -->
+        <result property="rejectionReason"    column="rejection_reason"/>
+        <result property="reviewedAt"         column="reviewed_at"/>
+        <result property="reviewedBy"         column="reviewed_by"/>
+        <!-- 공통 -->
+        <result property="createdAt"          column="created_at"/>
+        <result property="updatedAt"          column="updated_at"/>
+    </resultMap>
+
+    <!-- STEP 1 - INSERT (DRAFT) -->
+    <insert id="insertApplication" useGeneratedKeys="false">
+        <selectKey keyProperty="checkAppId" resultType="long" order="AFTER">
+            SELECT SEQ_CHECK_CARD_APPLICATIONS.CURRVAL FROM DUAL
+        </selectKey>
+        INSERT INTO CHECK_CARD_APPLICATIONS (
+            user_id, card_id, application_status
+        ) VALUES (
+            #{userId}, #{cardId}, 'DRAFT'
+        )
+    </insert>
+
+    <!-- STEP 2 - 본인확인 결과 -->
+    <update id="updateIdVerified">
+        UPDATE CHECK_CARD_APPLICATIONS
+    	SET    id_verified_yn = #{idVerifiedYn},
+	           ci_value       = #{ciValue},
+	           updated_at     = SYSTIMESTAMP
+        WHERE  check_app_id   = #{checkAppId}
+    </update>
+
+    <!-- STEP 3 - 기본정보 저장 -->
+	<update id="updateApplicantInfo">
+	    UPDATE CHECK_CARD_APPLICATIONS
+	    SET    applicant_snapshot = #{applicantSnapshot, typeHandler=aesTypeHandler},
+	    	   updated_at         = SYSTIMESTAMP
+	    WHERE  check_app_id       = #{checkAppId}
+	</update>
+
+    <!-- STEP 4 - 신청정보 + 신청 완료 -->
+    <update id="updatePaymentInfo">
+        UPDATE CHECK_CARD_APPLICATIONS
+        SET    version_id 		   = #{versionId},
+               payment_snapshot    = #{paymentSnapshot},
+               linked_account_id   = #{linkedAccountId},
+               card_password_hash  = #{cardPasswordHash},
+               application_status  = 'REQUESTED',
+               applied_at          = SYSTIMESTAMP
+        WHERE  check_app_id        = #{checkAppId}
+    </update>
+    
+    <select id="findCurrentVersionId" resultType="long">
+	    SELECT version_id
+	    FROM   CARD_VERSIONS
+	    WHERE  card_id        = #{cardId}
+	      AND  version_status = 'PUBLISHED'
+	    ORDER BY published_at DESC
+	    FETCH FIRST 1 ROWS ONLY
+	</select>
+
+    <!-- STEP 5 - 심사 결과 -->
+    <update id="updateReviewResult">
+        UPDATE CHECK_CARD_APPLICATIONS
+        SET    application_status  = #{applicationStatus},
+               reviewed_at         = SYSTIMESTAMP,
+               reviewed_by         = #{reviewedBy},
+               <if test="rejectionReason != null">
+               rejection_reason     = #{rejectionReason},
+               </if>
+               updated_at           = SYSTIMESTAMP
+        WHERE  check_app_id         = #{checkAppId}
+    </update>
+
+    <!-- STEP 6 / 공통 상태 변경 -->
+    <update id="updateStatus">
+        UPDATE CHECK_CARD_APPLICATIONS
+        SET    application_status = #{applicationStatus},
+               updated_at         = SYSTIMESTAMP
+        WHERE  check_app_id       = #{checkAppId}
+    </update>
+
+    <!-- 조회 -->
+    <select id="findById" resultMap="checkAppMap">
+        SELECT * FROM CHECK_CARD_APPLICATIONS
+        WHERE  check_app_id = #{checkAppId}
+    </select>
+
+    <select id="findByUserId" resultMap="checkAppMap">
+        SELECT * FROM CHECK_CARD_APPLICATIONS
+        WHERE  user_id = #{userId} AND application_status != 'DRAFT'
+        ORDER BY created_at DESC
+    </select>
+
+    <!-- DRAFT 정리 배치 - 7일 이상 DRAFT -->
+    <select id="findExpiredDraftIds" resultType="long">
+        SELECT check_app_id
+        FROM   CHECK_CARD_APPLICATIONS
+        WHERE  application_status = 'DRAFT'
+          AND  created_at &lt; SYSTIMESTAMP - INTERVAL '7' DAY
+    </select>
+
+    <delete id="deleteByIds">
+        DELETE FROM CHECK_CARD_APPLICATIONS
+        WHERE  check_app_id IN
+        <foreach collection="checkAppIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>

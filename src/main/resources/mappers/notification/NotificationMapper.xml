@@ -1,1 +1,228 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper
+	namespace="com.bnk.domain.notification.mapper.NotificationMapper">
+
+	<!-- ── ResultMap ──────────────────────────────────────────── -->
+	<resultMap id="notifMap"
+		type="com.bnk.domain.notification.model.Notification">
+		<id property="notificationId" column="notification_id" />
+		<result property="userId" column="user_id" />
+		<result property="notificationCategory"
+			column="notification_category" />
+		<result property="channel" column="channel" />
+		<result property="title" column="title" />
+		<result property="message" column="message" />
+		<result property="linkUrl" column="link_url" />
+		<result property="sentYn" column="sent_yn" />
+		<result property="sentAt" column="sent_at" />
+		<result property="readYn" column="read_yn" />
+		<result property="readAt" column="read_at" />
+		<result property="batchId" column="batch_id" />
+		<result property="createdAt" column="created_at" />
+	</resultMap>
+
+	<resultMap id="batchMap"
+		type="com.bnk.domain.notification.model.NotificationBatch">
+		<id property="batchId" column="batch_id" />
+		<result property="notificationCategory"
+			column="notification_category" />
+		<result property="title" column="title" />
+		<result property="message" column="message" />
+		<result property="linkUrl" column="link_url" />
+		<result property="channels" column="channels" />
+		<result property="targetType" column="target_type" />
+		<result property="targetRefId" column="target_ref_id" />
+		<result property="status" column="status" />
+		<result property="scheduledAt" column="scheduled_at" />
+		<result property="sentAt" column="sent_at" />
+		<result property="recipientCount" column="recipient_count" />
+		<result property="successCount" column="success_count" />
+		<result property="failCount" column="fail_count" />
+		<result property="createdBy" column="created_by" />
+		<result property="createdByName" column="created_by_name" />
+		<result property="sentBy" column="sent_by" />
+		<result property="sentByName" column="sent_by_name" />
+		<result property="createdAt" column="created_at" />
+	</resultMap>
+
+	<!-- ── 알림 단건 삽입 ─────────────────────────────────────── -->
+	<insert id="insertNotification" useGeneratedKeys="true"
+		keyProperty="notificationId">
+		<selectKey keyProperty="notificationId" resultType="long"
+			order="BEFORE">
+			SELECT SEQ_NOTIFICATIONS.NEXTVAL FROM DUAL
+		</selectKey>
+		INSERT INTO NOTIFICATIONS (
+		notification_id, user_id, notification_category, channel,
+		title, message, link_url, sent_yn, read_yn, batch_id, created_at
+		) VALUES (
+		#{notificationId}, #{userId}, #{notificationCategory}, #{channel},
+		#{title, jdbcType=VARCHAR},
+		#{message, jdbcType=CLOB},
+		#{linkUrl, jdbcType=VARCHAR},
+		'Y', 'N',
+		#{batchId, jdbcType=NUMERIC},
+		SYSTIMESTAMP
+		)
+	</insert>
+
+	<!-- ── 알림 배치 삽입 (Oracle FORALL 스타일) ───────────────── -->
+	<insert id="batchInsertNotifications">
+		INSERT ALL
+		<foreach collection="list" item="n">
+			INTO NOTIFICATIONS (
+			notification_id, user_id, notification_category, channel,
+			title, message, link_url, sent_yn, read_yn, batch_id, created_at
+			) VALUES (
+			SEQ_NOTIFICATIONS.NEXTVAL,
+			#{n.userId}, #{n.notificationCategory}, #{n.channel},
+			#{n.title, jdbcType=VARCHAR},
+			#{n.message, jdbcType=CLOB},
+			#{n.linkUrl, jdbcType=VARCHAR},
+			'Y', 'N',
+			#{n.batchId, jdbcType=NUMERIC},
+			SYSTIMESTAMP
+			)
+		</foreach>
+		SELECT 1 FROM DUAL
+	</insert>
+
+	<!-- ── 내 알림 목록 (최신순, 최대 50건) ──────────────────── -->
+	<select id="findByUserId" resultMap="notifMap">
+		SELECT * FROM NOTIFICATIONS
+		WHERE user_id = #{userId}
+		ORDER BY created_at DESC
+		FETCH FIRST 50 ROWS ONLY
+	</select>
+
+	<!-- ── 미읽음 카운트 ──────────────────────────────────────── -->
+	<select id="countUnreadByUserId" resultType="int">
+		SELECT COUNT(1) FROM NOTIFICATIONS
+		WHERE user_id = #{userId} AND read_yn = 'N'
+	</select>
+
+	<!-- ── 단건 읽음 처리 ────────────────────────────────────── -->
+	<update id="markAsRead">
+		UPDATE NOTIFICATIONS
+		SET read_yn = 'Y', read_at = SYSTIMESTAMP
+		WHERE notification_id = #{notificationId}
+		AND user_id = #{userId}
+	</update>
+
+	<!-- ── 전체 읽음 처리 ────────────────────────────────────── -->
+	<update id="markAllAsRead">
+		UPDATE NOTIFICATIONS
+		SET read_yn = 'Y', read_at = SYSTIMESTAMP
+		WHERE user_id = #{userId} AND read_yn = 'N'
+	</update>
+
+	<!-- ══════════════════════════════════════════════════════════ -->
+	<!-- 발송 배치 (관리자) -->
+	<!-- ══════════════════════════════════════════════════════════ -->
+
+	<insert id="insertBatch" useGeneratedKeys="true"
+		keyProperty="batchId">
+		<selectKey keyProperty="batchId" resultType="long"
+			order="BEFORE">
+			SELECT SEQ_NOTIFICATION_BATCHES.NEXTVAL FROM DUAL
+		</selectKey>
+		INSERT INTO NOTIFICATION_BATCHES (
+		batch_id, notification_category, title, message, link_url,
+		channels, target_type, target_ref_id, status,
+		scheduled_at, created_by, created_at
+		) VALUES (
+		#{batchId},
+		#{notificationCategory},
+		#{title},
+		#{message, jdbcType=CLOB},
+		#{linkUrl, jdbcType=VARCHAR},
+		#{channels},
+		#{targetType},
+		#{targetRefId, jdbcType=NUMERIC},
+		#{status},
+		#{scheduledAt, jdbcType=TIMESTAMP},
+		#{createdBy},
+		SYSTIMESTAMP
+		)
+	</insert>
+
+	<select id="findBatchById" resultMap="batchMap">
+		SELECT b.*,
+		a1.admin_name AS created_by_name,
+		a2.admin_name AS sent_by_name
+		FROM NOTIFICATION_BATCHES b
+		LEFT JOIN ADMINS a1 ON b.created_by = a1.admin_id
+		LEFT JOIN ADMINS a2 ON b.sent_by = a2.admin_id
+		WHERE b.batch_id = #{batchId}
+	</select>
+
+	<select id="findBatches" resultMap="batchMap">
+		SELECT b.*,
+		a1.admin_name AS created_by_name,
+		a2.admin_name AS sent_by_name
+		FROM NOTIFICATION_BATCHES b
+		LEFT JOIN ADMINS a1 ON b.created_by = a1.admin_id
+		LEFT JOIN ADMINS a2 ON b.sent_by = a2.admin_id
+		ORDER BY b.created_at DESC
+		OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
+	</select>
+
+	<select id="countBatches" resultType="int">
+		SELECT COUNT(1) FROM NOTIFICATION_BATCHES
+	</select>
+
+	<update id="updateBatchStatus">
+		UPDATE NOTIFICATION_BATCHES
+		SET status = #{status},
+		recipient_count = #{recipientCount},
+		success_count = #{successCount},
+		fail_count = #{failCount},
+		sent_by = #{sentBy},
+		sent_at = SYSTIMESTAMP
+		WHERE batch_id = #{batchId}
+	</update>
+
+	<update id="updateBatchStatusOnly">
+		UPDATE NOTIFICATION_BATCHES
+		SET status = #{status}
+		WHERE batch_id = #{batchId}
+	</update>
+
+	<!-- ══════════════════════════════════════════════════════════ -->
+	<!-- 수신자 조회 -->
+	<!-- ══════════════════════════════════════════════════════════ -->
+
+	<select id="findAllActiveUserIds" resultType="long">
+		SELECT user_id FROM USERS
+		WHERE deleted_yn = 'N'
+	</select>
+
+	<select id="findAllPushEnabledUserIds" resultType="long">
+		SELECT user_id FROM USERS
+		WHERE deleted_yn = 'N' AND push_enabled = 'Y'
+	</select>
+
+	<select id="findUserIdsByTermsAgreement" resultType="long">
+		SELECT DISTINCT user_id
+		FROM USER_TERMS_AGREEMENTS
+		WHERE terms_id = #{termsId}
+		AND agreed_yn = 'Y'
+	</select>
+
+	<select id="findUserIdsByOwnedCard" resultType="long">
+		SELECT DISTINCT uca.user_id
+		FROM USER_CARD_APPLICATIONS uca
+		WHERE uca.card_id = #{cardId}
+		AND uca.status_code = 'APPROVED'
+	</select>
+
+	<select id="findMarketingAgreeUserIds" resultType="long">
+		SELECT user_id FROM USERS
+		WHERE deleted_yn = 'N'
+		AND marketing_agree = 'Y'
+	</select>
+
+</mapper>

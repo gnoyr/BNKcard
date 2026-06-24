@@ -1,0 +1,470 @@
+/* =============================================================
+   components.css  |  BNK 부산은행 공통 컴포넌트 스타일
+   대상: 헤더, 토스트, 페이지 내비, 스켈레톤, 푸터
+
+   ============================================================= */
+:root {
+	--teal-50: #E0F4F7;
+	--teal-100: #B3E3EC;
+	--teal-200: #7ECFDD;
+	--teal-400: #3AAFC4;
+	--teal-600: #00677F;
+	--teal-800: #004D61;
+	--teal-900: #003040;
+	--primary: var(--teal-600);
+	--primary-dark: var(--teal-800);
+	--primary-mid: var(--teal-400);
+	--primary-pale: var(--teal-50);
+}
+
+/* ── 사이트 헤더 ── */
+.site-header {
+	background: #ffffff;
+	border-bottom: 1px solid #e4e4e7;
+	padding: 0 24px;
+	height: 60px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	position: sticky;
+	top: 0;
+	z-index: 100;
+}
+
+.logo {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	text-decoration: none;
+}
+
+.logo-badge {
+	width: 32px;
+	height: 32px;
+	background: var(--primary);
+	border-radius: 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #fff;
+	font-weight: 700;
+	font-size: 13px;
+	letter-spacing: -0.5px;
+	user-select: none;
+}
+
+.logo-text {
+	font-size: 15px;
+	font-weight: 700;
+	color: #18181b;
+	letter-spacing: -0.3px;
+}
+
+/* ── 헤더 내비 공통 ── */
+.header-nav {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+}
+
+/* 헤더 내 일반 링크 */
+.site-header .header-nav a {
+	font-size: 13px;
+	color: #52525b;
+	text-decoration: none;
+	padding: 4px 0;
+	border-bottom: 2px solid transparent;
+	transition: color .2s, border-color .2s;
+}
+
+.site-header .header-nav a:hover, .site-header .header-nav a.active {
+	color: var(--primary);
+	border-bottom-color: var(--primary);
+}
+
+/* 로그인/회원가입 버튼형 링크 */
+.site-header .header-nav .nav-login, .site-header .header-nav .nav-signup
+	{
+	font-size: 12px;
+	font-weight: 600;
+	padding: 4px 12px;
+	border-radius: 6px;
+	border: 1.5px solid var(--primary);
+	color: var(--primary);
+	background: transparent;
+	border-bottom-color: var(--primary); /* active 덮어쓰기 방지 */
+	transition: background .15s, color .15s;
+}
+
+.site-header .header-nav .nav-login:hover, .site-header .header-nav .nav-signup:hover
+	{
+	background: var(--primary);
+	color: #fff;
+	border-bottom-color: var(--primary);
+}
+
+/* 로그인 상태: 사용자 이름 배지 */
+.site-header .header-nav .header-nav__username {
+	font-size: 13px;
+	font-weight: 700;
+	color: var(--primary);
+	background: var(--teal-50);
+	border-radius: 20px;
+	padding: 4px 12px;
+}
+
+/* 마이페이지 링크 (작은 칩형) */
+.site-header .header-nav a[href="/mypage/index.html"], .site-header .header-nav a[href="/mypage"]
+	{
+	font-size: 12px;
+	font-weight: 600;
+	padding: 4px 12px;
+	border-radius: 6px;
+	background: #f4f4f5;
+	border-bottom: 2px solid transparent;
+	color: #3f3f46;
+}
+
+.site-header .header-nav a[href="/mypage/index.html"]:hover,
+	.site-header .header-nav a[href="/mypage"]:hover {
+	background: #e4e4e7;
+	color: var(--primary);
+	border-bottom-color: transparent;
+}
+
+/* Access Token 타이머 배지 */
+.site-header .header-nav .header-nav__timer {
+	font-size: 11px;
+	font-weight: 600;
+	color: #52525b;
+	background: #f4f4f5;
+	border-radius: 6px;
+	padding: 3px 8px;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: 0.03em;
+	cursor: default;
+}
+
+/* 토큰 재발급·로그아웃 버튼
+   [FIX] !important 전부 제거 — 특이성으로 해결 */
+.site-header .header-nav .header-nav__btn {
+	font-family: inherit;
+	font-size: 12px;
+	font-weight: 600;
+	padding: 4px 12px;
+	border-radius: 6px;
+	border: 1.5px solid #e4e4e7;
+	color: #52525b;
+	background: #fff;
+	cursor: pointer;
+	transition: background .15s, border-color .15s, color .15s;
+	white-space: nowrap;
+}
+
+.site-header .header-nav .header-nav__btn:hover {
+	background: #f4f4f5;
+	border-color: var(--primary);
+	color: var(--primary);
+}
+
+/* ── 관리자 헤더 변형 ── */
+.site-header.site-header--admin {
+	background: #1a1a2e;
+	border-bottom: 1px solid #0f3460;
+}
+
+.site-header--admin .logo-badge {
+	background: var(--teal-400);
+	font-size: 11px;
+	letter-spacing: -0.3px;
+}
+
+.site-header--admin .logo-text--admin {
+	color: #e2e8f0;
+}
+
+.site-header--admin .header-nav a {
+	color: #94a3b8;
+}
+
+.site-header--admin .header-nav a:hover, .site-header--admin .header-nav a.active
+	{
+	color: var(--teal-400);
+	border-bottom-color: var(--teal-400);
+}
+
+.site-header--admin .header-nav__username {
+	color: var(--teal-400);
+	background: rgba(58, 175, 196, .12);
+}
+
+.site-header--admin .header-nav__timer {
+	color: #94a3b8;
+	background: rgba(255, 255, 255, .06);
+}
+
+.site-header--admin .header-nav__btn {
+	border-color: #334155;
+	color: #94a3b8;
+	background: transparent;
+}
+
+.site-header--admin .header-nav__btn:hover {
+	color: var(--teal-400);
+	border-color: var(--teal-400);
+	background: rgba(58, 175, 196, .08);
+}
+
+/* ── 세션 바 (레거시, 일부 페이지 사용) ── */
+.session-bar {
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	background: #0f172a;
+	color: #94a3b8;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 12px;
+	padding: 8px 24px;
+	z-index: 200;
+	font-size: 12px;
+}
+
+.session-bar__timer {
+	font-variant-numeric: tabular-nums;
+}
+
+.session-bar__btn {
+	padding: 4px 10px;
+	border-radius: 4px;
+	border: none;
+	font-size: 11px;
+	cursor: pointer;
+	font-family: inherit;
+	transition: background .2s, border-color .2s, color .2s;
+	white-space: nowrap;
+}
+
+.session-bar__btn--refresh {
+	background: #1e3a8a;
+	color: #fff;
+}
+
+.session-bar__btn--refresh:hover {
+	background: #1d4ed8;
+}
+
+.session-bar__btn--refresh:disabled {
+	background: #334155;
+	cursor: not-allowed;
+}
+
+.session-bar__btn--logout {
+	background: none;
+	border: 1px solid #334155;
+	color: #94a3b8;
+}
+
+.session-bar__btn--logout:hover {
+	border-color: #ef4444;
+	color: #ef4444;
+}
+
+/* ── 페이지 내비 바 (마이페이지 서브 페이지용) ── */
+.page-nav {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 0 24px;
+	height: 44px;
+	background: #f4f4f5;
+	border-bottom: 1px solid #e4e4e7;
+	position: sticky;
+	top: 60px;
+	z-index: 90;
+}
+
+.page-nav__back {
+	background: none;
+	border: none;
+	font-size: 13px;
+	color: #52525b;
+	cursor: pointer;
+	font-family: inherit;
+	padding: 0;
+	transition: color .2s;
+}
+
+.page-nav__back:hover {
+	color: var(--primary);
+}
+
+.page-nav__sep {
+	color: #a1a1aa;
+	font-size: 12px;
+}
+
+.page-nav__title {
+	font-size: 13px;
+	font-weight: 600;
+	color: #18181b;
+}
+
+/* ── Toast 알림 ── */
+#toast-container {
+	position: fixed;
+	top: 72px;
+	right: 20px;
+	z-index: 9999;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	pointer-events: none;
+}
+
+.toast {
+	background: #1e293b;
+	color: #f1f5f9;
+	font-size: 13px;
+	border-radius: 8px;
+	padding: 12px 16px;
+	max-width: 320px;
+	line-height: 1.5;
+	opacity: 0;
+	transform: translateY(-8px);
+	transition: opacity .25s, transform .25s;
+	pointer-events: auto;
+	word-break: keep-all;
+}
+
+.toast--show {
+	opacity: 1;
+	transform: translateY(0);
+}
+
+.toast--success {
+	border-left: 3px solid #22c55e;
+}
+
+.toast--error {
+	border-left: 3px solid #ef4444;
+}
+
+.toast--warning {
+	border-left: 3px solid #f59e0b;
+}
+
+.toast--info {
+	border-left: 3px solid var(--teal-400);
+}
+
+/* ── 스켈레톤 ── */
+@keyframes skeleton-pulse { 0%, 100% {
+	opacity: 1;
+}
+
+50%
+{
+opacity
+:
+.45;
+}
+}
+.skeleton {
+	background: #e4e4e7;
+	border-radius: 4px;
+	animation: skeleton-pulse 1.4s ease-in-out infinite;
+	display: inline-block;
+}
+
+.skeleton-item {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 12px 0;
+	border-bottom: 1px solid #f4f4f5;
+}
+
+.skeleton-chip {
+	width: 44px;
+	height: 44px;
+	border-radius: 8px;
+	flex-shrink: 0;
+}
+
+.skeleton-text {
+	width: 200px;
+	height: 16px;
+}
+
+.skeleton-text--short {
+	width: 120px;
+}
+
+.skeleton-legend {
+	width: 120px;
+	height: 14px;
+	display: block;
+	margin-bottom: 6px;
+}
+
+.skeleton-legend--short {
+	width: 80px;
+}
+
+.skeleton-dot {
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+}
+
+.skeleton-text-long {
+	width: 160px;
+	height: 16px;
+}
+
+.skeleton-input {
+	width: 100px;
+	height: 36px;
+	border-radius: 6px;
+}
+
+/* ── 관리자 페이지 모바일 반응형 ── */
+@media ( max-width : 480px) {
+	.site-header {
+		padding: 0 16px;
+		height: 54px;
+	}
+	.logo-text {
+		display: none;
+	}
+	.header-nav {
+		gap: 8px;
+	}
+	.site-header .header-nav .header-nav__username {
+		max-width: 60px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		font-size: 11px;
+		padding: 4px 8px;
+	}
+	.site-header .header-nav .header-nav__timer {
+		display: none;
+	}
+	.site-header .header-nav a[href="/mypage/index.html"], .site-header .header-nav a[href="/mypage"]
+		{
+		display: none;
+	}
+	.site-header .header-nav .header-nav__btn {
+		font-size: 11px;
+		padding: 4px 8px;
+	}
+	.site-header .header-nav .nav-login, .site-header .header-nav .nav-signup
+		{
+		padding: 4px 10px;
+		font-size: 11px;
+	}
+}

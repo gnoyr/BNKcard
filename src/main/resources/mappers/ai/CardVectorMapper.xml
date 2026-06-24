@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bnk.domain.ai.mapper.CardVectorMapper">
+
+    <resultMap id="CardVectorMap" type="com.bnk.domain.ai.model.CardVector">
+        <id property="cardId" column="card_id"/>
+        <result property="cardName" column="card_name"/>
+        <result property="cardType" column="card_type"/>
+        <result property="companyName" column="company_name"/>
+        <result property="brandName" column="brand_name"/>
+        <result property="annualFeeDomestic" column="annual_fee_domestic"/>
+        <result property="annualFeeOverseas" column="annual_fee_overseas"/>
+        <result property="previousMonthSpend" column="previous_month_spend"/>
+        <result property="targetUser" column="target_user"/>
+        <result property="summaryDescription" column="summary_description"/>
+        <collection property="benefits"
+                    ofType="com.bnk.domain.ai.model.CardVector$BenefitVector">
+            <result property="benefitTitle" column="benefit_title"/>
+            <result property="benefitType" column="benefit_type"/>
+            <result property="discountRate" column="discount_rate"/>
+            <result property="cashbackRate" column="cashback_rate"/>
+            <result property="pointRate" column="point_rate"/>
+            <result property="displayText" column="display_text"/>
+        </collection>
+    </resultMap>
+
+    <select id="findAllCardsWithBenefits"
+            resultMap="CardVectorMap">
+        SELECT
+            c.card_id,
+            c.card_name,
+            c.card_type,
+            c.company_name,
+            c.brand_name,
+            c.annual_fee_domestic,
+            c.annual_fee_overseas,
+            c.previous_month_spend,
+            c.target_user,
+            c.summary_description,
+            b.benefit_title,
+            b.benefit_type,
+            b.discount_rate,
+            b.cashback_rate,
+            b.point_rate,
+            b.display_text
+        FROM CARDS c
+        LEFT JOIN CARD_BENEFITS b
+            ON c.card_id = b.card_id
+        WHERE c.visible_yn = 'Y'
+        AND c.card_status = 'PUBLISHED'
+        AND (b.visible_yn = 'Y' OR b.visible_yn IS NULL)
+        ORDER BY c.card_id, b.display_order
+    </select>
+    
+	<!-- CardVectorMapper.xml 에 추가 -->
+	<!-- findAllCardsWithBenefits 쿼리와 동일 구조, WHERE 조건만 추가 -->
+	<select id="findCardWithBenefitsById" resultMap="CardVectorMap">
+		SELECT
+		c.card_id, c.card_name, c.card_type, c.company_name,
+		c.brand_name,                          <!-- CardVectorMap에 있음 -->
+		c.annual_fee_domestic, c.annual_fee_overseas,
+		c.previous_month_spend, c.target_user, c.summary_description,
+		cb.benefit_title, cb.benefit_type,
+		cb.discount_rate, cb.cashback_rate, cb.point_rate,
+		cb.display_text
+		FROM CARDS c
+		LEFT JOIN CARD_BENEFITS cb ON c.card_id = cb.card_id
+		WHERE c.card_id = #{cardId}
+		AND c.card_status = 'PUBLISHED'
+		AND c.visible_yn = 'Y'
+		AND c.deleted_yn = 'N'
+	</select>
+    
+    
+    
+</mapper>

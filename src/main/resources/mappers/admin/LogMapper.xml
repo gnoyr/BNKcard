@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bnk.domain.admin.mapper.LogMapper">
+
+    <!-- ── 관리자 활동 로그 ─────────────────────────────────────────── -->
+    <select id="findAdminActivityLogs" resultType="map">
+        SELECT *
+        FROM (
+            SELECT
+                aal.activity_id      AS logId,
+                au.name         AS adminName,
+                ar.role_code    AS roleCode,
+                aal.action      AS action,
+                aal.result      AS result,
+                aal.target_id   AS targetId,
+                aal.detail      AS detail,
+                aal.client_ip   AS clientIp,
+                aal.request_uri AS requestUri,
+                TO_CHAR(aal.occurred_at, 'YYYY-MM-DD HH24:MI:SS') AS occurredAt,
+                ROW_NUMBER() OVER (ORDER BY aal.occurred_at DESC) AS rn
+            FROM ADMIN_ACTIVITY_LOG aal
+            JOIN ADMIN_USERS au ON aal.admin_id = au.admin_id
+            JOIN ADMIN_USER_ROLES aur ON au.admin_id = aur.admin_id
+                AND aur.deleted_yn = 'N'
+            JOIN ADMIN_ROLES ar ON aur.role_id = ar.role_id
+                AND ar.deleted_yn = 'N'
+            WHERE 1=1
+            <if test="adminName != null and adminName != ''">
+                AND au.name LIKE '%' || #{adminName} || '%'
+            </if>
+            <if test="roleCode != null and roleCode != ''">
+                AND ar.role_code = #{roleCode,
+                    jdbcType=VARCHAR,
+                    typeHandler=org.apache.ibatis.type.StringTypeHandler}
+            </if>
+            <if test="result != null and result != ''">
+                AND aal.result = #{result,
+                    jdbcType=VARCHAR,
+                    typeHandler=org.apache.ibatis.type.StringTypeHandler}
+            </if>
+            <if test="from != null and from != ''">
+                AND aal.occurred_at >= TO_TIMESTAMP(#{from}, 'YYYY-MM-DD')
+            </if>
+            <if test="to != null and to != ''">
+                AND aal.occurred_at &lt; TO_TIMESTAMP(#{to}, 'YYYY-MM-DD') + 1
+            </if>
+        )
+        WHERE rn BETWEEN #{offset} + 1 AND #{offset} + #{size}
+    </select>
+
+    <select id="countAdminActivityLogs" resultType="long">
+        SELECT COUNT(*)
+        FROM ADMIN_ACTIVITY_LOG aal
+        JOIN ADMIN_USERS au ON aal.admin_id = au.admin_id
+        JOIN ADMIN_USER_ROLES aur ON au.admin_id = aur.admin_id
+            AND aur.deleted_yn = 'N'
+        JOIN ADMIN_ROLES ar ON aur.role_id = ar.role_id
+            AND ar.deleted_yn = 'N'
+        WHERE 1=1
+        <if test="adminName != null and adminName != ''">
+            AND au.name LIKE '%' || #{adminName} || '%'
+        </if>
+        <if test="roleCode != null and roleCode != ''">
+            AND ar.role_code = #{roleCode,
+                jdbcType=VARCHAR,
+                typeHandler=org.apache.ibatis.type.StringTypeHandler}
+        </if>
+        <if test="result != null and result != ''">
+            AND aal.result = #{result,
+                jdbcType=VARCHAR,
+                typeHandler=org.apache.ibatis.type.StringTypeHandler}
+        </if>
+        <if test="from != null and from != ''">
+            AND aal.occurred_at >= TO_TIMESTAMP(#{from}, 'YYYY-MM-DD')
+        </if>
+        <if test="to != null and to != ''">
+            AND aal.occurred_at &lt; TO_TIMESTAMP(#{to}, 'YYYY-MM-DD') + 1
+        </if>
+    </select>
+
+    <!-- ── 감사 로그 ─────────────────────────────────────────────────── -->
+	<select id="findAuditLogs" resultType="map">
+	    SELECT *
+	    FROM (
+	        SELECT
+	            al.audit_log_id      AS logId,
+	            al.action_type_code  AS action,
+	            al.actor_type_code   AS result,
+	            al.ip_address        AS clientIp,
+	            al.description       AS requestUri,
+	            TO_CHAR(al.created_at, 'YYYY-MM-DD HH24:MI:SS') AS occurredAt,
+	            ROW_NUMBER() OVER (ORDER BY al.created_at DESC) AS rn
+	        FROM AUDIT_LOGS al
+	        WHERE 1=1
+	        <if test="action != null and action != ''">
+	            AND al.action_type_code = #{action,
+	                jdbcType=VARCHAR,
+	                typeHandler=org.apache.ibatis.type.StringTypeHandler}
+	        </if>
+	        <if test="ip != null and ip != ''">
+	            AND al.ip_address LIKE '%' || #{ip} || '%'
+	        </if>
+	        <if test="from != null and from != ''">
+	            AND al.created_at >= TO_TIMESTAMP(#{from}, 'YYYY-MM-DD')
+	        </if>
+	        <if test="to != null and to != ''">
+	            AND al.created_at &lt; TO_TIMESTAMP(#{to}, 'YYYY-MM-DD') + 1
+	        </if>
+	    )
+	    WHERE rn BETWEEN #{offset} + 1 AND #{offset} + #{size}
+	</select>
+	
+	<select id="countAuditLogs" resultType="long">
+	    SELECT COUNT(*) FROM AUDIT_LOGS al
+	    WHERE 1=1
+	    <if test="action != null and action != ''">
+	        AND al.action_type_code = #{action,
+	            jdbcType=VARCHAR,
+	            typeHandler=org.apache.ibatis.type.StringTypeHandler}
+	    </if>
+	    <if test="ip != null and ip != ''">
+	        AND al.ip_address LIKE '%' || #{ip} || '%'
+	    </if>
+	    <if test="from != null and from != ''">
+	        AND al.created_at >= TO_TIMESTAMP(#{from}, 'YYYY-MM-DD')
+	    </if>
+	    <if test="to != null and to != ''">
+	        AND al.created_at &lt; TO_TIMESTAMP(#{to}, 'YYYY-MM-DD') + 1
+	    </if>
+	</select>
+
+    <!-- ── 회원 활동 로그 ────────────────────────────────────────────── -->
+	<select id="findUserActivityLogs" resultType="map">
+	    SELECT *
+	    FROM (
+	        SELECT
+	            ual.activity_id  AS logId,
+	            ual.action       AS action,
+	            ual.result       AS result,
+	            ual.target_id    AS targetId,
+	            ual.detail       AS detail,
+	            ual.client_ip    AS clientIp,
+	            ual.request_uri  AS requestUri,
+	            TO_CHAR(ual.occurred_at, 'YYYY-MM-DD HH24:MI:SS') AS occurredAt,
+	            ROW_NUMBER() OVER (ORDER BY ual.occurred_at DESC) AS rn
+	        FROM USER_ACTIVITY_LOG ual
+	        WHERE 1=1
+	        <if test="action != null and action != ''">
+	            AND ual.action LIKE #{action,
+	                jdbcType=VARCHAR,
+	                typeHandler=org.apache.ibatis.type.StringTypeHandler}
+	                || '%'
+	        </if>
+	        <if test="result != null and result != ''">
+	            AND ual.result = #{result,
+	                jdbcType=VARCHAR,
+	                typeHandler=org.apache.ibatis.type.StringTypeHandler}
+	        </if>
+	        <if test="from != null and from != ''">
+	            AND ual.occurred_at >= TO_TIMESTAMP(#{from}, 'YYYY-MM-DD')
+	        </if>
+	        <if test="to != null and to != ''">
+	            AND ual.occurred_at &lt; TO_TIMESTAMP(#{to}, 'YYYY-MM-DD') + 1
+	        </if>
+	    )
+	    WHERE rn BETWEEN #{offset} + 1 AND #{offset} + #{size}
+	</select>
+	
+	<select id="countUserActivityLogs" resultType="long">
+	    SELECT COUNT(*) FROM USER_ACTIVITY_LOG ual
+	    WHERE 1=1
+	    <if test="action != null and action != ''">
+	        AND ual.action LIKE #{action,
+	            jdbcType=VARCHAR,
+	            typeHandler=org.apache.ibatis.type.StringTypeHandler}
+	            || '%'
+	    </if>
+	    <if test="result != null and result != ''">
+	        AND ual.result = #{result,
+	            jdbcType=VARCHAR,
+	            typeHandler=org.apache.ibatis.type.StringTypeHandler}
+	    </if>
+	    <if test="from != null and from != ''">
+	        AND ual.occurred_at >= TO_TIMESTAMP(#{from}, 'YYYY-MM-DD')
+	    </if>
+	    <if test="to != null and to != ''">
+	        AND ual.occurred_at &lt; TO_TIMESTAMP(#{to}, 'YYYY-MM-DD') + 1
+	    </if>
+	</select>
+
+</mapper>

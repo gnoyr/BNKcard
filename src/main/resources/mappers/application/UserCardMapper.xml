@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.bnk.domain.application.mapper.UserCardMapper">
+
+	<resultMap id="userCardMap" type="com.bnk.domain.application.model.UserCard">
+	    <id     property="userCardId"           column="user_card_id"/>
+	    <result property="userId"               column="user_id"/>
+	    <result property="versionId"            column="version_id"/>
+	    <result property="creditAppId"          column="credit_app_id"/>
+	    <result property="checkAppId"           column="check_app_id"/>
+	    <!-- 카드번호: cardNumber → 두 컬럼으로 교체 -->
+	    <result property="encryptedCardNumber"  column="encrypted_card_number"/>
+	    <result property="maskedCardNumber"     column="masked_card_number"/>
+	    <!-- 유효기간 / 상태 -->
+	    <result property="issueDate"            column="issue_date"/>
+	    <result property="expireDate"           column="expire_date"/>
+	    <result property="cardStatus"           column="card_status"/>
+	    <result property="usableYn"             column="usable_yn"/>
+	    <result property="cardPasswordHash"     column="card_password_hash"/>
+	    <!-- 연결 계좌 -->
+	    <result property="linkedAccountId"      column="linked_account_id"/>
+	    <!-- 한도 -->
+	    <result property="dailyLimitAmount"     column="daily_limit_amount"/>
+	    <result property="monthlyLimitAmount"   column="monthly_limit_amount"/>
+	    <!-- payment_snapshot 항목 -->
+	    <result property="cardBrand"            column="card_brand"/>
+	    <result property="cardDesignId"         column="card_design_id"/>
+	    <result property="paymentDay"           column="payment_day"/>
+	    <result property="combinedTransitYn"    column="combined_transit_yn"/>
+	    <result property="txAlertType"          column="tx_alert_type"/>
+	    <result property="statementMethod"      column="statement_method"/>
+	    <!-- 해외 / 비접촉 -->
+	    <result property="overseasEnabledYn"    column="overseas_enabled_yn"/>
+	    <result property="contactlessEnabledYn" column="contactless_enabled_yn"/>
+	    <!-- 카드 별칭 -->
+	    <result property="cardNickname"         column="card_nickname"/>
+	    <!-- 감사 -->
+	    <result property="issuedBy"             column="issued_by"/>
+	    <result property="issuedAt"             column="issued_at"/>
+	    <result property="updatedAt"            column="updated_at"/>
+	    <result property="deletedYn"            column="deleted_yn"/>
+	    <result property="deletedAt"            column="deleted_at"/>
+	</resultMap>
+	
+	<resultMap id="myCardApplicationMap" type="com.bnk.domain.application.dto.response.MyCardApplicationResponse">
+        <result property="appId"             column="app_id"/>
+        <result property="cardType"          column="card_type"/>
+        <result property="cardId"            column="card_id"/>
+        <result property="cardName"          column="card_name"/>
+        <result property="applicationStatus" column="application_status"/>
+        <result property="rejectionReason"   column="rejection_reason"/>
+        <result property="appliedAt"         column="applied_at"/>
+        <result property="createdAt"         column="created_at"/>
+    </resultMap>
+
+	<!-- STEP 7,8 - APPROVED 시 자동 발급 -->
+	<insert id="insertUserCard" useGeneratedKeys="false">
+	    <selectKey keyProperty="userCardId" resultType="long" order="AFTER">
+	        SELECT SEQ_USER_CARD_ID.CURRVAL FROM DUAL
+	    </selectKey>
+	    INSERT INTO USER_CARDS (
+	        user_id,            version_id,
+	        credit_app_id,      check_app_id,
+	        encrypted_card_number, masked_card_number,
+	        issue_date,         expire_date,
+	        card_status,        usable_yn,
+	        card_password_hash,
+	        linked_account_id,
+	        daily_limit_amount, monthly_limit_amount,
+	        card_brand,         card_design_id,
+	        payment_day,        combined_transit_yn,
+	        tx_alert_type,      statement_method
+	    ) VALUES (
+	        #{userId},          #{versionId},
+	        #{creditAppId,      jdbcType=NUMERIC},
+	        #{checkAppId,       jdbcType=NUMERIC},
+	        #{encryptedCardNumber}, #{maskedCardNumber},
+	        #{issueDate},       #{expireDate},
+	        #{cardStatus},      #{usableYn},
+	        #{cardPasswordHash},
+	        #{linkedAccountId,  jdbcType=NUMERIC},
+	        #{dailyLimitAmount}, #{monthlyLimitAmount, jdbcType=NUMERIC},
+	        #{cardBrand,        jdbcType=VARCHAR},
+	        #{cardDesignId,     jdbcType=NUMERIC},
+	        #{paymentDay,       jdbcType=NUMERIC},
+	        #{combinedTransitYn, jdbcType=CHAR},
+	        #{txAlertType,      jdbcType=VARCHAR},
+	        #{statementMethod,  jdbcType=VARCHAR}
+	    )
+	</insert>
+
+    <select id="findByUserId" resultMap="userCardMap">
+        SELECT * FROM USER_CARDS
+        WHERE  user_id    = #{userId}
+          AND  deleted_yn = 'N'
+        ORDER  BY issued_at DESC
+    </select>
+
+    <update id="updateCardStatus">
+        UPDATE USER_CARDS
+        SET    card_status = #{cardStatus},
+               updated_at  = SYSTIMESTAMP
+        WHERE  user_card_id = #{userCardId}
+    </update>
+    
+    <!-- 신용/체크카드 통합 신청 현황 조회 -->
+    <select id="findMyAllApplications" resultMap="myCardApplicationMap">
+        SELECT app_id, card_type, card_id, card_name,
+               application_status, rejection_reason, applied_at, created_at
+        FROM (
+            SELECT cca.credit_app_id      AS app_id,
+                   'CREDIT'                AS card_type,
+                   cca.card_id            AS card_id,
+                   c.card_name            AS card_name,
+                   cca.application_status AS application_status,
+                   cca.rejection_reason   AS rejection_reason,
+                   cca.applied_at         AS applied_at,
+                   cca.created_at         AS created_at
+            FROM   CREDIT_CARD_APPLICATIONS cca
+            JOIN   CARDS c ON cca.card_id = c.card_id
+            WHERE  cca.user_id = #{userId}
+              AND  cca.application_status != 'DRAFT'
+
+            UNION ALL
+
+            SELECT cha.check_app_id       AS app_id,
+                   'CHECK'                 AS card_type,
+                   cha.card_id            AS card_id,
+                   c.card_name            AS card_name,
+                   cha.application_status AS application_status,
+                   cha.rejection_reason   AS rejection_reason,
+                   cha.applied_at         AS applied_at,
+                   cha.created_at         AS created_at
+            FROM   CHECK_CARD_APPLICATIONS cha
+            JOIN   CARDS c ON cha.card_id = c.card_id
+            WHERE  cha.user_id = #{userId}
+              AND  cha.application_status != 'DRAFT'
+        )
+        ORDER BY created_at DESC
+    </select>
+
+</mapper>

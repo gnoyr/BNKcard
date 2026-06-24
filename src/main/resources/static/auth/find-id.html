@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>아이디 찾기 – BNK 부산은행</title>
+  <link rel="stylesheet" href="/css/auth.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/teal-theme.css">
+</head>
+<body data-page="find-id">
+  <div id="app-header"></div>
+  <main class="page-wrap">
+    <div class="auth-card">
+      <div id="view-input" class="view active">
+        <h1 class="page-title">아이디 찾기</h1>
+        <p class="page-desc">가입 시 등록한 이름과 휴대전화 번호를 입력하시면<br>아이디(이메일)를 알려드립니다.</p>
+        <form id="findIdForm" novalidate>
+          <div class="form-group">
+            <label class="form-label" for="name">이름 <span class="required">*</span></label>
+            <input class="form-input" type="text" id="name" placeholder="가입 시 등록한 이름을 입력하세요" autocomplete="name">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="phone">휴대전화 번호 <span class="required">*</span></label>
+            <input class="form-input" type="tel" id="phone" placeholder="'-' 없이 숫자만 입력" maxlength="11" autocomplete="tel">
+          </div>
+          <div id="find-error" class="alert alert-error"></div>
+          <div class="btn-row btn-row--top">
+            <a href="/auth/login.html" class="btn btn-secondary">취소</a>
+            <button class="btn btn-primary" type="submit">아이디 찾기</button>
+          </div>
+        </form>
+      </div>
+      <div id="view-result" class="view">
+        <h1 class="page-title">아이디 찾기</h1>
+        <p class="page-desc">입력하신 정보와 일치하는 아이디를 찾았습니다.</p>
+        <div class="result-box">
+          <p class="result-label">가입된 아이디 (이메일)</p>
+          <p class="result-value" id="result-email">–</p>
+        </div>
+        <div class="btn-row">
+          <a href="/auth/login.html" class="btn btn-primary">로그인 하기</a>
+          <a href="/auth/reset-password.html" class="btn btn-outline">비밀번호 찾기</a>
+        </div>
+      </div>
+    </div>
+  </main>
+  <footer class="site-footer">
+    <strong>BNK부산은행</strong><br>부산광역시 부산진구 부전동 830-38 &nbsp;|&nbsp; 대표전화 1588-6200<br>
+    © 2025 BNK Busan Bank. All rights reserved.
+  </footer>
+  <div id="toast-container"></div>
+  <script src="/js/utils.js"></script>
+  <script src="/js/header.js"></script>
+  <script src="/js/auth.js"></script>
+</body>
+</html>

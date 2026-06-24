@@ -1,0 +1,305 @@
+@charset "UTF-8";
+
+/* ============================================================
+   cardManage.css — 상세 화면 (목록 CSS 아래에 이어 붙이세요)
+   #page-detail  #page-detail-benefit  #page-detail-image
+   #page-detail-content  #page-detail-terms
+   ============================================================ */
+
+/* ── 상세 공통 헤더 (← 목록으로 + 수정 버튼) ── */
+[id^="page-detail"] > button:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  color: var(--gray-600);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--ease), border-color var(--ease);
+  margin-bottom: 20px;
+}
+[id^="page-detail"] > button:first-child:hover {
+  background: var(--teal-50);
+  border-color: var(--teal-400);
+  color: var(--teal-800);
+}
+
+/* 수정 / 상태변경 / PDF추가 버튼 */
+[id^="page-detail"] > button:not(:first-child) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  background: var(--teal-600);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  margin-left: 8px;
+  margin-bottom: 20px;
+  transition: background var(--ease);
+}
+[id^="page-detail"] > button:not(:first-child):hover {
+  background: var(--teal-800);
+}
+
+/* ── h2 페이지 타이틀 ── */
+[id^="page-detail"] h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--teal-800);
+  letter-spacing: -.3px;
+  margin-bottom: 16px;
+}
+
+/* ── h3 섹션 타이틀 (기본정보 / 혜택 / 이미지 / 콘텐츠) ── */
+[id^="page-detail"] h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--teal-800);
+  border-left: 3px solid var(--teal-600);
+  padding-left: 10px;
+  margin: 24px 0 12px;
+}
+
+/* h3 안 수정 버튼 (기본정보 수정) */
+[id^="page-detail"] h3 > button {
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--white);
+  color: var(--teal-600);
+  border: 1px solid var(--teal-400);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--ease), color var(--ease);
+}
+[id^="page-detail"] h3 > button:hover {
+  background: var(--teal-600);
+  color: var(--white);
+}
+
+/* ── 정보 테이블 (key-value 형태) ── */
+[id^="page-detail"] > table,
+#page-detail table[border] {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--white);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: none !important;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 8px;
+}
+
+[id^="page-detail"] table th {
+  width: 160px;
+  padding: 11px 16px;
+  background: var(--gray-50);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--gray-600);
+  border: none !important;
+  border-bottom: 1px solid var(--gray-100) !important;
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+[id^="page-detail"] table td {
+  padding: 11px 16px;
+  font-size: 13px;
+  color: var(--gray-800);
+  border: none !important;
+  border-bottom: 1px solid var(--gray-100) !important;
+  vertical-align: middle;
+  word-break: break-all;
+}
+
+[id^="page-detail"] table tr:last-child th,
+[id^="page-detail"] table tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* ID 값 — 모노 */
+#bd-benefitId, #id-imageId, #cd-contentId,
+#td-termsId, #td-termsMasterId,
+#detail-info td:first-of-type {
+  font-family: 'SF Mono', 'Fira Mono', monospace;
+  font-size: 12px;
+  color: var(--teal-600);
+  font-weight: 600;
+}
+
+/* ── 카드 상세 — 혜택 테이블 ── */
+#detail-benefits th {
+  background: var(--teal-800);
+  color: var(--white);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  width: auto;
+}
+#detail-benefits td {
+  font-size: 12.5px;
+}
+
+/* ── 카드 상세 — 이미지 갤러리 ── */
+#detail-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px;
+  background: var(--white);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  min-height: 60px;
+}
+#detail-images img {
+  height: 110px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-200);
+  object-fit: cover;
+  transition: transform var(--ease), box-shadow var(--ease);
+}
+#detail-images img:hover {
+  transform: scale(1.04);
+  box-shadow: var(--shadow-md);
+}
+#detail-images:empty::after {
+  content: '이미지가 없습니다.';
+  color: var(--gray-400);
+  font-size: 13px;
+  padding: 8px;
+}
+
+/* ── 카드 상세 — 콘텐츠 테이블 ── */
+#detail-contents th {
+  background: var(--teal-800);
+  color: var(--white);
+  font-size: 12px;
+  font-weight: 700;
+  width: auto;
+}
+#detail-contents td {
+  font-size: 12.5px;
+  max-width: 400px;
+  word-break: break-all;
+}
+
+/* ── 약관 상세 — 인라인 패널 (상태변경 / PDF추가) ── */
+#terms-status-panel,
+#terms-file-panel {
+  background: var(--teal-50);
+  border: 1px solid var(--teal-200) !important;
+  border-radius: var(--radius-md);
+  padding: 16px 20px !important;
+  margin: 16px 0;
+}
+
+#terms-status-panel h3,
+#terms-file-panel h3 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--teal-800);
+  border-left: 3px solid var(--teal-600);
+  padding-left: 10px;
+  margin-bottom: 12px;
+}
+
+#terms-status-panel select,
+#terms-status-panel input[type="text"],
+#terms-file-panel input[type="text"] {
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  background: var(--white);
+  transition: border-color var(--ease), box-shadow var(--ease);
+}
+#terms-status-panel input[type="text"] { width: 280px; }
+#terms-status-panel select:focus,
+#terms-status-panel input:focus { border-color: var(--teal-400); }
+
+#terms-status-panel button,
+#terms-file-panel button {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  margin-left: 6px;
+  transition: background var(--ease);
+}
+/* 변경/업로드 버튼 */
+#terms-status-panel button:first-of-type,
+#terms-file-upload-btn {
+  background: var(--teal-600);
+  color: var(--white);
+  border: none;
+}
+#terms-status-panel button:first-of-type:hover,
+#terms-file-upload-btn:hover { background: var(--teal-800); }
+
+/* 취소 버튼 */
+#terms-status-panel button:last-child,
+#terms-file-panel button:last-child {
+  background: var(--white);
+  color: var(--gray-600);
+  border: 1px solid var(--gray-200);
+}
+
+/* PDF 업로드 안내 small */
+#terms-file-panel small {
+  font-size: 11.5px;
+  color: var(--gray-400);
+  margin-left: 8px;
+}
+
+/* 첨부파일 영역 */
+#td-fileArea {
+  background: var(--white);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  box-shadow: var(--shadow-sm);
+  font-size: 13px;
+  color: var(--gray-800);
+}
+#td-fileArea h4 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--teal-800);
+  margin: 12px 0 8px;
+}
+#td-fileArea h4:first-child { margin-top: 0; }
+#td-fileArea a {
+  color: var(--teal-600);
+  text-decoration: none;
+  font-weight: 500;
+}
+#td-fileArea a:hover { text-decoration: underline; }
+#td-fileArea img {
+  max-width: 480px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-200);
+  margin-top: 6px;
+  display: block;
+}
+#td-fileArea p { margin: 4px 0; }

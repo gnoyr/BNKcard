@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.bnk.global.util.audit.AuditLogMapper">
+
+	<!-- 보안 이벤트 → AUDIT_LOGS (기존 UserMapper/AdminUserMapper XML과 동일 구조) -->
+	<insert id="insertSecurityLog">
+		INSERT INTO AUDIT_LOGS (
+		actor_type_code,
+		actor_id,
+		action_type_code,
+		target_type_code,
+		target_id,
+		description,
+		ip_address,
+		created_at
+		) VALUES (
+		#{actorType},
+		#{actorId, jdbcType=NUMERIC},
+		#{actionType},
+		#{targetType, jdbcType=VARCHAR},
+		#{targetId, jdbcType=NUMERIC},
+		#{description, jdbcType=VARCHAR},
+		#{ipAddress, jdbcType=VARCHAR},
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+		)
+	</insert>
+
+	<!-- 사용자 행위 → USER_ACTIVITY_LOG -->
+	<insert id="insertUserActivity"
+		parameterType="com.bnk.global.util.audit.UserActivityLog">
+		INSERT INTO USER_ACTIVITY_LOG (
+		    user_id, action, result, target_id,
+		    detail, client_ip, request_uri, occurred_at
+		) VALUES (
+		    #{userId,     jdbcType=NUMERIC},
+		    #{action,     jdbcType=VARCHAR},
+		    #{result,     jdbcType=VARCHAR},
+		    #{targetId,   jdbcType=VARCHAR},
+		    #{detail,     jdbcType=VARCHAR},
+		    #{clientIp,   jdbcType=VARCHAR},
+		    #{requestUri, jdbcType=VARCHAR},
+		    SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+		)
+	</insert>
+
+	<!-- 관리자 행위 → ADMIN_ACTIVITY_LOG -->
+	<insert id="insertAdminActivity"
+		parameterType="com.bnk.global.util.audit.AdminActivityLog">
+		INSERT INTO ADMIN_ACTIVITY_LOG (
+		admin_id, action, result, target_id,
+		detail, client_ip, request_uri, occurred_at
+		) VALUES (
+		#{adminId},
+		#{action},
+		#{result},
+		#{targetId, jdbcType=VARCHAR},
+		#{detail, jdbcType=VARCHAR},
+		#{clientIp, jdbcType=VARCHAR},
+		#{requestUri, jdbcType=VARCHAR},
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+		)
+	</insert>
+
+</mapper>

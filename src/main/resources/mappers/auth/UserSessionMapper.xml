@@ -1,1 +1,89 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.bnk.domain.auth.mapper.UserSessionMapper">
+
+	<resultMap id="sessionMap"
+		type="com.bnk.domain.auth.model.UserSession">
+		<id property="sessionId" column="session_id" />
+		<result property="userId" column="user_id" />
+		<result property="refreshToken" column="refresh_token" />
+		<result property="deviceInfo" column="device_info" />
+		<result property="ipAddress" column="ip_address" />
+		<result property="userAgent" column="user_agent" />
+		<result property="revokedYn" column="revoked_yn" />
+		<result property="revokedAt" column="revoked_at" />
+		<result property="expiresAt" column="expires_at" />
+		<result property="createdAt" column="created_at" />
+	</resultMap>
+
+	<insert id="insertSession">
+		<selectKey keyProperty="sessionId" resultType="long"
+			order="AFTER">
+			SELECT SEQ_USER_SESSIONS.CURRVAL FROM DUAL
+		</selectKey>
+		INSERT INTO USER_SESSIONS (
+		user_id, refresh_token, device_info,
+		ip_address, user_agent,
+		revoked_yn, expires_at, created_at
+		) VALUES (
+		#{userId},
+		#{refreshToken},
+		#{deviceInfo, jdbcType=VARCHAR},
+		#{ipAddress, jdbcType=VARCHAR},
+		#{userAgent, jdbcType=VARCHAR},
+		'N',
+		#{expiresAt},
+		SYSTIMESTAMP
+		)
+	</insert>
+
+	<select id="findByRefreshToken" resultMap="sessionMap">
+		SELECT *
+		FROM USER_SESSIONS
+		WHERE refresh_token = #{refreshToken}
+		AND revoked_yn = 'N'
+		AND expires_at > SYSTIMESTAMP
+	</select>
+
+	<update id="revokeSession">
+		UPDATE USER_SESSIONS
+		SET revoked_yn = 'Y',
+		revoked_at = SYSTIMESTAMP
+		WHERE session_id = #{sessionId}
+	</update>
+
+	<update id="revokeByRefreshToken">
+		UPDATE USER_SESSIONS
+		SET revoked_yn = 'Y',
+		revoked_at = SYSTIMESTAMP
+		WHERE refresh_token = #{refreshToken}
+		AND revoked_yn = 'N'
+	</update>
+
+	<update id="revokeAllByUserId">
+		UPDATE USER_SESSIONS
+		SET revoked_yn = 'Y',
+		revoked_at = SYSTIMESTAMP
+		WHERE user_id = #{userId}
+		AND revoked_yn = 'N'
+	</update>
+
+	<update id="revokeOtherSessions">
+		UPDATE USER_SESSIONS
+		SET revoked_yn = 'Y',
+		revoked_at = SYSTIMESTAMP
+		WHERE user_id = #{userId}
+		AND session_id != #{currentSessionId}
+		AND revoked_yn = 'N'
+	</update>
+
+	<select id="findAnyByRefreshToken" resultMap="sessionMap">
+		SELECT *
+		FROM USER_SESSIONS
+		WHERE refresh_token = #{refreshToken}
+		FETCH FIRST 1 ROWS ONLY
+	</select>
+
+</mapper>

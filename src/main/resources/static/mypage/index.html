@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>마이페이지 | 부산은행</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/mypage.css">
+  <link rel="stylesheet" href="/css/notification.css">
+  <link rel="stylesheet" href="/css/teal-theme.css">
+</head>
+<body data-page="mypage-main">
+  <div id="app-header"></div>
+
+  <main class="page-wrap">
+
+    <div class="profile-banner">
+      <span class="profile-initial" id="profileInitial" aria-hidden="true"></span>
+      <div class="profile-body">
+        <strong class="profile-name" id="profileName">불러오는 중...</strong>
+        <span class="profile-meta" id="profileMeta"></span>
+        <a href="/mypage/credit-score" class="profile-score-lock">신용점수 확인하기</a>
+      </div>
+    </div>
+
+    <section class="section-group" aria-labelledby="lbl-personal">
+      <h2 class="section-group__label" id="lbl-personal">개인정보 관리</h2>
+      <ul class="menu-grid" role="list">
+        <li>
+          <a href="/mypage/edit" class="menu-card">
+            <span class="menu-card__title">내 정보 수정</span>
+            <span class="menu-card__desc">이름·전화번호·주소 변경</span>
+          </a>
+        </li>
+        <li>
+          <a href="/mypage/password" class="menu-card">
+            <span class="menu-card__title">비밀번호 변경</span>
+            <span class="menu-card__desc">현재 비밀번호 확인 후 변경</span>
+          </a>
+        </li>
+      </ul>
+    </section>
+
+    <section class="section-group" aria-labelledby="lbl-finance">
+      <h2 class="section-group__label" id="lbl-finance">금융 정보</h2>
+      <ul class="menu-grid menu-grid--4" role="list">
+        <li>
+          <a href="/mypage/accounts" class="menu-card">
+            <span class="menu-card__title">내 계좌</span>
+            <span class="menu-card__desc">잔액·계좌 조회</span>
+          </a>
+        </li>
+        <li>
+          <a href="/mypage/credit-score" class="menu-card">
+            <span class="menu-card__title">신용점수</span>
+            <span class="menu-card__desc">점수 조회</span>
+          </a>
+        </li>
+        <li>
+          <a href="/mypage/spending" class="menu-card">
+            <span class="menu-card__title">소비 패턴</span>
+            <span class="menu-card__desc">지출 현황</span>
+          </a>
+        </li>
+        <li>
+          <a href="/mypage/edit?tab=income" class="menu-card">
+            <span class="menu-card__title">소득 정보</span>
+            <span class="menu-card__desc">직업·소득 등급</span>
+          </a>
+        </li>
+      </ul>
+    </section>
+
+    <section class="section-group" aria-labelledby="lbl-security">
+      <h2 class="section-group__label" id="lbl-security">보안 설정</h2>
+      <ul class="menu-grid" role="list">
+        <li>
+          <a href="/mypage/trusted-ips" class="menu-card menu-card--security">
+            <span class="menu-card__title">신뢰 기기 관리</span>
+            <span class="menu-card__desc">IP 인증 기기 목록</span>
+          </a>
+        </li>
+        <li>
+          <a href="/mypage/edit?tab=notify" class="menu-card menu-card--security">
+            <span class="menu-card__title">알림 설정</span>
+            <span class="menu-card__desc">푸시·마케팅 알림</span>
+          </a>
+        </li>
+      </ul>
+    </section>
+
+    <section class="section-group" aria-labelledby="lbl-mycard">
+      <h2 class="section-group__label" id="lbl-mycard">내 카드</h2>
+      <div class="card">
+        <div class="card-tabs" role="tablist">
+          <button class="card-tab active" id="tab-owned"
+                  role="tab" aria-selected="true" aria-controls="cardSection">보유 카드</button>
+          <button class="card-tab" id="tab-applied"
+                  role="tab" aria-selected="false" aria-controls="cardSection">신청 현황</button>
+        </div>
+        <div id="cardSection" role="tabpanel" aria-live="polite">
+          <span class="skeleton-line"></span>
+          <span class="skeleton-line skeleton-line--short"></span>
+        </div>
+      </div>
+    </section>
+	
+	<section class="mp-notif-section" aria-labelledby="lbl-notif" id="mp-notif-section">
+ 
+  <div class="mp-notif-head">
+    <h2 class="mp-notif-head__label" id="lbl-notif">
+      최근 알림
+      <span class="notif-hdr-badge" id="mp-notif-badge"
+            style="display:none;position:relative;top:auto;right:auto;
+                   margin-left:6px;font-size:10px;vertical-align:middle">0</span>
+    </h2>
+    <a href="/mypage/notifications" class="mp-notif-head__more">전체보기</a>
+  </div>
+ 
+  <div class="mp-notif-card">
+    <ul id="mp-notif-list" role="list" aria-label="최근 알림 목록">
+      <!-- JS로 채워짐 -->
+      <li class="mp-notif-skeleton">
+        <div class="mp-sk mp-sk-circle"></div>
+        <div class="mp-sk-lines">
+          <div class="mp-sk mp-sk-line mp-sk-line--long"></div>
+          <div class="mp-sk mp-sk-line mp-sk-line--short"></div>
+        </div>
+      </li>
+      <li class="mp-notif-skeleton">
+        <div class="mp-sk mp-sk-circle"></div>
+        <div class="mp-sk-lines">
+          <div class="mp-sk mp-sk-line mp-sk-line--long"></div>
+          <div class="mp-sk mp-sk-line mp-sk-line--short"></div>
+        </div>
+      </li>
+      <li class="mp-notif-skeleton">
+        <div class="mp-sk mp-sk-circle"></div>
+        <div class="mp-sk-lines">
+          <div class="mp-sk mp-sk-line mp-sk-line--long"></div>
+          <div class="mp-sk mp-sk-line mp-sk-line--short"></div>
+        </div>
+      </li>
+    </ul>
+  </div>
+</section>
+  </main>
+
+  <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+  <script src="/js/utils.js"></script>
+  <script src="/js/header.js"></script>
+  <script src="/js/mypage.js"></script>
+  <script src="/js/notification.js" defer></script>
+</body>
+</html>
