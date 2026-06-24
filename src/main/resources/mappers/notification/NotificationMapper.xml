@@ -56,10 +56,13 @@
 			SELECT SEQ_NOTIFICATIONS.NEXTVAL FROM DUAL
 		</selectKey>
 		INSERT INTO NOTIFICATIONS (
-		notification_id, user_id, notification_category, channel,
-		title, message, link_url, sent_yn, read_yn, batch_id, created_at
+		notification_id, user_id,
+		notification_category, channel,
+		title, message, link_url, sent_yn,
+		read_yn, batch_id, created_at
 		) VALUES (
-		#{notificationId}, #{userId}, #{notificationCategory}, #{channel},
+		#{notificationId}, #{userId},
+		#{notificationCategory}, #{channel},
 		#{title, jdbcType=VARCHAR},
 		#{message, jdbcType=CLOB},
 		#{linkUrl, jdbcType=VARCHAR},
@@ -75,15 +78,19 @@
 		<foreach collection="list" item="n">
 			INTO NOTIFICATIONS (
 			notification_id, user_id, notification_category, channel,
-			title, message, link_url, sent_yn, read_yn, batch_id, created_at
+			title,
+			message, link_url, sent_yn, read_yn, batch_id, created_at
 			) VALUES (
 			SEQ_NOTIFICATIONS.NEXTVAL,
-			#{n.userId}, #{n.notificationCategory}, #{n.channel},
+			#{n.userId}, #{n.notificationCategory},
+			#{n.channel},
 			#{n.title, jdbcType=VARCHAR},
-			#{n.message, jdbcType=CLOB},
+			#{n.message,
+			jdbcType=CLOB},
 			#{n.linkUrl, jdbcType=VARCHAR},
 			'Y', 'N',
-			#{n.batchId, jdbcType=NUMERIC},
+			#{n.batchId,
+			jdbcType=NUMERIC},
 			SYSTIMESTAMP
 			)
 		</foreach>
@@ -95,27 +102,32 @@
 		SELECT * FROM NOTIFICATIONS
 		WHERE user_id = #{userId}
 		ORDER BY created_at DESC
-		FETCH FIRST 50 ROWS ONLY
+		FETCH FIRST 50 ROWS
+		ONLY
 	</select>
 
 	<!-- ── 미읽음 카운트 ──────────────────────────────────────── -->
 	<select id="countUnreadByUserId" resultType="int">
-		SELECT COUNT(1) FROM NOTIFICATIONS
+		SELECT COUNT(1) FROM
+		NOTIFICATIONS
 		WHERE user_id = #{userId} AND read_yn = 'N'
 	</select>
 
 	<!-- ── 단건 읽음 처리 ────────────────────────────────────── -->
 	<update id="markAsRead">
 		UPDATE NOTIFICATIONS
-		SET read_yn = 'Y', read_at = SYSTIMESTAMP
+		SET read_yn = 'Y', read_at =
+		SYSTIMESTAMP
 		WHERE notification_id = #{notificationId}
-		AND user_id = #{userId}
+		AND user_id =
+		#{userId}
 	</update>
 
 	<!-- ── 전체 읽음 처리 ────────────────────────────────────── -->
 	<update id="markAllAsRead">
 		UPDATE NOTIFICATIONS
-		SET read_yn = 'Y', read_at = SYSTIMESTAMP
+		SET read_yn = 'Y', read_at =
+		SYSTIMESTAMP
 		WHERE user_id = #{userId} AND read_yn = 'N'
 	</update>
 
@@ -130,7 +142,8 @@
 			SELECT SEQ_NOTIFICATION_BATCHES.NEXTVAL FROM DUAL
 		</selectKey>
 		INSERT INTO NOTIFICATION_BATCHES (
-		batch_id, notification_category, title, message, link_url,
+		batch_id, notification_category,
+		title, message, link_url,
 		channels, target_type, target_ref_id, status,
 		scheduled_at, created_by, created_at
 		) VALUES (
@@ -138,10 +151,12 @@
 		#{notificationCategory},
 		#{title},
 		#{message, jdbcType=CLOB},
-		#{linkUrl, jdbcType=VARCHAR},
+		#{linkUrl,
+		jdbcType=VARCHAR},
 		#{channels},
 		#{targetType},
-		#{targetRefId, jdbcType=NUMERIC},
+		#{targetRefId,
+		jdbcType=NUMERIC},
 		#{status},
 		#{scheduledAt, jdbcType=TIMESTAMP},
 		#{createdBy},
@@ -151,27 +166,35 @@
 
 	<select id="findBatchById" resultMap="batchMap">
 		SELECT b.*,
-		a1.admin_name AS created_by_name,
+		a1.admin_name AS
+		created_by_name,
 		a2.admin_name AS sent_by_name
-		FROM NOTIFICATION_BATCHES b
+		FROM NOTIFICATION_BATCHES
+		b
 		LEFT JOIN ADMINS a1 ON b.created_by = a1.admin_id
-		LEFT JOIN ADMINS a2 ON b.sent_by = a2.admin_id
+		LEFT JOIN ADMINS a2
+		ON b.sent_by = a2.admin_id
 		WHERE b.batch_id = #{batchId}
 	</select>
 
 	<select id="findBatches" resultMap="batchMap">
 		SELECT b.*,
-		a1.admin_name AS created_by_name,
+		a1.admin_name AS
+		created_by_name,
 		a2.admin_name AS sent_by_name
-		FROM NOTIFICATION_BATCHES b
+		FROM NOTIFICATION_BATCHES
+		b
 		LEFT JOIN ADMINS a1 ON b.created_by = a1.admin_id
-		LEFT JOIN ADMINS a2 ON b.sent_by = a2.admin_id
+		LEFT JOIN ADMINS a2
+		ON b.sent_by = a2.admin_id
 		ORDER BY b.created_at DESC
-		OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
+		OFFSET #{offset}
+		ROWS FETCH NEXT #{limit} ROWS ONLY
 	</select>
 
 	<select id="countBatches" resultType="int">
-		SELECT COUNT(1) FROM NOTIFICATION_BATCHES
+		SELECT COUNT(1) FROM
+		NOTIFICATION_BATCHES
 	</select>
 
 	<update id="updateBatchStatus">
@@ -196,33 +219,58 @@
 	<!-- ══════════════════════════════════════════════════════════ -->
 
 	<select id="findAllActiveUserIds" resultType="long">
-		SELECT user_id FROM USERS
+		SELECT user_id FROM
+		USERS
 		WHERE deleted_yn = 'N'
 	</select>
 
 	<select id="findAllPushEnabledUserIds" resultType="long">
-		SELECT user_id FROM USERS
+		SELECT user_id
+		FROM USERS
 		WHERE deleted_yn = 'N' AND push_enabled = 'Y'
 	</select>
 
 	<select id="findUserIdsByTermsAgreement" resultType="long">
-		SELECT DISTINCT user_id
+		SELECT
+		DISTINCT user_id
 		FROM USER_TERMS_AGREEMENTS
 		WHERE terms_id = #{termsId}
 		AND agreed_yn = 'Y'
 	</select>
 
 	<select id="findUserIdsByOwnedCard" resultType="long">
-		SELECT DISTINCT uca.user_id
+		SELECT DISTINCT
+		uca.user_id
 		FROM USER_CARD_APPLICATIONS uca
-		WHERE uca.card_id = #{cardId}
+		WHERE uca.card_id =
+		#{cardId}
 		AND uca.status_code = 'APPROVED'
 	</select>
 
 	<select id="findMarketingAgreeUserIds" resultType="long">
-		SELECT user_id FROM USERS
+		SELECT user_id
+		FROM USERS
 		WHERE deleted_yn = 'N'
 		AND marketing_agree = 'Y'
 	</select>
+
+	<select id="findPushTargets"
+		resultType="com.bnk.domain.notification.model.PushTarget">
+		SELECT user_id AS userId, push_token AS pushToken
+		FROM USERS
+		WHERE deleted_yn = 'N' AND push_enabled = 'Y'
+		AND push_token IS NOT NULL
+		AND user_id IN
+		<foreach collection="list" item="uid" open="(" separator=","
+			close=")">#{uid}</foreach>
+	</select>
+	
+	<select id="findEmailsByUserIds" resultType="string">
+        SELECT email FROM USERS
+        WHERE deleted_yn = 'N'
+          AND email IS NOT NULL
+          AND user_id IN
+          <foreach collection="list" item="uid" open="(" separator="," close=")">#{uid}</foreach>
+    </select>
 
 </mapper>

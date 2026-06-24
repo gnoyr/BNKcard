@@ -78,10 +78,12 @@ public interface UserMapper {
 
 	// CDD 상태 변경
 	int updateCddStatus(@Param("userId") Long userId, @Param("cddStatusCode") String cddStatusCode);
-	
-	List<Map<String, Object>> selectMonthlySpending(
-		    @Param("userId") Long userId,
-		    @Param("year")   int year,
-		    @Param("month")  int month
-		);
+
+	List<Map<String, Object>> selectMonthlySpending(@Param("userId") Long userId, @Param("year") int year,
+			@Param("month") int month);
+
+	int updatePushToken(@Param("userId") Long userId,
+			@Param("pushToken") String pushToken);
+
+	int clearPushToken(@Param("userId") Long userId);
 }

@@ -2,6 +2,8 @@ package com.bnk.domain.notification.mapper;
 
 import com.bnk.domain.notification.model.Notification;
 import com.bnk.domain.notification.model.NotificationBatch;
+import com.bnk.domain.notification.model.PushTarget;
+
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -60,4 +62,8 @@ public interface NotificationMapper {
 
     /** deleted_yn='N' 전체 회원 ID */
     List<Long> findAllActiveUserIds();
+    
+    List<PushTarget> findPushTargets(@Param("list") List<Long> userIds);
+    
+    List<String> findEmailsByUserIds(@Param("list") List<Long> userIds);
 }
