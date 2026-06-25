@@ -47,4 +47,7 @@ public interface CheckCardApplicationMapper {
     List<Long> findExpiredDraftIds();
 
     int deleteByIds(@Param("checkAppIds") List<Long> checkAppIds);
+    
+    // 계좌 상태 조회 (한도 산정용)
+    String findAccountStatus(@Param("accountId") Long accountId);
 }

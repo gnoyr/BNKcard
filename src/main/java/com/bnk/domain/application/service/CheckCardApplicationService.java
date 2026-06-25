@@ -20,6 +20,8 @@ import com.bnk.domain.application.mapper.CheckCardApplicationMapper;
 import com.bnk.domain.application.mapper.UserCardMapper;
 import com.bnk.domain.application.model.CheckCardApplication;
 import com.bnk.domain.application.model.UserCard;
+import com.bnk.domain.application.policy.CheckCardLimitContext;
+import com.bnk.domain.application.policy.CheckCardLimitPolicy;
 import com.bnk.domain.card.mapper.CardImageMapper;
 import com.bnk.domain.card.mapper.CardMapper;
 import com.bnk.domain.card.model.Card;
@@ -52,7 +54,7 @@ public class CheckCardApplicationService {
     private final RestTemplate restTemplate;
     private final AesCryptoUtil aesCryptoUtil;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
-    
+    private final CheckCardLimitService checkCardLimitService;
 
     @Value("${verification.server.url}")
     private String verificationServerUrl;
@@ -250,7 +252,16 @@ public class CheckCardApplicationService {
         userCard.setUsableYn("Y");
         userCard.setCardPasswordHash(app.getCardPasswordHash());
         userCard.setLinkedAccountId(app.getLinkedAccountId());
-        userCard.setDailyLimitAmount(1_000_000L);
+        CheckCardLimitContext limitCtx = buildLimitContext(app);
+        CheckCardLimitPolicy  policy   = checkCardLimitService.determineLimit(limitCtx);
+
+        userCard.setDailyLimitAmount(policy.getDailyLimit());
+        userCard.setMonthlyLimitAmount(policy.getMonthlyLimit());
+
+        log.info("[체크카드] 한도 산정: policy={}, daily={}, monthly={}",
+                policy.getDescription(),
+                policy.getDailyLimit(),
+                policy.getMonthlyLimit());
  
         // ── payment_snapshot 항목
         userCard.setCardBrand(snap.getCardBrand());
@@ -344,6 +355,51 @@ public class CheckCardApplicationService {
         } catch (Exception e) {
             throw new RuntimeException("snapshot 역직렬화 실패", e);
         }
+    }
+    
+    private CheckCardLimitContext buildLimitContext(CheckCardApplication app) {
+
+        // 생년월일로 만 나이 계산
+        // applicantSnapshot에서 생년월일 파싱 필요
+        int age = calculateAge(app);
+
+        // 계좌 상태 조회
+        String accountStatus = checkCardApplicationMapper
+                .findAccountStatus(app.getLinkedAccountId());
+
+        // 우수 거래 조건 조회 (각 Mapper에서 조회)
+        // 실제 구현 시 각 조건별 Mapper 메서드 추가 필요
+        return CheckCardLimitContext.builder()
+                .age(age)
+                .accountStatus(accountStatus != null ? accountStatus : "NORMAL")
+                // 우수 조건 (현재는 false로 초기화, 추후 실제 조회로 교체)
+                .hasSalaryTransfer(false)
+                .hasAutoTransfer3M(false)
+                .hasCardUsage3M(false)
+                .hasSavingsProduct(false)
+                // 한도제한 완화 조건
+                .hasSalaryTransfer1M(false)
+                .hasAutoTransfer3Count(false)
+                .hasSavingsAutoTransfer3(false)
+                .hasCardUsage3M2(false)
+                .build();
+    }
+
+    private int calculateAge(CheckCardApplication app) {
+        try {
+            CheckApplicantSnapshotDto snap = objectMapper.readValue(
+                    app.getApplicantSnapshot(), CheckApplicantSnapshotDto.class);
+            // snapshot에 birthDate 있으면 계산
+            if (snap.getBirthDate() != null) {
+                LocalDate birth = LocalDate.parse(snap.getBirthDate());
+                return LocalDate.now().getYear() - birth.getYear()
+                        - (LocalDate.now().getDayOfYear() < birth.getDayOfYear() ? 1 : 0);
+            }
+        } catch (Exception e) {
+            log.warn("[체크카드] 생년월일 파싱 실패, 성인 기본 한도 적용");
+        }
+        // 파싱 실패 시 성인 기본값
+        return 19;
     }
     
 
