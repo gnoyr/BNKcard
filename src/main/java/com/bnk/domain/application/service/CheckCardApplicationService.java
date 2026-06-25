@@ -228,7 +228,7 @@ public class CheckCardApplicationService {
 
         // payment_snapshot 파싱
         PaymentSnapshotDto snap;
-        try {
+        try { 
             snap = objectMapper.readValue(app.getPaymentSnapshot(), PaymentSnapshotDto.class);
         } catch (Exception e) {
             throw new RuntimeException("paymentSnapshot 역직렬화 실패", e);
