@@ -132,35 +132,64 @@ async function initMain() {
     const SKELETON =
         '<span class="skeleton skeleton-line"></span>' +
         '<span class="skeleton skeleton-line skeleton-line--short"></span>';
-
     const APP_STATUS_LABEL = {
         SUBMITTED: '신청완료', REVIEW: '심사중', APPROVED: '승인',
         REJECTED: '반려', ISSUED: '발급완료', CANCELLED: '취소',
     };
 
-	function renderCardItems(items, emptyMsg, statusFn) {
-	    if (!items.length) { cardSection.innerHTML = emptyState(emptyMsg); return; }
-	    cardSection.innerHTML = items.map(c => `
-	        <article class="card-item">
-	            <span class="card-item__name">${esc(c.cardName ?? '')}</span>
-	            <span class="card-item__status">${esc(statusFn(c))}</span>
-	        </article>`).join('');
+   	function appBadgeClass(s) {
+	    return ({ APPROVED:'is-ok', ISSUED:'is-ok', REJECTED:'is-no', CANCELLED:'is-no' })[s] ?? 'is-pending';
 	}
-	
+
+	function renderCardItems(items, kind) {
+	    if (!items.length) {
+	        cardSection.innerHTML = emptyState(kind === 'owned' ? '보유 카드가 없습니다.' : '신청 이력이 없습니다.');
+	        return;
+	    }
+	    cardSection.innerHTML = '<ul class="mycard-list">' + items.map(c => {
+			const sub = kind === 'owned'
+			    ? (c.issuedAt ? `${new Date(c.issuedAt).toLocaleDateString('ko-KR')} 발급` : '발급 완료')
+			    : (APP_STATUS_LABEL[c.applicationStatus] ?? c.applicationStatus ?? '신청 접수');
+	        const badge = kind === 'owned' ? 'is-owned' : appBadgeClass(c.applicationStatus);
+	        const thumb = c.cardImageUrl
+	            ? `<img src="${esc(c.cardImageUrl)}" alt="${esc(c.cardName ?? '카드')}" loading="lazy">`
+	            : '<span class="mycard__ph">BNK</span>';
+	        return `
+	        <li class="mycard">
+	          <div class="mycard__thumb">${thumb}</div>
+	          <div class="mycard__body">
+	            <p class="mycard__name">${esc(c.cardName ?? '카드명 미상')}</p>
+	            <span class="mycard__sub ${badge}">${esc(sub)}</span>
+	          </div>
+	        </li>`;
+	    }).join('') + '</ul>';
+
+	    cardSection.querySelectorAll('.mycard__thumb img').forEach(img => {
+	        img.addEventListener('error', () => {
+	            const ph = document.createElement('span');
+	            ph.className = 'mycard__ph';
+	            ph.textContent = 'BNK';
+	            img.replaceWith(ph);
+	        });
+	    });
+	}
+
 	async function ensureMyCards() {
 	    if (_myCards) return _myCards;
-	    const data = await API.get('/api/users/me/cards');   // { ownedCards, applications }
+	    const res = await API.get('/api/users/me/cards');
+	    console.log('[myCards] 원본 응답 =', res);          // 진단용 — 확인 후 삭제
+	    const d = res?.data ?? res ?? {};                   // envelope 미해제 대비
 	    _myCards = {
-	        ownedCards:   data?.ownedCards   ?? [],
-	        applications: data?.applications ?? [],
+	        ownedCards:   d.ownedCards   ?? d.owned_cards        ?? [],
+	        applications: d.applications ?? d.card_applications  ?? [],
 	    };
 	    return _myCards;
 	}
-	
+
 	function setActiveTab(active) {
 	    tabOwned.classList.toggle('active', active === 'owned');
 	    tabApplied.classList.toggle('active', active === 'applied');
-	    tabOwned.setAttribute('aria-selected', String(active === 'owned'));
+	    tabOwned.setAttribute('aria-selected',  String(active === 'owned'));
 	    tabApplied.setAttribute('aria-selected', String(active === 'applied'));
 	}
 
@@ -169,9 +198,11 @@ async function initMain() {
 	    cardSection.innerHTML = SKELETON;
 	    try {
 	        const { ownedCards } = await ensureMyCards();
-	        renderCardItems(ownedCards, '보유 카드가 없습니다.',
-	            c => c.issuedAt ? `${fmtDate(c.issuedAt)} 발급` : '');
-	    } catch { cardSection.innerHTML = emptyState('카드 정보를 불러올 수 없습니다.'); }
+	        renderCardItems(ownedCards, 'owned');
+	    } catch (e) {
+	        console.error('[myCards] loadOwned 실패:', e);   // 진단용
+	        cardSection.innerHTML = emptyState('카드 정보를 불러올 수 없습니다.');
+	    }
 	}
 
 	async function loadApplied() {
@@ -179,9 +210,11 @@ async function initMain() {
 	    cardSection.innerHTML = SKELETON;
 	    try {
 	        const { applications } = await ensureMyCards();
-	        renderCardItems(applications, '신청 이력이 없습니다.',
-	            c => APP_STATUS_LABEL[c.applicationStatus] ?? (c.applicationStatus ?? ''));
-	    } catch { cardSection.innerHTML = emptyState('신청 현황을 불러올 수 없습니다.'); }
+	        renderCardItems(applications, 'applied');
+	    } catch (e) {
+	        console.error('[myCards] loadApplied 실패:', e);  // 진단용
+	        cardSection.innerHTML = emptyState('신청 현황을 불러올 수 없습니다.');
+	    }
 	}
 
 	tabOwned?.addEventListener('click',   loadOwned);
@@ -673,10 +706,9 @@ async function initTrustedIps() {
     function fmtVia(v) {
         return { EMAIL: '이메일 인증', CI: 'CI 인증', MANUAL: '직접 등록', AUTO: '자동 등록' }[v] ?? v ?? '';
     }
-	
-	function fmtDate(v) {
-	    return v ? new Date(v).toLocaleDateString('ko-KR') : '';
-	}
+
+    function fmtDate(v) { return v ? new Date(v).toLocaleDateString('ko-KR') : ''; }
+
 
     function enterEdit(id) {
         const span = document.getElementById(`nn-${id}`);
