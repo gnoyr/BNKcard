@@ -145,27 +145,30 @@
     <!-- ── OPERATOR 전용 ────────────────────────────────────────────── -->
 
     <!-- 최근 7일 로그인 성공/실패 추이 -->
-    <select id="countLoginByDay" resultType="map">
-        SELECT
-            TO_CHAR(created_at, 'MM-DD') AS day,
-            action_result                 AS result,
-            COUNT(*)                      AS cnt
-        FROM AUDIT_LOGS
-        WHERE action_type = 'LOGIN'
-          AND created_at >= SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul' - INTERVAL '7' DAY
-        GROUP BY TO_CHAR(created_at, 'MM-DD'), action_result
-        ORDER BY day
-    </select>
+
+	<select id="countLoginByDay" resultType="map">
+	    SELECT
+	        TO_CHAR(created_at, 'MM-DD') AS day,
+	        CASE WHEN description LIKE '%성공%' THEN 'SUCCESS' ELSE 'FAIL' END AS result,
+	        COUNT(*) AS cnt
+	    FROM AUDIT_LOGS
+	    WHERE action_type_code = 'LOGIN'
+	      AND created_at >= SYSTIMESTAMP - INTERVAL '7' DAY
+	    GROUP BY TO_CHAR(created_at, 'MM-DD'),
+	             CASE WHEN description LIKE '%성공%' THEN 'SUCCESS' ELSE 'FAIL' END
+	    ORDER BY day
+	</select>
+
 
     <!-- 오늘 검색 키워드 TOP 5 -->
-    <select id="findTopKeywordsToday" resultType="map">
-        SELECT keyword, COUNT(*) AS cnt
-        FROM SEARCH_LOGS
-        WHERE TRUNC(searched_at) = TRUNC(SYSDATE)
-        GROUP BY keyword
-        ORDER BY cnt DESC
-        FETCH FIRST 5 ROWS ONLY
-    </select>
+	<select id="findTopKeywordsToday" resultType="map">
+	    SELECT keyword_raw AS keyword, COUNT(*) AS cnt
+	    FROM SEARCH_LOGS
+	    WHERE TRUNC(search_at) = TRUNC(SYSDATE)
+	    GROUP BY keyword_raw
+	    ORDER BY cnt DESC
+	    FETCH FIRST 5 ROWS ONLY
+	</select>
 
     <!-- 회원 상태별 분포 -->
     <select id="countUsersByStatus" resultType="map">
