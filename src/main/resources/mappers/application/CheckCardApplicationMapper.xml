@@ -114,7 +114,7 @@
     </select>
     
     <!-- 임시 저장 -->
-	<select id="findDraftByCardIdAndUserId" resultType="com.bnk.domain.application.model.CheckCardApplication">
+	<select id="findDraftByCardIdAndUserId" resultMap="checkAppMap">
 	    SELECT * FROM CHECK_CARD_APPLICATIONS
 	    WHERE card_id = #{cardId}
 	    AND user_id = #{userId}
