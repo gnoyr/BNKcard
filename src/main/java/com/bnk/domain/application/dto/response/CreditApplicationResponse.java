@@ -21,4 +21,10 @@ public class CreditApplicationResponse {
     private String rejectionReason;
     private LocalDateTime appliedAt;
     private LocalDateTime createdAt;
+    
+    private String idVerifiedYn;
+    private String annualIncomeBand;   
+    private String creditScoreBand;
+    private Long   linkedAccountId;
+    
 }

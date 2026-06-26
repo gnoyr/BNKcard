@@ -10,12 +10,12 @@ import java.time.LocalDateTime;
 @Builder
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor 
 public class CreditCardApplication {
+	
     private Long   creditAppId;
     private Long   userId;
     private Long   cardId;
     private String applicationStatus;   // DRAFT/REQUESTED/REVIEWING/APPROVED/REJECTED/ISSUED
     									// REVIEWING: MANUAL_REQUIRED 케이스 추가심사 진행 중
-    
     // STEP 2 - 본인확인
     private String idVerifiedYn;        // Y / N
     private String ciValue;

@@ -32,7 +32,7 @@
             #{userAgent,  jdbcType=VARCHAR},
             'N',
             #{expiresAt},
-            SYSTIMESTAMP
+            SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         )
     </insert>
 
@@ -41,7 +41,7 @@
         FROM ADMIN_SESSIONS
         WHERE refresh_token = #{refreshToken}
           AND revoked_yn    = 'N'
-          AND expires_at    > SYSTIMESTAMP
+          AND expires_at    > SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
     </select>
 
     <select id="findAnyByRefreshToken" resultMap="sessionMap">
@@ -54,7 +54,7 @@
     <update id="revokeAllByAdminId">
         UPDATE ADMIN_SESSIONS
         SET revoked_yn = 'Y',
-            revoked_at = SYSTIMESTAMP
+            revoked_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         WHERE admin_id  = #{adminId}
           AND revoked_yn = 'N'
     </update>

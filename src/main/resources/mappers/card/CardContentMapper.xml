@@ -54,7 +54,7 @@
 			NVL(#{c.visibleYn, jdbcType=CHAR}, 'Y'),
 			#{c.createdBy,
 			jdbcType=NUMERIC},
-			SYSTIMESTAMP
+			SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 			FROM DUAL
 		</foreach>
 	</insert>

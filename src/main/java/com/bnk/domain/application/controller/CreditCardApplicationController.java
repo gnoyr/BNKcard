@@ -76,15 +76,7 @@ public class CreditCardApplicationController {
         boolean isExisting = creditCardApplicationService.checkExistingCustomer(creditAppId);
         return ApiResponse.toOk(isExisting);
     }
-    
-    @PostMapping("/submit")
-    public ResponseEntity<ApiResponse<Void>> submitApplication(
-            @RequestBody CreditCardApplicationRequest request) {
 
-        creditCardApplicationService.submitApplication(request);
-        return ApiResponse.toNoContent();
-    }
-    
     //  서류 업로드 (신규고객만)
     @PostMapping("/docs")
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadDocs(
@@ -117,10 +109,19 @@ public class CreditCardApplicationController {
 
         return ResponseEntity.ok(ApiResponse.ok("서류 제출이 완료되었습니다.", response));
     }
+    
+    @PostMapping("/submit")
+    public ResponseEntity<ApiResponse<Void>> submitApplication(
+            @RequestBody CreditCardApplicationRequest request) {
+
+        creditCardApplicationService.submitApplication(request);
+        return ApiResponse.toNoContent();
+    }
+    
 
     // ----------------------------------------------------------------
     // STEP 6 - 1차 심사 결과 수신 (심사서버가 호출)
-    // ----------------------------------------------------------------
+    // -----------------------------a-----------------------------------
     @PostMapping("/screening-result")
     public ResponseEntity<ApiResponse<Void>> saveScreeningResult(
             @RequestBody ScreeningResultRequest request) {
@@ -151,8 +152,6 @@ public class CreditCardApplicationController {
         return ApiResponse.toNoContent();
     }
     
-    
- 
 
     // ----------------------------------------------------------------
     // 사용자 조회
@@ -172,5 +171,17 @@ public class CreditCardApplicationController {
         return ApiResponse.toOk(creditCardApplicationService.findMyApplications(userDetails.getUserId()));
     }    
     
+
+    // ----------------------------------------------------------------
+    // 임시 저장
+    // ---------------------------------------------------------------- 
+    @GetMapping("/draft")
+    public ResponseEntity<ApiResponse<CreditApplicationResponse>> getDraftApplication(
+            @RequestParam Long cardId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ApiResponse.toOk(
+            creditCardApplicationService.findDraftByCardId(cardId, userDetails.getUserId())
+        );
+    }
     
 }

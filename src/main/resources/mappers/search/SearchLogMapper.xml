@@ -16,7 +16,7 @@
             #{keywordRaw},
             #{matchedKeywordId,   jdbcType=NUMERIC},
             #{resultCount,        jdbcType=NUMERIC},
-            SYSTIMESTAMP,
+            SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul',
             #{ipAddress,          jdbcType=VARCHAR},
             #{deviceInfo,         jdbcType=VARCHAR}
         )
@@ -27,7 +27,7 @@
         SELECT keyword_raw  AS keyword,
                COUNT(*)     AS searchCount
         FROM   SEARCH_LOGS
-        WHERE  search_at &gt;= SYSTIMESTAMP - INTERVAL '7' DAY
+        WHERE  search_at &gt;= SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul' - INTERVAL '7' DAY
         GROUP  BY keyword_raw
         ORDER  BY COUNT(*) DESC
         FETCH FIRST #{topN} ROWS ONLY

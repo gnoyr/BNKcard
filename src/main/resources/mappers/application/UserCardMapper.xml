@@ -101,7 +101,7 @@
     <update id="updateCardStatus">
         UPDATE USER_CARDS
         SET    card_status = #{cardStatus},
-               updated_at  = SYSTIMESTAMP
+               updated_at  = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         WHERE  user_card_id = #{userCardId}
     </update>
     

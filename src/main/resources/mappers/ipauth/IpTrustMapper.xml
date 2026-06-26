@@ -109,7 +109,7 @@
             #{isInitial},
             #{statusCode},
             #{registeredVia},
-            SYSTIMESTAMP,
+            SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul',
             'N'
         )
     </insert>
@@ -117,7 +117,7 @@
     <!-- last_used_at 갱신 -->
     <update id="updateLastUsedAt">
         UPDATE USER_TRUSTED_IPS
-        SET    last_used_at = SYSTIMESTAMP
+        SET    last_used_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         WHERE  trust_id = #{trustId}
     </update>
 
@@ -134,7 +134,7 @@
     <update id="softDelete">
         UPDATE USER_TRUSTED_IPS
         SET    deleted_yn  = 'Y',
-               deleted_at  = SYSTIMESTAMP,
+               deleted_at  = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul',
                status_code = 'DISABLED'
         WHERE  trust_id    = #{trustId}
           AND  user_id     = #{userId}

@@ -32,7 +32,7 @@
 	        status_code                     AS status,
 	        COUNT(*)                        AS cnt
 	    FROM APPROVAL_REQUESTS
-	    WHERE completed_at >= SYSTIMESTAMP - INTERVAL '7' DAY
+	    WHERE completed_at >= SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul' - INTERVAL '7' DAY
 	      AND status_code IN ('APPROVED', 'REJECTED')
 	    GROUP BY TO_CHAR(completed_at, 'MM-DD'), status_code
 	    ORDER BY day
@@ -44,7 +44,7 @@
             TO_CHAR(created_at, 'MM-DD') AS day,
             COUNT(*) AS cnt
         FROM USERS
-        WHERE created_at >= SYSTIMESTAMP - INTERVAL '7' DAY
+        WHERE created_at >= SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul' - INTERVAL '7' DAY
           AND deleted_yn = 'N'
         GROUP BY TO_CHAR(created_at, 'MM-DD')
         ORDER BY day
@@ -145,6 +145,7 @@
     <!-- ── OPERATOR 전용 ────────────────────────────────────────────── -->
 
     <!-- 최근 7일 로그인 성공/실패 추이 -->
+
 	<select id="countLoginByDay" resultType="map">
 	    SELECT
 	        TO_CHAR(created_at, 'MM-DD') AS day,
@@ -157,6 +158,7 @@
 	             CASE WHEN description LIKE '%성공%' THEN 'SUCCESS' ELSE 'FAIL' END
 	    ORDER BY day
 	</select>
+
 
     <!-- 오늘 검색 키워드 TOP 5 -->
 	<select id="findTopKeywordsToday" resultType="map">
