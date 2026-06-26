@@ -352,6 +352,7 @@ public class CheckCardApplicationService {
                     .cardName(card != null ? card.getCardName() : null)
                     .cardImageUrl(cardImageUrl)
                     .applicationStatus(app.getApplicationStatus())
+                    .idVerifiedYn(app.getIdVerifiedYn())
                     .applicantSnapshot(applicantSnapshot)
                     .paymentSnapshot(paymentSnapshot)
                     .rejectionReason(app.getRejectionReason())
