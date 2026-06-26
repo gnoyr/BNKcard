@@ -35,6 +35,7 @@ import com.bnk.global.util.AesCryptoUtil;
 import com.bnk.global.util.MaskingUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -201,20 +202,25 @@ public class CreditCardApplicationService {
 	    try {
 	        CreditCardApplication app = findOrThrow(creditAppId);
 	
-	        restTemplate.postForEntity(
-	            verificationServerUrl + "/review/request/credit/" + creditAppId,
-	            Map.of(
-	                    "creditAppId",     creditAppId,
-	                    "ciValue",         app.getCiValue(),
-	                    "requestedLimit",  app.getRequestedLimit(),
-	                    "creditScoreBand", app.getCreditScoreBand(),
+	        ResponseEntity<ScreeningResultRequest> response = restTemplate.postForEntity(  // ← 변수에 담기
+	                verificationServerUrl + "/review/request/credit/" + creditAppId,
+	                Map.of(
+	                    "creditAppId",      creditAppId,
+	                    "ciValue",          app.getCiValue(),
+	                    "requestedLimit",   app.getRequestedLimit(),
+	                    "creditScoreBand",  app.getCreditScoreBand(),
 	                    "annualIncomeBand", app.getAnnualIncomeBand(),
-	                    "incomeDocKey",    app.getIncomeDocKey() != null ? app.getIncomeDocKey() : "",
-	                    "assetDocKey",     app.getAssetDocKey()  != null ? app.getAssetDocKey()  : "",
-	                    "jobDocKey",       app.getJobDocKey()    != null ? app.getJobDocKey()    : ""
+	                    "incomeDocKey",     app.getIncomeDocKey() != null ? app.getIncomeDocKey() : "",
+	                    "assetDocKey",      app.getAssetDocKey()  != null ? app.getAssetDocKey()  : "",
+	                    "jobDocKey",        app.getJobDocKey()    != null ? app.getJobDocKey()    : ""
 	                ),
-	            Void.class
-	        );
+	                ScreeningResultRequest.class
+	            );
+	        
+	        if (response.getBody() != null) {
+	            saveScreeningResult(response.getBody());  // ← 바로 처리
+	        }
+	        
 	    } catch (Exception e) {
 	        log.error("[신용카드] 심사 의뢰 실패: creditAppId={}", creditAppId, e);
 	    }

@@ -14,7 +14,7 @@ public class ScreeningResultRequest {
     private String docVerifiedYn;   // (체크카드는 null)
     private String rejectionReason;
     private String applicationStatus; // APPROVED / REJECTED
-    private String reviewedBy;
+    private String reviewedBy;		  // HOMETAX
  
     // 심사서버에서 받는 신용/재무 정보
     private Long   estimatedMonthlyIncome;  // 추정 월소득
