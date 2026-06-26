@@ -138,5 +138,12 @@
             #{id}
         </foreach>
     </delete>
+    
+	<!-- 계좌 상태 조회 -->
+	<select id="findAccountStatus" resultType="string">
+	    SELECT account_status
+	    FROM ACCOUNTS
+	    WHERE account_id = #{accountId}
+	</select>
 
 </mapper>
