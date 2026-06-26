@@ -43,7 +43,7 @@
 		#{agreementSource, jdbcType=VARCHAR,
 		typeHandler=org.apache.ibatis.type.StringTypeHandler},
 		#{agreedContentSnapshot, jdbcType=CLOB},
-		SYSTIMESTAMP,
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul',
 		#{ipAddress, jdbcType=VARCHAR,
 		typeHandler=org.apache.ibatis.type.StringTypeHandler},
 		#{userAgent, jdbcType=VARCHAR,
@@ -67,7 +67,7 @@
 			#{a.agreementSource, jdbcType=VARCHAR,
 			typeHandler=org.apache.ibatis.type.StringTypeHandler},
 			#{a.agreedContentSnapshot, jdbcType=CLOB},
-			SYSTIMESTAMP,
+			SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul',
 	        #{a.creditAppId, jdbcType=NUMERIC},
 	        #{a.checkAppId,  jdbcType=NUMERIC}
 			)

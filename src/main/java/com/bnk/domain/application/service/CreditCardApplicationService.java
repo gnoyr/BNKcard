@@ -34,7 +34,7 @@ import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.util.AesCryptoUtil;
 import com.bnk.global.util.MaskingUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.api.client.util.Value;
+import org.springframework.beans.factory.annotation.Value;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -96,10 +96,11 @@ public class CreditCardApplicationService {
     // STEP 2 - 본인확인 결과 저장 (심사 서버에서 받아서)
     // ----------------------------------------------------------------
     public String verifyIdentity(CreditCardApplicationRequest request) {
+    	log.info("[verifyIdentity] verificationServerUrl={}", verificationServerUrl);
         Map response = restTemplate.postForObject(
             verificationServerUrl + "/api/mydata/id-verification",
             Map.of(
-                "creditAppId",  request.getCreditAppId(),
+                "appId",  request.getCreditAppId(),
                 "idType",       request.getIdType(),
                 "idName",       request.getIdName(),
                 "idResidentNo", request.getIdResidentNo(),
@@ -401,6 +402,15 @@ public class CreditCardApplicationService {
     public List<CreditApplicationResponse> findMyApplications(Long userId) {
         List<CreditCardApplication> apps = creditCardApplicationMapper.findByUserId(userId);
         return apps.stream().map(this::toResponse).collect(Collectors.toList());
+    }
+ 
+    // ----------------------------------------------------------------
+    // 임시 저장
+    // ----------------------------------------------------------------     
+    public CreditApplicationResponse findDraftByCardId(Long cardId, Long userId) {
+        CreditCardApplication app = creditCardApplicationMapper.findDraftByCardIdAndUserId(cardId, userId);
+        if (app == null) return null;
+        return toResponse(app);
     }
 
     

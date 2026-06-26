@@ -42,6 +42,9 @@ public interface CheckCardApplicationMapper {
     CheckCardApplication findById(@Param("checkAppId") Long checkAppId);
 
     List<CheckCardApplication> findByUserId(@Param("userId") Long userId);
+    
+    // 임시 저장
+    CheckCardApplication findDraftByCardIdAndUserId(@Param("cardId") Long cardId, @Param("userId") Long userId);
 
     // DRAFT 정리 배치 - 7일 이상 DRAFT 삭제
     List<Long> findExpiredDraftIds();

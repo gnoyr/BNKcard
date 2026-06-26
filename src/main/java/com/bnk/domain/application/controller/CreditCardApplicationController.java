@@ -152,8 +152,6 @@ public class CreditCardApplicationController {
         return ApiResponse.toNoContent();
     }
     
-    
- 
 
     // ----------------------------------------------------------------
     // 사용자 조회
@@ -173,5 +171,17 @@ public class CreditCardApplicationController {
         return ApiResponse.toOk(creditCardApplicationService.findMyApplications(userDetails.getUserId()));
     }    
     
+
+    // ----------------------------------------------------------------
+    // 임시 저장
+    // ---------------------------------------------------------------- 
+    @GetMapping("/draft")
+    public ResponseEntity<ApiResponse<CreditApplicationResponse>> getDraftApplication(
+            @RequestParam Long cardId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ApiResponse.toOk(
+            creditCardApplicationService.findDraftByCardId(cardId, userDetails.getUserId())
+        );
+    }
     
 }

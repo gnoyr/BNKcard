@@ -32,7 +32,7 @@
 	        status_code                     AS status,
 	        COUNT(*)                        AS cnt
 	    FROM APPROVAL_REQUESTS
-	    WHERE completed_at >= SYSTIMESTAMP - INTERVAL '7' DAY
+	    WHERE completed_at >= SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul' - INTERVAL '7' DAY
 	      AND status_code IN ('APPROVED', 'REJECTED')
 	    GROUP BY TO_CHAR(completed_at, 'MM-DD'), status_code
 	    ORDER BY day
@@ -44,7 +44,7 @@
             TO_CHAR(created_at, 'MM-DD') AS day,
             COUNT(*) AS cnt
         FROM USERS
-        WHERE created_at >= SYSTIMESTAMP - INTERVAL '7' DAY
+        WHERE created_at >= SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul' - INTERVAL '7' DAY
           AND deleted_yn = 'N'
         GROUP BY TO_CHAR(created_at, 'MM-DD')
         ORDER BY day
@@ -152,7 +152,7 @@
             COUNT(*)                      AS cnt
         FROM AUDIT_LOGS
         WHERE action_type = 'LOGIN'
-          AND created_at >= SYSTIMESTAMP - INTERVAL '7' DAY
+          AND created_at >= SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul' - INTERVAL '7' DAY
         GROUP BY TO_CHAR(created_at, 'MM-DD'), action_result
         ORDER BY day
     </select>

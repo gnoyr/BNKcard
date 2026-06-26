@@ -76,8 +76,8 @@
 		AND c.visible_yn = 'Y'
 		AND c.searchable_yn = 'Y'
 		AND c.deleted_yn = 'N'
-		AND c.publish_start_at &lt;= SYSTIMESTAMP
-		AND (c.publish_end_at IS NULL OR c.publish_end_at &gt;= SYSTIMESTAMP)
+		AND c.publish_start_at &lt;= SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+		AND (c.publish_end_at IS NULL OR c.publish_end_at &gt;= SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul')
 		<if test="q != null and q != ''">
 			AND (
 			c.card_name LIKE '%' || #{q} || '%'
@@ -141,8 +141,8 @@
 		AND c.visible_yn = 'Y'
 		AND c.searchable_yn = 'Y'
 		AND c.deleted_yn = 'N'
-		AND c.publish_start_at &lt;= SYSTIMESTAMP
-		AND (c.publish_end_at IS NULL OR c.publish_end_at &gt;= SYSTIMESTAMP)
+		AND c.publish_start_at &lt;= SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+		AND (c.publish_end_at IS NULL OR c.publish_end_at &gt;= SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul')
 		<if test="q != null and q != ''">
 			AND (
 			c.card_name LIKE '%' || #{q} || '%'
@@ -325,7 +325,7 @@
 		#{publishEndAt, jdbcType=TIMESTAMP},
 		0, 0,
 		#{createdBy, jdbcType=NUMERIC},
-		SYSTIMESTAMP, 'N'
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul', 'N'
 		)
 	</insert>
 
@@ -352,7 +352,7 @@
 		publish_start_at = #{publishStartAt, jdbcType=TIMESTAMP},
 		publish_end_at = #{publishEndAt, jdbcType=TIMESTAMP},
 		updated_by = #{updatedBy, jdbcType=NUMERIC},
-		updated_at = SYSTIMESTAMP
+		updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		WHERE card_id = #{cardId}
 	</update>
 
@@ -360,14 +360,14 @@
 	<update id="updateCardFromSnapshot">
 		UPDATE CARDS
 		SET card_status = 'APPROVED',
-		updated_at = SYSTIMESTAMP
+		updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		WHERE card_id = #{cardId}
 	</update>
 
 	<update id="updateCardStatus">
 		UPDATE CARDS
 		SET card_status = #{cardStatus},
-		updated_at = SYSTIMESTAMP
+		updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		WHERE card_id = #{cardId}
 	</update>
 
@@ -398,14 +398,14 @@
 		UPDATE CARDS
 		SET card_status = 'STOPPED',
 		deleted_yn = 'Y',
-		deleted_at = SYSTIMESTAMP
+		deleted_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		WHERE card_id = #{cardId}
 	</update>
 
 	<!-- 스케줄러: PUBLISHED → EXPIRED 대상 조회 -->
 	<select id="findExpiredCards" resultMap="cardMap">
 		SELECT * FROM CARDS
-		WHERE publish_end_at &lt; SYSTIMESTAMP
+		WHERE publish_end_at &lt; SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		AND card_status = 'PUBLISHED'
 		AND deleted_yn = 'N'
 	</select>
@@ -414,7 +414,7 @@
 	<select id="findApprovedReadyCards" resultMap="cardMap">
 		SELECT * FROM CARDS
 		WHERE card_status = 'APPROVED'
-		AND publish_start_at &lt;= SYSTIMESTAMP
+		AND publish_start_at &lt;= SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		AND deleted_yn = 'N'
 	</select>
 
@@ -422,7 +422,7 @@
 	<update id="publishCards">
 		UPDATE CARDS
 		SET card_status = 'PUBLISHED',
-		updated_at = SYSTIMESTAMP
+		updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		WHERE card_id IN
 		<foreach collection="cardIds" item="id" open="(" separator=","
 			close=")">
@@ -434,7 +434,7 @@
 	<update id="publishCardVersions">
 		UPDATE CARD_VERSIONS
 		SET version_status = 'PUBLISHED',
-		published_at = SYSTIMESTAMP
+		published_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		WHERE card_id IN
 		<foreach collection="cardIds" item="id" open="(" separator=","
 			close=")">
@@ -447,7 +447,7 @@
 	<update id="expireCards">
 		UPDATE CARDS
 		SET card_status = 'EXPIRED',
-		updated_at = SYSTIMESTAMP
+		updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		WHERE card_id IN
 		<foreach collection="cardIds" item="id" open="(" separator=","
 			close=")">

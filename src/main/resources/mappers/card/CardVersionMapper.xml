@@ -34,7 +34,7 @@
             #{snapshotJson},
             #{changeSummary,  jdbcType=VARCHAR},
             #{createdBy,      jdbcType=NUMERIC},
-            SYSTIMESTAMP
+            SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         )
     </insert>
 
@@ -43,7 +43,7 @@
         UPDATE CARD_VERSIONS
         SET    version_status = #{versionStatus},
                approved_by   = #{approvedBy, jdbcType=NUMERIC},
-               approved_at   = SYSTIMESTAMP
+               approved_at   = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         WHERE  version_id = #{versionId}
     </update>
 

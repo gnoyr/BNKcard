@@ -61,7 +61,7 @@
         UPDATE CREDIT_CARD_APPLICATIONS
     	SET    id_verified_yn = #{idVerifiedYn},
 	           ci_value       = #{ciValue},
-	           updated_at     = SYSTIMESTAMP
+	           updated_at     = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         WHERE  credit_app_id     = #{creditAppId}
     </update>
 
@@ -83,7 +83,7 @@
            	   card_password_hash  = #{cardPasswordHash},
                requested_limit     = #{requestedLimit},
                application_status  = 'REQUESTED',
-               applied_at          = SYSTIMESTAMP
+               applied_at          = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         WHERE  credit_app_id       = #{creditAppId}
     </update>
     
@@ -114,7 +114,7 @@
 	        JOIN   USER_CARDS uc ON ct.user_card_id = uc.user_card_id
 	        WHERE  uc.user_id  = #{userId}
 	          AND  ct.status   = 'APPROVED'
-	          AND  ct.paid_at >= SYSTIMESTAMP - INTERVAL '3' YEAR
+	          AND  ct.paid_at >= SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul' - INTERVAL '3' YEAR
 	        GROUP BY paid_year, paid_month
 	        HAVING COUNT(*) >= 10
 	    )
@@ -126,7 +126,7 @@
         SET    screening_result    = #{screeningResult},
                doc_verified_yn     = #{docVerifiedYn},
            	   estimated_monthly_income  = #{estimatedMonthlyIncome, jdbcType=NUMERIC},
-               reviewed_at         = SYSTIMESTAMP,
+               reviewed_at         = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul',
                reviewed_by         = #{reviewedBy},
                <if test="rejectionReason != null">
                rejection_reason    = #{rejectionReason},
@@ -134,7 +134,7 @@
                <if test="'REJECTED'.equals(applicationStatus)">
                application_status  = 'REJECTED',
                </if>
-               updated_at          = SYSTIMESTAMP
+               updated_at          = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         WHERE  credit_app_id       = #{creditAppId}
     </update>
 
@@ -148,7 +148,7 @@
 	        JOIN   USER_CARDS uc ON ct.user_card_id = uc.user_card_id
 	        WHERE  uc.user_id    = #{userId}
 	          AND  ct.status     = 'APPROVED'
-	          AND  ct.paid_at   >= SYSTIMESTAMP - INTERVAL '3' YEAR
+	          AND  ct.paid_at   >= SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul' - INTERVAL '3' YEAR
 	        GROUP BY paid_year, paid_month
 	    )
 	</select>-->
@@ -164,7 +164,7 @@
                <if test="'MANUAL_REQUIRED'.equals(limitCheckResult)">
                application_status       = 'REVIEWING',
                </if>
-               updated_at               = SYSTIMESTAMP
+               updated_at               = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         WHERE  credit_app_id            = #{creditAppId}
     </update>
 
@@ -173,7 +173,7 @@
     <update id="updateReviewResult">
         UPDATE CREDIT_CARD_APPLICATIONS
         SET    application_status  = #{applicationStatus},
-               reviewed_at         = SYSTIMESTAMP,
+               reviewed_at         = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul',
                reviewed_by         = #{reviewedBy},
                <if test="approvedLimit != null">
                approved_limit       = #{approvedLimit},
@@ -181,7 +181,7 @@
                <if test="rejectionReason != null">
                rejection_reason     = #{rejectionReason},
                </if>
-               updated_at           = SYSTIMESTAMP
+               updated_at           = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         WHERE  credit_app_id        = #{creditAppId}
     </update>
 
@@ -189,7 +189,7 @@
     <update id="updateStatus">
         UPDATE CREDIT_CARD_APPLICATIONS
         SET    application_status = #{applicationStatus},
-               updated_at         = SYSTIMESTAMP
+               updated_at         = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         WHERE  credit_app_id      = #{creditAppId}
     </update>
 
@@ -204,13 +204,25 @@
         WHERE  user_id = #{userId} AND  application_status != 'DRAFT'
         ORDER BY created_at DESC
     </select>
+    
+    
+    <!-- 임시 저장 -->
+    <select id="findDraftByCardIdAndUserId" resultType="com.bnk.domain.application.model.CreditCardApplication">
+	    SELECT * FROM CREDIT_CARD_APPLICATIONS
+	    WHERE card_id = #{cardId}
+	    AND user_id = #{userId}
+	    AND application_status = 'DRAFT'
+	    ORDER BY created_at DESC
+	    FETCH FIRST 1 ROWS ONLY
+	</select>
+
 
     <!-- DRAFT 정리 배치 - 7일 이상 DRAFT -->
     <select id="findExpiredDraftIds" resultType="long">
         SELECT credit_app_id
         FROM   CREDIT_CARD_APPLICATIONS
         WHERE  application_status = 'DRAFT'
-          AND  created_at &lt; SYSTIMESTAMP - INTERVAL '7' DAY
+          AND  created_at &lt; SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul' - INTERVAL '7' DAY
     </select>
 
     <delete id="deleteByIds">

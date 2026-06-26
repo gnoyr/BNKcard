@@ -146,7 +146,7 @@
             #{targetId,       jdbcType=NUMERIC},
             'PENDING',
             #{requestComment, jdbcType=VARCHAR},
-            SYSTIMESTAMP
+            SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         )
     </insert>
 

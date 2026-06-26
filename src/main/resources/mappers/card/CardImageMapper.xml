@@ -113,7 +113,7 @@
                 #{img.imageWidth,    jdbcType=NUMERIC},
                 #{img.imageHeight,   jdbcType=NUMERIC},
                 NVL(#{img.sortOrder, jdbcType=NUMERIC}, 1),
-                SYSTIMESTAMP
+                SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
             FROM DUAL
         </foreach>
     </insert>

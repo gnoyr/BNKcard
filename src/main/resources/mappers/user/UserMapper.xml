@@ -180,7 +180,7 @@
 		UPDATE USERS
 		SET is_email_verified =
 		#{isEmailVerified, jdbcType=CHAR},
-		updated_at = SYSTIMESTAMP AT TIME
+		updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul' AT TIME
 		ZONE 'Asia/Seoul'
 		WHERE user_id = #{userId, jdbcType=NUMERIC}
 	</update>
@@ -262,7 +262,7 @@
 		#{ipAddress,
 		jdbcType=VARCHAR,
 		typeHandler=org.apache.ibatis.type.StringTypeHandler},
-		SYSTIMESTAMP AT
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul' AT
 		TIME ZONE 'Asia/Seoul'
 		)
 	</insert>
@@ -315,7 +315,7 @@
 		c.company_name,
 		ci.image_url AS card_image_url,
 		uc.card_status,
-		uc.card_number,
+		uc.masked_card_number AS card_number,
 		uc.issued_at
 		FROM USER_CARDS uc
 		INNER JOIN CARD_VERSIONS
@@ -421,11 +421,11 @@
 	</select>
 
 	<update id="updatePushToken">
-		UPDATE USERS SET push_token = #{pushToken}, updated_at = SYSTIMESTAMP
+		UPDATE USERS SET push_token = #{pushToken}, updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		WHERE user_id = #{userId} AND deleted_yn = 'N'
 	</update>
 	<update id="clearPushToken">
-		UPDATE USERS SET push_token = NULL, updated_at = SYSTIMESTAMP
+		UPDATE USERS SET push_token = NULL, updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		WHERE user_id = #{userId}
 	</update>
 </mapper>

@@ -80,17 +80,17 @@
 		#{mimeType,
 		jdbcType=VARCHAR},
 		#{isPrimary},
-		SYSTIMESTAMP
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		)
 	</insert>
 
 	<update id="updateTermsStatus">
 		UPDATE TERMS
 		SET status = #{status},
-		updated_at = SYSTIMESTAMP
+		updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		<if test="status == 'APPROVED'">
 			, approved_by = #{changedBy}
-			, approved_at = SYSTIMESTAMP
+			, approved_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		</if>
 		WHERE terms_id = #{termsId}
 	</update>
@@ -107,7 +107,7 @@
 		#{changedBy, jdbcType=NUMERIC},
 		#{changedReason,
 		jdbcType=VARCHAR},
-		SYSTIMESTAMP
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		)
 	</insert>
 
@@ -128,7 +128,7 @@
 		sent_yn, read_yn, created_at
 		) VALUES (
 		#{userId}, #{termsId}, #{notificationType},
-		'N', 'N', SYSTIMESTAMP
+		'N', 'N', SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		)
 	</insert>
 
@@ -256,7 +256,7 @@
 		'DRAFT',
 		#{effectiveFrom},
 		#{effectiveTo, jdbcType=DATE},
-		SYSTIMESTAMP
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		)
 	</insert>
 
@@ -274,7 +274,7 @@
 		UPDATE TERMS
 		SET status = 'EXPIRED',
 		updated_at =
-		SYSTIMESTAMP
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		WHERE terms_master_id = #{termsMasterId}
 		AND status =
 		'PUBLISHED'
@@ -296,7 +296,7 @@
 		#{displayOrder,
 		jdbcType=NUMERIC},
 		#{requiredYn},
-		SYSTIMESTAMP
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		)
 	</insert>
 

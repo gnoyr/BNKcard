@@ -47,7 +47,7 @@
         UPDATE CHECK_CARD_APPLICATIONS
     	SET    id_verified_yn = #{idVerifiedYn},
 	           ci_value       = #{ciValue},
-	           updated_at     = SYSTIMESTAMP
+	           updated_at     = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         WHERE  check_app_id   = #{checkAppId}
     </update>
 
@@ -55,7 +55,7 @@
 	<update id="updateApplicantInfo">
 	    UPDATE CHECK_CARD_APPLICATIONS
 	    SET    applicant_snapshot = #{applicantSnapshot, typeHandler=aesTypeHandler},
-	    	   updated_at         = SYSTIMESTAMP
+	    	   updated_at         = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 	    WHERE  check_app_id       = #{checkAppId}
 	</update>
 
@@ -67,7 +67,7 @@
                linked_account_id   = #{linkedAccountId},
                card_password_hash  = #{cardPasswordHash},
                application_status  = 'REQUESTED',
-               applied_at          = SYSTIMESTAMP
+               applied_at          = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         WHERE  check_app_id        = #{checkAppId}
     </update>
     
@@ -84,12 +84,12 @@
     <update id="updateReviewResult">
         UPDATE CHECK_CARD_APPLICATIONS
         SET    application_status  = #{applicationStatus},
-               reviewed_at         = SYSTIMESTAMP,
+               reviewed_at         = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul',
                reviewed_by         = #{reviewedBy},
                <if test="rejectionReason != null">
                rejection_reason     = #{rejectionReason},
                </if>
-               updated_at           = SYSTIMESTAMP
+               updated_at           = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         WHERE  check_app_id         = #{checkAppId}
     </update>
 
@@ -97,7 +97,7 @@
     <update id="updateStatus">
         UPDATE CHECK_CARD_APPLICATIONS
         SET    application_status = #{applicationStatus},
-               updated_at         = SYSTIMESTAMP
+               updated_at         = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         WHERE  check_app_id       = #{checkAppId}
     </update>
 
@@ -112,13 +112,23 @@
         WHERE  user_id = #{userId} AND application_status != 'DRAFT'
         ORDER BY created_at DESC
     </select>
+    
+    <!-- 임시 저장 -->
+	<select id="findDraftByCardIdAndUserId" resultType="com.bnk.domain.application.model.CheckCardApplication">
+	    SELECT * FROM CHECK_CARD_APPLICATIONS
+	    WHERE card_id = #{cardId}
+	    AND user_id = #{userId}
+	    AND application_status = 'DRAFT'
+	    ORDER BY created_at DESC
+	    FETCH FIRST 1 ROWS ONLY
+	</select>
 
     <!-- DRAFT 정리 배치 - 7일 이상 DRAFT -->
     <select id="findExpiredDraftIds" resultType="long">
         SELECT check_app_id
         FROM   CHECK_CARD_APPLICATIONS
         WHERE  application_status = 'DRAFT'
-          AND  created_at &lt; SYSTIMESTAMP - INTERVAL '7' DAY
+          AND  created_at &lt; SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul' - INTERVAL '7' DAY
     </select>
 
     <delete id="deleteByIds">

@@ -68,7 +68,7 @@
 		#{linkUrl, jdbcType=VARCHAR},
 		'Y', 'N',
 		#{batchId, jdbcType=NUMERIC},
-		SYSTIMESTAMP
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		)
 	</insert>
 
@@ -91,7 +91,7 @@
 			'Y', 'N',
 			#{n.batchId,
 			jdbcType=NUMERIC},
-			SYSTIMESTAMP
+			SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 			)
 		</foreach>
 		SELECT 1 FROM DUAL
@@ -117,7 +117,7 @@
 	<update id="markAsRead">
 		UPDATE NOTIFICATIONS
 		SET read_yn = 'Y', read_at =
-		SYSTIMESTAMP
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		WHERE notification_id = #{notificationId}
 		AND user_id =
 		#{userId}
@@ -127,7 +127,7 @@
 	<update id="markAllAsRead">
 		UPDATE NOTIFICATIONS
 		SET read_yn = 'Y', read_at =
-		SYSTIMESTAMP
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		WHERE user_id = #{userId} AND read_yn = 'N'
 	</update>
 
@@ -160,7 +160,7 @@
 		#{status},
 		#{scheduledAt, jdbcType=TIMESTAMP},
 		#{createdBy},
-		SYSTIMESTAMP
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		)
 	</insert>
 
@@ -204,7 +204,7 @@
 		success_count = #{successCount},
 		fail_count = #{failCount},
 		sent_by = #{sentBy},
-		sent_at = SYSTIMESTAMP
+		sent_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		WHERE batch_id = #{batchId}
 	</update>
 

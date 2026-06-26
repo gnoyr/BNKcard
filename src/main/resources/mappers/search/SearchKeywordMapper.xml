@@ -59,7 +59,7 @@
 	        #{categoryId,    jdbcType=NUMERIC},
 	        #{useYn},
 	        #{displayOrder,  jdbcType=NUMERIC},
-	        SYSTIMESTAMP,
+	        SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul',
 	        #{createdBy,     jdbcType=NUMERIC},
 	        'N'
 	    )
@@ -71,7 +71,7 @@
             <if test="categoryId   != null">category_id   = #{categoryId},</if>
             <if test="useYn        != null">use_yn        = #{useYn},</if>
             <if test="displayOrder != null">display_order = #{displayOrder},</if>
-            updated_at = SYSTIMESTAMP,
+            updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul',
             <if test="updatedBy    != null">updated_by    = #{updatedBy},</if>
         </set>
         WHERE  keyword_id = #{keywordId}
@@ -82,7 +82,7 @@
     <update id="deleteKeyword">
         UPDATE SEARCH_KEYWORDS
         SET    deleted_yn = 'Y',
-               deleted_at = SYSTIMESTAMP,
+               deleted_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul',
                updated_by = #{deletedBy}
         WHERE  keyword_id = #{keywordId}
     </update>
@@ -90,7 +90,7 @@
     <!-- CARD_KEYWORDS: NOT EXISTS 중복 방지 INSERT -->
     <insert id="insertCardKeyword">
         INSERT INTO CARD_KEYWORDS (card_id, keyword_id, created_at, created_by)
-        SELECT #{cardId}, #{keywordId}, SYSTIMESTAMP, #{createdBy, jdbcType=NUMERIC}
+        SELECT #{cardId}, #{keywordId}, SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul', #{createdBy, jdbcType=NUMERIC}
         FROM   DUAL
         WHERE  NOT EXISTS (
             SELECT 1 FROM CARD_KEYWORDS

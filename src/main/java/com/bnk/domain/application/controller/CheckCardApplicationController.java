@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.bnk.domain.application.dto.request.CheckCardApplicationRequest;
@@ -102,5 +103,17 @@ public class CheckCardApplicationController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         return ApiResponse.toOk(checkCardApplicationService.findMyApplications(userDetails.getUserId()));
+    }
+    
+    // ----------------------------------------------------------------
+    // 임시 저장
+    // ---------------------------------------------------------------- 
+    @GetMapping("/draft")
+    public ResponseEntity<ApiResponse<CheckApplicationResponse>> getDraftApplication(
+            @RequestParam Long cardId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ApiResponse.toOk(
+            checkCardApplicationService.findDraftByCardId(cardId, userDetails.getUserId())
+        );
     }
 }

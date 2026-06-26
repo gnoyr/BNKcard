@@ -83,7 +83,7 @@
             #{phone,        jdbcType=VARCHAR,
               typeHandler=org.apache.ibatis.type.StringTypeHandler},
             'ACTIVE',
-            SYSTIMESTAMP,
+            SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul',
             #{createdBy,    jdbcType=NUMERIC}
         )
     </insert>
@@ -102,7 +102,7 @@
         SET status_code = #{statusCode,
                            jdbcType=VARCHAR,
                            typeHandler=org.apache.ibatis.type.StringTypeHandler},
-            updated_at  = SYSTIMESTAMP
+            updated_at  = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         WHERE admin_id = #{adminId}
     </update>
 
@@ -144,7 +144,7 @@
 	        SEQ_ADMIN_USER_ROLES.NEXTVAL,
 	        #{adminId},
 	        #{roleId},
-	        SYSTIMESTAMP,
+	        SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul',
 	        #{createdBy, jdbcType=NUMERIC},
 	        'N'
 	    )

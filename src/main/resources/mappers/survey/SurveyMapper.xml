@@ -13,7 +13,7 @@
         ) VALUES (
             #{surveyId},
             #{userId},
-            SYSTIMESTAMP,
+            SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul',
             #{rewardGivenYn, jdbcType=VARCHAR,
               typeHandler=org.apache.ibatis.type.StringTypeHandler}
         )
@@ -49,7 +49,7 @@
             #{userId},
             #{commentText, jdbcType=VARCHAR,
               typeHandler=org.apache.ibatis.type.StringTypeHandler},
-            SYSTIMESTAMP
+            SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         )
     </insert>
 
@@ -94,7 +94,7 @@
         SET sentiment       = #{sentiment, jdbcType=VARCHAR,
                                typeHandler=org.apache.ibatis.type.StringTypeHandler},
             sentiment_score = #{sentimentScore, jdbcType=NUMERIC},
-            analyzed_at     = SYSTIMESTAMP
+            analyzed_at     = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         WHERE comment_id = #{commentId}
     </update>
 

@@ -100,7 +100,7 @@ public class CheckCardApplicationService {
         Map response = restTemplate.postForObject(
             verificationServerUrl + "/api/mydata/id-verification",
             Map.of(
-                "checkAppId",   request.getCheckAppId(),
+                "appId",   request.getCheckAppId(),
                 "idType",       request.getIdType(),
                 "idName",       request.getIdName(),
                 "idResidentNo", request.getIdResidentNo(),
@@ -290,9 +290,15 @@ public class CheckCardApplicationService {
         return apps.stream().map(this::toResponse).collect(Collectors.toList());
     }
     
+    // ----------------------------------------------------------------
+    // 임시 저장
+    // ---------------------------------------------------------------- 
+    public CheckApplicationResponse findDraftByCardId(Long cardId, Long userId) {
+        CheckCardApplication app = checkCardApplicationMapper.findDraftByCardIdAndUserId(cardId, userId);
+        if (app == null) return null;
+        return toResponse(app);
+    }
     
-    
-
     // ----------------------------------------------------------------
     // private helpers
     // ----------------------------------------------------------------

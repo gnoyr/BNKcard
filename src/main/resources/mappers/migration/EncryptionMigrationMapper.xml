@@ -52,14 +52,14 @@
 		UPDATE USERS
 		SET phone = #{encryptedPhone},
 		updated_at
-		= SYSTIMESTAMP
+		= SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		WHERE user_id = #{userId}
 	</update>
 
 	<update id="updateEncryptedCiValue">
 		UPDATE USERS
 		SET ci_value = #{encryptedCiValue},
-		updated_at = SYSTIMESTAMP
+		updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		WHERE user_id = #{userId}
 	</update>
 	<select id="findPlainBirthDateUsers"
@@ -87,7 +87,7 @@
 	<update id="updateEncryptedBirthDate">
 		UPDATE USERS
 		SET birth_date = #{encryptedBirthDate},
-		updated_at = SYSTIMESTAMP
+		updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		WHERE user_id = #{userId}
 	</update>
 
@@ -114,7 +114,7 @@
 	<update id="updateRestoredPassword">
 		UPDATE USERS
 		SET password_hash = #{passwordHash},
-		updated_at = SYSTIMESTAMP
+		updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		WHERE user_id = #{userId}
 	</update>
 </mapper>
