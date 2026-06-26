@@ -207,7 +207,7 @@
     
     
     <!-- 임시 저장 -->
-    <select id="findDraftByCardIdAndUserId" resultType="com.bnk.domain.application.model.CreditCardApplication">
+    <select id="findDraftByCardIdAndUserId" resultMap="creditAppMap">
 	    SELECT * FROM CREDIT_CARD_APPLICATIONS
 	    WHERE card_id = #{cardId}
 	    AND user_id = #{userId}
