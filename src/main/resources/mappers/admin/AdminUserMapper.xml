@@ -300,13 +300,13 @@
     <update id="unlockUser">
         UPDATE USERS
         SET locked_until = NULL, login_fail_count = 0,
-            updated_at = SYSTIMESTAMP
+            updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         WHERE user_id = #{userId} AND deleted_yn = 'N'
     </update>
 
     <update id="updateUserStatus">
         UPDATE USERS
-        SET status_code = #{statusCode}, updated_at = SYSTIMESTAMP
+        SET status_code = #{statusCode}, updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         WHERE user_id = #{userId} AND deleted_yn = 'N'
     </update>
 
@@ -329,7 +329,7 @@
             #{email},
             #{phone, typeHandler=AesTypeHandler},
             NVL(#{statusCode, jdbcType=VARCHAR}, 'ACTIVE'),
-            SYSTIMESTAMP,
+            SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul',
             'N'
         )
     </insert>

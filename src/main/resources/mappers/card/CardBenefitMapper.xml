@@ -83,7 +83,7 @@
 		#{displayText, jdbcType=VARCHAR},
 		#{displayOrder, jdbcType=NUMERIC},
 		NVL(#{visibleYn, jdbcType=CHAR}, 'Y'),
-		SYSTIMESTAMP
+		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		)
 	</insert>
 
@@ -112,7 +112,7 @@
 			#{b.displayText, jdbcType=VARCHAR},
 			#{b.displayOrder, jdbcType=NUMERIC},
 			NVL(#{b.visibleYn, jdbcType=CHAR}, 'Y'),
-			SYSTIMESTAMP
+			SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 			FROM DUAL
 		</foreach>
 	</insert>

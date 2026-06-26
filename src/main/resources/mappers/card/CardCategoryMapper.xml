@@ -41,7 +41,7 @@
             #{iconCode,      jdbcType=VARCHAR},
             #{displayOrder,  jdbcType=NUMERIC},
             NVL(#{useYn, jdbcType=CHAR}, 'Y'),
-            SYSTIMESTAMP
+            SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         )
     </insert>
 

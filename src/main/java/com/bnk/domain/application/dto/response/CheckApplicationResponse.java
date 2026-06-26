@@ -20,4 +20,5 @@ public class CheckApplicationResponse {
     private String rejectionReason;
     private LocalDateTime appliedAt;
     private LocalDateTime createdAt;
+    private String idVerifiedYn;
 }
