@@ -85,6 +85,7 @@ public enum ErrorCode {
 	USER_CARD_NOT_FOUND("CA008", "보유 카드를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
 	USER_CARD_NOT_MODIFIABLE("CA009", "변경할 수 없는 카드 상태입니다.", HttpStatus.BAD_REQUEST),
 	DAILY_LIMIT_EXCEEDED("CA010", "일일 한도가 카드 최대 한도를 초과했습니다.", HttpStatus.BAD_REQUEST);
+
 	
 	
 
