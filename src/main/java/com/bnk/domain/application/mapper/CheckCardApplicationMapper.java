@@ -53,4 +53,11 @@ public interface CheckCardApplicationMapper {
     
     // 계좌 상태 조회 (한도 산정용)
     String findAccountStatus(@Param("accountId") Long accountId);
+
+    // 한도 산정 조건 — 적금/예금 계좌 보유 여부
+    boolean hasSavingsProduct(@Param("userId") Long userId);
+
+    // 진행 중인 신청 건 존재 여부 (중복 신청 방지)
+    boolean hasActiveApplication(@Param("userId") Long userId,
+                                 @Param("cardId") Long cardId);
 }

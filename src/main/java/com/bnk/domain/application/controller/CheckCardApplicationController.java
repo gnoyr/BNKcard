@@ -69,9 +69,10 @@ public class CheckCardApplicationController {
     // ----------------------------------------------------------------
     @PostMapping("/submit")
     public ResponseEntity<ApiResponse<Void>> submitApplication(
-            @RequestBody CheckCardApplicationRequest request) {
+            @RequestBody CheckCardApplicationRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        checkCardApplicationService.submitApplication(request);
+        checkCardApplicationService.submitApplication(request, userDetails.getUserId());
         return ApiResponse.toNoContent();
     }
 
@@ -88,8 +89,19 @@ public class CheckCardApplicationController {
     
     
     // ----------------------------------------------------------------
+    // Fix 4: SCREENING_FAILED 심사 재시도
+    // ----------------------------------------------------------------
+    @PostMapping("/{checkAppId}/retry-screening")
+    public ResponseEntity<ApiResponse<Void>> retryScreening(
+            @PathVariable Long checkAppId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        checkCardApplicationService.retryScreening(checkAppId, userDetails.getUserId());
+        return ApiResponse.toNoContent();
+    }
+
+    // ----------------------------------------------------------------
     // 사용자 조회
-    // ---------------------------------------------------------------- 
+    // ----------------------------------------------------------------
     @GetMapping("/{checkAppId}")
     public ResponseEntity<ApiResponse<CheckApplicationResponse>> getApplication(
             @PathVariable Long checkAppId,

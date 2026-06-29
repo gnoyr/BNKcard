@@ -68,4 +68,8 @@ public interface CreditCardApplicationMapper {
     List<Long> findExpiredDraftIds();
 
     int deleteByIds(@Param("creditAppIds") List<Long> creditAppIds);
+
+    // 진행 중인 신청 건 존재 여부 (중복 신청 방지)
+    boolean hasActiveApplication(@Param("userId") Long userId,
+                                 @Param("cardId") Long cardId);
 }

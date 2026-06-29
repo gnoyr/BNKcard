@@ -4,11 +4,14 @@ import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.client.RestTemplate;
 
 import com.bnk.domain.application.dto.CreditApplicantSnapshotDto;
@@ -27,6 +30,7 @@ import com.bnk.domain.card.model.Card;
 import com.bnk.domain.card.model.CardImage;
 import com.bnk.domain.terms.mapper.TermsMapper;
 import com.bnk.domain.terms.mapper.UserTermsAgreementMapper;
+import com.bnk.domain.notification.service.NotificationService;
 import com.bnk.domain.terms.model.Terms;
 import com.bnk.domain.terms.model.UserTermsAgreement;
 import com.bnk.global.exception.BusinessException;
@@ -53,6 +57,7 @@ public class CreditCardApplicationService {
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
     private final AesCryptoUtil aesCryptoUtil;
+    private final NotificationService notificationService;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     
     @Value("${verification.server.url}")
@@ -63,6 +68,9 @@ public class CreditCardApplicationService {
     // ----------------------------------------------------------------
     @Transactional
     public Long agreeTerms(Long userId, CreditCardApplicationRequest request) {
+        if (creditCardApplicationMapper.hasActiveApplication(userId, request.getCardId())) {
+            throw new BusinessException(ErrorCode.DUPLICATE_APPLICATION);
+        }
     	CreditCardApplication application = CreditCardApplication.builder()
                 .userId(userId)
                 .cardId(request.getCardId())
@@ -194,8 +202,20 @@ public class CreditCardApplicationService {
 	        throw new RuntimeException("paymentSnapshot 직렬화 실패", e);
 	    }	    
 
-        // 마이데이터로 심사 의뢰 추가
-        requestScreeningReview(request.getCreditAppId());
+        // Fix 3: 심사 의뢰 비동기 처리 — 트랜잭션 커밋 후 실행해 DB 변경이 심사서버에 보이도록 보장
+        final Long creditAppId = request.getCreditAppId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        requestScreeningReview(creditAppId);
+                    } catch (Exception e) {
+                        log.error("[신용카드] 비동기 심사 의뢰 처리 중 예외: creditAppId={}", creditAppId, e);
+                    }
+                });
+            }
+        });
 	}
     
 
@@ -222,12 +242,9 @@ public class CreditCardApplicationService {
 	            saveScreeningResult(response.getBody());  // ← 바로 처리
 	        }
 	        
-	    } catch (BusinessException e) {
-	        throw e;  // 추가심사 실패 등 이미 처리된 예외는 그냥 다시 던짐
 	    } catch (Exception e) {
 	        log.error("[신용카드] 심사 의뢰 실패: creditAppId={}", creditAppId, e);
 	        creditCardApplicationMapper.updateStatus(creditAppId, "SCREENING_FAILED");
-	        throw new BusinessException(ErrorCode.SCREENING_REQUEST_FAILED);
 	    }
 	}
     
@@ -256,136 +273,78 @@ public class CreditCardApplicationService {
     // ----------------------------------------------------------------
     public void checkLimit(Long creditAppId, ScreeningResultRequest screeningData) {
         CreditCardApplication app = findOrThrow(creditAppId);
-        
-        Long estimatedMonthlyIncome = app.getEstimatedMonthlyIncome();  // 월추정소득
-        Integer creditScore           = screeningData.getCreditScore();  // 신용점수
-        Integer vehicleCount          = screeningData.getVehicleCount();  // 차량 보유수
-        Long   loanBalance            = screeningData.getLoanBalance();  // 대출 잔액
-        Double delinquencyRate        = screeningData.getDelinquencyRate();  // 연체율
-        Integer multipleDebtCount     = screeningData.getMultipleDebtCount();  // 다중채무 건수
-        String jobType                = screeningData.getJobType();  // 직업유형. EMPLOYED=직장인 / SELF_EMPLOYED=자영업자 / STUDENT=학생 / UNEMPLOYED=무직·전업주부 / OTHER=기타 
-        
-        // ── 1단계. 즉시 추가심사 조건 ────────────────────────────
-        // 연체율 5% 초과 → 스코어링 없이 바로 추가심사
+
+        // H1: requestedLimit null guard
+        if (app.getRequestedLimit() == null || app.getRequestedLimit() <= 0) {
+            app.setLimitCheckResult("MANUAL_REQUIRED");
+            app.setApplicationStatus("REVIEWING");
+            creditCardApplicationMapper.updateLimitCheck(app);
+            requestAdditionalReview(creditAppId, true);
+            return;
+        }
+
+        Long    estimatedMonthlyIncome = app.getEstimatedMonthlyIncome();
+        Integer creditScore            = screeningData.getCreditScore();
+        Integer vehicleCount           = screeningData.getVehicleCount();
+        Long    loanBalance            = screeningData.getLoanBalance();
+        Double  delinquencyRate        = screeningData.getDelinquencyRate();
+        Integer multipleDebtCount      = screeningData.getMultipleDebtCount();
+        String  jobType                = screeningData.getJobType();
+
+        // ── 1단계. 즉시 추가심사 조건 (서류 없이 신용 위험도 기반)
         if (delinquencyRate != null && delinquencyRate > 5.0) {
             app.setLimitCheckResult("MANUAL_REQUIRED");
             app.setApplicationStatus("REVIEWING");
             creditCardApplicationMapper.updateLimitCheck(app);
-            requestAdditionalReview(creditAppId);
+            requestAdditionalReview(creditAppId, false);
             return;
         }
-
-        // 다중채무 5건 이상 → 스코어링 없이 바로 추가심사
         if (multipleDebtCount != null && multipleDebtCount >= 5) {
             app.setLimitCheckResult("MANUAL_REQUIRED");
             app.setApplicationStatus("REVIEWING");
             creditCardApplicationMapper.updateLimitCheck(app);
-            requestAdditionalReview(creditAppId);
+            requestAdditionalReview(creditAppId, false);
             return;
         }
 
-        // ── 2단계. 추정소득 없음 → 추가심사 ─────────────────────
-        // 홈택스 소득 없는 완전 신규 → 서류 기반 추가심사
+        // ── 2단계. 추정소득 없음 → 서류 기반 추가심사
         if (estimatedMonthlyIncome == null || estimatedMonthlyIncome == 0) {
             app.setLimitCheckResult("MANUAL_REQUIRED");
             app.setApplicationStatus("REVIEWING");
             creditCardApplicationMapper.updateLimitCheck(app);
-            requestAdditionalReview(creditAppId);
+            requestAdditionalReview(creditAppId, true);  // 소득 확인 서류 필요
             return;
         }
 
-        // ── 3단계. 추정소득 있으면 스코어링 (총 100점) ───────────────────────────
-        int score = 0;
+        // ── 3단계. 스코어링 (총 100점)
+        int score = calculateScore(creditScore, jobType, delinquencyRate,
+                                   loanBalance, estimatedMonthlyIncome, vehicleCount);
 
-        // [신용점수 - 최대 30점]
-        // 신용상태 및 금융거래 실적 반영
-        if (creditScore != null) {
-            if      (creditScore >= 900) score += 30;
-            else if (creditScore >= 800) score += 25;  // ID 62: 820점 → 25점
-            else if (creditScore >= 700) score += 15;  // ID 66: 680점 → 10점
-            else if (creditScore >= 650) score += 10;
-            else                         score += 0;   // ID 64: 580점 → 0점
-        }
-
-        // [직업 안정성 - 최대 25점]
-        // 소득 지속성 반영
-        if (jobType != null) {
-            switch (jobType) {
-                case "REGULAR"    -> score += 25;  // 정규직 - 가장 안정적
-                case "CONTRACT"   -> score += 18;  // 계약직
-                case "BUSINESS"   -> score += 15;  // 사업자 - 소득 변동성 있음
-                case "FREELANCER" -> score += 10;  // 프리랜서
-                case "UNEMPLOYED" -> score += 0;   // 무직
-                default           -> score += 10;
-            }
-        }
-
-        // [연체율 - 최대 20점]
-        // 연체이력 반영 (5% 초과는 1단계에서 이미 걸러짐)
-        if (delinquencyRate != null) {
-            if      (delinquencyRate == 0)          score += 20;  // ID 62: 0% → 20점
-            else if (delinquencyRate <= 1.0)        score += 15;
-            else if (delinquencyRate <= 3.0)        score += 10;
-            else if (delinquencyRate <= 5.0)        score += 5;   // ID 66: 3.5% → 5점
-        } else {
-            score += 20;  // 연체 정보 없음 → 최고점
-        }
-
-        // [대출잔액 - 최대 15점]
-        // 연소득 대비 대출 부담 반영
-        if (loanBalance != null) {
-            long annualIncome = estimatedMonthlyIncome * 12;
-            double loanRatio  = (double) loanBalance / annualIncome;
-            if      (loanRatio < 1.0) score += 15;  // 연소득 미만       ID 62: 15000000/120000000 → 0.125 → 15점
-            else if (loanRatio < 3.0) score += 10;  // 연소득 1~3배
-            else if (loanRatio < 5.0) score += 5;   // 연소득 3~5배      ID 66: 85000000/33600000 → 2.53 → 10점
-            else                      score += 0;   // 연소득 5배 초과   ID 64: 120000000/42000000 → 2.86 → 10점
-        } else {
-            score += 15;  // 대출 없음 → 최고점
-        }
-
-        // [차량 보유 - 최대 10점]
-        // 재산상황 반영
-        if (vehicleCount != null && vehicleCount > 0) {
-            score += 10;  // ID 62: 차량 2대 → 10점 / ID 66: 차량 1대 → 10점
-        }
-        
-        // ── 4단계. 총점 기반 한도 비율 결정 ──────────────────────
-        // 추정 월소득 대비 승인 가능 한도 비율
+        // ── 4단계. 총점 기반 한도 비율 결정
         double limitRatio;
         String limitCheckResult;
-        if (score >= 75) {
-            limitRatio      = 0.40;  // 우수  → 월소득 × 40%
-            limitCheckResult = "PASS";
-        } else if (score >= 55) {
-            limitRatio      = 0.30;  // 양호  → 월소득 × 30%
-            limitCheckResult = "PASS";
-        } else if (score >= 35) {
-            limitRatio      = 0.20;  // 보통  → 월소득 × 20%
-            limitCheckResult = "PASS";
-        } else {
-            limitRatio      = 0;     // 미흡  → 추가심사
-            limitCheckResult = "MANUAL_REQUIRED";
-        }
+        if      (score >= 75) { limitRatio = 0.40; limitCheckResult = "PASS"; }
+        else if (score >= 55) { limitRatio = 0.30; limitCheckResult = "PASS"; }
+        else if (score >= 35) { limitRatio = 0.20; limitCheckResult = "PASS"; }
+        else                  { limitRatio = 0;    limitCheckResult = "MANUAL_REQUIRED"; }
 
-        // ── 5단계. 신청한도 vs 최대한도 비교 ─────────────────────
         if ("MANUAL_REQUIRED".equals(limitCheckResult)) {
             app.setLimitCheckResult("MANUAL_REQUIRED");
             app.setApplicationStatus("REVIEWING");
             creditCardApplicationMapper.updateLimitCheck(app);
-            requestAdditionalReview(creditAppId);
+            requestAdditionalReview(creditAppId, false);
             return;
         }
 
+        // ── 5단계. 신청한도 vs 최대한도 비교
         long maxLimit = (long)(estimatedMonthlyIncome * limitRatio);
 
         if (app.getRequestedLimit() <= maxLimit) {
-            // 신청한도가 최대한도 이내 → 승인
             app.setLimitCheckResult("PASS");
             app.setApprovedLimit(app.getRequestedLimit());
             app.setApplicationStatus("APPROVED");
         } else {
-            // 신청한도가 최대한도 초과 → 추가심사
+            // 신청한도 초과 → 추가심사 (한도 조정 가능성)
             app.setLimitCheckResult("MANUAL_REQUIRED");
             app.setApplicationStatus("REVIEWING");
         }
@@ -394,27 +353,99 @@ public class CreditCardApplicationService {
 
         if ("APPROVED".equals(app.getApplicationStatus())) {
             issueCard(creditAppId);
+            notificationService.notifyReviewResult(app.getUserId(), creditAppId, true);
         } else {
-            requestAdditionalReview(creditAppId);
-        }        
+            requestAdditionalReview(creditAppId, false);
+        }
     }
     
-    // RestTemplate 심사서버 전달
-    private void requestAdditionalReview(Long creditAppId) {
+    // Fix 4: SCREENING_FAILED 재시도
+    @Transactional
+    public void retryScreening(Long creditAppId, Long userId) {
+        CreditCardApplication app = findOrThrow(creditAppId);
+        if (!app.getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+        if (!"SCREENING_FAILED".equals(app.getApplicationStatus())) {
+            throw new BusinessException(ErrorCode.SCREENING_RETRY_NOT_ALLOWED);
+        }
+        creditCardApplicationMapper.updateStatus(creditAppId, "REQUESTED");
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        requestScreeningReview(creditAppId);
+                    } catch (Exception e) {
+                        log.error("[신용카드] 심사 재시도 실패: creditAppId={}", creditAppId, e);
+                    }
+                });
+            }
+        });
+    }
+
+    // REVIEWING 중 서류 재제출 — docKey 갱신 + MYDATAMOCK에 동기화
+    @Transactional
+    public void resubmitReviewingDocs(Long creditAppId, Long userId,
+                                      String incomeDocKey, String assetDocKey, String jobDocKey) {
+        CreditCardApplication app = findOrThrow(creditAppId);
+
+        if (!app.getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "본인의 신청 건만 수정할 수 있습니다.");
+        }
+        if (!"REVIEWING".equals(app.getApplicationStatus())) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "추가심사 대기 중인 신청 건만 서류를 재제출할 수 있습니다.");
+        }
+
+        // BNKcard DB 갱신
+        app.setIncomeDocKey(incomeDocKey);
+        app.setAssetDocKey(assetDocKey);
+        app.setJobDocKey(jobDocKey);
+        creditCardApplicationMapper.updateDocs(app);
+
+        // MYDATAMOCK AdditionalReview docKey 동기화
         try {
-        	CreditCardApplication app = findOrThrow(creditAppId);
-        	 
+            restTemplate.put(
+                verificationServerUrl + "/review/request/" + creditAppId + "/docs",
+                Map.of(
+                    "incomeDocKey", incomeDocKey != null ? incomeDocKey : "",
+                    "assetDocKey",  assetDocKey  != null ? assetDocKey  : "",
+                    "jobDocKey",    jobDocKey    != null ? jobDocKey    : ""
+                )
+            );
+            log.info("[신용카드] REVIEWING 서류 재제출 완료: creditAppId={}", creditAppId);
+        } catch (Exception e) {
+            log.error("[신용카드] MYDATAMOCK 서류 동기화 실패: creditAppId={}", creditAppId, e);
+        }
+    }
+
+    /**
+     * MYDATAMOCK에 추가심사 요청 + 원인별 알림 발송
+     * @param needsDocs true=소득 확인 서류 제출 요청 알림 / false=자동 추가심사 진행 알림
+     */
+    private void requestAdditionalReview(Long creditAppId, boolean needsDocs) {
+        CreditCardApplication app = findOrThrow(creditAppId);
+        try {
             restTemplate.postForEntity(
                 verificationServerUrl + "/review/request/" + creditAppId,
                 Map.of(
-                    "creditAppId", creditAppId,  // 1차 심사와 동일한 서버
+                    "creditAppId", creditAppId,
                     "ciValue",     app.getCiValue()
                 ),
                 Void.class
             );
         } catch (Exception e) {
             log.error("[신용카드] 추가심사 요청 실패: creditAppId={}", creditAppId, e);
-            // REVIEWING 상태 유지 → 관리자가 수동으로 재처리
+        }
+        try {
+            if (needsDocs) {
+                notificationService.notifyDocumentRequired(app.getUserId(), creditAppId);
+            } else {
+                notificationService.notifyManualReview(app.getUserId(), creditAppId);
+            }
+        } catch (Exception ne) {
+            log.error("[신용카드] 추가심사 알림 발송 실패: creditAppId={}", creditAppId, ne);
         }
     }
    
@@ -422,19 +453,152 @@ public class CreditCardApplicationService {
     // STEP 8 - 추가 심사 결과 저장 (심사서버 콜백, REVIEWING 케이스만)
     // ----------------------------------------------------------------
     public void saveReviewResult(ReviewResultRequest request) {
+        // 거절 케이스 — 즉시 REJECTED 저장
+        if ("REJECTED".equals(request.getApplicationStatus())) {
+            CreditCardApplication application = CreditCardApplication.builder()
+                    .creditAppId(request.getAppId())
+                    .applicationStatus("REJECTED")
+                    .rejectionReason(request.getRejectionReason())
+                    .reviewedBy(request.getReviewedBy())
+                    .build();
+            creditCardApplicationMapper.updateReviewResult(application);
+            notificationService.notifyReviewResult(findOrThrow(request.getAppId()).getUserId(), request.getAppId(), false);
+            return;
+        }
+
+        // PENDING_LIMIT 케이스 — 받아온 신용정보로 재심사
+        if ("PENDING_LIMIT".equals(request.getApplicationStatus())) {
+            checkLimitFromReview(request);
+            return;
+        }
+
+        // APPROVED 케이스 (외부에서 한도까지 확정된 경우)
         CreditCardApplication application = CreditCardApplication.builder()
                 .creditAppId(request.getAppId())
-                .applicationStatus(request.getApplicationStatus())
+                .applicationStatus("APPROVED")
                 .approvedLimit(request.getApprovedLimit())
-                .rejectionReason(request.getRejectionReason())
                 .reviewedBy(request.getReviewedBy())
                 .build();
         creditCardApplicationMapper.updateReviewResult(application);
-        
-        // APPROVED → 자동 발급
-        if ("APPROVED".equals(request.getApplicationStatus())) {
-            issueCard(request.getAppId());
+        issueCard(request.getAppId());
+    }
+
+    // 추가심사 콜백 데이터로 스코어링 재심사
+    private void checkLimitFromReview(ReviewResultRequest request) {
+        CreditCardApplication app = findOrThrow(request.getAppId());
+
+        Long    estimatedMonthlyIncome = request.getEstimatedMonthlyIncome();
+        Integer creditScore            = request.getCreditScore();
+        Integer vehicleCount           = request.getVehicleCount();
+        Long    loanBalance            = request.getLoanBalance();
+        Double  delinquencyRate        = request.getDelinquencyRate();
+        String  jobType                = request.getJobType();
+
+        // 소득 정보 없으면 최종 거절
+        if (estimatedMonthlyIncome == null || estimatedMonthlyIncome == 0) {
+            CreditCardApplication rejected = CreditCardApplication.builder()
+                    .creditAppId(app.getCreditAppId())
+                    .applicationStatus("REJECTED")
+                    .estimatedMonthlyIncome(estimatedMonthlyIncome)
+                    .rejectionReason("서류 심사 후 소득 확인 불가")
+                    .reviewedBy(request.getReviewedBy())
+                    .build();
+            creditCardApplicationMapper.updateReviewResult(rejected);
+            notificationService.notifyReviewResult(app.getUserId(), app.getCreditAppId(), false);
+            return;
         }
+
+        // M1: 공통 스코어링 메서드 사용
+        int score = calculateScore(creditScore, jobType, delinquencyRate,
+                                   loanBalance, estimatedMonthlyIncome, vehicleCount);
+
+        double limitRatio;
+        if      (score >= 75) limitRatio = 0.40;
+        else if (score >= 55) limitRatio = 0.30;
+        else if (score >= 35) limitRatio = 0.20;
+        else {
+            CreditCardApplication rejected = CreditCardApplication.builder()
+                    .creditAppId(app.getCreditAppId())
+                    .applicationStatus("REJECTED")
+                    .estimatedMonthlyIncome(estimatedMonthlyIncome)
+                    .rejectionReason("추가심사 후 신용평점 기준 미달")
+                    .reviewedBy(request.getReviewedBy())
+                    .build();
+            creditCardApplicationMapper.updateReviewResult(rejected);
+            notificationService.notifyReviewResult(app.getUserId(), app.getCreditAppId(), false);
+            log.info("[추가심사] 재심사 거절: creditAppId={}, score={}", app.getCreditAppId(), score);
+            return;
+        }
+
+        // requestedLimit null-safe (추가심사 시점에도 동일 방어)
+        long requestedLimit = app.getRequestedLimit() != null ? app.getRequestedLimit() : 0L;
+        long maxLimit       = (long)(estimatedMonthlyIncome * limitRatio);
+        long approvedLimit  = Math.min(requestedLimit, maxLimit);
+
+        CreditCardApplication approved = CreditCardApplication.builder()
+                .creditAppId(app.getCreditAppId())
+                .applicationStatus("APPROVED")
+                .estimatedMonthlyIncome(estimatedMonthlyIncome)
+                .approvedLimit(approvedLimit)
+                .reviewedBy(request.getReviewedBy())
+                .build();
+        creditCardApplicationMapper.updateReviewResult(approved);
+        notificationService.notifyReviewResult(app.getUserId(), app.getCreditAppId(), true);
+        log.info("[추가심사] 재심사 승인: creditAppId={}, score={}, approvedLimit={}",
+                app.getCreditAppId(), score, approvedLimit);
+        issueCard(app.getCreditAppId());
+    }
+
+    // ── M1: 공통 스코어링 로직 (총 100점) ────────────────────────────
+    private int calculateScore(Integer creditScore, String jobType, Double delinquencyRate,
+                               Long loanBalance, Long estimatedMonthlyIncome, Integer vehicleCount) {
+        int score = 0;
+
+        // 신용점수 — 최대 30점
+        if (creditScore != null) {
+            if      (creditScore >= 900) score += 30;
+            else if (creditScore >= 800) score += 25;
+            else if (creditScore >= 700) score += 15;
+            else if (creditScore >= 650) score += 10;
+        }
+
+        // 직업 안정성 — 최대 25점
+        if (jobType != null) {
+            score += switch (jobType) {
+                case "REGULAR",    "EMPLOYED"      -> 25;
+                case "CONTRACT"                    -> 18;
+                case "BUSINESS",   "SELF_EMPLOYED" -> 15;
+                case "FREELANCER", "STUDENT", "OTHER" -> 10;
+                case "UNEMPLOYED"                  -> 0;
+                default                            -> 10;
+            };
+        }
+
+        // 연체율 — 최대 20점 (5% 초과는 checkLimit 1단계에서 이미 걸러짐)
+        if (delinquencyRate != null) {
+            if      (delinquencyRate == 0)   score += 20;
+            else if (delinquencyRate <= 1.0) score += 15;
+            else if (delinquencyRate <= 3.0) score += 10;
+            else if (delinquencyRate <= 5.0) score += 5;
+        } else {
+            score += 20;
+        }
+
+        // 대출잔액 — 최대 15점
+        if (loanBalance != null && estimatedMonthlyIncome != null) {
+            long   annualIncome = estimatedMonthlyIncome * 12;
+            double loanRatio    = annualIncome > 0 ? (double) loanBalance / annualIncome : Double.MAX_VALUE;
+            if      (loanRatio < 1.0) score += 15;
+            else if (loanRatio < 3.0) score += 10;
+            else if (loanRatio < 5.0) score += 5;
+        } else if (loanBalance == null) {
+            score += 15;
+        }
+
+        // 차량 보유 — 최대 10점
+        if (vehicleCount != null && vehicleCount > 0) score += 10;
+
+        return score;
     }
     
     // ----------------------------------------------------------------
@@ -582,6 +746,7 @@ public class CreditCardApplicationService {
                     .approvedLimit(app.getApprovedLimit())
                     .requestedLimit(app.getRequestedLimit())
                     .rejectionReason(app.getRejectionReason())
+                    .limitCheckResult(app.getLimitCheckResult())
                     .appliedAt(app.getAppliedAt())
                     .createdAt(app.getCreatedAt())
                     .build();

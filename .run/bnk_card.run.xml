@@ -1,0 +1,13 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="bnk_card" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <module name="BNKcard.main" />
+    <selectedOptions>
+      <option name="environmentVariables" />
+    </selectedOptions>
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.bnk.BnKcardApplication" />
+    <option name="VM_PARAMETERS" value="-Doci.private-key-path=$USER_HOME$/Downloads/seongryong1028%40gmail.com-2026-05-20T02_09_38.343Z.pem -Dspring.datasource.url=jdbc:oracle:thin:@bnkclone_medium?TNS_ADMIN=$USER_HOME$/Downloads/Wallet_BNKCLONE " />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

@@ -120,6 +120,46 @@ public class CreditCardApplicationController {
     
 
     // ----------------------------------------------------------------
+    // 서류 다운로드 URL 발급 (MYDATAMOCK 관리자가 호출 — 인증 없음)
+    // ----------------------------------------------------------------
+    @GetMapping("/docs/download")
+    public ResponseEntity<Void> downloadDoc(@RequestParam String key) {
+        String url = objectStorageService.createDownloadUrl(key);
+        return ResponseEntity.status(302)
+                .header("Location", url)
+                .build();
+    }
+
+    // ----------------------------------------------------------------
+    // REVIEWING 중 서류 재제출 (이용자가 호출)
+    // ----------------------------------------------------------------
+    @PutMapping("/{creditAppId}/reviewing-docs")
+    public ResponseEntity<ApiResponse<Void>> resubmitReviewingDocs(
+            @PathVariable Long creditAppId,
+            @RequestParam MultipartFile incomeDoc,
+            @RequestParam(required = false) MultipartFile assetDoc,
+            @RequestParam MultipartFile jobDoc,
+            @AuthenticationPrincipal CustomUserDetails userDetails) throws Exception {
+
+        FileStorageService.UploadResult incomeMeta = fileStorageService.extractMeta(incomeDoc, "docs/income");
+        String incomeDocKey = objectStorageService.upload(incomeMeta.getObjectName(), incomeDoc.getBytes(), incomeMeta.getMimeType());
+
+        String assetDocKey = null;
+        if (assetDoc != null && !assetDoc.isEmpty()) {
+            FileStorageService.UploadResult assetMeta = fileStorageService.extractMeta(assetDoc, "docs/asset");
+            assetDocKey = objectStorageService.upload(assetMeta.getObjectName(), assetDoc.getBytes(), assetMeta.getMimeType());
+        }
+
+        FileStorageService.UploadResult jobMeta = fileStorageService.extractMeta(jobDoc, "docs/job");
+        String jobDocKey = objectStorageService.upload(jobMeta.getObjectName(), jobDoc.getBytes(), jobMeta.getMimeType());
+
+        creditCardApplicationService.resubmitReviewingDocs(
+                creditAppId, userDetails.getUserId(), incomeDocKey, assetDocKey, jobDocKey);
+
+        return ApiResponse.toNoContent();
+    }
+
+    // ----------------------------------------------------------------
     // STEP 6 - 1차 심사 결과 수신 (심사서버가 호출)
     // -----------------------------a-----------------------------------
     @PostMapping("/screening-result")
@@ -154,8 +194,19 @@ public class CreditCardApplicationController {
     
 
     // ----------------------------------------------------------------
+    // Fix 4: SCREENING_FAILED 심사 재시도
+    // ----------------------------------------------------------------
+    @PostMapping("/{creditAppId}/retry-screening")
+    public ResponseEntity<ApiResponse<Void>> retryScreening(
+            @PathVariable Long creditAppId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        creditCardApplicationService.retryScreening(creditAppId, userDetails.getUserId());
+        return ApiResponse.toNoContent();
+    }
+
+    // ----------------------------------------------------------------
     // 사용자 조회
-    // ---------------------------------------------------------------- 
+    // ----------------------------------------------------------------
     @GetMapping("/{creditAppId}")
     public ResponseEntity<ApiResponse<CreditApplicationResponse>> getApplication(
             @PathVariable Long creditAppId,

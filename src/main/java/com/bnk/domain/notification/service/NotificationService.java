@@ -106,6 +106,52 @@ public class NotificationService {
     }
 
     /**
+     * 추가심사 서류 제출 요청 알림 (CreditCardApplicationService.requestAdditionalReview() 에서 호출)
+     * 대상: 해당 신청자 1명
+     */
+    @Transactional
+    public void notifyDocumentRequired(Long userId, Long creditAppId) {
+        String title   = "추가 서류 제출이 필요합니다";
+        String message = "카드 신청 심사를 위해 소득/직업 확인 서류를 제출해 주세요.";
+        String linkUrl = "/application/credit/" + creditAppId + "/documents";
+
+        dispatchToUsers(List.of(userId), "SYSTEM", title, message, linkUrl,
+                List.of("INAPP", "PUSH"), null);
+        log.info("[Notification] 추가서류 요청 알림 발송 userId={}, creditAppId={}", userId, creditAppId);
+    }
+
+    /**
+     * 추가심사 진행 알림 — 서류 없이 자동 심사 진행 (연체율/다중채무/저신용 등)
+     */
+    @Transactional
+    public void notifyManualReview(Long userId, Long creditAppId) {
+        String title   = "추가 심사가 진행 중입니다";
+        String message = "카드 신청에 대한 추가 심사가 진행 중입니다. 결과는 영업일 기준 3~5일 이내 안내드립니다.";
+        String linkUrl = "/mypage/applications";
+
+        dispatchToUsers(List.of(userId), "SYSTEM", title, message, linkUrl,
+                List.of("INAPP", "PUSH"), null);
+        log.info("[Notification] 추가심사 진행 알림 userId={}, creditAppId={}", userId, creditAppId);
+    }
+
+    /**
+     * 심사 결과 알림 (saveReviewResult() 에서 호출)
+     * 대상: 해당 신청자 1명
+     */
+    @Transactional
+    public void notifyReviewResult(Long userId, Long creditAppId, boolean approved) {
+        String title   = approved ? "카드 신청이 승인되었습니다" : "카드 신청이 거절되었습니다";
+        String message = approved
+                ? "심사가 완료되어 카드가 발급됩니다. 마이페이지에서 확인해 주세요."
+                : "심사 결과 카드 발급이 어렵습니다. 자세한 내용은 마이페이지에서 확인해 주세요.";
+        String linkUrl = "/mypage/cards";
+
+        dispatchToUsers(List.of(userId), "SYSTEM", title, message, linkUrl,
+                List.of("INAPP", "PUSH"), null);
+        log.info("[Notification] 심사결과 알림 발송 userId={}, creditAppId={}, approved={}", userId, creditAppId, approved);
+    }
+
+    /**
      * 이벤트 등록 알림 (EventService.create() 등에서 호출)
      * 대상: marketing_agree='Y' 회원
      */
