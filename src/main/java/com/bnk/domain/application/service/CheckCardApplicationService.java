@@ -36,6 +36,7 @@ import com.bnk.global.util.AesCryptoUtil;
 import com.bnk.global.util.MaskingUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -178,16 +179,23 @@ public class CheckCardApplicationService {
         try {
             CheckCardApplication app = findOrThrow(checkAppId);
 
-            restTemplate.postForEntity(
+            ResponseEntity<ScreeningResultRequest> response = restTemplate.postForEntity(
                 verificationServerUrl + "/review/request/check/" + checkAppId,
                 Map.of(
                     "checkAppId", checkAppId,
                     "ciValue",    app.getCiValue()
                 ),
-                Void.class
+                ScreeningResultRequest.class
             );
+            
+            if (response.getBody() != null) {
+                saveScreeningResult(response.getBody());
+            }
+            
         } catch (Exception e) {
             log.error("[체크카드] 심사 의뢰 실패: checkAppId={}", checkAppId, e);
+            checkCardApplicationMapper.updateStatus(checkAppId, "SCREENING_FAILED");
+            throw new BusinessException(ErrorCode.SCREENING_REQUEST_FAILED);
         }
     }
 
