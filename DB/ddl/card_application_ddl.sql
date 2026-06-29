@@ -135,7 +135,7 @@ CREATE TABLE CREDIT_CARD_APPLICATIONS (
     version_id                  NUMBER(19),                              -- 신청 시점 PUBLISHED 카드 버전 ID. STEP 4에서 저장
 
     application_status          VARCHAR2(30)    DEFAULT 'DRAFT' NOT NULL
-        CHECK (application_status IN ('DRAFT','REQUESTED','REVIEWING','APPROVED','REJECTED','ISSUED')),
+        CHECK (application_status IN ('DRAFT','REQUESTED','REVIEWING','APPROVED','REJECTED','ISSUED','SCREENING_FAILED')),
 
     -- [본인확인]
     -- id_verified_yn: 심사서버에서 본인확인 결과 반환 후 업데이트. Y여야 다음 단계 진행 가능
@@ -206,7 +206,7 @@ CREATE TABLE CREDIT_CARD_APPLICATIONS (
 );
 
 COMMENT ON TABLE  CREDIT_CARD_APPLICATIONS                             IS '신용카드 신청';
-COMMENT ON COLUMN CREDIT_CARD_APPLICATIONS.application_status          IS 'DRAFT:작성중 / REQUESTED:신청완료 / REVIEWING:심사중 / APPROVED:승인 / REJECTED:거절 / ISSUED:발급완료';
+COMMENT ON COLUMN CREDIT_CARD_APPLICATIONS.application_status IS 'DRAFT:작성중 / REQUESTED:신청완료 / REVIEWING:심사중 / APPROVED:승인 / REJECTED:거절 / ISSUED:발급완료 / SCREENING_FAILED:심사요청실패';
 COMMENT ON COLUMN CREDIT_CARD_APPLICATIONS.id_verified_yn              IS '본인확인 완료 여부. Y여야 다음 단계 진행 가능';
 COMMENT ON COLUMN CHECK_CARD_APPLICATIONS.ci_value                     IS '경찰청 본인확인 후 수신한 CI값. AES 암호화 저장';
 COMMENT ON COLUMN CREDIT_CARD_APPLICATIONS.version_id                  IS '신청 시점 PUBLISHED 카드 버전 ID. STEP 4 submitApplication에서 저장';
@@ -240,7 +240,7 @@ CREATE TABLE CHECK_CARD_APPLICATIONS (
     version_id                  NUMBER(19),                              -- 신청 시점 PUBLISHED 카드 버전 ID. STEP 4에서 저장
 
     application_status          VARCHAR2(30)    DEFAULT 'DRAFT' NOT NULL
-        CHECK (application_status IN ('DRAFT','REQUESTED','APPROVED','REJECTED','ISSUED')),
+        CHECK (application_status IN ('DRAFT','REQUESTED','APPROVED','REJECTED','ISSUED','SCREENING_FAILED')),
 
     -- [본인확인]
     -- 체크카드는 신분증 실명확인 필요
@@ -281,7 +281,7 @@ CREATE TABLE CHECK_CARD_APPLICATIONS (
 );
 
 COMMENT ON TABLE  CHECK_CARD_APPLICATIONS                              IS '체크카드 신청';
-COMMENT ON COLUMN CHECK_CARD_APPLICATIONS.application_status           IS 'DRAFT:작성중 / REQUESTED:신청완료 / APPROVED:승인 / REJECTED:거절 / ISSUED:발급완료';
+COMMENT ON COLUMN CHECK_CARD_APPLICATIONS.application_status IS 'DRAFT:작성중 / REQUESTED:신청완료 / APPROVED:승인 / REJECTED:거절 / ISSUED:발급완료 / SCREENING_FAILED:심사요청실패';
 COMMENT ON COLUMN CHECK_CARD_APPLICATIONS.id_verified_yn               IS '본인확인 완료 여부. Y여야 다음 단계 진행 가능';
 COMMENT ON COLUMN CREDIT_CARD_APPLICATIONS.ci_value                    IS '경찰청 본인확인 후 수신한 CI값. AES 암호화 저장';
 COMMENT ON COLUMN CHECK_CARD_APPLICATIONS.version_id                   IS '신청 시점 PUBLISHED 카드 버전 ID. STEP 4 submitApplication에서 저장';

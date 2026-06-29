@@ -14,11 +14,12 @@ public class ScreeningResultRequest {
     private String docVerifiedYn;   // (체크카드는 null)
     private String rejectionReason;
     private String applicationStatus; // APPROVED / REJECTED
-    private String reviewedBy;
+    private String reviewedBy;		  // HOMETAX
  
     // 심사서버에서 받는 신용/재무 정보
     private Long   estimatedMonthlyIncome;  // 추정 월소득
-    private Long   creditScore;             // 신용점수
+    private Long   monthlyPayment;  			// 월 납부액 (기존 대출 상환액)
+    private Integer   creditScore;          // 신용점수
     private Integer vehicleCount;           // 차량 개수
     private Long   loanBalance;             // 대출 잔액
     private Double delinquencyRate;         // 연체율
