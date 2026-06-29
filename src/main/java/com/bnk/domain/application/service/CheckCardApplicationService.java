@@ -100,7 +100,8 @@ public class CheckCardApplicationService {
     // STEP 2 - 본인확인 결과 저장
     // ----------------------------------------------------------------
     public String verifyIdentity(CheckCardApplicationRequest request) {
-        Map response = restTemplate.postForObject(
+        @SuppressWarnings("unchecked")
+        Map<String, Object> response = restTemplate.postForObject(
             verificationServerUrl + "/api/mydata/id-verification",
             Map.of(
                 "appId",   request.getCheckAppId(),

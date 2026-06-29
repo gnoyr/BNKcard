@@ -79,7 +79,13 @@ public enum ErrorCode {
 	NOT_APPROVED_STATUS("CA004", "승인 상태가 아닙니다.", HttpStatus.BAD_REQUEST),
 	DOCS_REQUIRED("CA005", "신규고객은 서류 업로드가 필요합니다.", HttpStatus.BAD_REQUEST),
 	VERSION_NOT_FOUND("CA006", "현재 신청 가능한 카드 버전이 없습니다.", HttpStatus.NOT_FOUND),
-	SCREENING_REQUEST_FAILED("CA007", "심사 요청 중 오류가 발생했습니다. 다시 신청해주세요.", HttpStatus.INTERNAL_SERVER_ERROR);
+	SCREENING_REQUEST_FAILED("CA007", "심사 요청 중 오류가 발생했습니다. 다시 신청해주세요.", HttpStatus.INTERNAL_SERVER_ERROR),
+
+	// 보유 카드 관리
+	USER_CARD_NOT_FOUND("CA008", "보유 카드를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+	USER_CARD_NOT_MODIFIABLE("CA009", "변경할 수 없는 카드 상태입니다.", HttpStatus.BAD_REQUEST),
+	DAILY_LIMIT_EXCEEDED("CA010", "일일 한도가 카드 최대 한도를 초과했습니다.", HttpStatus.BAD_REQUEST);
+
 	
 	
 

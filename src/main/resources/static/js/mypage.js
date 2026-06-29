@@ -248,7 +248,6 @@ async function initEdit() {
 
     /* 사용자 정보 로드 */
     let _original = {};
-    let _phoneChanged = false;
 
     try {
         const user = await API.get('/api/users/me');
@@ -257,7 +256,6 @@ async function initEdit() {
         if (get('name')) get('name').value = user.name ?? '';
         if (get('currentEmail')) get('currentEmail').textContent = user.email ?? '';
         if (get('currentPhone')) get('currentPhone').textContent = user.maskedPhone ?? user.phone ?? '미등록';
-        if (get('currentAddr')) get('currentAddr').textContent = user.address ?? '주소 미등록';
         if (get('job')) get('job').value = user.job ?? '';
         if (get('incomeLevelCode')) get('incomeLevelCode').value = user.incomeLevelCode ?? '';
         if (get('pushEnabled')) get('pushEnabled').checked = user.pushEnabled === 'Y' || user.pushEnabled === true;
@@ -275,155 +273,80 @@ async function initEdit() {
             Toast.error('내 정보를 불러오지 못했습니다.');
     }
 
-    document.getElementById('phone')?.addEventListener('input', () => {
-        _phoneChanged = true;
-        V.setErr('phone', '');
-    });
+    document.getElementById('phone')?.addEventListener('input', () => V.setErr('phone', ''));
 
-    /* 비밀번호 확인 모달 */
-    const pwInput = document.getElementById('confirmModalPw');
-    const pwErrEl = document.getElementById('modalPw-err');
+    /* 기본 정보 저장 (이름·휴대폰·직업·소득 + 본인확인 비밀번호)
+       — 앱과 동일하게 인라인 현재 비밀번호로 본인확인. 어떤 항목이든 변경 시 필수. */
+    document.getElementById('basicSubmitBtn')?.addEventListener('click', async () => {
+        const nameVal   = document.getElementById('name')?.value.trim() ?? '';
+        const phoneVal  = document.getElementById('phone')?.value.trim() ?? '';
+        const jobVal    = document.getElementById('job')?.value ?? '';
+        const incomeVal = document.getElementById('incomeLevelCode')?.value ?? '';
+        const pwVal     = document.getElementById('currentPassword')?.value ?? '';
 
-    function openPwModal(onConfirm) {
-        if (pwInput) pwInput.value = '';
-        if (pwErrEl) { pwErrEl.textContent = ''; pwErrEl.classList.remove('show'); }
-        openModal('pwConfirmModal');
-        setTimeout(() => pwInput?.focus(), 150);
-        document.getElementById('pwConfirmBtn')._onConfirm = onConfirm;
-    }
-
-    document.getElementById('pwCancelBtn')?.addEventListener('click', () => closeModal('pwConfirmModal'));
-
-    document.getElementById('pwConfirmBtn')?.addEventListener('click', async function() {
-        const pw = pwInput?.value?.trim() ?? '';
-        if (!pw) {
-            if (pwErrEl) { pwErrEl.textContent = '비밀번호를 입력해주세요.'; pwErrEl.classList.add('show'); }
-            return;
-        }
-        pwErrEl?.classList.remove('show');
-        closeModal('pwConfirmModal');
-        if (typeof this._onConfirm === 'function') await this._onConfirm(pw);
-    });
-    pwInput?.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('pwConfirmBtn')?.click(); });
-
-    /* 기본 정보 저장 */
-    async function submitBasic(currentPassword) {
-        const nameVal = document.getElementById('name')?.value.trim() ?? '';
-        const phoneVal = document.getElementById('phone')?.value.trim() ?? '';
         let ok = true;
         if (!V.setErr('name', V.required(nameVal))) ok = false;
         if (phoneVal && !V.setErr('phone', V.phone(phoneVal))) ok = false;
+        if (!V.setErr('currentPassword', V.required(pwVal, '현재 비밀번호를 입력해주세요.'))) ok = false;
         if (!ok) return;
-        const changed = nameVal !== _original.name || _phoneChanged;
+
+        const changed = nameVal !== _original.name
+            || (phoneVal !== '')
+            || jobVal !== _original.job
+            || incomeVal !== _original.incomeLevelCode;
         if (!changed) { Toast.warning('변경된 내용이 없습니다.'); return; }
 
-        const body = {};
+        const body = { currentPassword: pwVal };
         if (nameVal !== _original.name) body.name = nameVal;
-        if (_phoneChanged && phoneVal) body.phone = phoneVal;
-        if (currentPassword) body.currentPassword = currentPassword;
+        if (phoneVal) body.phone = phoneVal;
+        if (jobVal !== _original.job) body.job = jobVal;
+        if (incomeVal !== _original.incomeLevelCode) body.incomeLevelCode = incomeVal;
 
         const btn = document.getElementById('basicSubmitBtn');
         btnLoading(btn, true);
         try {
             await API.put('/api/users/me', body);
-            Toast.success('기본 정보가 수정되었습니다.');
+            Toast.success('정보가 수정되었습니다.');
             setTimeout(() => { location.href = '/mypage'; }, 1000);
         } catch (err) {
             if (err instanceof ApiError && err.applyFieldErrors(V.setErr)) return;
-            if (err.code === 'U003' || err.message?.includes('비밀번호') || err.message?.includes('password')) {
-                openPwModal(submitBasic);
+            if (err.code === 'U003') {
+                V.setErr('currentPassword', '현재 비밀번호가 올바르지 않습니다.');
+            } else if (err.code === 'U010') {
+                V.setErr('phone', '이미 사용 중인 휴대폰 번호입니다.');
             } else if (err.status > 0 && err.status !== 403 && err.status < 500) {
                 Toast.error(err.message || '수정 중 오류가 발생했습니다.');
             }
         } finally { btnLoading(btn, false); }
-    }
-
-    document.getElementById('basicSubmitBtn')?.addEventListener('click', () => {
-        const phoneVal = document.getElementById('phone')?.value.trim() ?? '';
-        if (_phoneChanged && phoneVal) openPwModal(pw => submitBasic(pw));
-        else submitBasic(null);
     });
 
-    /* 주소 검색 */
-    document.getElementById('addrSearchBtn')?.addEventListener('click', searchAddress);
-
-    function searchAddress() {
-        function load(cb) {
-            if (window.daum?.Postcode) { cb(); return; }
-            const s = document.createElement('script');
-            s.src = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
-            s.onload = cb;
-            s.onerror = () => Toast.error('주소 검색 서비스를 불러오지 못했습니다.');
-            document.head.appendChild(s);
+    /* 주소 변경 → 본인인증 모달 → CI 갱신 */
+    document.getElementById('addrVerifyBtn')?.addEventListener('click', () => {
+        if (typeof IdentityVerify === 'undefined') {
+            Toast.error('본인인증 모듈을 불러오지 못했습니다.');
+            return;
         }
-        load(() => {
-            document.getElementById('addrSearchEmbed')?.remove();
-            const overlay = document.createElement('div');
-            overlay.id = 'addrSearchEmbed';
-            overlay.className = 'addr-embed-overlay';
-            const inner = document.createElement('div');
-            inner.className = 'addr-embed-inner';
-            const closeBtn = document.createElement('button');
-            closeBtn.type = 'button';
-            closeBtn.className = 'addr-embed-close';
-            closeBtn.textContent = '닫기';
-            closeBtn.addEventListener('click', () => overlay.remove());
-            overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
-            inner.appendChild(closeBtn);
-            overlay.appendChild(inner);
-            document.body.appendChild(overlay);
-            new daum.Postcode({
-                oncomplete(data) {
-                    document.getElementById('postcode').value = data.zonecode;
-                    document.getElementById('addrMain').value = data.roadAddress || data.jibunAddress;
-                    document.getElementById('addrDetail').value = '';
-                    document.getElementById('addrDetail').focus();
-                    V.setErr('addr', '');
-                    overlay.remove();
-                },
-                width: '100%', height: '100%',
-            }).embed(inner, { autoClose: false });
+        IdentityVerify.open({
+            onSuccess: async (r) => {
+                try {
+                    await API.patch('/api/users/me/ci', {
+                        name: r.name,
+                        residentFront: r.residentFront,
+                        genderCode: r.genderCode,
+                        address: r.address,
+                        addressDetail: r.addressDetail ?? '',
+                    });
+                    Toast.success('주소가 변경되었습니다.');
+                    setTimeout(() => { location.href = '/mypage'; }, 1200);
+                } catch (err) {
+                    if (err.code === 'CA003') {
+                        Toast.error('본인인증 정보가 계정과 일치하지 않습니다.');
+                    } else if (err.status > 0 && err.status !== 403 && err.status < 500) {
+                        Toast.error(err.message || 'CI 갱신 중 오류가 발생했습니다.');
+                    }
+                }
+            },
         });
-    }
-
-    /* 주소 저장 */
-    document.getElementById('addrSubmitBtn')?.addEventListener('click', async () => {
-        const postcode = document.getElementById('postcode')?.value.trim() ?? '';
-        const addrMain = document.getElementById('addrMain')?.value.trim() ?? '';
-        const addrDetail = document.getElementById('addrDetail')?.value.trim() ?? '';
-        if (!addrMain) { V.setErr('addr', '주소를 검색해주세요.'); return; }
-        V.setErr('addr', '');
-        const btn = document.getElementById('addrSubmitBtn');
-        btnLoading(btn, true);
-        try {
-            await API.put('/api/users/me', { postcode, address: addrMain, addressDetail: addrDetail });
-            document.getElementById('ciRefreshBadge')?.classList.add('show');
-            Toast.success('주소가 변경되었습니다.');
-            setTimeout(() => { location.href = '/mypage'; }, 1200);
-        } catch (err) {
-            if (err instanceof ApiError && err.applyFieldErrors(V.setErr)) return;
-            if (err.status > 0 && err.status !== 403 && err.status < 500)
-                Toast.error(err.message || '주소 변경 중 오류가 발생했습니다.');
-        } finally { btnLoading(btn, false); }
-    });
-
-    /* 소득 정보 저장 */
-    document.getElementById('incomeSubmitBtn')?.addEventListener('click', async () => {
-        const job = document.getElementById('job')?.value ?? '';
-        const income = document.getElementById('incomeLevelCode')?.value ?? '';
-        if (job === _original.job && income === _original.incomeLevelCode) {
-            Toast.warning('변경된 내용이 없습니다.'); return;
-        }
-        const btn = document.getElementById('incomeSubmitBtn');
-        btnLoading(btn, true);
-        try {
-            await API.put('/api/users/me', { job, incomeLevelCode: income });
-            Toast.success('소득 정보가 수정되었습니다.');
-            setTimeout(() => { location.href = '/mypage'; }, 1000);
-        } catch (err) {
-            if (err.status > 0 && err.status !== 403 && err.status < 500)
-                Toast.error(err.message || '수정 중 오류가 발생했습니다.');
-        } finally { btnLoading(btn, false); }
     });
 
     /* 알림 설정 저장 */

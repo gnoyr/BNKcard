@@ -98,7 +98,8 @@ public class CreditCardApplicationService {
     // ----------------------------------------------------------------
     public String verifyIdentity(CreditCardApplicationRequest request) {
     	log.info("[verifyIdentity] verificationServerUrl={}", verificationServerUrl);
-        Map response = restTemplate.postForObject(
+        @SuppressWarnings("unchecked")
+        Map<String, Object> response = restTemplate.postForObject(
             verificationServerUrl + "/api/mydata/id-verification",
             Map.of(
                 "appId",  request.getCreditAppId(),
