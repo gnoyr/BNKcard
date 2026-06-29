@@ -104,6 +104,35 @@
                updated_at  = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
         WHERE  user_card_id = #{userCardId}
     </update>
+
+    <!-- 소유권 검증용 단건 조회 -->
+    <select id="findByIdAndUserId" resultMap="userCardMap">
+        SELECT * FROM USER_CARDS
+        WHERE  user_card_id = #{userCardId}
+          AND  user_id      = #{userId}
+          AND  deleted_yn   = 'N'
+    </select>
+
+    <!-- 보유 카드 부분 업데이트: 전달된 필드만 동적으로 SET -->
+    <update id="updateOwnedCard">
+        UPDATE USER_CARDS
+        <set>
+            <if test="dailyLimitAmount     != null">daily_limit_amount     = #{dailyLimitAmount},</if>
+            <if test="monthlyLimitAmount   != null">monthly_limit_amount   = #{monthlyLimitAmount},</if>
+            <if test="overseasEnabledYn    != null">overseas_enabled_yn    = #{overseasEnabledYn},</if>
+            <if test="contactlessEnabledYn != null">contactless_enabled_yn = #{contactlessEnabledYn},</if>
+            <if test="cardNickname         != null">card_nickname          = #{cardNickname},</if>
+            <if test="paymentDay           != null">payment_day            = #{paymentDay},</if>
+            <if test="txAlertType          != null">tx_alert_type          = #{txAlertType},</if>
+            <if test="statementMethod      != null">statement_method       = #{statementMethod},</if>
+            <if test="cardStatus           != null">card_status            = #{cardStatus},</if>
+            <if test="usableYn             != null">usable_yn              = #{usableYn},</if>
+            updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+        </set>
+        WHERE  user_card_id = #{userCardId}
+          AND  user_id      = #{userId}
+          AND  deleted_yn   = 'N'
+    </update>
     
     <!-- 신용/체크카드 통합 신청 현황 조회 -->
     <select id="findMyAllApplications" resultMap="myCardApplicationMap">

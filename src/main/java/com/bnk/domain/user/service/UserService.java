@@ -37,6 +37,7 @@ public class UserService {
 	private final UserMapper userMapper;
 	private final PasswordEncoder passwordEncoder;
 	private final AuditLogger auditLogger;
+	private final com.bnk.global.util.CiValueGenerator ciValueGenerator;
 
     // ================================================================
     // 내 정보 조회
@@ -195,6 +196,52 @@ public class UserService {
                 .build();
     }
     
+    // ================================================================
+    // 주소 변경 → CI(연계정보) 갱신 (본인인증 모달 결과)
+    // ================================================================
+    /**
+     * 본인인증 모달에서 입력한 신원정보(이름·주민번호앞6+성별코드·주소)로
+     * CI값을 재계산하여 저장한다. 입력 신원이 로그인 계정과 일치할 때만 허용.
+     */
+    @Transactional
+    public void updateCiByAddress(Long userId, com.bnk.domain.user.dto.request.UserCiUpdateRequest req) {
+        User user = userMapper.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        // 본인확인 ① — 입력 이름이 계정 명의와 일치
+        if (!req.getName().trim().equals(user.getName())) {
+            auditLogger.failure(AuditLogger.AUTH, "CI_UPDATE", userId, null, "이름 불일치");
+            throw new BusinessException(ErrorCode.IDENTITY_VERIFY_FAILED);
+        }
+
+        // 본인확인 ② — 주민번호 앞6+성별코드로 유도한 생년월일이 계정과 일치
+        //   (계정에 생년월일이 없으면 검증 생략)
+        if (user.getBirthDate() != null
+                && !derivedBirthMatches(req.getResidentFront(), req.getGenderCode(), user.getBirthDate())) {
+            auditLogger.failure(AuditLogger.AUTH, "CI_UPDATE", userId, null, "생년월일 불일치");
+            throw new BusinessException(ErrorCode.IDENTITY_VERIFY_FAILED);
+        }
+
+        // CI 재계산 (가입 시와 동일한 입력 구성: 이름 + 주민번호앞6+성별 + 주소)
+        String newCi = ciValueGenerator.generate(
+                req.getName(), req.getResidentFront(), req.getGenderCode(), req.getAddress());
+
+        userMapper.updateCiValue(userId, newCi);
+        auditLogger.success(AuditLogger.AUTH, "CI_UPDATE", userId, null, "주소 변경에 따른 CI 갱신");
+    }
+
+    /** 주민번호 앞6자리+성별코드 → 생년월일 유도 후 계정 생년월일과 비교 (identity-verify.js와 동일 규칙) */
+    private boolean derivedBirthMatches(String front, String genderCode, java.time.LocalDate accountBirth) {
+        try {
+            String century = "3478".contains(genderCode) ? "20" : "19";
+            java.time.LocalDate derived = java.time.LocalDate.parse(
+                    century + front, java.time.format.DateTimeFormatter.BASIC_ISO_DATE);
+            return derived.equals(accountBirth);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     @Transactional
     public void updatePushToken(Long userId, String pushToken) {
         if (pushToken == null || pushToken.isBlank())

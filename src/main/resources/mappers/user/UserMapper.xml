@@ -460,4 +460,12 @@
 		SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
 		WHERE user_id = #{userId}
 	</update>
+
+	<!-- 주소 변경에 따른 CI(연계정보) 갱신 -->
+	<update id="updateCiValue">
+		UPDATE USERS
+		SET ci_value = #{ciValue, typeHandler=AesTypeHandler},
+		    updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+		WHERE user_id = #{userId} AND deleted_yn = 'N'
+	</update>
 </mapper>
