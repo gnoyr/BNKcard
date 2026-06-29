@@ -78,7 +78,9 @@ public enum ErrorCode {
 	IDENTITY_VERIFY_FAILED("CA003", "본인확인에 실패했습니다.", HttpStatus.BAD_REQUEST),
 	NOT_APPROVED_STATUS("CA004", "승인 상태가 아닙니다.", HttpStatus.BAD_REQUEST),
 	DOCS_REQUIRED("CA005", "신규고객은 서류 업로드가 필요합니다.", HttpStatus.BAD_REQUEST),
-	VERSION_NOT_FOUND("CA006", "현재 신청 가능한 카드 버전이 없습니다.", HttpStatus.NOT_FOUND);
+	VERSION_NOT_FOUND("CA006", "현재 신청 가능한 카드 버전이 없습니다.", HttpStatus.NOT_FOUND),
+	SCREENING_REQUEST_FAILED("CA007", "심사 요청 중 오류가 발생했습니다. 다시 신청해주세요.", HttpStatus.INTERNAL_SERVER_ERROR);
+	
 	
 
 	private final String code;

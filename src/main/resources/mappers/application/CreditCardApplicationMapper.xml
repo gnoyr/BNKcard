@@ -122,21 +122,19 @@
 
     <!-- STEP 6 - 1차 심사 -->
     <update id="updateScreeningResult">
-        UPDATE CREDIT_CARD_APPLICATIONS
-        SET    screening_result    = #{screeningResult},
-               doc_verified_yn     = #{docVerifiedYn},
-           	   estimated_monthly_income  = #{estimatedMonthlyIncome, jdbcType=NUMERIC},
-               reviewed_at         = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul',
-               reviewed_by         = #{reviewedBy},
-               <if test="rejectionReason != null">
-               rejection_reason    = #{rejectionReason},
-               </if>
-               <if test="'REJECTED'.equals(applicationStatus)">
-               application_status  = 'REJECTED',
-               </if>
-               updated_at          = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
-        WHERE  credit_app_id       = #{creditAppId}
-    </update>
+	    UPDATE CREDIT_CARD_APPLICATIONS
+	    SET    screening_result          = #{screeningResult},
+	           doc_verified_yn           = #{docVerifiedYn},
+	           estimated_monthly_income  = #{estimatedMonthlyIncome, jdbcType=NUMERIC},
+	           reviewed_at               = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul',
+	           reviewed_by               = #{reviewedBy},
+	           <if test="rejectionReason != null">
+	           rejection_reason          = #{rejectionReason},
+	           </if>
+	           application_status        = #{applicationStatus},
+	           updated_at                = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+	    WHERE  credit_app_id             = #{creditAppId}
+	</update>
 
     <!-- STEP 7 - 한도 검증 -->
     <!-- 월 평균 결제액 기반 월소득 추정 
