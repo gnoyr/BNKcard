@@ -84,7 +84,14 @@ public enum ErrorCode {
 	// 보유 카드 관리
 	USER_CARD_NOT_FOUND("CA008", "보유 카드를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
 	USER_CARD_NOT_MODIFIABLE("CA009", "변경할 수 없는 카드 상태입니다.", HttpStatus.BAD_REQUEST),
-	DAILY_LIMIT_EXCEEDED("CA010", "일일 한도가 카드 최대 한도를 초과했습니다.", HttpStatus.BAD_REQUEST);
+	DAILY_LIMIT_EXCEEDED("CA010", "일일 한도가 카드 최대 한도를 초과했습니다.", HttpStatus.BAD_REQUEST),
+
+	// 계좌 연동
+	INVALID_ACCOUNT("AC001", "존재하지 않는 계좌입니다.", HttpStatus.BAD_REQUEST),
+	ACCOUNT_NOT_OWNED("AC002", "본인 계좌만 연결할 수 있습니다.", HttpStatus.FORBIDDEN),
+	ACCOUNT_NOT_ACTIVE("AC003", "사용 가능한 상태의 계좌가 아닙니다.", HttpStatus.BAD_REQUEST),
+	SCREENING_RETRY_NOT_ALLOWED("CA011", "심사 실패 상태의 신청 건만 재시도할 수 있습니다.", HttpStatus.BAD_REQUEST),
+	DUPLICATE_APPLICATION("CA012", "이미 진행 중인 신청 건이 있습니다. 마이페이지에서 확인해 주세요.", HttpStatus.CONFLICT);
 
 	
 	

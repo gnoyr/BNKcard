@@ -92,7 +92,7 @@
 	    FROM   CARD_VERSIONS
 	    WHERE  card_id        = #{cardId}
 	      AND  version_status = 'PUBLISHED'
-	    ORDER BY published_at DESC
+	    ORDER BY published_at DESC NULLS LAST
 	    FETCH FIRST 1 ROWS ONLY
 	</select>
 
@@ -173,6 +173,9 @@
         SET    application_status  = #{applicationStatus},
                reviewed_at         = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul',
                reviewed_by         = #{reviewedBy},
+               <if test="estimatedMonthlyIncome != null">
+               estimated_monthly_income = #{estimatedMonthlyIncome},
+               </if>
                <if test="approvedLimit != null">
                approved_limit       = #{approvedLimit},
                </if>
@@ -230,5 +233,14 @@
             #{id}
         </foreach>
     </delete>
+
+    <!-- 진행 중인 신청 건 존재 여부 (DRAFT 제외, 거절/실패 제외) -->
+    <select id="hasActiveApplication" resultType="boolean">
+        SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+        FROM CREDIT_CARD_APPLICATIONS
+        WHERE user_id            = #{userId}
+          AND card_id            = #{cardId}
+          AND application_status IN ('REQUESTED', 'REVIEWING', 'APPROVED', 'ISSUED')
+    </select>
 
 </mapper>

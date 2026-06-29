@@ -9,13 +9,13 @@ import lombok.Setter;
 @Builder
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class ReviewResultRequest {
-    private Long   appId;
-    private String applicationStatus; // APPROVED / REJECTED / PENDING_LIMIT
-    private Long   approvedLimit;
-    private String rejectionReason;
-    private String reviewedBy;
+    private Long    appId;
+    private String  applicationStatus;  // APPROVED / REJECTED / PENDING_LIMIT
+    private Long    approvedLimit;
+    private String  rejectionReason;
+    private String  reviewedBy;
 
-    // PENDING_LIMIT 케이스 — BNKcard가 한도 산정에 사용
+    // PENDING_LIMIT 케이스 — BNKcard가 재심사에 사용할 신용정보
     private Long    estimatedMonthlyIncome;
     private Integer creditScore;
     private Integer vehicleCount;
