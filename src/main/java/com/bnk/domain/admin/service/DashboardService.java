@@ -33,7 +33,9 @@ public class DashboardService {
 
     private Map<String, Object> buildSuperAdminStats() {
         Map<String, Object> stats = new HashMap<>();
-
+        
+        stats.put("roleCode", "SUPER_ADMIN"); // 추가
+        
         // 카드 상태별 분포
         stats.put("cardsByStatus",    dashboardMapper.countCardsByStatus());
 
@@ -62,7 +64,9 @@ public class DashboardService {
 
     private Map<String, Object> buildManagerStats(Long adminId) {
         Map<String, Object> stats = new HashMap<>();
-
+        
+        stats.put("roleCode", "MANAGER"); // 추가
+        
         // 카드 상태별 분포
         stats.put("cardsByStatus",      dashboardMapper.countCardsByStatus());
 
@@ -87,6 +91,9 @@ public class DashboardService {
     private Map<String, Object> buildOperatorStats(Long adminId) {
         Map<String, Object> stats = new HashMap<>();
 
+        stats.put("roleCode", "OPERATOR"); // 추가
+        
+        
         // 회원 상태별 분포
         stats.put("usersByStatus",    dashboardMapper.countUsersByStatus());
 

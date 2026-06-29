@@ -453,7 +453,7 @@ public class CreditCardApplicationService {
     // STEP 8 - 추가 심사 결과 저장 (심사서버 콜백, REVIEWING 케이스만)
     // ----------------------------------------------------------------
     public void saveReviewResult(ReviewResultRequest request) {
-        // 거절 케이스 — 즉시 REJECTED 저장
+        // 서류 진위 실패 등 MYDATAMOCK에서 직접 거절한 케이스
         if ("REJECTED".equals(request.getApplicationStatus())) {
             CreditCardApplication application = CreditCardApplication.builder()
                     .creditAppId(request.getAppId())
@@ -492,19 +492,24 @@ public class CreditCardApplicationService {
         Integer vehicleCount           = request.getVehicleCount();
         Long    loanBalance            = request.getLoanBalance();
         Double  delinquencyRate        = request.getDelinquencyRate();
+        Integer multipleDebtCount      = request.getMultipleDebtCount();
         String  jobType                = request.getJobType();
 
         // 소득 정보 없으면 최종 거절
         if (estimatedMonthlyIncome == null || estimatedMonthlyIncome == 0) {
-            CreditCardApplication rejected = CreditCardApplication.builder()
-                    .creditAppId(app.getCreditAppId())
-                    .applicationStatus("REJECTED")
-                    .estimatedMonthlyIncome(estimatedMonthlyIncome)
-                    .rejectionReason("서류 심사 후 소득 확인 불가")
-                    .reviewedBy(request.getReviewedBy())
-                    .build();
-            creditCardApplicationMapper.updateReviewResult(rejected);
-            notificationService.notifyReviewResult(app.getUserId(), app.getCreditAppId(), false);
+            rejectAdditional(app, request.getReviewedBy(), "서류 심사 후 소득 확인 불가");
+            return;
+        }
+
+        // 연체율 5% 초과 → 거절
+        if (delinquencyRate != null && delinquencyRate > 5.0) {
+            rejectAdditional(app, request.getReviewedBy(), "연체율 기준 초과");
+            return;
+        }
+
+        // 다중채무 5건 이상 → 거절
+        if (multipleDebtCount != null && multipleDebtCount >= 5) {
+            rejectAdditional(app, request.getReviewedBy(), "다중채무건수 기준 초과");
             return;
         }
 
@@ -600,7 +605,19 @@ public class CreditCardApplicationService {
 
         return score;
     }
-    
+
+    // ----------------------------------------------------------------
+    private void rejectAdditional(CreditCardApplication app, String reviewedBy, String reason) {
+        CreditCardApplication update = CreditCardApplication.builder()
+                .creditAppId(app.getCreditAppId())
+                .applicationStatus("REJECTED")
+                .rejectionReason(reason)
+                .reviewedBy(reviewedBy)
+                .build();
+        creditCardApplicationMapper.updateReviewResult(update);
+        notificationService.notifyReviewResult(app.getUserId(), app.getCreditAppId(), false);
+    }
+
     // ----------------------------------------------------------------
     // APPROVED 시 자동 발급
     // ----------------------------------------------------------------

@@ -10,7 +10,7 @@ import lombok.Setter;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class ReviewResultRequest {
     private Long    appId;
-    private String  applicationStatus;  // PENDING_LIMIT / REJECTED
+    private String  applicationStatus;  // APPROVED / REJECTED / PENDING_LIMIT
     private Long    approvedLimit;
     private String  rejectionReason;
     private String  reviewedBy;
