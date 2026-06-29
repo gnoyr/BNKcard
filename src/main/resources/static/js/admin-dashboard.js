@@ -25,14 +25,14 @@ async function adminApi(method, url, body) {
 
 /* ── 색상 팔레트 ── */
 const COLORS = {
-    blue:   '#1565c0',
-    green:  '#2e7d32',
-    red:    '#c62828',
-    orange: '#e65100',
-    gray:   '#78909c',
-    purple: '#6a1b9a',
-    teal:   '#00695c',
-    navy:   '#003087',
+    teal:   '#4DB6C8',
+    green:  '#81C995',
+    blue:   '#7EB3E8',
+    orange: '#FFAB76',
+    purple: '#B39DDB',
+    pink:   '#F48FB1',
+    yellow: '#FFF176',
+    gray:   '#B0BEC5',
 };
 const PALETTE = Object.values(COLORS);
 
