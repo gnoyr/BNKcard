@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.bnk.global.migration.CiRecomputeMigrationMapper">
+
+    <!--
+        birth_date → aesBirthDateTypeHandler (LocalDate 로 복호화)
+        phone      → aesTypeHandler         (평문으로 복호화)
+        name       → 평문
+    -->
+    <resultMap id="ciRow" type="com.bnk.global.migration.CiMigrationRow">
+        <id     property="userId"    column="user_id"/>
+        <result property="name"      column="name"/>
+        <result property="birthDate" column="birth_date" typeHandler="aesBirthDateTypeHandler"/>
+        <result property="phone"     column="phone"      typeHandler="aesTypeHandler"/>
+    </resultMap>
+
+    <select id="selectAllForCi" resultMap="ciRow">
+        SELECT user_id, name, birth_date, phone
+        FROM   USERS
+        WHERE  deleted_yn = 'N'
+    </select>
+
+</mapper>

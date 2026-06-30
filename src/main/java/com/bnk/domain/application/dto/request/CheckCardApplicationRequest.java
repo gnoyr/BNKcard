@@ -21,7 +21,8 @@ public class CheckCardApplicationRequest {
     private String idType;         // RESIDENT / DRIVER, API 호출 후 버림
     private String idName;         
     private String idResidentNo;   // 주민번호 앞 7자리
-    private String idAddress;      
+    private String idAddress;
+    private String idPhone;        // 본인확인 전화번호 (CI 구성요소)
     private String idIssueDate;
 
     // STEP 3 - 기본정보

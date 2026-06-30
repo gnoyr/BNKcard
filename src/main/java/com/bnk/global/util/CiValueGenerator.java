@@ -43,36 +43,39 @@ public class CiValueGenerator {
     /**
      * Mock CI값 생성.
      *
-     * @param name          이름
-     * @param residentFront 주민번호 앞 6자리 (YYMMDD)
-     * @param genderCode    주민번호 뒷자리 첫 번째 (성별코드: 1~4 또는 7~8)
-     * @param address       주소 (도로명 또는 지번, 공백 정규화 후 사용)
+     * 생성 방식: SHA-256(이름 + 생년월일(YYMMDD) + 전화번호 + salt) → Base64
+     *
+     * [변경 이력]
+     *  v3: 이름 + 주민번호앞6 + 성별코드 + 주소
+     *  v4: 이름 + 생년월일(YYMMDD) + 전화번호  ← 현재
+     *      - 주소 제거(주소는 별도 주소록 테이블에서 관리), 전화번호 추가
+     *      - 성별코드 제거: USERS에 미저장 → birth_date + phone 만으로 기존 회원 CI 재생성(마이그레이션) 가능
+     *
+     * @param name        이름
+     * @param birthYYMMDD 생년월일 6자리(YYMMDD). 가입/인증 요청의 주민번호 앞 6자리와 동일하며,
+     *                    마이그레이션 시에는 birth_date(YYYY-MM-DD)에서 YY+MM+DD로 유도
+     * @param phone       전화번호 (숫자만 추출하여 정규화)
      * @return Base64 인코딩된 SHA-256 해시값 (약 44자)
      */
-    public String generate(String name, String residentFront, String genderCode, String address) {
-        if (name == null || residentFront == null || genderCode == null || address == null) {
+    public String generate(String name, String birthYYMMDD, String phone) {
+        if (name == null || birthYYMMDD == null || phone == null) {
             throw new IllegalArgumentException("CI값 생성에 필요한 정보가 누락되었습니다.");
         }
 
-        // 주민번호 앞 6자리는 숫자만, 성별코드는 trim
-        String front   = residentFront.replaceAll("[^0-9]", "");
-        String gender  = genderCode.trim();
-        // 주소는 연속 공백 제거 + trim (입력값 정규화)
-        String addr    = address.trim().replaceAll("\\s+", " ");
+        String nm    = name.trim();
+        String birth = birthYYMMDD.replaceAll("[^0-9]", "");
+        String ph    = phone.replaceAll("[^0-9]", "");
 
-        if (front.length() != 6) {
-            throw new IllegalArgumentException("주민번호 앞 6자리가 올바르지 않습니다.");
+        if (birth.length() != 6) {
+            throw new IllegalArgumentException("생년월일(YYMMDD) 6자리가 올바르지 않습니다.");
         }
-        if (!gender.matches("[1-4789]")) {
-            throw new IllegalArgumentException("성별코드가 올바르지 않습니다. (1~4, 7, 8 중 하나)");
-        }
-        if (addr.isBlank()) {
-            throw new IllegalArgumentException("주소가 올바르지 않습니다.");
+        if (ph.length() < 9) {
+            throw new IllegalArgumentException("전화번호가 올바르지 않습니다.");
         }
 
         try {
-            // 조합 문자열: 이름|주민번호앞6자리+성별코드|주소|salt
-            String raw = name + "|" + front + gender + "|" + addr + "|" + ciSalt;
+            // 조합 문자열: 이름|생년월일(YYMMDD)|전화번호(숫자)|salt
+            String raw = nm + "|" + birth + "|" + ph + "|" + ciSalt;
 
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(raw.getBytes(StandardCharsets.UTF_8));
