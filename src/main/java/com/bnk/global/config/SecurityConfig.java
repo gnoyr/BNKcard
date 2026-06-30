@@ -243,6 +243,15 @@ public class SecurityConfig {
                     "/api/init"
                 ).permitAll()
 
+                // ── 6-1. 내부 콜백 API (X-Internal-Secret 헤더로 인증)
+                //         MYDATAMOCK 심사서버가 사용자 JWT 없이 호출하므로 permitAll.
+                //         컨트롤러 내부에서 InternalCallbackValidator로 비밀키 검증.
+                .requestMatchers(
+                    "/api/callback/**",
+                    "/api/applications/credit/screening-result",
+                    "/api/applications/check/screening-result"
+                ).permitAll()
+
                 // ── 7. SUPER_ADMIN 전용 API ───────────────────────────
                 // 마이그레이션, 관리자 계정 관리, CDD 강제 변경,
                 // 요주의 인물 등록·삭제

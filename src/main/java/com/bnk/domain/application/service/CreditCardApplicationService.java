@@ -37,6 +37,7 @@ import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.util.AesCryptoUtil;
 import com.bnk.global.util.MaskingUtil;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -104,6 +105,7 @@ public class CreditCardApplicationService {
     // ----------------------------------------------------------------
     // STEP 2 - 본인확인 결과 저장 (심사 서버에서 받아서)
     // ----------------------------------------------------------------
+    @Transactional
     public String verifyIdentity(CreditCardApplicationRequest request) {
     	log.info("[verifyIdentity] verificationServerUrl={}", verificationServerUrl);
         @SuppressWarnings("unchecked")
@@ -140,6 +142,7 @@ public class CreditCardApplicationService {
     // ----------------------------------------------------------------
     // STEP 3 - 기본정보 + 직업/소득 저장
     // ----------------------------------------------------------------
+    @Transactional
     public void saveApplicantInfo(CreditCardApplicationRequest request) {
         validateIdVerified(request.getCreditAppId()); 
         
@@ -155,7 +158,7 @@ public class CreditCardApplicationService {
             // applicantSnapshot { name, nameEn,mobileNo, address, email,
             // 					   incomeType, healthInsuranceType, hasRealEstate, hasOwnVehicle }
             creditCardApplicationMapper.updateApplicantInfo(application);
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             throw new RuntimeException("applicantSnapshot 직렬화 실패", e);
         }
     }
@@ -165,6 +168,14 @@ public class CreditCardApplicationService {
 	// ----------------------------------------------------------------
     @Transactional
 	public void submitApplication(CreditCardApplicationRequest request) {
+	    // H3: 이미 진행/완료된 신청 건은 재제출 불가
+	    CreditCardApplication existing = findOrThrow(request.getCreditAppId());
+	    String currentStatus = existing.getApplicationStatus();
+	    if ("REQUESTED".equals(currentStatus) || "REVIEWING".equals(currentStatus)
+	            || "APPROVED".equals(currentStatus) || "ISSUED".equals(currentStatus)
+	            || "REJECTED".equals(currentStatus)) {
+	        throw new BusinessException(ErrorCode.INVALID_APPLICATION_STATUS);
+	    }
 	    validateIdVerified(request.getCreditAppId());
 	    
 	    // STEP 5 - 기존고객 여부 체크
@@ -251,7 +262,10 @@ public class CreditCardApplicationService {
     // ----------------------------------------------------------------
     // STEP 6 - 1차 심사 결과 저장 (심사서버 콜백)
     // ----------------------------------------------------------------
+    @Transactional
 	public void saveScreeningResult(ScreeningResultRequest request) {
+	    // M2: 존재하지 않는 appId 콜백 시 silent no-op 방지
+	    findOrThrow(request.getAppId());
 	    CreditCardApplication application = CreditCardApplication.builder()
 	            .creditAppId(request.getAppId())
 	            .screeningResult(request.getScreeningResult())
@@ -452,6 +466,7 @@ public class CreditCardApplicationService {
     // ----------------------------------------------------------------
     // STEP 8 - 추가 심사 결과 저장 (심사서버 콜백, REVIEWING 케이스만)
     // ----------------------------------------------------------------
+    @Transactional
     public void saveReviewResult(ReviewResultRequest request) {
         // 서류 진위 실패 등 MYDATAMOCK에서 직접 거절한 케이스
         if ("REJECTED".equals(request.getApplicationStatus())) {
@@ -473,6 +488,8 @@ public class CreditCardApplicationService {
         }
 
         // APPROVED 케이스 (외부에서 한도까지 확정된 경우)
+        // M2: 존재하지 않는 appId 콜백 시 silent no-op 방지
+        findOrThrow(request.getAppId());
         CreditCardApplication application = CreditCardApplication.builder()
                 .creditAppId(request.getAppId())
                 .applicationStatus("APPROVED")
@@ -624,7 +641,12 @@ public class CreditCardApplicationService {
     @Transactional
     public void issueCard(Long creditAppId) {
         CreditCardApplication app = findOrThrow(creditAppId);
- 
+
+        // H4: 멱등성 보장 — 이미 발급된 경우 중복 발급 방지
+        if ("ISSUED".equals(app.getApplicationStatus())) {
+            log.warn("[신용카드] 이미 발급된 신청 건 중복 호출 차단: creditAppId={}", creditAppId);
+            return;
+        }
         if (!"APPROVED".equals(app.getApplicationStatus())) {
         	throw new BusinessException(ErrorCode.NOT_APPROVED_STATUS);
         }
@@ -635,7 +657,7 @@ public class CreditCardApplicationService {
         // 16자리 랜덤 카드번호 생성
         long min = 1_000_000_000_000_000L;
         long max = 9_999_999_999_999_999L;
-        long rawNumber = min + (long)(SECURE_RANDOM.nextDouble() * (max - min + 1));
+        long rawNumber = min + SECURE_RANDOM.nextLong(max - min + 1);
         String rawCardNumber = String.format("%016d", rawNumber);
 
         PaymentSnapshotDto snap = null;
@@ -729,6 +751,13 @@ public class CreditCardApplicationService {
         	throw new BusinessException(ErrorCode.APP_NOT_FOUND);
         }
         return app;
+    }
+
+    public void validateOwnership(Long creditAppId, Long userId) {
+        CreditCardApplication app = findOrThrow(creditAppId);
+        if (!app.getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
     }
     
     // 사용자 신청서 조회
