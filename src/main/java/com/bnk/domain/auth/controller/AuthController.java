@@ -22,6 +22,7 @@ import com.bnk.domain.auth.dto.response.FindIdResponse;
 import com.bnk.domain.auth.service.AuthService;
 import com.bnk.global.auth.CustomUserDetails;
 import com.bnk.global.response.ApiResponse;
+import com.bnk.global.util.ClientIpUtil;
 import com.bnk.global.util.CookieUtil;
 
 import java.util.List;
@@ -67,8 +68,8 @@ public class AuthController {
 			@RequestBody @Valid SignupRequest request,
 			HttpServletRequest httpRequest) {
 		Long userId = authService.signup(request);
-		// 회원가입 완료 후 최초 접속 IP 자동 등록
-		authService.registerInitialIp(userId, httpRequest.getRemoteAddr());
+		// 회원가입 완료 후 최초 접속 IP 자동 등록 (이후 로그인과 동일하게 정규화된 IP로 저장)
+		authService.registerInitialIp(userId, ClientIpUtil.resolve(httpRequest));
 		return ApiResponse.toCreated(userId);
 	}
 
@@ -86,7 +87,8 @@ public class AuthController {
 
 	    // IP 챌린지 체크 — result에서 userId를 꺼내기 위해 AccessCookie의 subject 대신
 	    // login()이 이미 user.getUserId()를 사용하므로, AuthService에 위임
-	    String clientIp = httpRequest.getRemoteAddr();
+	    // 정규화된 IP를 사용해야 같은 단말이 매번 '새 기기'로 오인되지 않는다.
+	    String clientIp = ClientIpUtil.resolve(httpRequest);
 	    // AuthTokenResult에 userId가 없으므로 이메일로 userId 재조회
 	    // (login() 내부에서 이미 조회한 user 객체를 재활용하지 않으므로 최소 비용으로 재조회)
 	    Long userId = authService.findUserIdByEmail(request.getEmail());
