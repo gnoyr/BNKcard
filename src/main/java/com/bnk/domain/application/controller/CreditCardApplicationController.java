@@ -203,8 +203,10 @@ public class CreditCardApplicationController {
     // ----------------------------------------------------------------
     @PostMapping("/review-result")
     public ResponseEntity<ApiResponse<Void>> saveReviewResult(
+            HttpServletRequest httpRequest,
             @RequestBody ReviewResultRequest request) {
 
+        internalCallbackValidator.validate(httpRequest);
         creditCardApplicationService.saveReviewResult(request);
         return ApiResponse.toNoContent();
     }
