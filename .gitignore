@@ -37,11 +37,22 @@ out/
 ### VS Code ###
 .vscode/
 
-src/main/resources/application-local.properties
+### 민감 설정 파일 ###
+**/application-local.properties
+**/application-prod.properties
+**/application-local.yml
+**/application-prod.yml
 application-test.properties
 
+### 인증서·키 ###
+*.p12
+*.jks
+*.pem
+*.key
+*.crt
 **/service-account.json
 src/main/resources/firebase/
 
-# secrets
-**/service-account.json
+### 로그 ###
+*.log
+logs/
