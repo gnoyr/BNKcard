@@ -126,7 +126,7 @@ public class NotificationService {
     @Transactional
     public void notifyManualReview(Long userId, Long creditAppId) {
         String title   = "추가 심사가 진행 중입니다";
-        String message = "카드 신청에 대한 추가 심사가 진행 중입니다. 결과는 영업일 기준 3~5일 이내 안내드립니다.";
+        String message = "카드 신청에 대한 추가 심사가 진행 중입니다. 잠시 후 결과를 알려드립니다.";
         String linkUrl = "/mypage/applications";
 
         dispatchToUsers(List.of(userId), "SYSTEM", title, message, linkUrl,
@@ -135,14 +135,29 @@ public class NotificationService {
     }
 
     /**
+     * 심사 처리 실패 알림 — 심사서버 장애 등으로 심사 의뢰가 실패한 경우(SCREENING_FAILED).
+     * 사용자가 재시도할 수 있도록 안내한다.
+     */
+    @Transactional
+    public void notifyScreeningFailed(Long userId, Long appId) {
+        String title   = "심사 처리가 지연되고 있습니다";
+        String message = "일시적인 오류로 심사 처리가 지연되고 있습니다. 마이페이지에서 다시 시도해 주세요.";
+        String linkUrl = "/mypage/applications";
+
+        dispatchToUsers(List.of(userId), "SYSTEM", title, message, linkUrl,
+                List.of("INAPP", "PUSH"), null);
+        log.info("[Notification] 심사실패 알림 발송 userId={}, appId={}", userId, appId);
+    }
+
+    /**
      * 심사 결과 알림 (saveReviewResult() 에서 호출)
      * 대상: 해당 신청자 1명
      */
     @Transactional
     public void notifyReviewResult(Long userId, Long creditAppId, boolean approved) {
-        String title   = approved ? "카드 신청이 승인되었습니다" : "카드 신청이 거절되었습니다";
+        String title   = approved ? "카드가 발급되었습니다" : "카드 신청이 거절되었습니다";
         String message = approved
-                ? "심사가 완료되어 카드가 발급됩니다. 마이페이지에서 확인해 주세요."
+                ? "심사가 완료되어 카드 발급이 완료되었습니다. 마이페이지에서 확인해 주세요."
                 : "심사 결과 카드 발급이 어렵습니다. 자세한 내용은 마이페이지에서 확인해 주세요.";
         String linkUrl = "/mypage/cards";
 

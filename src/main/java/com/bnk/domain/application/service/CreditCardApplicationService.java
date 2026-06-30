@@ -257,6 +257,11 @@ public class CreditCardApplicationService {
 	    } catch (Exception e) {
 	        log.error("[신용카드] 심사 의뢰 실패: creditAppId={}", creditAppId, e);
 	        creditCardApplicationMapper.updateStatus(creditAppId, "SCREENING_FAILED");
+	        try {
+	            notificationService.notifyScreeningFailed(findOrThrow(creditAppId).getUserId(), creditAppId);
+	        } catch (Exception ne) {
+	            log.error("[신용카드] 심사실패 알림 발송 실패: creditAppId={}", creditAppId, ne);
+	        }
 	    }
 	}
     
@@ -792,6 +797,9 @@ public class CreditCardApplicationService {
                     .applicationStatus(app.getApplicationStatus())
                     .idVerifiedYn(app.getIdVerifiedYn())
                     .applicantSnapshot(applicantSnapshot)
+                    .annualIncomeBand(app.getAnnualIncomeBand())
+                    .creditScoreBand(app.getCreditScoreBand())
+                    .linkedAccountId(app.getLinkedAccountId())
                     .paymentSnapshot(paymentSnapshot)
                     .approvedLimit(app.getApprovedLimit())
                     .requestedLimit(app.getRequestedLimit())

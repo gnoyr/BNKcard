@@ -246,6 +246,11 @@ public class CheckCardApplicationService {
         } catch (Exception e) {
             log.error("[체크카드] 심사 의뢰 실패: checkAppId={}", checkAppId, e);
             checkCardApplicationMapper.updateStatus(checkAppId, "SCREENING_FAILED");
+            try {
+                notificationService.notifyScreeningFailed(findOrThrow(checkAppId).getUserId(), checkAppId);
+            } catch (Exception ne) {
+                log.error("[체크카드] 심사실패 알림 발송 실패: checkAppId={}", checkAppId, ne);
+            }
         }
     }
 
