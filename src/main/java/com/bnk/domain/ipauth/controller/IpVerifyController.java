@@ -18,6 +18,7 @@ import com.bnk.domain.ipauth.service.IpTrustService;
 import com.bnk.domain.ipauth.service.IpVerifyService;
 import com.bnk.global.auth.JwtTokenProvider;
 import com.bnk.global.response.ApiResponse;
+import com.bnk.global.util.ClientIpUtil;
 import com.bnk.global.util.CookieUtil;
 import com.bnk.global.util.TimeConstants;
 
@@ -101,7 +102,7 @@ public class IpVerifyController {
         String refreshToken  = jwtTokenProvider.generateRefreshToken(userId);
         long   refreshExpSec = jwtTokenProvider.getRefreshExpirationSec();
 
-        String ipAddress  = httpRequest.getRemoteAddr();
+        String ipAddress  = ClientIpUtil.normalize(httpRequest.getRemoteAddr());
         String userAgent  = httpRequest.getHeader("User-Agent");
         String deviceInfo = (userAgent != null && userAgent.length() > 100)
                 ? userAgent.substring(0, 100) : userAgent;
