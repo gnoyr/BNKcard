@@ -10,6 +10,8 @@ import java.util.stream.Collectors;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.client.RestTemplate;
 
 import com.bnk.domain.account.mapper.AccountMapper;
@@ -17,7 +19,9 @@ import com.bnk.domain.account.model.Account;
 import com.bnk.domain.application.dto.CheckApplicantSnapshotDto;
 import com.bnk.domain.application.dto.PaymentSnapshotDto;
 import com.bnk.domain.application.dto.request.CheckCardApplicationRequest;
+import com.bnk.domain.application.dto.request.ReviewResultRequest;
 import com.bnk.domain.application.dto.request.ScreeningResultRequest;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.bnk.domain.application.dto.response.CheckApplicationResponse;
 import com.bnk.domain.application.mapper.CheckCardApplicationMapper;
 import com.bnk.domain.application.mapper.UserCardMapper;
@@ -33,6 +37,7 @@ import com.bnk.domain.terms.mapper.TermsMapper;
 import com.bnk.domain.terms.mapper.UserTermsAgreementMapper;
 import com.bnk.domain.terms.model.Terms;
 import com.bnk.domain.terms.model.UserTermsAgreement;
+import com.bnk.domain.notification.service.NotificationService;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.util.AesCryptoUtil;
@@ -59,6 +64,7 @@ public class CheckCardApplicationService {
     private final AesCryptoUtil              aesCryptoUtil;
     private final AccountMapper              accountMapper;
     private final CheckCardLimitService      checkCardLimitService;
+    private final NotificationService        notificationService;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     @Value("${verification.server.url}")
@@ -106,6 +112,7 @@ public class CheckCardApplicationService {
     // ----------------------------------------------------------------
     // STEP 2 - 본인확인 결과 저장
     // ----------------------------------------------------------------
+    @Transactional
     public String verifyIdentity(CheckCardApplicationRequest request) {
         @SuppressWarnings("unchecked")
         Map<String, Object> response = restTemplate.postForObject(
@@ -141,6 +148,7 @@ public class CheckCardApplicationService {
     // ----------------------------------------------------------------
     // STEP 3 - 기본정보 저장
     // ----------------------------------------------------------------
+    @Transactional
     public void saveApplicantInfo(CheckCardApplicationRequest request) {
         validateIdVerified(request.getCheckAppId());
 
@@ -150,7 +158,7 @@ public class CheckCardApplicationService {
                     .applicantSnapshot(objectMapper.writeValueAsString(request.getApplicantSnapshot()))
                     .build();
             checkCardApplicationMapper.updateApplicantInfo(application);
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             throw new RuntimeException("applicantSnapshot 직렬화 실패", e);
         }
     }
@@ -158,7 +166,16 @@ public class CheckCardApplicationService {
     // ----------------------------------------------------------------
     // STEP 4 - 신청정보 저장 + 신청 완료(REQUESTED)
     // ----------------------------------------------------------------
+    @Transactional
     public void submitApplication(CheckCardApplicationRequest request, Long userId) {
+        // H3: 이미 진행/완료된 신청 건은 재제출 불가
+        CheckCardApplication existing = findOrThrow(request.getCheckAppId());
+        String currentStatus = existing.getApplicationStatus();
+        if ("REQUESTED".equals(currentStatus) || "REVIEWING".equals(currentStatus)
+                || "APPROVED".equals(currentStatus) || "ISSUED".equals(currentStatus)
+                || "REJECTED".equals(currentStatus)) {
+            throw new BusinessException(ErrorCode.INVALID_APPLICATION_STATUS);
+        }
         validateIdVerified(request.getCheckAppId());
 
         // Fix 1: 계좌 소유 및 상태 검증
@@ -188,17 +205,22 @@ public class CheckCardApplicationService {
             checkCardApplicationMapper.updatePaymentInfo(application);
         } catch (BusinessException e) {
             throw e;
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             throw new RuntimeException("snapshot 직렬화 실패", e);
         }
 
-        // Fix 3: 심사 의뢰 비동기 처리 — 사용자 응답을 블로킹하지 않음
+        // Fix 3: 심사 의뢰 비동기 처리 — DB 커밋 후 실행 보장
         final Long checkAppId = request.getCheckAppId();
-        CompletableFuture.runAsync(() -> {
-            try {
-                requestScreeningReview(checkAppId);
-            } catch (Exception e) {
-                log.error("[체크카드] 비동기 심사 의뢰 처리 중 예외: checkAppId={}", checkAppId, e);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        requestScreeningReview(checkAppId);
+                    } catch (Exception e) {
+                        log.error("[체크카드] 비동기 심사 의뢰 처리 중 예외: checkAppId={}", checkAppId, e);
+                    }
+                });
             }
         });
     }
@@ -229,7 +251,10 @@ public class CheckCardApplicationService {
     // ----------------------------------------------------------------
     // STEP 5 - 심사 결과 저장 (심사서버가 결과 전달)
     // ----------------------------------------------------------------
+    @Transactional
     public void saveScreeningResult(ScreeningResultRequest request) {
+        // M2: 존재하지 않는 appId 콜백 시 silent no-op 방지
+        findOrThrow(request.getAppId());
         CheckCardApplication application = CheckCardApplication.builder()
                 .checkAppId(request.getAppId())
                 .applicationStatus(request.getApplicationStatus())
@@ -245,12 +270,52 @@ public class CheckCardApplicationService {
     }
 
     // ----------------------------------------------------------------
+    // 관리자 추가 심사 결과 콜백 (체크카드)
+    // ----------------------------------------------------------------
+    @Transactional
+    public void saveReviewResult(ReviewResultRequest request) {
+        if ("REJECTED".equals(request.getApplicationStatus())) {
+            CheckCardApplication application = CheckCardApplication.builder()
+                    .checkAppId(request.getAppId())
+                    .applicationStatus("REJECTED")
+                    .rejectionReason(request.getRejectionReason())
+                    .reviewedBy(request.getReviewedBy())
+                    .build();
+            checkCardApplicationMapper.updateReviewResult(application);
+            return;
+        }
+
+        if ("APPROVED".equals(request.getApplicationStatus())) {
+            // M2: 존재하지 않는 appId 콜백 시 silent no-op 방지
+            CheckCardApplication app = findOrThrow(request.getAppId());
+            CheckCardApplication application = CheckCardApplication.builder()
+                    .checkAppId(request.getAppId())
+                    .applicationStatus("APPROVED")
+                    .reviewedBy(request.getReviewedBy())
+                    .build();
+            checkCardApplicationMapper.updateReviewResult(application);
+            issueCard(request.getAppId());
+            // L4: 발급 완료 알림
+            try {
+                notificationService.notifyReviewResult(app.getUserId(), request.getAppId(), true);
+            } catch (Exception e) {
+                log.error("[체크카드] 추가심사 승인 알림 발송 실패: checkAppId={}", request.getAppId(), e);
+            }
+        }
+    }
+
+    // ----------------------------------------------------------------
     //  APPROVED 시 자동 발급
     // ----------------------------------------------------------------
     @Transactional
     public void issueCard(Long checkAppId) {
         CheckCardApplication app = findOrThrow(checkAppId);
 
+        // H4: 멱등성 보장 — 이미 발급된 경우 중복 발급 방지
+        if ("ISSUED".equals(app.getApplicationStatus())) {
+            log.warn("[체크카드] 이미 발급된 신청 건 중복 호출 차단: checkAppId={}", checkAppId);
+            return;
+        }
         if (!"APPROVED".equals(app.getApplicationStatus())) {
         	throw new BusinessException(ErrorCode.NOT_APPROVED_STATUS);
         }
@@ -261,7 +326,7 @@ public class CheckCardApplicationService {
         // 16자리 랜덤 카드번호 생성
         long min = 1_000_000_000_000_000L;
         long max = 9_999_999_999_999_999L;
-        long rawNumber = min + (long)(SECURE_RANDOM.nextDouble() * (max - min + 1));
+        long rawNumber = min + (SECURE_RANDOM.nextLong(max - min + 1));
         String rawCardNumber = String.format("%016d", rawNumber);
 
         // payment_snapshot 파싱
@@ -342,6 +407,7 @@ public class CheckCardApplicationService {
     // ----------------------------------------------------------------
     // Fix 4: SCREENING_FAILED 재시도
     // ----------------------------------------------------------------
+    @Transactional
     public void retryScreening(Long checkAppId, Long userId) {
         CheckCardApplication app = findOrThrow(checkAppId);
         if (!app.getUserId().equals(userId)) {
@@ -351,11 +417,16 @@ public class CheckCardApplicationService {
             throw new BusinessException(ErrorCode.SCREENING_RETRY_NOT_ALLOWED);
         }
         checkCardApplicationMapper.updateStatus(checkAppId, "REQUESTED");
-        CompletableFuture.runAsync(() -> {
-            try {
-                requestScreeningReview(checkAppId);
-            } catch (Exception e) {
-                log.error("[체크카드] 심사 재시도 실패: checkAppId={}", checkAppId, e);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        requestScreeningReview(checkAppId);
+                    } catch (Exception e) {
+                        log.error("[체크카드] 심사 재시도 실패: checkAppId={}", checkAppId, e);
+                    }
+                });
             }
         });
     }
@@ -397,6 +468,13 @@ public class CheckCardApplicationService {
         CheckCardApplication app = findOrThrow(checkAppId);
         if (!"Y".equals(app.getIdVerifiedYn())) {
         	throw new BusinessException(ErrorCode.IDENTITY_NOT_VERIFIED);
+        }
+    }
+
+    public void validateOwnership(Long checkAppId, Long userId) {
+        CheckCardApplication app = findOrThrow(checkAppId);
+        if (!app.getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
         }
     }
 

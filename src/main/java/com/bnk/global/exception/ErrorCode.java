@@ -91,7 +91,9 @@ public enum ErrorCode {
 	ACCOUNT_NOT_OWNED("AC002", "본인 계좌만 연결할 수 있습니다.", HttpStatus.FORBIDDEN),
 	ACCOUNT_NOT_ACTIVE("AC003", "사용 가능한 상태의 계좌가 아닙니다.", HttpStatus.BAD_REQUEST),
 	SCREENING_RETRY_NOT_ALLOWED("CA011", "심사 실패 상태의 신청 건만 재시도할 수 있습니다.", HttpStatus.BAD_REQUEST),
-	DUPLICATE_APPLICATION("CA012", "이미 진행 중인 신청 건이 있습니다. 마이페이지에서 확인해 주세요.", HttpStatus.CONFLICT);
+	DUPLICATE_APPLICATION("CA012", "이미 진행 중인 신청 건이 있습니다. 마이페이지에서 확인해 주세요.", HttpStatus.CONFLICT),
+	CALLBACK_AUTH_FAILED("CA013", "내부 콜백 인증에 실패했습니다.", HttpStatus.UNAUTHORIZED),
+	INVALID_APPLICATION_STATUS("CA014", "현재 상태에서는 신청을 진행할 수 없습니다.", HttpStatus.BAD_REQUEST);
 
 	
 	
