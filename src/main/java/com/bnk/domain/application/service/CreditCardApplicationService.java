@@ -117,6 +117,7 @@ public class CreditCardApplicationService {
                 "idName",       request.getIdName(),
                 "idResidentNo", request.getIdResidentNo(),
                 "idAddress",    request.getIdAddress(),
+                "idPhone",      request.getIdPhone(),
                 "idIssueDate",  request.getIdIssueDate()
             ),
             Map.class
@@ -497,6 +498,9 @@ public class CreditCardApplicationService {
                 .reviewedBy(request.getReviewedBy())
                 .build();
         creditCardApplicationMapper.updateReviewResult(application);
+        // 승인 알림(INAPP + FCM) — 다른 승인 경로와 동일하게 발송
+        notificationService.notifyReviewResult(
+                findOrThrow(request.getAppId()).getUserId(), request.getAppId(), true);
         issueCard(request.getAppId());
     }
 

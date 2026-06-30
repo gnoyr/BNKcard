@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.bnk.domain.user.mapper.UserAddressMapper">
+
+    <!--
+        [암호화 컬럼 처리]
+        address        → typeHandler=aesTypeHandler : 쓰기=AES 암호화, 읽기=AES 복호화
+        address_detail → typeHandler=aesTypeHandler
+        zipcode/alias  → 평문 (map-underscore-to-camel-case 자동 매핑)
+        (USERS.phone / USER_TRUSTED_IPS.ip_address 패턴과 동일)
+    -->
+
+    <resultMap id="addressMap" type="com.bnk.domain.user.model.UserAddress">
+        <id     property="addressId"     column="address_id"/>
+        <result property="userId"        column="user_id"/>
+        <result property="alias"         column="alias"/>
+        <result property="zipcode"       column="zipcode"/>
+        <result property="address"       column="address"        typeHandler="aesTypeHandler"/>
+        <result property="addressDetail" column="address_detail" typeHandler="aesTypeHandler"/>
+        <result property="isDefault"     column="is_default"/>
+        <result property="statusCode"    column="status_code"/>
+        <result property="createdAt"     column="created_at"/>
+        <result property="updatedAt"     column="updated_at"/>
+        <result property="deletedYn"     column="deleted_yn"/>
+        <result property="deletedAt"     column="deleted_at"/>
+    </resultMap>
+
+    <select id="findAllByUserId" resultMap="addressMap">
+        SELECT address_id, user_id, alias, zipcode, address, address_detail,
+               is_default, status_code, created_at, updated_at, deleted_yn, deleted_at
+        FROM   USER_ADDRESSES
+        WHERE  user_id    = #{userId}
+          AND  deleted_yn = 'N'
+        ORDER BY is_default DESC, created_at DESC
+    </select>
+
+    <select id="findByAddressIdAndUserId" resultMap="addressMap">
+        SELECT address_id, user_id, alias, zipcode, address, address_detail,
+               is_default, status_code, created_at, updated_at, deleted_yn, deleted_at
+        FROM   USER_ADDRESSES
+        WHERE  address_id = #{addressId}
+          AND  user_id    = #{userId}
+          AND  deleted_yn = 'N'
+    </select>
+
+    <select id="countActiveByUserId" resultType="int">
+        SELECT COUNT(1)
+        FROM   USER_ADDRESSES
+        WHERE  user_id     = #{userId}
+          AND  status_code = 'ACTIVE'
+          AND  deleted_yn  = 'N'
+    </select>
+
+    <insert id="insert" parameterType="com.bnk.domain.user.model.UserAddress">
+        INSERT INTO USER_ADDRESSES (
+            user_id,
+            alias,
+            zipcode,
+            address,
+            address_detail,
+            is_default,
+            status_code,
+            created_at,
+            deleted_yn
+        ) VALUES (
+            #{userId},
+            #{alias},
+            #{zipcode},
+            #{address,        typeHandler=aesTypeHandler},
+            #{addressDetail,  typeHandler=aesTypeHandler},
+            #{isDefault},
+            #{statusCode},
+            SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul',
+            'N'
+        )
+    </insert>
+
+    <update id="updateAlias">
+        UPDATE USER_ADDRESSES
+        SET    alias = #{alias}
+        WHERE  address_id = #{addressId}
+          AND  user_id    = #{userId}
+          AND  deleted_yn = 'N'
+    </update>
+
+    <update id="clearDefault">
+        UPDATE USER_ADDRESSES
+        SET    is_default = 'N'
+        WHERE  user_id    = #{userId}
+          AND  deleted_yn = 'N'
+          AND  is_default = 'Y'
+    </update>
+
+    <update id="setDefault">
+        UPDATE USER_ADDRESSES
+        SET    is_default = 'Y'
+        WHERE  address_id = #{addressId}
+          AND  user_id    = #{userId}
+          AND  deleted_yn = 'N'
+    </update>
+
+    <update id="softDelete">
+        UPDATE USER_ADDRESSES
+        SET    deleted_yn  = 'Y',
+               deleted_at  = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul',
+               status_code = 'DISABLED',
+               is_default  = 'N'
+        WHERE  address_id  = #{addressId}
+          AND  user_id     = #{userId}
+          AND  deleted_yn  = 'N'
+    </update>
+
+</mapper>

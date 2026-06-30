@@ -82,8 +82,7 @@ public class IpVerifyController {
         	    req.getUserId(),
         	    req.getName(),
         	    req.getResidentFront(),
-        	    req.getGenderCode(),
-        	    req.getAddress(),
+        	    req.getPhone(),
         	    ipTrustService
         	);
 

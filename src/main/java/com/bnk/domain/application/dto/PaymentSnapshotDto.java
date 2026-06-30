@@ -12,6 +12,8 @@ public class PaymentSnapshotDto {
     private String  combinedTransitYn;  // 후불교통 결합 여부 Y/N
     private String  txAlertType;        // SMS / PUSH / NONE
     private String  statementMethod;    // EMAIL / APP / PAPER
+    private String  deliveryAddress;    // 카드 배송지 (주소록에서 선택한 전체 주소)
+    private String  deliveryZipcode;    // 카드 배송지 우편번호
 }
 
 

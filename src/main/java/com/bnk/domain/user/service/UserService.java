@@ -222,12 +222,13 @@ public class UserService {
             throw new BusinessException(ErrorCode.IDENTITY_VERIFY_FAILED);
         }
 
-        // CI 재계산 (가입 시와 동일한 입력 구성: 이름 + 주민번호앞6+성별 + 주소)
+        // CI 재계산 (가입 시와 동일한 입력 구성: 이름 + 생년월일(주민번호앞6) + 전화번호)
+        //  주소는 더 이상 CI 구성요소가 아니므로(주소록 테이블로 분리) 계정 전화번호로 재계산한다.
         String newCi = ciValueGenerator.generate(
-                req.getName(), req.getResidentFront(), req.getGenderCode(), req.getAddress());
+                req.getName(), req.getResidentFront(), user.getPhone());
 
         userMapper.updateCiValue(userId, newCi);
-        auditLogger.success(AuditLogger.AUTH, "CI_UPDATE", userId, null, "주소 변경에 따른 CI 갱신");
+        auditLogger.success(AuditLogger.AUTH, "CI_UPDATE", userId, null, "본인확인 기반 CI 갱신");
     }
 
     /** 주민번호 앞6자리+성별코드 → 생년월일 유도 후 계정 생년월일과 비교 (identity-verify.js와 동일 규칙) */
