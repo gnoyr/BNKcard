@@ -123,6 +123,7 @@ public class CheckCardApplicationService {
                 "idName",       request.getIdName(),
                 "idResidentNo", request.getIdResidentNo(),
                 "idAddress",    request.getIdAddress(),
+                "idPhone",      request.getIdPhone(),
                 "idIssueDate",  request.getIdIssueDate()
             ),
             Map.class
@@ -263,9 +264,15 @@ public class CheckCardApplicationService {
                 .build();
         checkCardApplicationMapper.updateReviewResult(application);
 
-        // APPROVED → 자동 발급
+        // APPROVED → 자동 발급 + 승인 알림(INAPP + FCM)
         if ("APPROVED".equals(request.getApplicationStatus())) {
             issueCard(request.getAppId());
+            try {
+                notificationService.notifyReviewResult(
+                        findOrThrow(request.getAppId()).getUserId(), request.getAppId(), true);
+            } catch (Exception e) {
+                log.error("[체크카드] 승인 알림 발송 실패: checkAppId={}", request.getAppId(), e);
+            }
         }
     }
 

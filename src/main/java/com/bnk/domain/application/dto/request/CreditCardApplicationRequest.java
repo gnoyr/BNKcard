@@ -20,8 +20,9 @@ public class CreditCardApplicationRequest {
     private Long   creditAppId;    // STEP 1에서 생성된 ID, UPDATE 대상 식별용
     private String idType;         // RESIDENT / DRIVER
     private String idName;         
-    private String idResidentNo;   
-    private String idAddress;      
+    private String idResidentNo;
+    private String idAddress;
+    private String idPhone;        // 본인확인 전화번호 (CI 구성요소)
     private String idIssueDate;
 
     // STEP 3 - 기본정보 + 직업/소득

@@ -72,6 +72,10 @@ public enum ErrorCode {
     IP_MAX_LIMIT_EXCEEDED     ("IP006", "신뢰 IP는 최대 10개까지 등록할 수 있습니다.",        HttpStatus.BAD_REQUEST),
     IP_NOT_FOUND ("IP008", "등록된 기기를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
 
+	// 주소록 / 배송지
+	ADDRESS_NOT_FOUND         ("ADDR001", "등록된 주소를 찾을 수 없습니다.",                 HttpStatus.NOT_FOUND),
+	ADDRESS_MAX_LIMIT_EXCEEDED("ADDR002", "주소는 최대 10개까지 등록할 수 있습니다.",          HttpStatus.BAD_REQUEST),
+
 	// 카드 신청
 	APP_NOT_FOUND("CA001", "신청 정보를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
 	IDENTITY_NOT_VERIFIED("CA002", "본인확인이 완료되지 않았습니다.", HttpStatus.BAD_REQUEST),
