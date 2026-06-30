@@ -14,7 +14,6 @@ import org.springframework.web.client.RestTemplate;
 import com.bnk.domain.application.dto.CheckApplicantSnapshotDto;
 import com.bnk.domain.application.dto.PaymentSnapshotDto;
 import com.bnk.domain.application.dto.request.CheckCardApplicationRequest;
-import com.bnk.domain.application.dto.request.ScreeningResultRequest;
 import com.bnk.domain.application.dto.response.CheckApplicationResponse;
 import com.bnk.domain.application.mapper.CheckCardApplicationMapper;
 import com.bnk.domain.application.mapper.UserCardMapper;
@@ -36,7 +35,6 @@ import com.bnk.global.util.AesCryptoUtil;
 import com.bnk.global.util.MaskingUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -171,49 +169,9 @@ public class CheckCardApplicationService {
             throw new RuntimeException("snapshot 직렬화 실패", e);
         }
        
-        requestScreeningReview(request.getCheckAppId());  // 심사 의뢰
-    }
-    
-    private void requestScreeningReview(Long checkAppId) {
-        try {
-            CheckCardApplication app = findOrThrow(checkAppId);
-
-            ResponseEntity<ScreeningResultRequest> response = restTemplate.postForEntity(
-                verificationServerUrl + "/review/request/check/" + checkAppId,
-                Map.of(
-                    "checkAppId", checkAppId,
-                    "ciValue",    app.getCiValue()
-                ),
-                ScreeningResultRequest.class
-            );
-            
-            if (response.getBody() != null) {
-                saveScreeningResult(response.getBody());
-            }
-            
-        } catch (Exception e) {
-            log.error("[체크카드] 심사 의뢰 실패: checkAppId={}", checkAppId, e);
-            checkCardApplicationMapper.updateStatus(checkAppId, "SCREENING_FAILED");
-            throw new BusinessException(ErrorCode.SCREENING_REQUEST_FAILED);
-        }
-    }
-
-    // ----------------------------------------------------------------
-    // STEP 5 - 심사 결과 저장 (심사서버가 결과 전달)
-    // ----------------------------------------------------------------
-    public void saveScreeningResult(ScreeningResultRequest request) {
-        CheckCardApplication application = CheckCardApplication.builder()
-                .checkAppId(request.getAppId())
-                .applicationStatus(request.getApplicationStatus())
-                .rejectionReason(request.getRejectionReason())
-                .reviewedBy(request.getReviewedBy())
-                .build();
-        checkCardApplicationMapper.updateReviewResult(application);
-
-        // APPROVED → 자동 발급
-        if ("APPROVED".equals(request.getApplicationStatus())) {
-            issueCard(request.getAppId());
-        }
+        // 심사 서버 없이 바로 APPROVED 처리
+        checkCardApplicationMapper.updateStatus(request.getCheckAppId(), "APPROVED");
+        issueCard(request.getCheckAppId());
     }
 
     // ----------------------------------------------------------------

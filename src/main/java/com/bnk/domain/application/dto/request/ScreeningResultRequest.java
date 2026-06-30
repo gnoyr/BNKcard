@@ -18,7 +18,7 @@ public class ScreeningResultRequest {
  
     // 심사서버에서 받는 신용/재무 정보
     private Long   estimatedMonthlyIncome;  // 추정 월소득
-    private Long   monthlyPayment;  			// 월 납부액 (기존 대출 상환액)
+    private Long   monthlyPayment;  		// 월 납부액 (기존 대출 상환액)
     private Integer   creditScore;          // 신용점수
     private Integer vehicleCount;           // 차량 개수
     private Long   loanBalance;             // 대출 잔액

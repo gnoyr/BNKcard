@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.bnk.domain.application.dto.request.CheckCardApplicationRequest;
-import com.bnk.domain.application.dto.request.ScreeningResultRequest;
 import com.bnk.domain.application.dto.response.CheckApplicationResponse;
 import com.bnk.domain.application.service.CheckCardApplicationService;
 import com.bnk.global.auth.CustomUserDetails;
@@ -74,18 +73,6 @@ public class CheckCardApplicationController {
         checkCardApplicationService.submitApplication(request);
         return ApiResponse.toNoContent();
     }
-
-    // ----------------------------------------------------------------
-    // STEP 5 - 심사 결과 수신 (심사서버가 호출)
-    // ----------------------------------------------------------------
-    @PostMapping("/screening-result")
-    public ResponseEntity<ApiResponse<Void>> saveScreeningResult(
-            @RequestBody ScreeningResultRequest request) {
-
-        checkCardApplicationService.saveScreeningResult(request);
-        return ApiResponse.toNoContent();
-    }
-    
     
     // ----------------------------------------------------------------
     // 사용자 조회

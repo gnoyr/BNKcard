@@ -245,7 +245,7 @@ public class CreditCardApplicationService {
 	            .build();
 	    creditCardApplicationMapper.updateScreeningResult(application);
 
-	    if (!"REJECTED".equals(request.getApplicationStatus())) {
+	    if ("REVIEWING".equals(request.getApplicationStatus())) {
 	        checkLimit(request.getAppId(), request);  // ← request 통째로 넘김
 	    }
 	}
@@ -257,6 +257,7 @@ public class CreditCardApplicationService {
         CreditCardApplication app = findOrThrow(creditAppId);
         
         Long estimatedMonthlyIncome = app.getEstimatedMonthlyIncome();  // 월추정소득
+        Long    monthlyPayment        = screeningData.getMonthlyPayment();  // 월 납부액
         Integer creditScore           = screeningData.getCreditScore();  // 신용점수
         Integer vehicleCount          = screeningData.getVehicleCount();  // 차량 보유수
         Long   loanBalance            = screeningData.getLoanBalance();  // 대출 잔액
@@ -264,7 +265,29 @@ public class CreditCardApplicationService {
         Integer multipleDebtCount     = screeningData.getMultipleDebtCount();  // 다중채무 건수
         String jobType                = screeningData.getJobType();  // 직업유형. EMPLOYED=직장인 / SELF_EMPLOYED=자영업자 / STUDENT=학생 / UNEMPLOYED=무직·전업주부 / OTHER=기타 
         
-        // ── 1단계. 즉시 추가심사 조건 ────────────────────────────
+        
+        // ── 1단계. 신용점수 체크 (600점 이하 즉시 거절) ──────────
+        if (creditScore != null && creditScore <= 600) {
+            app.setLimitCheckResult("MANUAL_REQUIRED");
+            app.setApplicationStatus("REJECTED");
+            app.setRejectionReason("신용점수가 심사 기준에 부합하지 않습니다.");
+            creditCardApplicationMapper.updateLimitCheck(app);
+            return;
+        }
+        
+        // ── 2단계. 가처분소득 체크 (50만원 이하 즉시 거절) ───────
+        if (estimatedMonthlyIncome != null && monthlyPayment != null) {
+            long disposableIncome = estimatedMonthlyIncome - monthlyPayment;
+            if (disposableIncome <= 500_000L) {
+                app.setLimitCheckResult("MANUAL_REQUIRED");
+                app.setApplicationStatus("REJECTED");
+                app.setRejectionReason("월 가처분소득이 심사 기준에 부합하지 않습니다.");
+                creditCardApplicationMapper.updateLimitCheck(app);
+                return;
+            }
+        }
+        
+        // ── 3단계. 즉시 추가심사 조건 ────────────────────────────
         // 연체율 5% 초과 → 스코어링 없이 바로 추가심사
         if (delinquencyRate != null && delinquencyRate > 5.0) {
             app.setLimitCheckResult("MANUAL_REQUIRED");
@@ -283,7 +306,7 @@ public class CreditCardApplicationService {
             return;
         }
 
-        // ── 2단계. 추정소득 없음 → 추가심사 ─────────────────────
+        // ── 4단계. 추정소득 없음 → 추가심사 ─────────────────────
         // 홈택스 소득 없는 완전 신규 → 서류 기반 추가심사
         if (estimatedMonthlyIncome == null || estimatedMonthlyIncome == 0) {
             app.setLimitCheckResult("MANUAL_REQUIRED");
@@ -293,7 +316,7 @@ public class CreditCardApplicationService {
             return;
         }
 
-        // ── 3단계. 추정소득 있으면 스코어링 (총 100점) ───────────────────────────
+        // ── 5단계. 추정소득 있으면 스코어링 (총 100점) ───────────────────────────
         int score = 0;
 
         // [신용점수 - 최대 30점]
@@ -349,7 +372,7 @@ public class CreditCardApplicationService {
             score += 10;  // ID 62: 차량 2대 → 10점 / ID 66: 차량 1대 → 10점
         }
         
-        // ── 4단계. 총점 기반 한도 비율 결정 ──────────────────────
+        // ── 6단계. 총점 기반 한도 비율 결정 ──────────────────────
         // 추정 월소득 대비 승인 가능 한도 비율
         double limitRatio;
         String limitCheckResult;
@@ -367,7 +390,7 @@ public class CreditCardApplicationService {
             limitCheckResult = "MANUAL_REQUIRED";
         }
 
-        // ── 5단계. 신청한도 vs 최대한도 비교 ─────────────────────
+        // ── 7단계. 신청한도 vs 최대한도 비교 ─────────────────────
         if ("MANUAL_REQUIRED".equals(limitCheckResult)) {
             app.setLimitCheckResult("MANUAL_REQUIRED");
             app.setApplicationStatus("REVIEWING");
