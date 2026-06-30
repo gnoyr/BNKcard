@@ -174,7 +174,7 @@ public class CreditCardApplicationService {
 	    String currentStatus = existing.getApplicationStatus();
 	    if ("REQUESTED".equals(currentStatus) || "REVIEWING".equals(currentStatus)
 	            || "APPROVED".equals(currentStatus) || "ISSUED".equals(currentStatus)
-	            || "REJECTED".equals(currentStatus)) {
+	            || "REJECTED".equals(currentStatus) || "SCREENING_FAILED".equals(currentStatus)) {
 	        throw new BusinessException(ErrorCode.INVALID_APPLICATION_STATUS);
 	    }
 	    validateIdVerified(request.getCreditAppId());
@@ -196,8 +196,8 @@ public class CreditCardApplicationService {
 	        creditCardApplicationMapper.updateDocs(docs);
 	    }
 	
-	    // 신청 시점 현재 PUBLISHED 버전 조회
-	    Long versionId = creditCardApplicationMapper.findCurrentVersionId(request.getCardId());
+	    // 신청 시점 현재 PUBLISHED 버전 조회 (request에 cardId 없을 수 있으므로 DB 값 사용)
+	    Long versionId = creditCardApplicationMapper.findCurrentVersionId(existing.getCardId());
 	
 	    try {
 	        CreditCardApplication application = CreditCardApplication.builder()
@@ -498,10 +498,10 @@ public class CreditCardApplicationService {
                 .reviewedBy(request.getReviewedBy())
                 .build();
         creditCardApplicationMapper.updateReviewResult(application);
-        // 승인 알림(INAPP + FCM) — 다른 승인 경로와 동일하게 발송
+        issueCard(request.getAppId());
+        // 승인 알림(INAPP + FCM) — 발급 완료 후 발송
         notificationService.notifyReviewResult(
                 findOrThrow(request.getAppId()).getUserId(), request.getAppId(), true);
-        issueCard(request.getAppId());
     }
 
     // 추가심사 콜백 데이터로 스코어링 재심사

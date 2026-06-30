@@ -161,7 +161,7 @@
 	    FROM CHECK_CARD_APPLICATIONS
 	    WHERE user_id            = #{userId}
 	      AND card_id            = #{cardId}
-	      AND application_status IN ('REQUESTED', 'APPROVED', 'ISSUED')
+	      AND application_status IN ('REQUESTED', 'REVIEWING', 'APPROVED', 'ISSUED')
 	</select>
 
 </mapper>

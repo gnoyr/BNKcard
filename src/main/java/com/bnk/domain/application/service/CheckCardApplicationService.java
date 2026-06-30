@@ -174,7 +174,7 @@ public class CheckCardApplicationService {
         String currentStatus = existing.getApplicationStatus();
         if ("REQUESTED".equals(currentStatus) || "REVIEWING".equals(currentStatus)
                 || "APPROVED".equals(currentStatus) || "ISSUED".equals(currentStatus)
-                || "REJECTED".equals(currentStatus)) {
+                || "REJECTED".equals(currentStatus) || "SCREENING_FAILED".equals(currentStatus)) {
             throw new BusinessException(ErrorCode.INVALID_APPLICATION_STATUS);
         }
         validateIdVerified(request.getCheckAppId());
@@ -264,7 +264,6 @@ public class CheckCardApplicationService {
                 .build();
         checkCardApplicationMapper.updateReviewResult(application);
 
-        // APPROVED → 자동 발급 + 승인 알림(INAPP + FCM)
         if ("APPROVED".equals(request.getApplicationStatus())) {
             issueCard(request.getAppId());
             try {
@@ -272,6 +271,13 @@ public class CheckCardApplicationService {
                         findOrThrow(request.getAppId()).getUserId(), request.getAppId(), true);
             } catch (Exception e) {
                 log.error("[체크카드] 승인 알림 발송 실패: checkAppId={}", request.getAppId(), e);
+            }
+        } else if ("REJECTED".equals(request.getApplicationStatus())) {
+            try {
+                notificationService.notifyReviewResult(
+                        findOrThrow(request.getAppId()).getUserId(), request.getAppId(), false);
+            } catch (Exception e) {
+                log.error("[체크카드] 거절 알림 발송 실패: checkAppId={}", request.getAppId(), e);
             }
         }
     }
@@ -282,6 +288,7 @@ public class CheckCardApplicationService {
     @Transactional
     public void saveReviewResult(ReviewResultRequest request) {
         if ("REJECTED".equals(request.getApplicationStatus())) {
+            CheckCardApplication app = findOrThrow(request.getAppId());
             CheckCardApplication application = CheckCardApplication.builder()
                     .checkAppId(request.getAppId())
                     .applicationStatus("REJECTED")
@@ -289,6 +296,11 @@ public class CheckCardApplicationService {
                     .reviewedBy(request.getReviewedBy())
                     .build();
             checkCardApplicationMapper.updateReviewResult(application);
+            try {
+                notificationService.notifyReviewResult(app.getUserId(), request.getAppId(), false);
+            } catch (Exception e) {
+                log.error("[체크카드] 추가심사 거절 알림 발송 실패: checkAppId={}", request.getAppId(), e);
+            }
             return;
         }
 
@@ -374,6 +386,11 @@ public class CheckCardApplicationService {
                     .rejectionReason("나이 조건 미충족 (만 12세 미만)")
                     .build();
             checkCardApplicationMapper.updateReviewResult(rejected);
+            try {
+                notificationService.notifyReviewResult(app.getUserId(), checkAppId, false);
+            } catch (Exception ne) {
+                log.error("[체크카드] 나이 거절 알림 발송 실패: checkAppId={}", checkAppId, ne);
+            }
             return;
         }
 
@@ -564,8 +581,7 @@ public class CheckCardApplicationService {
             // snapshot에 birthDate 있으면 계산
             if (snap.getBirthDate() != null) {
                 LocalDate birth = LocalDate.parse(snap.getBirthDate());
-                return LocalDate.now().getYear() - birth.getYear()
-                        - (LocalDate.now().getDayOfYear() < birth.getDayOfYear() ? 1 : 0);
+                return java.time.Period.between(birth, LocalDate.now()).getYears();
             }
         } catch (Exception e) {
             log.warn("[체크카드] 생년월일 파싱 실패, 성인 기본 한도 적용");
