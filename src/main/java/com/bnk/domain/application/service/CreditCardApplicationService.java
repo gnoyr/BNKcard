@@ -336,17 +336,19 @@ public class CreditCardApplicationService {
             }
         }
         
-        // ── 3단계. 즉시 추가심사 조건 ────────────────────────────
-        // 연체율 5% 초과 → 스코어링 없이 바로 추가심사
-        if (delinquencyRate != null && delinquencyRate > 5.0) {
+        if (multipleDebtCount != null && multipleDebtCount >= 3) {
             app.setLimitCheckResult("MANUAL_REQUIRED");
-            app.setApplicationStatus("REVIEWING");
+            app.setApplicationStatus("REJECTED");  // REVIEWING → REJECTED
+            app.setRejectionReason("다중채무건수 기준 초과");  // 거절 사유 추가
             creditCardApplicationMapper.updateLimitCheck(app);
             requestAdditionalReview(creditAppId, false);
             return;
         }
+
         
-        if (multipleDebtCount != null && multipleDebtCount >= 5) {
+        // ── 3단계. 즉시 추가심사 조건 ────────────────────────────
+        // 연체율 5% 초과 → 스코어링 없이 바로 추가심사
+        if (delinquencyRate != null && delinquencyRate > 5.0) {
             app.setLimitCheckResult("MANUAL_REQUIRED");
             app.setApplicationStatus("REVIEWING");
             creditCardApplicationMapper.updateLimitCheck(app);
@@ -368,13 +370,16 @@ public class CreditCardApplicationService {
                                    loanBalance, estimatedMonthlyIncome, vehicleCount);
 
         
-        // ── 6단계. 총점 기반 한도 비율 결정 ──────────────────────
-        // 추정 월소득 대비 승인 가능 한도 비율
+        // ── 6단계. 총점 기반 한도 비율 결정 ──────────────────────        
+        // 월 가처분소득 기준 연간 총 이용한도 비율 (규준 제8조)
+        long disposableIncome = (estimatedMonthlyIncome != null ? estimatedMonthlyIncome : 0L)
+                              - (monthlyPayment != null ? monthlyPayment : 0L);
+        
         double limitRatio;
         String limitCheckResult;
-        if      (score >= 75) { limitRatio = 0.40; limitCheckResult = "PASS"; }
-        else if (score >= 55) { limitRatio = 0.30; limitCheckResult = "PASS"; }
-        else if (score >= 35) { limitRatio = 0.20; limitCheckResult = "PASS"; }
+        if      (score >= 75) { limitRatio = 3.0; limitCheckResult = "PASS"; }  // 월가처분소득 × 300%
+        else if (score >= 55) { limitRatio = 2.0; limitCheckResult = "PASS"; }
+        else if (score >= 35) { limitRatio = 1.0; limitCheckResult = "PASS"; }
         else                  { limitRatio = 0;    limitCheckResult = "MANUAL_REQUIRED"; }
 
         if ("MANUAL_REQUIRED".equals(limitCheckResult)) {
@@ -386,7 +391,7 @@ public class CreditCardApplicationService {
         }
 
         // ── 7단계. 신청한도 vs 최대한도 비교 ─────────────────────
-        long maxLimit = (long)(estimatedMonthlyIncome * limitRatio);
+        long maxLimit = (long)(disposableIncome * limitRatio);   // 총 이용한도 기준
 
         if (app.getRequestedLimit() <= maxLimit) {
             app.setLimitCheckResult("PASS");
@@ -544,15 +549,26 @@ public class CreditCardApplicationService {
 
         Long    estimatedMonthlyIncome = request.getEstimatedMonthlyIncome();
         Integer creditScore            = request.getCreditScore();
+        Long    monthlyPayment        = request.getMonthlyPayment();  // 월 납부액
         Integer vehicleCount           = request.getVehicleCount();
         Long    loanBalance            = request.getLoanBalance();
         Double  delinquencyRate        = request.getDelinquencyRate();
         Integer multipleDebtCount      = request.getMultipleDebtCount();
         String  jobType                = request.getJobType();
+        
+
+        // 월 가처분 소득
+        long disposableIncome = estimatedMonthlyIncome
+                - (monthlyPayment != null ? monthlyPayment : 0L);
 
         // 소득 정보 없으면 최종 거절
         if (estimatedMonthlyIncome == null || estimatedMonthlyIncome == 0) {
             rejectAdditional(app, request.getReviewedBy(), "서류 심사 후 소득 확인 불가");
+            return;
+        }
+
+        if (disposableIncome <= 500_000L) {
+            rejectAdditional(app, request.getReviewedBy(), "월 가처분소득이 심사 기준에 부합하지 않습니다.");
             return;
         }
 
@@ -563,7 +579,7 @@ public class CreditCardApplicationService {
         }
 
         // 다중채무 5건 이상 → 거절
-        if (multipleDebtCount != null && multipleDebtCount >= 5) {
+        if (multipleDebtCount != null && multipleDebtCount >= 3) {
             rejectAdditional(app, request.getReviewedBy(), "다중채무건수 기준 초과");
             return;
         }
@@ -573,9 +589,9 @@ public class CreditCardApplicationService {
                                    loanBalance, estimatedMonthlyIncome, vehicleCount);
 
         double limitRatio;
-        if      (score >= 75) limitRatio = 0.40;
-        else if (score >= 55) limitRatio = 0.30;
-        else if (score >= 35) limitRatio = 0.20;
+        if      (score >= 75) limitRatio = 3.0;
+        else if (score >= 55) limitRatio = 2.0;
+        else if (score >= 35) limitRatio = 1.0;
         else {
             CreditCardApplication rejected = CreditCardApplication.builder()
                     .creditAppId(app.getCreditAppId())
@@ -592,8 +608,8 @@ public class CreditCardApplicationService {
 
         // requestedLimit null-safe (추가심사 시점에도 동일 방어)
         long requestedLimit = app.getRequestedLimit() != null ? app.getRequestedLimit() : 0L;
-        long maxLimit       = (long)(estimatedMonthlyIncome * limitRatio);
-        long approvedLimit  = Math.min(requestedLimit, maxLimit);
+        long maxLimit      = (long)(disposableIncome * limitRatio);
+        long approvedLimit = Math.min(requestedLimit, maxLimit);
 
         CreditCardApplication approved = CreditCardApplication.builder()
                 .creditAppId(app.getCreditAppId())
@@ -719,7 +735,7 @@ public class CreditCardApplicationService {
 	     userCard.setCardPasswordHash(app.getCardPasswordHash());
 	     userCard.setLinkedAccountId(app.getLinkedAccountId());
 	     userCard.setDailyLimitAmount(1_000_000L);
-	     userCard.setMonthlyLimitAmount(app.getApprovedLimit());
+	     userCard.setMonthlyLimitAmount(app.getApprovedLimit());  // 총 이용한도 (규준 제8조 기준)
 	     // ── payment_snapshot
 	     userCard.setCardBrand(snap.getCardBrand());
 	     userCard.setCardDesignId(snap.getCardDesignId() != null ? Long.parseLong(snap.getCardDesignId()) : null);

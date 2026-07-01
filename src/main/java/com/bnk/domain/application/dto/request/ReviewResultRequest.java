@@ -17,6 +17,7 @@ public class ReviewResultRequest {
 
     // PENDING_LIMIT 케이스 — BNKcard가 재심사에 사용할 신용정보
     private Long    estimatedMonthlyIncome;
+    private Long   monthlyPayment;  		// 월 납부액 (기존 대출 상환액)
     private Integer creditScore;
     private Integer vehicleCount;
     private Long    loanBalance;
