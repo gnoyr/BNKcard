@@ -178,13 +178,9 @@
 
 	<update id="updateEmailVerified">
 		UPDATE USERS
-		SET is_email_verified =
-		#{isEmailVerified, jdbcType=CHAR},
-		updated_at = SYSTIMESTAMP AT TIME
-		ZONE 'Asia/Seoul' AT TIME
-		ZONE 'Asia/Seoul'
-		WHERE user_id = #{userId,
-		jdbcType=NUMERIC}
+		SET is_email_verified = #{isEmailVerified, jdbcType=CHAR},
+		updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+		WHERE user_id = #{userId, jdbcType=NUMERIC}
 	</update>
 
 	<update id="updatePhoneVerified">
@@ -265,7 +261,6 @@
 		jdbcType=VARCHAR,
 		typeHandler=org.apache.ibatis.type.StringTypeHandler},
 		SYSTIMESTAMP AT
-		TIME ZONE 'Asia/Seoul' AT
 		TIME ZONE 'Asia/Seoul'
 		)
 	</insert>
@@ -355,18 +350,22 @@
 		ca.application_status AS applicationStatus,
 		ca.applied_at AS appliedAt
 		FROM CREDIT_CARD_APPLICATIONS ca
-		INNER JOIN CARDS c ON ca.card_id = c.card_id
+		INNER JOIN CARDS c ON ca.card_id =
+		c.card_id
 		LEFT JOIN CARD_IMAGES ci
 		ON ci.image_id = (
 		SELECT x.image_id
 		FROM CARD_IMAGES x
 		WHERE x.card_id = c.card_id
-		AND x.image_type IN ('THUMBNAIL', 'FRONT')
-		ORDER BY CASE x.image_type WHEN 'THUMBNAIL' THEN 0 ELSE 1 END,
+		AND x.image_type IN
+		('THUMBNAIL', 'FRONT')
+		ORDER BY CASE x.image_type WHEN 'THUMBNAIL' THEN
+		0 ELSE 1 END,
 		x.sort_order ASC NULLS LAST
 		FETCH FIRST 1 ROWS ONLY
 		)
-		WHERE ca.user_id = #{userId}
+		WHERE
+		ca.user_id = #{userId}
 
 		UNION ALL
 
@@ -378,18 +377,22 @@
 		ca.application_status AS applicationStatus,
 		ca.applied_at AS appliedAt
 		FROM CHECK_CARD_APPLICATIONS ca
-		INNER JOIN CARDS c ON ca.card_id = c.card_id
+		INNER JOIN CARDS c ON ca.card_id =
+		c.card_id
 		LEFT JOIN CARD_IMAGES ci
 		ON ci.image_id = (
 		SELECT x.image_id
 		FROM CARD_IMAGES x
 		WHERE x.card_id = c.card_id
-		AND x.image_type IN ('THUMBNAIL', 'FRONT')
-		ORDER BY CASE x.image_type WHEN 'THUMBNAIL' THEN 0 ELSE 1 END,
+		AND x.image_type IN
+		('THUMBNAIL', 'FRONT')
+		ORDER BY CASE x.image_type WHEN 'THUMBNAIL' THEN
+		0 ELSE 1 END,
 		x.sort_order ASC NULLS LAST
 		FETCH FIRST 1 ROWS ONLY
 		)
-		WHERE ca.user_id = #{userId}
+		WHERE
+		ca.user_id = #{userId}
 
 		ORDER BY appliedAt DESC
 	</select>
@@ -464,8 +467,10 @@
 	<!-- 주소 변경에 따른 CI(연계정보) 갱신 -->
 	<update id="updateCiValue">
 		UPDATE USERS
-		SET ci_value = #{ciValue, typeHandler=AesTypeHandler},
-		    updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
-		WHERE user_id = #{userId} AND deleted_yn = 'N'
+		SET ci_value = #{ciValue,
+		typeHandler=AesTypeHandler},
+		updated_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+		WHERE user_id = #{userId} AND
+		deleted_yn = 'N'
 	</update>
 </mapper>
