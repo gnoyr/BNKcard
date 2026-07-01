@@ -250,7 +250,7 @@ class AuthServiceTest {
 			authService.sendVerifyCode(sendCodeReq(EMAIL));
 
 			then(tokenStore).should().set(startsWith("email:verify:"), anyString(), anyLong());
-			then(mailService).should().sendVerificationEmail(eq(EMAIL), anyString());
+			then(mailService).should().sendVerificationEmail(eq(EMAIL), anyString(), anyString());
 		}
 
 		@Test
@@ -264,7 +264,7 @@ class AuthServiceTest {
 							.isEqualTo(ErrorCode.DUPLICATE_EMAIL));
 
 			then(tokenStore).should(never()).set(any(), any(), anyLong());
-			then(mailService).should(never()).sendVerificationEmail(any(), any());
+			then(mailService).should(never()).sendVerificationEmail(any(), any(), any());
 		}
 	}
 
