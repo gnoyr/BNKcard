@@ -178,6 +178,8 @@ class AuthServiceTest {
 		ReflectionTestUtils.setField(req, "name", name);
 		ReflectionTestUtils.setField(req, "phone", phone);
 		ReflectionTestUtils.setField(req, "birthDate", "19950525");
+		ReflectionTestUtils.setField(req, "residentFront", "950525");
+		ReflectionTestUtils.setField(req, "genderCode", "1");
 		ReflectionTestUtils.setField(req, "agreedTermsIds", termIds);
 		return req;
 	}
@@ -250,7 +252,7 @@ class AuthServiceTest {
 			authService.sendVerifyCode(sendCodeReq(EMAIL));
 
 			then(tokenStore).should().set(startsWith("email:verify:"), anyString(), anyLong());
-			then(mailService).should().sendVerificationEmail(eq(EMAIL), anyString(), anyString());
+			then(mailService).should().sendVerificationEmail(eq(EMAIL), anyString());
 		}
 
 		@Test
@@ -264,7 +266,7 @@ class AuthServiceTest {
 							.isEqualTo(ErrorCode.DUPLICATE_EMAIL));
 
 			then(tokenStore).should(never()).set(any(), any(), anyLong());
-			then(mailService).should(never()).sendVerificationEmail(any(), any(), any());
+			then(mailService).should(never()).sendVerificationEmail(any(), any());
 		}
 	}
 

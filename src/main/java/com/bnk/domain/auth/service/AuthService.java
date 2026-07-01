@@ -175,25 +175,20 @@ public class AuthService {
 			throw new BusinessException(ErrorCode.REQUIRED_TERMS_NOT_AGREED);
 		}
 
-		// ⑤ birthDate 파싱
-		LocalDate birthDate = null;
-		String birthDateStr = null;
-		if (request.getBirthDate() != null && !request.getBirthDate().isBlank()) {
-			String raw = request.getBirthDate().replace("-", "");
-			birthDate = LocalDate.parse(raw, DateTimeFormatter.BASIC_ISO_DATE);
-			birthDateStr = birthDate.toString(); // "YYYY-MM-DD"
-		}
+		// ⑤ birthDate 유도 — 주민번호 앞6자리(residentFront, 필수) + 성별코드(genderCode, 필수)로 계산.
+		// residentFront/genderCode는 SignupRequest에서 @NotBlank로 항상 보장되므로,
+		// 클라이언트가 별도로 보내는 선택 필드 birthDate에 의존하지 않고 서버가 직접 유도한다
+		// (구현 방식과 무관하게 ciValue/birthDate가 항상 채워지도록 보장).
+		String century = "3478".contains(request.getGenderCode()) ? "20" : "19";
+		LocalDate birthDate = LocalDate.parse(century + request.getResidentFront(), DateTimeFormatter.BASIC_ISO_DATE);
+		String birthDateStr = birthDate.toString(); // "YYYY-MM-DD"
 
-		// ⑥ CI값 생성 — birthDate null 허용 (선택 필드)
-		String ciValue = null;
-		if (birthDateStr != null) {
-			// CI = 이름 + 생년월일(주민번호 앞6 = YYMMDD) + 전화번호
-			ciValue = ciValueGenerator.generate(request.getName(),
-			        request.getResidentFront(),
-			        formattedPhone);
-		}
+		// ⑥ CI값 생성 (이름 + 생년월일(주민번호 앞6 = YYMMDD) + 전화번호)
+		String ciValue = ciValueGenerator.generate(request.getName(),
+		        request.getResidentFront(),
+		        formattedPhone);
 
-		// ⑦ Watchlist 대조 (ciValue가 있을 때만 CI 기반 대조 수행)
+		// ⑦ Watchlist 대조
 		cddService.checkWatchlist(ciValue, request.getName(), birthDateStr);
 
 		// ⑧ marketingAgree 변환
