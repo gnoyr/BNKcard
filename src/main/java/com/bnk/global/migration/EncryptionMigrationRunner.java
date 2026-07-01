@@ -24,7 +24,6 @@ import lombok.extern.slf4j.Slf4j;
  *   - USERS              : phone / ci_value / birth_date / password_hash
  *   - ADMIN_USERS        : phone
  *   - WATCHLIST          : ci_value / birth_date
- *   - USER_TRUSTED_IPS   : ip_address
  *   - EVENT_LOGS         : request_ip
  *   - LOGIN_HISTORIES    : ip_address
  *
@@ -50,7 +49,6 @@ public class EncryptionMigrationRunner implements ApplicationRunner {
     private final EncryptionMigrationService              migrationService;
     private final AdminEncryptionMigrationService         adminMigrationService;
     private final WatchlistMigrationService               watchlistMigrationService;
-    private final TrustedIpMigrationService               trustedIpMigrationService;
     private final MiscEncryptionMigrationService          miscEncryptionMigrationService;
     private final UniversalDecryptionMigrationService     universalDecryptionService;
     private final AuditLogDecryptionMigrationService      auditLogDecryptionService; // ★ 추가
@@ -78,12 +76,6 @@ public class EncryptionMigrationRunner implements ApplicationRunner {
             WatchlistMigrationService.MigrationResult r =
                     watchlistMigrationService.migrateAll();
             logResult("WATCHLIST", r.successCount(), r.failCount());
-        });
-
-        runSafely("USER_TRUSTED_IPS.ip_address", () -> {
-            TrustedIpMigrationService.MigrationResult r =
-                    trustedIpMigrationService.migrateIpAddress();
-            logResult("USER_TRUSTED_IPS.ip_address", r.successCount(), r.failCount());
         });
 
         runSafely("EVENT_LOGS.REQUEST_IP / LOGIN_HISTORIES.IP_ADDRESS", () -> {

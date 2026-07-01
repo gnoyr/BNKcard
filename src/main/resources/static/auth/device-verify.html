@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>추가 인증 | 부산은행</title>
+  <title>새 기기 인증 | 부산은행</title>
   <link rel="stylesheet" href="/css/auth.css">
   <link rel="stylesheet" href="/css/components.css">
   <link rel="stylesheet" href="/css/teal-theme.css">
 </head>
-<body data-page="ip-verify">
+<body data-page="device-verify">
   <div id="app-header"></div>
   <main class="page-wrap">
     <div class="auth-card">
 
-      <h1 class="page-title">추가 인증 필요</h1>
+      <h1 class="page-title">새 기기 인증 필요</h1>
       <p class="page-desc" style="margin-bottom:24px;">
         등록되지 않은 기기에서 접속했습니다.<br>
         아래 방법 중 하나로 본인 확인을 완료해 주세요.
@@ -48,9 +48,9 @@
           <div id="email-error" class="alert alert-error" style="display:none;margin-top:8px;"></div>
         </div>
         <div class="form-group">
-          <label class="form-label" for="emailNickname">기기 별명 (선택)</label>
-          <input class="form-input" type="text" id="emailNickname"
-                 placeholder="예: 집 컴퓨터" maxlength="50">
+          <label class="form-label" for="emailDeviceName">기기 이름 (선택)</label>
+          <input class="form-input" type="text" id="emailDeviceName"
+                 placeholder="예: 집 컴퓨터" maxlength="100">
         </div>
         <button class="btn btn-primary btn-block" id="btnEmailConfirm" style="margin-bottom:8px;">인증 완료</button>
         <button class="btn btn-outline btn-block" id="btnBackFromEmail">← 다른 방법 선택</button>
@@ -77,9 +77,9 @@
                  placeholder="예: 010-1234-5678" maxlength="13" inputmode="numeric">
         </div>
         <div class="form-group">
-          <label class="form-label" for="ciNickname">기기 별명 (선택)</label>
-          <input class="form-input" type="text" id="ciNickname"
-                 placeholder="예: 회사 노트북" maxlength="50">
+          <label class="form-label" for="ciDeviceName">기기 이름 (선택)</label>
+          <input class="form-input" type="text" id="ciDeviceName"
+                 placeholder="예: 회사 노트북" maxlength="100">
         </div>
         <div id="ci-error" class="alert alert-error" style="display:none;margin-bottom:8px;"></div>
         <button class="btn btn-primary btn-block" id="btnCiConfirm" style="margin-bottom:8px;">인증 완료</button>
@@ -92,6 +92,6 @@
   <div id="toast-container"></div>
   <script src="/js/utils.js"></script>
   <script src="/js/header.js"></script>
-  <script src="/js/ip-verify.js"></script>
+  <script src="/js/device-verify.js"></script>
 </body>
 </html>

@@ -63,14 +63,14 @@ public enum ErrorCode {
 	ADMIN_NOT_FOUND("AD001", "관리자 계정을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
 	ADMIN_ACCOUNT_LOCKED("AD002", "관리자 계정이 잠겼습니다.", HttpStatus.LOCKED),
 	
-	//IP 인증
-	IP_CHALLENGE_EXPIRED      ("IP001", "인증 세션이 만료되었습니다. 다시 로그인해 주세요.",   HttpStatus.BAD_REQUEST),
-    CI_MISMATCH               ("IP002", "본인 정보가 일치하지 않습니다.",                    HttpStatus.BAD_REQUEST),
-    CI_LOCKED                 ("IP003", "CI 인증 실패 횟수를 초과하였습니다. 잠시 후 다시 시도해 주세요.", HttpStatus.TOO_MANY_REQUESTS),
-    IP_INITIAL_DELETE_FORBIDDEN("IP004","최초 등록 기기는 삭제할 수 없습니다.",               HttpStatus.BAD_REQUEST),
-    IP_ALREADY_TRUSTED        ("IP005", "이미 등록된 IP입니다.",                           HttpStatus.CONFLICT),
-    IP_MAX_LIMIT_EXCEEDED     ("IP006", "신뢰 IP는 최대 10개까지 등록할 수 있습니다.",        HttpStatus.BAD_REQUEST),
-    IP_NOT_FOUND ("IP008", "등록된 기기를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+	// 기기 인증
+	DEVICE_CHALLENGE_EXPIRED       ("DEV001", "인증 세션이 만료되었습니다. 다시 로그인해 주세요.",   HttpStatus.BAD_REQUEST),
+    CI_MISMATCH                    ("DEV002", "본인 정보가 일치하지 않습니다.",                    HttpStatus.BAD_REQUEST),
+    CI_LOCKED                      ("DEV003", "CI 인증 실패 횟수를 초과하였습니다. 잠시 후 다시 시도해 주세요.", HttpStatus.TOO_MANY_REQUESTS),
+    DEVICE_INITIAL_DELETE_FORBIDDEN("DEV004", "최초 등록 기기는 삭제할 수 없습니다.",              HttpStatus.BAD_REQUEST),
+    DEVICE_ALREADY_TRUSTED         ("DEV005", "이미 등록된 기기입니다.",                        HttpStatus.CONFLICT),
+    DEVICE_MAX_LIMIT_EXCEEDED      ("DEV006", "신뢰 기기는 최대 10개까지 등록할 수 있습니다.",      HttpStatus.BAD_REQUEST),
+    DEVICE_NOT_FOUND               ("DEV007", "등록된 기기를 찾을 수 없습니다.",                  HttpStatus.NOT_FOUND),
 
 	// 주소록 / 배송지
 	ADDRESS_NOT_FOUND         ("ADDR001", "등록된 주소를 찾을 수 없습니다.",                 HttpStatus.NOT_FOUND),

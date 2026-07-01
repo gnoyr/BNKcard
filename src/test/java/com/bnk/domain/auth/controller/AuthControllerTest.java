@@ -215,7 +215,7 @@ class AuthControllerTest {
         @DisplayName("[성공] 정상 회원가입 → 201 Created")
         void 정상_201() throws Exception {
             given(authService.signup(any(SignupRequest.class))).willReturn(1L);
-            willDoNothing().given(authService).registerInitialIp(anyLong(), anyString());
+            willDoNothing().given(authService).registerInitialDevice(anyLong(), any(), any(), any(), any());
 
             mvc.perform(post("/api/auth/signup")
                     .contentType(MediaType.APPLICATION_JSON)

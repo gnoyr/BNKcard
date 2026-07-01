@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>이메일 인증 | BNK카드</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: "Apple SD Gothic Neo", "Malgun Gothic", Arial, sans-serif;
+      background: #f0f4f5;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh;
+    }
+    .card {
+      background: #fff; border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,103,127,0.13);
+      padding: 48px 40px; text-align: center; max-width: 400px; width: 90%;
+    }
+    .logo { color: #003040; font-size: 18px; font-weight: 700; margin-bottom: 28px; }
+    .icon { font-size: 48px; margin-bottom: 16px; line-height: 1; }
+    .title { font-size: 20px; font-weight: 700; color: #004D61; margin-bottom: 10px; }
+    .desc { color: #5C7A83; font-size: 14px; line-height: 1.7; }
+    .spinner {
+      width: 34px; height: 34px; margin: 0 auto 18px;
+      border: 3px solid #B3E3EC; border-top-color: #00677F; border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error .title { color: #dc2626; }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="logo">BNK카드</div>
+    <div class="spinner" id="spinner"></div>
+    <div class="title" id="title">인증 처리 중…</div>
+    <div class="desc" id="desc">잠시만 기다려 주세요.</div>
+  </div>
+
+  <script>
+    (function () {
+      var token = new URLSearchParams(location.search).get('token') || '';
+      var card    = document.getElementById('card');
+      var spinner = document.getElementById('spinner');
+      var title   = document.getElementById('title');
+      var desc    = document.getElementById('desc');
+
+      function show(icon, t, d, isError) {
+        if (spinner) spinner.style.display = 'none';
+        if (isError) card.className = 'card error';
+        title.innerHTML = (icon ? '<div class="icon">' + icon + '</div>' : '') + t;
+        desc.innerHTML = d;
+      }
+
+      if (!token) {
+        show('⚠️', '잘못된 접근입니다', '유효한 인증 링크가 아닙니다.', true);
+        return;
+      }
+
+      // ngrok 무료 플랜의 브라우저 경고를 건너뛰기 위해 헤더를 붙여 API를 호출한다.
+      fetch('/api/auth/verify-email-link', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+        },
+        body: JSON.stringify({ token: token })
+      })
+      .then(function (res) { return res.json().then(function (b) { return { ok: res.ok, body: b }; }); })
+      .then(function (r) {
+        if (r.ok) {
+          var email = (r.body && r.body.data && r.body.data.email) ? r.body.data.email : '';
+          show('✅', '이메일 인증 완료!',
+            (email ? email + ' 인증이 완료되었어요.<br>' : '') + '가입 화면으로 돌아가면 자동으로 다음 단계로 진행됩니다.', false);
+        } else {
+          var msg = (r.body && r.body.message) ? r.body.message : '인증에 실패했습니다.';
+          show('⚠️', '인증 링크가 만료되었어요', msg + '<br>가입 화면에서 인증번호를 다시 요청해 주세요.', true);
+        }
+      })
+      .catch(function () {
+        show('⚠️', '오류가 발생했습니다', '잠시 후 다시 시도해 주세요.', true);
+      });
+    })();
+  </script>
+</body>
+</html>

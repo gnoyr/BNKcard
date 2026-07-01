@@ -76,4 +76,17 @@ public class SignupRequest {
     @Min(value = 300, message = "신용점수는 300 이상이어야 합니다.")
     @Max(value = 900, message = "신용점수는 900 이하여야 합니다.")
     private Integer creditScore;
+
+    // ── 신뢰 기기 최초 등록용 (선택) ─────────────────────────────────────
+    /** 클라이언트 기기 UUID. 가입 기기를 최초 신뢰 기기로 등록. */
+    @Size(max = 200)
+    private String deviceId;
+
+    /** 표시용 기기명 (예: iPhone 15 Pro, 갤럭시 S24). */
+    @Size(max = 100)
+    private String deviceName;
+
+    /** 플랫폼 코드: IOS / ANDROID / WEB. */
+    @Size(max = 20)
+    private String platform;
 }

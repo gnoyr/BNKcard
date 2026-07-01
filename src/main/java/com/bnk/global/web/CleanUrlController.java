@@ -34,9 +34,14 @@ public class CleanUrlController {
         return "forward:/auth/copy-code.html";
     }
 
-    @GetMapping("/auth/ip-verify")
-    public String ipVerify() {
-        return "forward:/auth/ip-verify.html";
+    @GetMapping("/verify-email")
+    public String verifyEmail() {
+        return "forward:/auth/verify-email.html";
+    }
+
+    @GetMapping("/auth/device-verify")
+    public String deviceVerify() {
+        return "forward:/auth/device-verify.html";
     }
 
     // ── 관리자 인증 페이지 ────────────────────────────────────────
@@ -73,9 +78,9 @@ public class CleanUrlController {
         return "forward:/mypage/credit-score.html";
     }
 
-    @GetMapping("/mypage/trusted-ips")
-    public String mypageTrustedIps() {
-        return "forward:/mypage/trusted-ips.html";
+    @GetMapping("/mypage/trusted-devices")
+    public String mypageTrustedDevices() {
+        return "forward:/mypage/trusted-devices.html";
     }
 
     /** 계좌 페이지 — 추가 */

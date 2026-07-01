@@ -181,6 +181,24 @@ public class NotificationService {
         log.info("[Notification] 이벤트 알림 발송 eventTitle={}, 대상={}명", eventTitle, userIds.size());
     }
 
+    /**
+     * 신뢰 기기 새 IP 로그인 알림 (DeviceTrustService.checkDevice 에서 호출)
+     * 기기는 신뢰되지만 평소와 다른 IP에서 접속했을 때 본인에게 통지.
+     * 대상: 해당 사용자 1명
+     */
+    @Transactional
+    public void notifyNewDeviceLogin(Long userId, String deviceName, String maskedIp) {
+        String device  = (deviceName == null || deviceName.isBlank()) ? "등록된 기기" : deviceName;
+        String title   = "새로운 위치에서 로그인되었습니다";
+        String message = "'" + device + "'에서 평소와 다른 IP(" + maskedIp + ")로 로그인되었습니다. "
+                + "본인이 아니라면 비밀번호를 변경하고 기기 관리에서 해당 기기를 삭제해 주세요.";
+        String linkUrl = "/mypage/trusted-devices";
+
+        dispatchToUsers(List.of(userId), "SECURITY", title, message, linkUrl,
+                List.of("INAPP", "PUSH"), null);
+        log.info("[Notification] 새 IP 로그인 알림 발송 userId={}", userId);
+    }
+
     // ================================================================
     // 관리자 배치 발송
     // ================================================================

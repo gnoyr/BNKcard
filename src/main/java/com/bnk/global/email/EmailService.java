@@ -43,8 +43,9 @@ public class EmailService {
 	// 이메일 인증코드 발송 [F-00 / send-verify-code]
 	// ──────────────────────────────────────────────────────────────────
 	@Async
-	public void sendVerificationEmail(String to, String code) {
-		send(to, "[BNK카드] 이메일 인증 코드", buildVerificationHtml(code));
+	public void sendVerificationEmail(String to, String code, String linkToken) {
+		String verifyUrl = baseUrl + "/verify-email?token=" + linkToken;
+		send(to, "[BNK카드] 이메일 인증 코드", buildVerificationHtml(code, verifyUrl));
 	}
 
 	// ──────────────────────────────────────────────────────────────────
@@ -77,7 +78,7 @@ public class EmailService {
 	// ──────────────────────────────────────────────────────────────────
 	// 이메일 인증코드 HTML [Teal 테마]
 	// ──────────────────────────────────────────────────────────────────
-	private String buildVerificationHtml(String code) {
+	private String buildVerificationHtml(String code, String verifyUrl) {
 		return "<!DOCTYPE html>" + "<html lang='ko'>" + "<head>" + "<meta charset='UTF-8'>"
 				+ "<meta name='viewport' content='width=device-width,initial-scale=1'>" + "</head>"
 				+ "<body style='margin:0;padding:0;background:" + BG + ";"
@@ -110,16 +111,23 @@ public class EmailService {
 				+ "letter-spacing:-0.3px;'>이메일 인증</p>" +
 
 				// 부제목
-				"<p style='margin:0 0 28px;color:" + MUTED + ";font-size:14px;line-height:1.7;'>"
-				+ "아래 버튼을 클릭하여 인증번호를 확인하세요.<br>" + "인증번호는 <strong style='color:" + TEAL_800
-				+ ";'>10분</strong> 동안 유효합니다.</p>" +
+				"<p style='margin:0 0 24px;color:" + MUTED + ";font-size:14px;line-height:1.7;'>"
+				+ "아래 인증번호를 입력하거나, <strong style='color:" + TEAL_800 + ";'>원터치 인증</strong> 버튼을 누르면 바로 인증됩니다.<br>"
+				+ "인증번호는 <strong style='color:" + TEAL_800 + ";'>10분</strong> 동안 유효합니다.</p>" +
 
-				// ── 인증번호 확인 버튼 (클릭 → /copy-code?code=XXX → 코드 표시 + 복사) ──
+				// ── 인증번호(직접 표기 — 링크 없이 바로 확인 가능) ──
+				"<div style='text-align:center;background:" + FOOT_BG + ";border:1px solid " + TEAL_100
+				+ ";border-radius:10px;padding:18px;margin:0 0 20px;'>"
+				+ "<div style='color:" + MUTED + ";font-size:12px;letter-spacing:2px;margin-bottom:8px;'>인증번호</div>"
+				+ "<div style='color:" + TEAL_600 + ";font-size:34px;font-weight:700;letter-spacing:10px;"
+				+ "font-family:\"Courier New\",monospace;'>" + code + "</div></div>" +
+
+				// ── 원터치 인증 버튼 (탭 → /verify-email?token=... → 즉시 인증) ──
 				"<table cellpadding='0' cellspacing='0' border='0' align='center' style='margin:0 auto 16px;'><tr><td align='center'>"
-				+ "<a href='" + baseUrl + "/copy-code?code=" + code + "'" + " style='display:inline-block;background:"
+				+ "<a href='" + verifyUrl + "'" + " style='display:inline-block;background:"
 				+ TEAL_600 + ";color:" + WHITE + ";"
-				+ "font-size:15px;font-weight:700;padding:14px 32px;border-radius:8px;"
-				+ "text-decoration:none;letter-spacing:0.3px;'>인증번호 확인하기</a>" + "</td></tr></table>" +
+				+ "font-size:15px;font-weight:700;padding:14px 36px;border-radius:8px;"
+				+ "text-decoration:none;letter-spacing:0.3px;'>원터치 인증하기</a>" + "</td></tr></table>" +
 
 				// 안내문
 				"<p style='margin:0 0 28px;color:" + MUTED + ";font-size:12px;line-height:1.8;"
@@ -199,14 +207,11 @@ public class EmailService {
 	}
 
 	@Async
-	public void sendIpVerifyCode(String to, String code) {
-		send(to, "[BNK카드] IP 기기 인증 코드", buildIpVerifyHtml(code));
+	public void sendDeviceVerifyCode(String to, String code) {
+		send(to, "[BNK카드] 새 기기 인증 코드", buildDeviceVerifyHtml(code));
 	}
 
-	private String buildIpVerifyHtml(String code) {
-		// ngrok 브라우저 경고창을 스킵하기 위해 파라미터를 강제로 결합합니다.
-		String verifyUrl = baseUrl + "/copy-code?code=" + code + "&ngrok-skip-browser-warning=true";
-
+	private String buildDeviceVerifyHtml(String code) {
 		return "<!DOCTYPE html>" + "<html lang='ko'>" + "<head>" + "<meta charset='UTF-8'>"
 				+ "<meta name='viewport' content='width=device-width,initial-scale=1'>" + "</head>"
 				+ "<body style='margin:0;padding:0;background:" + BG + ";"
@@ -236,19 +241,19 @@ public class EmailService {
 
 				// 제목
 				"<p style='margin:0 0 6px;color:" + TEAL_800 + ";font-size:20px;font-weight:700;"
-				+ "letter-spacing:-0.3px;'>IP 기기 인증</p>" +
+				+ "letter-spacing:-0.3px;'>새 기기 인증</p>" +
 
 				// 부제목
-				"<p style='margin:0 0 28px;color:" + MUTED + ";font-size:14px;line-height:1.7;'>"
-				+ "아래 버튼을 클릭하여 인증번호를 확인하세요.<br>" + "인증번호는 <strong style='color:" + TEAL_800
+				"<p style='margin:0 0 24px;color:" + MUTED + ";font-size:14px;line-height:1.7;'>"
+				+ "아래 인증번호를 인증 화면에 입력해 주세요.<br>" + "인증번호는 <strong style='color:" + TEAL_800
 				+ ";'>10분</strong> 동안 유효합니다.</p>" +
 
-				// ── 인증번호 확인 버튼 (ngrok 경고창 스킵 파라미터 포함) ──
-				"<table cellpadding='0' cellspacing='0' border='0' align='center' style='margin:0 auto 16px;'><tr><td align='center'>"
-				+ "<a href='" + verifyUrl + "'"
-				+ " style='display:inline-block;background:" + TEAL_600 + ";color:" + WHITE + ";"
-				+ "font-size:15px;font-weight:700;padding:14px 32px;border-radius:8px;"
-				+ "text-decoration:none;letter-spacing:0.3px;'>인증번호 확인하기</a>" + "</td></tr></table>" +
+				// ── 인증번호(직접 표기 — 링크 없이 바로 확인 가능) ──
+				"<div style='text-align:center;background:" + FOOT_BG + ";border:1px solid " + TEAL_100
+				+ ";border-radius:10px;padding:18px;margin:0 0 20px;'>"
+				+ "<div style='color:" + MUTED + ";font-size:12px;letter-spacing:2px;margin-bottom:8px;'>인증번호</div>"
+				+ "<div style='color:" + TEAL_600 + ";font-size:34px;font-weight:700;letter-spacing:10px;"
+				+ "font-family:\"Courier New\",monospace;'>" + code + "</div></div>" +
 
 				// 안내문
 				"<p style='margin:0 0 28px;color:" + MUTED + ";font-size:12px;line-height:1.8;"

@@ -57,9 +57,9 @@ public class RedisRateLimitFilter extends OncePerRequestFilter {
             "/api/auth/find-password",     5L,
             "/api/auth/reset-password",    5L,
             "/api/auth/signup",            3L,
-            "/api/auth/ip-verify/email/send",    5L,
-            "/api/auth/ip-verify/email/confirm", 5L,
-            "/api/auth/ip-verify/ci",            5L
+            "/api/auth/device-verify/email/send",    5L,
+            "/api/auth/device-verify/email/confirm", 5L,
+            "/api/auth/device-verify/ci",            5L
     );
 
     // ── GET 공개 API ──────────────────────────────────────────────────

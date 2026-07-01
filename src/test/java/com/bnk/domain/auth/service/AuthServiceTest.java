@@ -48,7 +48,7 @@ import com.bnk.domain.auth.dto.response.AuthTokenResult;
 import com.bnk.domain.auth.dto.response.FindIdResponse;
 import com.bnk.domain.auth.mapper.UserSessionMapper;
 import com.bnk.domain.auth.model.UserSession;
-import com.bnk.domain.ipauth.service.IpTrustService;
+import com.bnk.domain.deviceauth.service.DeviceTrustService;
 import com.bnk.domain.terms.mapper.TermsMapper;
 import com.bnk.domain.terms.mapper.UserTermsAgreementMapper;
 import com.bnk.domain.user.mapper.UserMapper;
@@ -103,7 +103,7 @@ class AuthServiceTest {
 	@Mock
 	private AuditLogger auditLogger;
 	@Mock
-	private IpTrustService ipTrustService;
+	private DeviceTrustService deviceTrustService;
 	@Mock
 	private Clock clock;
 	private static final LocalDateTime FIXED_FUTURE = LocalDateTime.of(2099, Month.DECEMBER, 31, 0, 0);

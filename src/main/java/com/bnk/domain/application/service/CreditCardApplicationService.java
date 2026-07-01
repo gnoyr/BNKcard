@@ -20,6 +20,7 @@ import com.bnk.domain.application.dto.request.CreditCardApplicationRequest;
 import com.bnk.domain.application.dto.request.ReviewResultRequest;
 import com.bnk.domain.application.dto.request.ScreeningResultRequest;
 import com.bnk.domain.application.dto.response.CreditApplicationResponse;
+import com.bnk.domain.application.log.CardApplicationEventLogger;
 import com.bnk.domain.application.mapper.CreditCardApplicationMapper;
 import com.bnk.domain.application.mapper.UserCardMapper;
 import com.bnk.domain.application.model.CreditCardApplication;
@@ -59,7 +60,10 @@ public class CreditCardApplicationService {
     private final RestTemplate restTemplate;
     private final AesCryptoUtil aesCryptoUtil;
     private final NotificationService notificationService;
+    private final CardApplicationEventLogger appEventLogger;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
+    private static final String TYPE = CardApplicationEventLogger.TYPE_CREDIT;
     
     @Value("${verification.server.url}")
     private String verificationServerUrl;
@@ -70,6 +74,8 @@ public class CreditCardApplicationService {
     @Transactional
     public Long agreeTerms(Long userId, CreditCardApplicationRequest request) {
         if (creditCardApplicationMapper.hasActiveApplication(userId, request.getCardId())) {
+            appEventLogger.logFailure(TYPE, userId, request.getCardId(), null,
+                    "DUPLICATE_APPLICATION", "STEP1 약관동의: 이미 진행 중인 신청 존재", null);
             throw new BusinessException(ErrorCode.DUPLICATE_APPLICATION);
         }
     	CreditCardApplication application = CreditCardApplication.builder()
@@ -98,10 +104,12 @@ public class CreditCardApplicationService {
                 .collect(Collectors.toList());
 
         userTermsAgreementMapper.insertAgreements(agreements);
- 
+
+        appEventLogger.log(TYPE, userId, request.getCardId(), creditAppId,
+                "TERMS_AGREED", "STEP1 약관동의 완료");
         return creditAppId;
     }
- 
+
     // ----------------------------------------------------------------
     // STEP 2 - 본인확인 결과 저장 (심사 서버에서 받아서)
     // ----------------------------------------------------------------
@@ -137,6 +145,13 @@ public class CreditCardApplicationService {
             throw new BusinessException(ErrorCode.APP_NOT_FOUND);
         }
 
+        if ("Y".equals(idVerifiedYn)) {
+            appEventLogger.log(TYPE, null, null, request.getCreditAppId(),
+                    "ID_VERIFIED", "STEP2 본인확인 성공");
+        } else {
+            appEventLogger.logFailure(TYPE, null, null, request.getCreditAppId(),
+                    "ID_VERIFY_FAILED", "STEP2 본인확인 실패(idVerifiedYn=" + idVerifiedYn + ")", null);
+        }
         return idVerifiedYn;
     }
  
@@ -175,15 +190,23 @@ public class CreditCardApplicationService {
 	    if ("REQUESTED".equals(currentStatus) || "REVIEWING".equals(currentStatus)
 	            || "APPROVED".equals(currentStatus) || "ISSUED".equals(currentStatus)
 	            || "REJECTED".equals(currentStatus) || "SCREENING_FAILED".equals(currentStatus)) {
+	        appEventLogger.logFailure(TYPE, existing.getUserId(), existing.getCardId(), request.getCreditAppId(),
+	                "INVALID_STATUS", "STEP4 제출 거절: 현재상태=" + currentStatus, null);
 	        throw new BusinessException(ErrorCode.INVALID_APPLICATION_STATUS);
 	    }
 	    validateIdVerified(request.getCreditAppId());
-	    
+
 	    // STEP 5 - 기존고객 여부 체크
 	    boolean isExisting = checkExistingCustomer(request.getCreditAppId());
+	    log.info("[신용카드] 신청 제출: creditAppId={}, 기존고객여부={}", request.getCreditAppId(), isExisting);
+	    appEventLogger.log(TYPE, existing.getUserId(), existing.getCardId(), request.getCreditAppId(),
+	            isExisting ? "EXISTING_CUSTOMER" : "NEW_CUSTOMER", "STEP4 기존고객여부=" + isExisting);
 	    if (!isExisting) {
 	    	// 신규고객 - 서류 확인
 	        if (request.getIncomeDocKey() == null || request.getJobDocKey() == null) {
+	        	log.info("[신용카드] creditAppId={} → 서류 누락으로 제출 거절(신규고객)", request.getCreditAppId());
+	        	appEventLogger.logFailure(TYPE, existing.getUserId(), existing.getCardId(), request.getCreditAppId(),
+	        	        "DOCS_REQUIRED", "STEP4 신규고객 서류 누락", null);
 	        	throw new BusinessException(ErrorCode.DOCS_REQUIRED);
 	        }
 	        // 서류 저장
@@ -228,8 +251,11 @@ public class CreditCardApplicationService {
                 });
             }
         });
+
+	    appEventLogger.log(TYPE, existing.getUserId(), existing.getCardId(), creditAppId,
+	            "REQUESTED", "STEP4 신청 제출 완료 → 심사 의뢰 예약");
 	}
-    
+
 
 	private void requestScreeningReview(Long creditAppId) {
 	    try {
@@ -257,6 +283,12 @@ public class CreditCardApplicationService {
 	    } catch (Exception e) {
 	        log.error("[신용카드] 심사 의뢰 실패: creditAppId={}", creditAppId, e);
 	        creditCardApplicationMapper.updateStatus(creditAppId, "SCREENING_FAILED");
+	        CreditCardApplication failApp = null;
+	        try { failApp = findOrThrow(creditAppId); } catch (Exception ignore) {}
+	        appEventLogger.logFailure(TYPE,
+	                failApp != null ? failApp.getUserId() : null,
+	                failApp != null ? failApp.getCardId() : null,
+	                creditAppId, "SCREENING_FAILED", "심사 의뢰 실패", e.getMessage());
 	        try {
 	            notificationService.notifyScreeningFailed(findOrThrow(creditAppId).getUserId(), creditAppId);
 	        } catch (Exception ne) {
@@ -271,7 +303,9 @@ public class CreditCardApplicationService {
     @Transactional
 	public void saveScreeningResult(ScreeningResultRequest request) {
 	    // M2: 존재하지 않는 appId 콜백 시 silent no-op 방지
-	    findOrThrow(request.getAppId());
+	    CreditCardApplication app = findOrThrow(request.getAppId());
+	    log.info("[신용카드 심사] 1차 심사결과 수신: creditAppId={}, screeningResult={}, status={}, docVerifiedYn={}",
+	            request.getAppId(), request.getScreeningResult(), request.getApplicationStatus(), request.getDocVerifiedYn());
 	    CreditCardApplication application = CreditCardApplication.builder()
 	            .creditAppId(request.getAppId())
 	            .screeningResult(request.getScreeningResult())
@@ -284,7 +318,16 @@ public class CreditCardApplicationService {
 	    creditCardApplicationMapper.updateScreeningResult(application);
 
 	    if ("REVIEWING".equals(request.getApplicationStatus())) {
+	        log.info("[신용카드 심사] creditAppId={} → 한도심사 진행", request.getAppId());
+	        appEventLogger.log(TYPE, app.getUserId(), app.getCardId(), request.getAppId(),
+	                "SCREENING_REVIEWING", "STEP6 1차 심사 통과 → 한도심사 진행(screeningResult=" + request.getScreeningResult() + ")");
 	        checkLimit(request.getAppId(), request);  // ← request 통째로 넘김
+	    } else {
+	        log.info("[신용카드 심사] creditAppId={} → 1차 심사 상태({}) 저장 후 종료",
+	                request.getAppId(), request.getApplicationStatus());
+	        appEventLogger.log(TYPE, app.getUserId(), app.getCardId(), request.getAppId(),
+	                "SCREENING_" + request.getApplicationStatus(),
+	                "STEP6 1차 심사 상태=" + request.getApplicationStatus() + " 저장 후 종료");
 	    }
 	}
     
@@ -293,12 +336,16 @@ public class CreditCardApplicationService {
     // ----------------------------------------------------------------
     public void checkLimit(Long creditAppId, ScreeningResultRequest screeningData) {
         CreditCardApplication app = findOrThrow(creditAppId);
-        
+        log.info("[신용카드 심사] 한도심사 진입: creditAppId={}, requestedLimit={}", creditAppId, app.getRequestedLimit());
+
         // H1: requestedLimit null guard
         if (app.getRequestedLimit() == null || app.getRequestedLimit() <= 0) {
+            log.info("[신용카드 심사] creditAppId={} → 추가심사(서류): 신청한도 없음/0", creditAppId);
             app.setLimitCheckResult("MANUAL_REQUIRED");
             app.setApplicationStatus("REVIEWING");
             creditCardApplicationMapper.updateLimitCheck(app);
+            appEventLogger.log(TYPE, app.getUserId(), app.getCardId(), creditAppId,
+                    "MANUAL_NO_REQUESTED_LIMIT", "STEP7 추가심사(서류): 신청한도 없음/0");
             requestAdditionalReview(creditAppId, true);
             return;
         }
@@ -310,15 +357,22 @@ public class CreditCardApplicationService {
         Long   loanBalance            = screeningData.getLoanBalance();  // 대출 잔액
         Double delinquencyRate        = screeningData.getDelinquencyRate();  // 연체율
         Integer multipleDebtCount     = screeningData.getMultipleDebtCount();  // 다중채무 건수
-        String jobType                = screeningData.getJobType();  // 직업유형. EMPLOYED=직장인 / SELF_EMPLOYED=자영업자 / STUDENT=학생 / UNEMPLOYED=무직·전업주부 / OTHER=기타 
-        
-        
+        String jobType                = screeningData.getJobType();  // 직업유형. EMPLOYED=직장인 / SELF_EMPLOYED=자영업자 / STUDENT=학생 / UNEMPLOYED=무직·전업주부 / OTHER=기타
+
+        log.info("[신용카드 심사] creditAppId={} 심사입력: creditScore={}, delinquencyRate={}, multipleDebtCount={}, "
+                + "estMonthlyIncome={}, monthlyPayment={}, loanBalance={}, vehicleCount={}, jobType={}",
+                creditAppId, creditScore, delinquencyRate, multipleDebtCount,
+                estimatedMonthlyIncome, monthlyPayment, loanBalance, vehicleCount, jobType);
+
         // ── 1단계. 신용점수 체크 (600점 이하 즉시 거절) ──────────
         if (creditScore != null && creditScore <= 600) {
+            log.info("[신용카드 심사] creditAppId={} → 거절: 신용점수 미달(creditScore={})", creditAppId, creditScore);
             app.setLimitCheckResult("MANUAL_REQUIRED");
             app.setApplicationStatus("REJECTED");
             app.setRejectionReason("신용점수가 심사 기준에 부합하지 않습니다.");
             creditCardApplicationMapper.updateLimitCheck(app);
+            appEventLogger.logFailure(TYPE, app.getUserId(), app.getCardId(), creditAppId,
+                    "REJECTED_CREDIT_SCORE", "STEP7 거절: 신용점수 미달(creditScore=" + creditScore + ")", null);
             notificationService.notifyReviewResult(app.getUserId(), creditAppId, false);
             return;
         }
@@ -327,47 +381,60 @@ public class CreditCardApplicationService {
         if (estimatedMonthlyIncome != null && monthlyPayment != null) {
             long disposableIncome = estimatedMonthlyIncome - monthlyPayment;
             if (disposableIncome <= 500_000L) {
+                log.info("[신용카드 심사] creditAppId={} → 거절: 가처분소득 미달(disposable={})", creditAppId, disposableIncome);
                 app.setLimitCheckResult("MANUAL_REQUIRED");
                 app.setApplicationStatus("REJECTED");
                 app.setRejectionReason("월 가처분소득이 심사 기준에 부합하지 않습니다.");
                 creditCardApplicationMapper.updateLimitCheck(app);
+                appEventLogger.logFailure(TYPE, app.getUserId(), app.getCardId(), creditAppId,
+                        "REJECTED_DISPOSABLE_INCOME", "STEP7 거절: 가처분소득 미달(disposable=" + disposableIncome + ")", null);
                 notificationService.notifyReviewResult(app.getUserId(), creditAppId, false);
                 return;
             }
         }
-        
+
         if (multipleDebtCount != null && multipleDebtCount >= 3) {
+            log.info("[신용카드 심사] creditAppId={} → 추가심사: 다중채무 기준 초과({}건)", creditAppId, multipleDebtCount);
             app.setLimitCheckResult("MANUAL_REQUIRED");
             app.setApplicationStatus("REJECTED");  // REVIEWING → REJECTED
             app.setRejectionReason("다중채무건수 기준 초과");  // 거절 사유 추가
             creditCardApplicationMapper.updateLimitCheck(app);
+            appEventLogger.logFailure(TYPE, app.getUserId(), app.getCardId(), creditAppId,
+                    "REJECTED_MULTIPLE_DEBT", "STEP7 거절: 다중채무 기준 초과(" + multipleDebtCount + "건)", null);
             requestAdditionalReview(creditAppId, false);
             return;
         }
 
-        
+
         // ── 3단계. 즉시 추가심사 조건 ────────────────────────────
         // 연체율 5% 초과 → 스코어링 없이 바로 추가심사
         if (delinquencyRate != null && delinquencyRate > 5.0) {
+            log.info("[신용카드 심사] creditAppId={} → 추가심사: 연체율 기준 초과({}%)", creditAppId, delinquencyRate);
             app.setLimitCheckResult("MANUAL_REQUIRED");
             app.setApplicationStatus("REVIEWING");
             creditCardApplicationMapper.updateLimitCheck(app);
+            appEventLogger.log(TYPE, app.getUserId(), app.getCardId(), creditAppId,
+                    "MANUAL_DELINQUENCY", "STEP7 추가심사: 연체율 기준 초과(" + delinquencyRate + "%)");
             requestAdditionalReview(creditAppId, false);
             return;
         }
 
         // ── 4단계. 추정소득 없음 → 추가심사 ─────────────────────
         if (estimatedMonthlyIncome == null || estimatedMonthlyIncome == 0) {
+            log.info("[신용카드 심사] creditAppId={} → 추가심사(서류): 추정소득 없음", creditAppId);
             app.setLimitCheckResult("MANUAL_REQUIRED");
             app.setApplicationStatus("REVIEWING");
             creditCardApplicationMapper.updateLimitCheck(app);
+            appEventLogger.log(TYPE, app.getUserId(), app.getCardId(), creditAppId,
+                    "MANUAL_NO_INCOME", "STEP7 추가심사(서류): 추정소득 없음");
             requestAdditionalReview(creditAppId, true);  // 소득 확인 서류 필요
             return;
         }
-        
+
         // ── 5단계. 추정소득 있으면 스코어링 (총 100점) ───────────────────────────
         int score = calculateScore(creditScore, jobType, delinquencyRate,
                                    loanBalance, estimatedMonthlyIncome, vehicleCount);
+        log.info("[신용카드 심사] creditAppId={} 스코어링 결과: score={}", creditAppId, score);
 
         
         // ── 6단계. 총점 기반 한도 비율 결정 ──────────────────────        
@@ -383,9 +450,12 @@ public class CreditCardApplicationService {
         else                  { limitRatio = 0;    limitCheckResult = "MANUAL_REQUIRED"; }
 
         if ("MANUAL_REQUIRED".equals(limitCheckResult)) {
+            log.info("[신용카드 심사] creditAppId={} → 추가심사: 스코어 미달(score={})", creditAppId, score);
             app.setLimitCheckResult("MANUAL_REQUIRED");
             app.setApplicationStatus("REVIEWING");
             creditCardApplicationMapper.updateLimitCheck(app);
+            appEventLogger.log(TYPE, app.getUserId(), app.getCardId(), creditAppId,
+                    "MANUAL_LOW_SCORE", "STEP7 추가심사: 스코어 미달(score=" + score + ")");
             requestAdditionalReview(creditAppId, false);
             return;
         }
@@ -394,13 +464,21 @@ public class CreditCardApplicationService {
         long maxLimit = (long)(disposableIncome * limitRatio);   // 총 이용한도 기준
 
         if (app.getRequestedLimit() <= maxLimit) {
+            log.info("[신용카드 심사] creditAppId={} → 승인: 신청한도 {} <= 최대한도 {} (score={}, limitRatio={})",
+                    creditAppId, app.getRequestedLimit(), maxLimit, score, limitRatio);
             app.setLimitCheckResult("PASS");
             app.setApprovedLimit(app.getRequestedLimit());
             app.setApplicationStatus("APPROVED");
+            appEventLogger.log(TYPE, app.getUserId(), app.getCardId(), creditAppId,
+                    "APPROVED", "STEP7 승인: 신청한도 " + app.getRequestedLimit() + " <= 최대한도 " + maxLimit + " (score=" + score + ")");
         } else {
             // 신청한도 초과 → 추가심사 (한도 조정 가능성)
+            log.info("[신용카드 심사] creditAppId={} → 추가심사: 신청한도 {} > 최대한도 {} (score={})",
+                    creditAppId, app.getRequestedLimit(), maxLimit, score);
             app.setLimitCheckResult("MANUAL_REQUIRED");
             app.setApplicationStatus("REVIEWING");
+            appEventLogger.log(TYPE, app.getUserId(), app.getCardId(), creditAppId,
+                    "MANUAL_LIMIT_EXCEEDED", "STEP7 추가심사: 신청한도 " + app.getRequestedLimit() + " > 최대한도 " + maxLimit + " (score=" + score + ")");
         }
 
         creditCardApplicationMapper.updateLimitCheck(app);
@@ -510,6 +588,7 @@ public class CreditCardApplicationService {
     public void saveReviewResult(ReviewResultRequest request) {
         // 서류 진위 실패 등 MYDATAMOCK에서 직접 거절한 케이스
         if ("REJECTED".equals(request.getApplicationStatus())) {
+            CreditCardApplication rejApp = findOrThrow(request.getAppId());
             CreditCardApplication application = CreditCardApplication.builder()
                     .creditAppId(request.getAppId())
                     .applicationStatus("REJECTED")
@@ -517,19 +596,23 @@ public class CreditCardApplicationService {
                     .reviewedBy(request.getReviewedBy())
                     .build();
             creditCardApplicationMapper.updateReviewResult(application);
-            notificationService.notifyReviewResult(findOrThrow(request.getAppId()).getUserId(), request.getAppId(), false);
+            appEventLogger.logFailure(TYPE, rejApp.getUserId(), rejApp.getCardId(), request.getAppId(),
+                    "REVIEW_REJECTED", "STEP8 추가심사 거절: " + request.getRejectionReason(), null);
+            notificationService.notifyReviewResult(rejApp.getUserId(), request.getAppId(), false);
             return;
         }
 
         // PENDING_LIMIT 케이스 — 받아온 신용정보로 재심사
         if ("PENDING_LIMIT".equals(request.getApplicationStatus())) {
+            appEventLogger.log(TYPE, null, null, request.getAppId(),
+                    "REVIEW_PENDING_LIMIT", "STEP8 추가심사 한도 재심사 진입");
             checkLimitFromReview(request);
             return;
         }
 
         // APPROVED 케이스 (외부에서 한도까지 확정된 경우)
         // M2: 존재하지 않는 appId 콜백 시 silent no-op 방지
-        findOrThrow(request.getAppId());
+        CreditCardApplication apprApp = findOrThrow(request.getAppId());
         CreditCardApplication application = CreditCardApplication.builder()
                 .creditAppId(request.getAppId())
                 .applicationStatus("APPROVED")
@@ -537,6 +620,8 @@ public class CreditCardApplicationService {
                 .reviewedBy(request.getReviewedBy())
                 .build();
         creditCardApplicationMapper.updateReviewResult(application);
+        appEventLogger.log(TYPE, apprApp.getUserId(), apprApp.getCardId(), request.getAppId(),
+                "REVIEW_APPROVED", "STEP8 추가심사 승인(approvedLimit=" + request.getApprovedLimit() + ")");
         issueCard(request.getAppId());
         // 승인 알림(INAPP + FCM) — 발급 완료 후 발송
         notificationService.notifyReviewResult(
@@ -601,6 +686,8 @@ public class CreditCardApplicationService {
                     .reviewedBy(request.getReviewedBy())
                     .build();
             creditCardApplicationMapper.updateReviewResult(rejected);
+            appEventLogger.logFailure(TYPE, app.getUserId(), app.getCardId(), app.getCreditAppId(),
+                    "REVIEW_REJECTED_LOW_SCORE", "STEP8 재심사 거절: 신용평점 기준 미달(score=" + score + ")", null);
             notificationService.notifyReviewResult(app.getUserId(), app.getCreditAppId(), false);
             log.info("[추가심사] 재심사 거절: creditAppId={}, score={}", app.getCreditAppId(), score);
             return;
@@ -619,6 +706,8 @@ public class CreditCardApplicationService {
                 .reviewedBy(request.getReviewedBy())
                 .build();
         creditCardApplicationMapper.updateReviewResult(approved);
+        appEventLogger.log(TYPE, app.getUserId(), app.getCardId(), app.getCreditAppId(),
+                "REVIEW_APPROVED", "STEP8 재심사 승인(score=" + score + ", approvedLimit=" + approvedLimit + ")");
         notificationService.notifyReviewResult(app.getUserId(), app.getCreditAppId(), true);
         log.info("[추가심사] 재심사 승인: creditAppId={}, score={}, approvedLimit={}",
                 app.getCreditAppId(), score, approvedLimit);
@@ -686,6 +775,8 @@ public class CreditCardApplicationService {
                 .reviewedBy(reviewedBy)
                 .build();
         creditCardApplicationMapper.updateReviewResult(update);
+        appEventLogger.logFailure(TYPE, app.getUserId(), app.getCardId(), app.getCreditAppId(),
+                "REVIEW_REJECTED", "STEP8 재심사 거절: " + reason, null);
         notificationService.notifyReviewResult(app.getUserId(), app.getCreditAppId(), false);
     }
 
@@ -699,6 +790,8 @@ public class CreditCardApplicationService {
         // H4: 멱등성 보장 — 이미 발급된 경우 중복 발급 방지
         if ("ISSUED".equals(app.getApplicationStatus())) {
             log.warn("[신용카드] 이미 발급된 신청 건 중복 호출 차단: creditAppId={}", creditAppId);
+            appEventLogger.log(TYPE, app.getUserId(), app.getCardId(), creditAppId,
+                    "ALREADY_ISSUED", "발급 멱등 처리: 이미 발급됨");
             return;
         }
         if (!"APPROVED".equals(app.getApplicationStatus())) {
@@ -747,6 +840,8 @@ public class CreditCardApplicationService {
         userCardMapper.insertUserCard(userCard);
         creditCardApplicationMapper.updateStatus(creditAppId, "ISSUED");
 
+        appEventLogger.log(TYPE, app.getUserId(), app.getCardId(), creditAppId,
+                "ISSUED", "카드 발급 완료(userCardId=" + userCard.getUserCardId() + ", approvedLimit=" + app.getApprovedLimit() + ")");
         log.info("[신용카드] 발급 완료: creditAppId={}, userCardId={}", creditAppId, userCard.getUserCardId());
     }
     

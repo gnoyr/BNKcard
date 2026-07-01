@@ -38,7 +38,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                     "/mypage/password",
                     "/mypage/spending",
                     "/mypage/credit-score",
-                    "/mypage/trusted-ips",
+                    "/mypage/trusted-devices",
                     "/mypage/accounts"
                 );
 

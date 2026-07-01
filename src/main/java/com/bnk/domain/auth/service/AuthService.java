@@ -30,7 +30,7 @@ import com.bnk.domain.auth.mapper.AdminSessionMapper;
 import com.bnk.domain.auth.mapper.UserSessionMapper;
 import com.bnk.domain.auth.model.AdminSession;
 import com.bnk.domain.auth.model.UserSession;
-import com.bnk.domain.ipauth.service.IpTrustService;
+import com.bnk.domain.deviceauth.service.DeviceTrustService;
 import com.bnk.domain.terms.mapper.TermsMapper;
 import com.bnk.domain.terms.mapper.UserTermsAgreementMapper;
 import com.bnk.domain.terms.model.Terms;
@@ -75,7 +75,7 @@ public class AuthService {
 	private final CddService cddService;
 	private final TokenSecurityService tokenSecurityService;
 	private final AuditLogger auditLogger;
-	private final IpTrustService ipTrustService;
+	private final DeviceTrustService deviceTrustService;
 	private final AdminSessionMapper adminSessionMapper;
 	private final UserAddressMapper userAddressMapper;
 
@@ -85,6 +85,7 @@ public class AuthService {
 	// KEY_RESET : 비밀번호 재설정 "pw:reset:{token}"
 	// ──────────────────────────────────────────────────────────────────
 	private static final String KEY_VERIFY = "email:verify:";
+	private static final String KEY_VERIFY_LINK = "email:verifylink:"; // 매직링크 토큰 → 이메일
 	private static final String KEY_VERIFIED = "email:verified:";
 	private static final String KEY_RESET = "pw:reset:";
 
@@ -108,12 +109,41 @@ public class AuthService {
 			throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
 		}
 
-		String code = generateCode();
+		String code      = generateCode();
+		String linkToken = generateLinkToken();
 
+		// 코드(직접 입력용)와 매직링크 토큰(원터치 인증용)을 함께 발급한다.
 		tokenStore.set(KEY_VERIFY + request.getEmail(), code, TTL_VERIFY_CODE_MIN);
-		mailService.sendVerificationEmail(request.getEmail(), code);
+		tokenStore.set(KEY_VERIFY_LINK + linkToken, request.getEmail(), TTL_VERIFY_CODE_MIN);
+		mailService.sendVerificationEmail(request.getEmail(), code, linkToken);
 		auditLogger.success(AuditLogger.AUTH, AuditLogger.EMAIL_VERIFY,
 				null, null, "인증코드 발송: " + request.getEmail());
+	}
+
+	// ──────────────────────────────────────────────────────────────────
+	// 매직링크 이메일 인증 (원터치)
+	// ──────────────────────────────────────────────────────────────────
+	/** 매직링크 토큰으로 이메일 인증 완료. @return 마스킹된 이메일 */
+	@Transactional
+	public String verifyEmailByLink(String token) {
+		String email = tokenStore.get(KEY_VERIFY_LINK + token);
+		if (email == null) {
+			auditLogger.failure(AuditLogger.AUTH, AuditLogger.EMAIL_VERIFY,
+					null, null, "매직링크 토큰 만료/무효");
+			throw new BusinessException(ErrorCode.VERIFY_TOKEN_INVALID);
+		}
+		tokenStore.delete(KEY_VERIFY_LINK + token);
+		tokenStore.delete(KEY_VERIFY + email);
+		tokenStore.set(KEY_VERIFIED + email, "Y", TTL_VERIFIED_FLAG_MIN);
+		auditLogger.success(AuditLogger.AUTH, AuditLogger.EMAIL_VERIFY,
+				null, null, "매직링크 이메일 인증 완료: " + email);
+		return MaskingUtil.maskEmail(email);
+	}
+
+	/** 이메일 인증 완료 여부(매직링크 폴링용). */
+	@Transactional(readOnly = true)
+	public boolean isEmailVerified(String email) {
+		return tokenStore.get(KEY_VERIFIED + email) != null;
 	}
 
 	// ──────────────────────────────────────────────────────────────────
@@ -246,13 +276,13 @@ public class AuthService {
 	}
 
 	/**
-	 * 회원가입 최초 IP 등록.
+	 * 회원가입 최초 기기 등록.
 	 * AuthController.signup()에서 signup() 완료 후 호출.
-	 * AuthService.signup()은 HttpServletRequest를 받지 않으므로
-	 * Controller 레이어에서 IP를 추출하여 전달.
+	 * 가입에 사용한 기기를 최초 신뢰 기기로 등록한다(deviceId 미전송 시 skip).
 	 */
-	public void registerInitialIp(Long userId, String ip) {
-		ipTrustService.registerInitialIp(userId, ip);
+	public void registerInitialDevice(Long userId, String deviceId, String deviceName,
+									  String platform, String ip) {
+		deviceTrustService.registerInitialDevice(userId, deviceId, deviceName, platform, ip);
 	}
 
 	/**
@@ -267,14 +297,15 @@ public class AuthService {
 	}
 
 	/**
-	 * 로그인 완료 후 IP 챌린지 여부 확인.
+	 * 로그인 완료 후 기기 챌린지 여부 확인.
 	 * AuthController.login()에서 AuthTokenResult 발급 후 호출.
 	 *
-	 * @return 빈 Optional → 신뢰 IP (쿠키 그대로 발급)
-	 *         값 있음     → challengeToken (쿠키 미발급, 챌린지 응답 반환)
+	 * @return 빈 Optional → 신뢰 기기 (쿠키 그대로 발급)
+	 *         값 있음     → 불투명 challengeToken (쿠키 미발급, 챌린지 응답 반환)
 	 */
-	public java.util.Optional<String> checkIpChallenge(Long userId, String ip) {
-		return ipTrustService.checkIp(userId, ip);
+	public java.util.Optional<String> checkDeviceChallenge(Long userId, String deviceId,
+			String deviceName, String platform, String ip) {
+		return deviceTrustService.checkDevice(userId, deviceId, deviceName, platform, ip);
 	}
 
 	/**
@@ -516,6 +547,13 @@ public class AuthService {
 
 	private String generateCode() {
 		return String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
+	}
+
+	/** 매직링크용 예측 불가 토큰 (32바이트 → base64url). */
+	private String generateLinkToken() {
+		byte[] b = new byte[32];
+		SECURE_RANDOM.nextBytes(b);
+		return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(b);
 	}
 
 	private String resolveClientIp(HttpServletRequest request) {
