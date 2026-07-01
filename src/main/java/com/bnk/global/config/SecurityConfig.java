@@ -249,7 +249,10 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/callback/**",
                     "/api/applications/credit/screening-result",
-                    "/api/applications/check/screening-result"
+                    "/api/applications/check/screening-result",
+                    // MYDATAMOCK 관리자 심사 화면에서 서류를 다운로드(브라우저 직접 접근)하므로 JWT 없이 허용.
+                    // 키(UUID)를 알아야만 접근 가능하고, OCI presigned URL로 리다이렉트된다.
+                    "/api/applications/credit/docs/download"
                 ).permitAll()
 
                 // ── 7. SUPER_ADMIN 전용 API ───────────────────────────

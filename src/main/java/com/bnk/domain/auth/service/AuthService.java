@@ -36,7 +36,9 @@ import com.bnk.domain.terms.mapper.UserTermsAgreementMapper;
 import com.bnk.domain.terms.model.Terms;
 import com.bnk.domain.terms.model.UserTermsAgreement;
 import com.bnk.domain.user.mapper.UserMapper;
+import com.bnk.domain.user.mapper.UserAddressMapper;
 import com.bnk.domain.user.model.User;
+import com.bnk.domain.user.model.UserAddress;
 import com.bnk.global.auth.JwtTokenProvider;
 import com.bnk.global.email.EmailService;
 import com.bnk.global.exception.BusinessException;
@@ -75,6 +77,7 @@ public class AuthService {
 	private final AuditLogger auditLogger;
 	private final IpTrustService ipTrustService;
 	private final AdminSessionMapper adminSessionMapper;
+	private final UserAddressMapper userAddressMapper;
 
 	// ──────────────────────────────────────────────────────────────────
 	// KEY_VERIFY : 인증코드 임시 저장 "email:verify:{email}"
@@ -184,10 +187,10 @@ public class AuthService {
 		// ⑥ CI값 생성 — birthDate null 허용 (선택 필드)
 		String ciValue = null;
 		if (birthDateStr != null) {
+			// CI = 이름 + 생년월일(주민번호 앞6 = YYMMDD) + 전화번호
 			ciValue = ciValueGenerator.generate(request.getName(),
 			        request.getResidentFront(),
-			        request.getGenderCode(),
-			        request.getAddress());
+			        formattedPhone);
 		}
 
 		// ⑦ Watchlist 대조 (ciValue가 있을 때만 CI 기반 대조 수행)
@@ -205,6 +208,17 @@ public class AuthService {
 				.creditScore(request.getCreditScore()).marketingAgree(marketingAgreeYN).build();
 
 		userMapper.insertUser(user);
+
+		// ⑨-1 본인인증 주소를 기본 배송지로 주소록(USER_ADDRESSES)에 저장
+		if (request.getAddress() != null && !request.getAddress().isBlank()) {
+			userAddressMapper.insert(UserAddress.builder()
+					.userId(user.getUserId())
+					.alias("기본 배송지")
+					.address(request.getAddress().trim())
+					.isDefault("Y")
+					.statusCode("ACTIVE")
+					.build());
+		}
 
 		// ⑩ 이메일 인증 완료 처리
 		userMapper.updateEmailVerified(user.getUserId(), "Y");

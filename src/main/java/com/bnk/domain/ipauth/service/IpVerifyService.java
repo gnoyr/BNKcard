@@ -74,19 +74,18 @@ public class IpVerifyService {
      * CI 기반 본인 확인.
      *
      * @param name          이름
-     * @param residentFront 주민번호 앞 6자리
-     * @param genderCode    성별코드
-     * @param address       주소
+     * @param residentFront 주민번호 앞 6자리 (= 생년월일 YYMMDD)
+     * @param phone         전화번호
      */
     public void verifyCi(Long userId, String name, String residentFront,
-                         String genderCode, String address,
+                         String phone,
                          IpTrustService ipTrustService) {
 
         User user = userMapper.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        // 회원가입과 동일한 로직으로 CI 재생성
-        String inputCi  = ciValueGenerator.generate(name, residentFront, genderCode, address);
+        // 회원가입과 동일한 로직으로 CI 재생성 (이름 + 생년월일 + 전화번호)
+        String inputCi  = ciValueGenerator.generate(name, residentFront, phone);
         String storedCi = user.getCiValue(); // TypeHandler가 AES 복호화한 평문
 
         if (!storedCi.equals(inputCi)) {

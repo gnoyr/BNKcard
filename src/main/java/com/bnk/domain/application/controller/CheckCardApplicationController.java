@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.bnk.domain.application.dto.request.CheckCardApplicationRequest;
+import com.bnk.domain.application.dto.request.ScreeningResultRequest;
 import com.bnk.domain.application.dto.response.CheckApplicationResponse;
 import com.bnk.domain.application.service.CheckCardApplicationService;
 import com.bnk.global.auth.CustomUserDetails;
@@ -81,8 +82,6 @@ public class CheckCardApplicationController {
         checkCardApplicationService.submitApplication(request, userDetails.getUserId());
         return ApiResponse.toNoContent();
     }
-<<<<<<< HEAD
-=======
 
     // ----------------------------------------------------------------
     // STEP 5 - 심사 결과 수신 (심사서버가 호출 — X-Internal-Secret 필요)
@@ -97,7 +96,6 @@ public class CheckCardApplicationController {
         return ApiResponse.toNoContent();
     }
     
->>>>>>> 080b26aafa7226cb3f1e113b2c3e204b3cc9bf39
     
     // ----------------------------------------------------------------
     // Fix 4: SCREENING_FAILED 심사 재시도

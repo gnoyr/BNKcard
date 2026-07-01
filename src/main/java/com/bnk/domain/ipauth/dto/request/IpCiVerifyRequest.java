@@ -33,20 +33,15 @@ public class IpCiVerifyRequest {
     @Size(max = 20, message = "이름은 20자 이하로 입력해 주세요.")
     private String name;
 
-    /** 주민번호 앞 6자리 — 회원가입 시 입력값과 동일해야 CI 일치 */
+    /** 주민번호 앞 6자리(= 생년월일 YYMMDD) — 회원가입 시 입력값과 동일해야 CI 일치 */
     @NotBlank(message = "주민번호 앞 6자리를 입력해 주세요.")
     @Pattern(regexp = "^[0-9]{6}$", message = "주민번호 앞 6자리를 정확히 입력해 주세요.")
     private String residentFront;
 
-    /** 성별코드 — 주민번호 뒷자리 첫 번째 */
-    @NotBlank(message = "성별코드를 입력해 주세요.")
-    @Pattern(regexp = "^[1-4789]$", message = "성별코드가 올바르지 않습니다.")
-    private String genderCode;
-
-    /** 주소 — 회원가입 시 입력값과 동일해야 CI 일치 */
-    @NotBlank(message = "주소를 입력해 주세요.")
-    @Size(max = 200)
-    private String address;
+    /** 전화번호 — 회원가입 시 입력값과 동일해야 CI 일치 */
+    @NotBlank(message = "전화번호를 입력해 주세요.")
+    @Size(max = 20)
+    private String phone;
 
     /** 기기 별명 (선택, null 허용 → 서비스에서 "내 기기" 기본값 적용) */
     @Size(max = 50)

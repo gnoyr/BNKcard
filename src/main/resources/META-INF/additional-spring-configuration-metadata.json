@@ -240,6 +240,11 @@
     "description": "마이그레이션 수행 허용 여부"
   },
   {
+    "name": "migration.ci.enabled",
+    "type": "java.lang.Boolean",
+    "description": "기존 회원 CI 일괄 재생성 마이그레이션 실행 여부(이름+생년월일+전화번호). 1회 실행 후 false 로 변경."
+  },
+  {
     "name": "verification.server.url",
     "type": "java.lang.String",
     "description": "외부 검증 서버의 URL 주소입니다."

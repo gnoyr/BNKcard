@@ -117,6 +117,7 @@ public class CreditCardApplicationService {
                 "idName",       request.getIdName(),
                 "idResidentNo", request.getIdResidentNo(),
                 "idAddress",    request.getIdAddress(),
+                "idPhone",      request.getIdPhone(),
                 "idIssueDate",  request.getIdIssueDate()
             ),
             Map.class
@@ -173,7 +174,7 @@ public class CreditCardApplicationService {
 	    String currentStatus = existing.getApplicationStatus();
 	    if ("REQUESTED".equals(currentStatus) || "REVIEWING".equals(currentStatus)
 	            || "APPROVED".equals(currentStatus) || "ISSUED".equals(currentStatus)
-	            || "REJECTED".equals(currentStatus)) {
+	            || "REJECTED".equals(currentStatus) || "SCREENING_FAILED".equals(currentStatus)) {
 	        throw new BusinessException(ErrorCode.INVALID_APPLICATION_STATUS);
 	    }
 	    validateIdVerified(request.getCreditAppId());
@@ -195,8 +196,8 @@ public class CreditCardApplicationService {
 	        creditCardApplicationMapper.updateDocs(docs);
 	    }
 	
-	    // 신청 시점 현재 PUBLISHED 버전 조회
-	    Long versionId = creditCardApplicationMapper.findCurrentVersionId(request.getCardId());
+	    // 신청 시점 현재 PUBLISHED 버전 조회 (request에 cardId 없을 수 있으므로 DB 값 사용)
+	    Long versionId = creditCardApplicationMapper.findCurrentVersionId(existing.getCardId());
 	
 	    try {
 	        CreditCardApplication application = CreditCardApplication.builder()
@@ -256,6 +257,11 @@ public class CreditCardApplicationService {
 	    } catch (Exception e) {
 	        log.error("[신용카드] 심사 의뢰 실패: creditAppId={}", creditAppId, e);
 	        creditCardApplicationMapper.updateStatus(creditAppId, "SCREENING_FAILED");
+	        try {
+	            notificationService.notifyScreeningFailed(findOrThrow(creditAppId).getUserId(), creditAppId);
+	        } catch (Exception ne) {
+	            log.error("[신용카드] 심사실패 알림 발송 실패: creditAppId={}", creditAppId, ne);
+	        }
 	    }
 	}
     
@@ -527,6 +533,9 @@ public class CreditCardApplicationService {
                 .build();
         creditCardApplicationMapper.updateReviewResult(application);
         issueCard(request.getAppId());
+        // 승인 알림(INAPP + FCM) — 발급 완료 후 발송
+        notificationService.notifyReviewResult(
+                findOrThrow(request.getAppId()).getUserId(), request.getAppId(), true);
     }
 
     // 추가심사 콜백 데이터로 스코어링 재심사
@@ -817,6 +826,9 @@ public class CreditCardApplicationService {
                     .applicationStatus(app.getApplicationStatus())
                     .idVerifiedYn(app.getIdVerifiedYn())
                     .applicantSnapshot(applicantSnapshot)
+                    .annualIncomeBand(app.getAnnualIncomeBand())
+                    .creditScoreBand(app.getCreditScoreBand())
+                    .linkedAccountId(app.getLinkedAccountId())
                     .paymentSnapshot(paymentSnapshot)
                     .approvedLimit(app.getApprovedLimit())
                     .requestedLimit(app.getRequestedLimit())

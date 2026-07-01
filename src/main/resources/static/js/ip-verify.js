@@ -166,11 +166,14 @@ async function confirmCi() {
     var btn = document.getElementById('btnCiConfirm');
     BnkDOM.btnLoading(btn, true, '확인 중...');
     try {
+        // 백엔드는 residentFront(주민번호 앞 6자리=YYMMDD)를 기대한다.
+        // birthDate "1992-03-15" → "920315" 로 변환.
+        var residentFront = birthDate.replace(/-/g, '').slice(2); // YYYYMMDD → YYMMDD
         var res = await BnkAPI.post('/api/auth/ip-verify/ci', {
             userId: USER_ID,
             challengeToken: CHALLENGE_TOKEN,
             name: name,
-            birthDate: birthDate,
+            residentFront: residentFront,
             phone: phone,
             nickname: nickname,
         });
