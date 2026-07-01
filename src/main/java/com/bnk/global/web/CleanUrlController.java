@@ -34,11 +34,6 @@ public class CleanUrlController {
         return "forward:/auth/copy-code.html";
     }
 
-    @GetMapping("/verify-email")
-    public String verifyEmail() {
-        return "forward:/auth/verify-email.html";
-    }
-
     @GetMapping("/auth/device-verify")
     public String deviceVerify() {
         return "forward:/auth/device-verify.html";

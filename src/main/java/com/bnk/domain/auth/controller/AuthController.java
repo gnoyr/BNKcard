@@ -5,11 +5,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CookieValue;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.bnk.domain.auth.dto.request.EmailVerifyRequest;
@@ -19,7 +17,6 @@ import com.bnk.domain.auth.dto.request.LoginRequest;
 import com.bnk.domain.auth.dto.request.ResetPasswordRequest;
 import com.bnk.domain.auth.dto.request.SendVerifyCodeRequest;
 import com.bnk.domain.auth.dto.request.SignupRequest;
-import com.bnk.domain.auth.dto.request.VerifyEmailLinkRequest;
 import com.bnk.domain.auth.dto.response.AuthTokenResult;
 import com.bnk.domain.auth.dto.response.FindIdResponse;
 import com.bnk.domain.auth.service.AuthService;
@@ -61,26 +58,6 @@ public class AuthController {
 	public ResponseEntity<ApiResponse<Void>> verifyEmail(@RequestBody @Valid EmailVerifyRequest request) {
 		authService.verifyEmail(request);
 		return ApiResponse.toOk(null);
-	}
-
-	/**
-	 * 매직링크 원터치 인증 — 메일의 '원터치 인증' 버튼(/verify-email 페이지)에서 호출.
-	 * 성공 시 해당 이메일에 인증 완료 플래그를 세운다. 비로그인 허용.
-	 */
-	@PostMapping("/verify-email-link")
-	public ResponseEntity<ApiResponse<Map<String, String>>> verifyEmailLink(
-			@RequestBody @Valid VerifyEmailLinkRequest request) {
-		String maskedEmail = authService.verifyEmailByLink(request.getToken());
-		return ApiResponse.toOk(Map.of("email", maskedEmail));
-	}
-
-	/**
-	 * 이메일 인증 완료 여부 조회 (매직링크 폴링용). 비로그인 허용.
-	 */
-	@GetMapping("/verify-status")
-	public ResponseEntity<ApiResponse<Map<String, Boolean>>> verifyStatus(
-			@RequestParam String email) {
-		return ApiResponse.toOk(Map.of("verified", authService.isEmailVerified(email)));
 	}
 
 	/**
