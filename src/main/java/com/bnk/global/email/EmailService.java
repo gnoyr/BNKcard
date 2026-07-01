@@ -204,7 +204,68 @@ public class EmailService {
 	}
 
 	private String buildIpVerifyHtml(String code) {
-		return buildVerificationHtml(code);
+		// ngrok 브라우저 경고창을 스킵하기 위해 파라미터를 강제로 결합합니다.
+		String verifyUrl = baseUrl + "/copy-code?code=" + code + "&ngrok-skip-browser-warning=true";
+
+		return "<!DOCTYPE html>" + "<html lang='ko'>" + "<head>" + "<meta charset='UTF-8'>"
+				+ "<meta name='viewport' content='width=device-width,initial-scale=1'>" + "</head>"
+				+ "<body style='margin:0;padding:0;background:" + BG + ";"
+				+ "font-family:\"Apple SD Gothic Neo\",\"Malgun Gothic\",Arial,sans-serif;'>" +
+
+				// ── 외부 래퍼 ──
+				"<table width='100%' cellpadding='0' cellspacing='0' border='0'>"
+				+ "<tr><td align='center' style='padding:40px 16px;'>" +
+
+				// ── 카드 ──
+				"<table width='480' cellpadding='0' cellspacing='0' border='0'" + " style='background:" + WHITE
+				+ ";border-radius:10px;overflow:hidden;"
+				+ "box-shadow:0 4px 20px rgba(0,103,127,0.13);max-width:480px;width:100%;'>" +
+
+				// ── 헤더 (Teal-900) ──
+				"<tr><td style='background:" + TEAL_900 + ";padding:22px 36px;'>"
+				+ "<table cellpadding='0' cellspacing='0' border='0' width='100%'><tr>" + "<td><span style='color:"
+				+ WHITE + ";font-size:18px;font-weight:700;" + "letter-spacing:-0.3px;'>BNK카드</span></td>"
+				+ "<td align='right'><span style='color:rgba(255,255,255,0.6);" + "font-size:11px;'>BNK부산은행</span></td>"
+				+ "</tr></table>" + "</td></tr>" +
+
+				// ── Teal-600 구분선 ──
+				"<tr><td style='height:3px;background:" + TEAL_600 + ";'></td></tr>" +
+
+				// ── 본문 ──
+				"<tr><td style='padding:36px 36px 28px;'>" +
+
+				// 제목
+				"<p style='margin:0 0 6px;color:" + TEAL_800 + ";font-size:20px;font-weight:700;"
+				+ "letter-spacing:-0.3px;'>IP 기기 인증</p>" +
+
+				// 부제목
+				"<p style='margin:0 0 28px;color:" + MUTED + ";font-size:14px;line-height:1.7;'>"
+				+ "아래 버튼을 클릭하여 인증번호를 확인하세요.<br>" + "인증번호는 <strong style='color:" + TEAL_800
+				+ ";'>10분</strong> 동안 유효합니다.</p>" +
+
+				// ── 인증번호 확인 버튼 (ngrok 경고창 스킵 파라미터 포함) ──
+				"<table cellpadding='0' cellspacing='0' border='0' align='center' style='margin:0 auto 16px;'><tr><td align='center'>"
+				+ "<a href='" + verifyUrl + "'"
+				+ " style='display:inline-block;background:" + TEAL_600 + ";color:" + WHITE + ";"
+				+ "font-size:15px;font-weight:700;padding:14px 32px;border-radius:8px;"
+				+ "text-decoration:none;letter-spacing:0.3px;'>인증번호 확인하기</a>" + "</td></tr></table>" +
+
+				// 안내문
+				"<p style='margin:0 0 28px;color:" + MUTED + ";font-size:12px;line-height:1.8;"
+				+ "border-left:3px solid " + TEAL_400 + ";padding-left:12px;'>" + "본인이 요청하지 않은 경우 이 메일을 "
+				+ "무시하시고, 이메일 주소를 " + "확인해 주세요.</p>" +
+
+				"</td></tr>" +
+
+				// ── 푸터 ──
+				"<tr><td style='background:" + FOOT_BG + ";padding:18px 36px;" + "border-top:1px solid " + TEAL_100
+				+ ";'>" + "<table cellpadding='0' cellspacing='0' border='0' width='100%'><tr>"
+				+ "<td><p style='margin:0;color:#9BB4BB;font-size:11px;'>"
+				+ "&copy; BNK카드. All rights reserved.</p></td>"
+				+ "<td align='right'><p style='margin:0;color:#9BB4BB;font-size:11px;'>" + "부산광역시 동대신구 수정로 60</p></td>"
+				+ "</tr></table>" + "</td></tr>" +
+
+				"</table>" + "</td></tr></table>" + "</body></html>";
 	}
 
 	// ──────────────────────────────────────────────────────────────────

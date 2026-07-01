@@ -8,7 +8,9 @@ import com.bnk.domain.application.service.CreditCardApplicationService;
 import com.bnk.global.auth.CustomUserDetails;
 import com.bnk.global.response.ApiResponse;
 import com.bnk.global.util.FileStorageService;
+import com.bnk.global.util.InternalCallbackValidator;
 import com.bnk.global.util.ObjectStorageService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -30,6 +32,7 @@ public class CreditCardApplicationController {
     private final CreditCardApplicationService creditCardApplicationService;
     private final ObjectStorageService         objectStorageService;
     private final FileStorageService           fileStorageService;
+    private final InternalCallbackValidator    internalCallbackValidator;
 
     // ----------------------------------------------------------------
     // STEP 1 - 약관 동의
@@ -44,12 +47,14 @@ public class CreditCardApplicationController {
     }
 
     // ----------------------------------------------------------------
-    // STEP 2 - 본인확인 결과 수신 (심사서버가 호출)
+    // STEP 2 - 본인확인 (사용자가 직접 호출)
     // ----------------------------------------------------------------
     @PostMapping("/verify-identity")
     public ResponseEntity<ApiResponse<String>> verifyIdentity(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody CreditCardApplicationRequest request) {
 
+        creditCardApplicationService.validateOwnership(request.getCreditAppId(), userDetails.getUserId());
         String idVerifiedYn = creditCardApplicationService.verifyIdentity(request);
         return ApiResponse.toOk(idVerifiedYn);
     }
@@ -59,8 +64,10 @@ public class CreditCardApplicationController {
     // ----------------------------------------------------------------
     @PostMapping("/applicant-info")
     public ResponseEntity<ApiResponse<Void>> saveApplicantInfo(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody CreditCardApplicationRequest request) {
 
+        creditCardApplicationService.validateOwnership(request.getCreditAppId(), userDetails.getUserId());
         creditCardApplicationService.saveApplicantInfo(request);
         return ApiResponse.toNoContent();
     }
@@ -72,7 +79,9 @@ public class CreditCardApplicationController {
     // 기존고객 여부 체크 (페이지 진입 시 서류 업로드 UI 표시 여부 결정)
     @GetMapping("/existing-customer")
     public ResponseEntity<ApiResponse<Boolean>> checkExistingCustomer(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam Long creditAppId) {
+        creditCardApplicationService.validateOwnership(creditAppId, userDetails.getUserId());
         boolean isExisting = creditCardApplicationService.checkExistingCustomer(creditAppId);
         return ApiResponse.toOk(isExisting);
     }
@@ -80,10 +89,12 @@ public class CreditCardApplicationController {
     //  서류 업로드 (신규고객만)
     @PostMapping("/docs")
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadDocs(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam Long creditAppId,
             @RequestParam MultipartFile incomeDoc,
             @RequestParam(required = false) MultipartFile assetDoc,
             @RequestParam MultipartFile jobDoc) throws Exception {
+        creditCardApplicationService.validateOwnership(creditAppId, userDetails.getUserId());
 
         // 소득확인서류
         FileStorageService.UploadResult incomeMeta = fileStorageService.extractMeta(incomeDoc, "docs/income");
@@ -112,20 +123,66 @@ public class CreditCardApplicationController {
     
     @PostMapping("/submit")
     public ResponseEntity<ApiResponse<Void>> submitApplication(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody CreditCardApplicationRequest request) {
 
+        creditCardApplicationService.validateOwnership(request.getCreditAppId(), userDetails.getUserId());
         creditCardApplicationService.submitApplication(request);
         return ApiResponse.toNoContent();
     }
     
 
     // ----------------------------------------------------------------
-    // STEP 6 - 1차 심사 결과 수신 (심사서버가 호출)
-    // -----------------------------a-----------------------------------
+    // 서류 다운로드 URL 발급 (MYDATAMOCK 관리자가 호출 — 인증 없음)
+    // ----------------------------------------------------------------
+    @GetMapping("/docs/download")
+    public ResponseEntity<Void> downloadDoc(@RequestParam String key) {
+        String url = objectStorageService.createDownloadUrl(key);
+        return ResponseEntity.status(302)
+                .header("Location", url)
+                .build();
+    }
+
+    // ----------------------------------------------------------------
+    // REVIEWING 중 서류 재제출 (이용자가 호출)
+    // ----------------------------------------------------------------
+    @PutMapping("/{creditAppId}/reviewing-docs")
+    public ResponseEntity<ApiResponse<Void>> resubmitReviewingDocs(
+            @PathVariable Long creditAppId,
+            @RequestParam MultipartFile incomeDoc,
+            @RequestParam(required = false) MultipartFile assetDoc,
+            @RequestParam MultipartFile jobDoc,
+            @AuthenticationPrincipal CustomUserDetails userDetails) throws Exception {
+
+        creditCardApplicationService.validateOwnership(creditAppId, userDetails.getUserId());
+
+        FileStorageService.UploadResult incomeMeta = fileStorageService.extractMeta(incomeDoc, "docs/income");
+        String incomeDocKey = objectStorageService.upload(incomeMeta.getObjectName(), incomeDoc.getBytes(), incomeMeta.getMimeType());
+
+        String assetDocKey = null;
+        if (assetDoc != null && !assetDoc.isEmpty()) {
+            FileStorageService.UploadResult assetMeta = fileStorageService.extractMeta(assetDoc, "docs/asset");
+            assetDocKey = objectStorageService.upload(assetMeta.getObjectName(), assetDoc.getBytes(), assetMeta.getMimeType());
+        }
+
+        FileStorageService.UploadResult jobMeta = fileStorageService.extractMeta(jobDoc, "docs/job");
+        String jobDocKey = objectStorageService.upload(jobMeta.getObjectName(), jobDoc.getBytes(), jobMeta.getMimeType());
+
+        creditCardApplicationService.resubmitReviewingDocs(
+                creditAppId, userDetails.getUserId(), incomeDocKey, assetDocKey, jobDocKey);
+
+        return ApiResponse.toNoContent();
+    }
+
+    // ----------------------------------------------------------------
+    // STEP 6 - 1차 심사 결과 수신 (심사서버가 호출 — X-Internal-Secret 필요)
+    // ----------------------------------------------------------------
     @PostMapping("/screening-result")
     public ResponseEntity<ApiResponse<Void>> saveScreeningResult(
+            HttpServletRequest httpRequest,
             @RequestBody ScreeningResultRequest request) {
 
+        internalCallbackValidator.validate(httpRequest);
         creditCardApplicationService.saveScreeningResult(request);
         return ApiResponse.toNoContent();
     }
@@ -154,8 +211,19 @@ public class CreditCardApplicationController {
     
 
     // ----------------------------------------------------------------
+    // Fix 4: SCREENING_FAILED 심사 재시도
+    // ----------------------------------------------------------------
+    @PostMapping("/{creditAppId}/retry-screening")
+    public ResponseEntity<ApiResponse<Void>> retryScreening(
+            @PathVariable Long creditAppId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        creditCardApplicationService.retryScreening(creditAppId, userDetails.getUserId());
+        return ApiResponse.toNoContent();
+    }
+
+    // ----------------------------------------------------------------
     // 사용자 조회
-    // ---------------------------------------------------------------- 
+    // ----------------------------------------------------------------
     @GetMapping("/{creditAppId}")
     public ResponseEntity<ApiResponse<CreditApplicationResponse>> getApplication(
             @PathVariable Long creditAppId,

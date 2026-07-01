@@ -16,7 +16,9 @@ import com.bnk.domain.application.dto.response.CheckApplicationResponse;
 import com.bnk.domain.application.service.CheckCardApplicationService;
 import com.bnk.global.auth.CustomUserDetails;
 import com.bnk.global.response.ApiResponse;
+import com.bnk.global.util.InternalCallbackValidator;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.RequestBody;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 public class CheckCardApplicationController {
 	
 	private final CheckCardApplicationService checkCardApplicationService;
+	private final InternalCallbackValidator   internalCallbackValidator;
 	
 	// ----------------------------------------------------------------
     // STEP 1 - 약관 동의
@@ -42,12 +45,14 @@ public class CheckCardApplicationController {
     }
 
     // ----------------------------------------------------------------
-    // STEP 2 - 본인확인 결과 수신 (심사서버가 호출)
+    // STEP 2 - 본인확인 (사용자가 직접 호출)
     // ----------------------------------------------------------------
     @PostMapping("/verify-identity")
     public ResponseEntity<ApiResponse<String>> verifyIdentity(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody CheckCardApplicationRequest request) {
-    	
+
+        checkCardApplicationService.validateOwnership(request.getCheckAppId(), userDetails.getUserId());
         String idVerifiedYn = checkCardApplicationService.verifyIdentity(request);
         return ApiResponse.toOk(idVerifiedYn);
     }
@@ -57,8 +62,10 @@ public class CheckCardApplicationController {
     // ----------------------------------------------------------------
     @PostMapping("/applicant-info")
     public ResponseEntity<ApiResponse<Void>> saveApplicantInfo(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody CheckCardApplicationRequest request) {
 
+        checkCardApplicationService.validateOwnership(request.getCheckAppId(), userDetails.getUserId());
         checkCardApplicationService.saveApplicantInfo(request);
         return ApiResponse.toNoContent();
     }
@@ -68,15 +75,44 @@ public class CheckCardApplicationController {
     // ----------------------------------------------------------------
     @PostMapping("/submit")
     public ResponseEntity<ApiResponse<Void>> submitApplication(
-            @RequestBody CheckCardApplicationRequest request) {
+            @RequestBody CheckCardApplicationRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        checkCardApplicationService.submitApplication(request);
+        checkCardApplicationService.submitApplication(request, userDetails.getUserId());
+        return ApiResponse.toNoContent();
+    }
+<<<<<<< HEAD
+=======
+
+    // ----------------------------------------------------------------
+    // STEP 5 - 심사 결과 수신 (심사서버가 호출 — X-Internal-Secret 필요)
+    // ----------------------------------------------------------------
+    @PostMapping("/screening-result")
+    public ResponseEntity<ApiResponse<Void>> saveScreeningResult(
+            HttpServletRequest httpRequest,
+            @RequestBody ScreeningResultRequest request) {
+
+        internalCallbackValidator.validate(httpRequest);
+        checkCardApplicationService.saveScreeningResult(request);
         return ApiResponse.toNoContent();
     }
     
+>>>>>>> 080b26aafa7226cb3f1e113b2c3e204b3cc9bf39
+    
+    // ----------------------------------------------------------------
+    // Fix 4: SCREENING_FAILED 심사 재시도
+    // ----------------------------------------------------------------
+    @PostMapping("/{checkAppId}/retry-screening")
+    public ResponseEntity<ApiResponse<Void>> retryScreening(
+            @PathVariable Long checkAppId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        checkCardApplicationService.retryScreening(checkAppId, userDetails.getUserId());
+        return ApiResponse.toNoContent();
+    }
+
     // ----------------------------------------------------------------
     // 사용자 조회
-    // ---------------------------------------------------------------- 
+    // ----------------------------------------------------------------
     @GetMapping("/{checkAppId}")
     public ResponseEntity<ApiResponse<CheckApplicationResponse>> getApplication(
             @PathVariable Long checkAppId,

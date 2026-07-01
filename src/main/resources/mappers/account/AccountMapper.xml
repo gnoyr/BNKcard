@@ -55,6 +55,13 @@
         SELECT SEQ_ACCOUNTS.NEXTVAL FROM DUAL
     </select>
     
+    <!-- 계좌 상태 변경 -->
+    <update id="updateAccountStatus">
+        UPDATE ACCOUNTS
+        SET account_status = #{status}
+        WHERE account_id = #{accountId}
+    </update>
+
     <!-- 계좌 비밀번호 저장 -->
 	<insert id="insertAccountPassword">
 	    INSERT INTO ACCOUNT_PASSWORDS (account_id, password_hash)

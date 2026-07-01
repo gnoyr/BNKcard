@@ -42,6 +42,7 @@ import com.bnk.global.email.EmailService;
 import com.bnk.global.exception.BusinessException;
 import com.bnk.global.exception.ErrorCode;
 import com.bnk.global.util.CiValueGenerator;
+import com.bnk.global.util.ClientIpUtil;
 import com.bnk.global.util.CookieUtil;
 import com.bnk.global.util.MaskingUtil;
 import com.bnk.global.util.TimeConstants;
@@ -504,7 +505,7 @@ public class AuthService {
 	}
 
 	private String resolveClientIp(HttpServletRequest request) {
-	    return request.getRemoteAddr();
+	    return ClientIpUtil.normalize(request.getRemoteAddr());
 	}
 	
 	/** 일반 회원용 — USER_SESSIONS */

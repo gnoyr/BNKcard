@@ -24,4 +24,8 @@ public interface AccountMapper {
     /** 계좌 비밀번호 저장 */
     void insertAccountPassword(@Param("accountId") Long accountId,
                                @Param("passwordHash") String passwordHash);
+
+    /** 계좌 상태 변경 (LIMIT_ACCOUNT → NORMAL 등) */
+    void updateAccountStatus(@Param("accountId") Long accountId,
+                             @Param("status") String status);
 }

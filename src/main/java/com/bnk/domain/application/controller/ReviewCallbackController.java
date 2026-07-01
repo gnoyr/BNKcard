@@ -6,10 +6,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.bnk.domain.application.dto.request.ReviewResultRequest;
-import com.bnk.domain.application.dto.request.ScreeningResultRequest;
 import com.bnk.domain.application.service.CheckCardApplicationService;
 import com.bnk.domain.application.service.CreditCardApplicationService;
+import com.bnk.global.util.InternalCallbackValidator;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.RequestBody;
 import lombok.RequiredArgsConstructor;
 
@@ -19,12 +21,26 @@ import lombok.RequiredArgsConstructor;
 public class ReviewCallbackController {
 
 	private final CreditCardApplicationService creditCardApplicationService;
-	
-    // 신용카드 추가 심사 결과 콜백
+	private final CheckCardApplicationService  checkCardApplicationService;
+	private final InternalCallbackValidator    internalCallbackValidator;
+
+    // 신용카드 추가 심사 결과 콜백 (X-Internal-Secret 필요)
     @PostMapping("/credit/review-result")
     public ResponseEntity<Void> creditReviewResult(
-            @RequestBody ReviewResultRequest request) {
+            HttpServletRequest httpRequest,
+            @Valid @RequestBody ReviewResultRequest request) {
+        internalCallbackValidator.validate(httpRequest);
         creditCardApplicationService.saveReviewResult(request);
+        return ResponseEntity.ok().build();
+    }
+
+    // 체크카드 추가 심사 결과 콜백 (X-Internal-Secret 필요)
+    @PostMapping("/check/review-result")
+    public ResponseEntity<Void> checkReviewResult(
+            HttpServletRequest httpRequest,
+            @Valid @RequestBody ReviewResultRequest request) {
+        internalCallbackValidator.validate(httpRequest);
+        checkCardApplicationService.saveReviewResult(request);
         return ResponseEntity.ok().build();
     }
 

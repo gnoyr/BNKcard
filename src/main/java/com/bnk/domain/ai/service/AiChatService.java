@@ -75,6 +75,10 @@ public class AiChatService {
                 .collect(Collectors.joining("\n"));
 
         
+        if (chatClient == null) {
+            throw new IllegalStateException("AI 챗봇이 비활성화되어 있습니다. ai.enabled=true 설정을 확인하세요.");
+        }
+
         String result = chatClient.prompt()
                 .user(u -> u.text("""
                         <context>

@@ -23,8 +23,8 @@ public class CreditApplicationResponse {
     private LocalDateTime createdAt;
     
     private String idVerifiedYn;
-    private String annualIncomeBand;   
+    private String annualIncomeBand;
     private String creditScoreBand;
     private Long   linkedAccountId;
-    
+    private String limitCheckResult;
 }

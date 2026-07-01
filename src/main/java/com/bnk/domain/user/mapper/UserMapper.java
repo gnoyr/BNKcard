@@ -79,6 +79,9 @@ public interface UserMapper {
 	// CDD 상태 변경
 	int updateCddStatus(@Param("userId") Long userId, @Param("cddStatusCode") String cddStatusCode);
 
+	// 주소 변경에 따른 CI(연계정보) 갱신
+	int updateCiValue(@Param("userId") Long userId, @Param("ciValue") String ciValue);
+
 	List<Map<String, Object>> selectMonthlySpending(@Param("userId") Long userId, @Param("year") int year,
 			@Param("month") int month);
 

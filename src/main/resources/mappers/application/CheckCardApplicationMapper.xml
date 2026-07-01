@@ -76,7 +76,7 @@
 	    FROM   CARD_VERSIONS
 	    WHERE  card_id        = #{cardId}
 	      AND  version_status = 'PUBLISHED'
-	    ORDER BY published_at DESC
+	    ORDER BY published_at DESC NULLS LAST
 	    FETCH FIRST 1 ROWS ONLY
 	</select>
 
@@ -144,6 +144,24 @@
 	    SELECT account_status
 	    FROM ACCOUNTS
 	    WHERE account_id = #{accountId}
+	</select>
+
+	<!-- 한도 산정 조건: 적금/예금 계좌 보유 여부 -->
+	<select id="hasSavingsProduct" resultType="boolean">
+	    SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+	    FROM ACCOUNTS
+	    WHERE user_id       = #{userId}
+	      AND account_type  IN ('SAVINGS', 'DEPOSIT')
+	      AND account_status = 'ACTIVE'
+	</select>
+
+	<!-- 진행 중인 신청 건 존재 여부 (DRAFT 제외, 거절/실패 제외) -->
+	<select id="hasActiveApplication" resultType="boolean">
+	    SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+	    FROM CHECK_CARD_APPLICATIONS
+	    WHERE user_id            = #{userId}
+	      AND card_id            = #{cardId}
+	      AND application_status IN ('REQUESTED', 'APPROVED', 'ISSUED')
 	</select>
 
 </mapper>

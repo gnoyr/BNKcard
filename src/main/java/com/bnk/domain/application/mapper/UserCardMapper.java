@@ -14,8 +14,18 @@ public interface UserCardMapper {
 
     List<UserCard> findByUserId(@Param("userId") Long userId);
 
+    /** 소유권 검증용 단건 조회 (본인 카드만, 미삭제) */
+    UserCard findByIdAndUserId(@Param("userCardId") Long userCardId,
+                               @Param("userId") Long userId);
+
     int updateCardStatus(@Param("userCardId") Long userCardId,
                          @Param("cardStatus") String cardStatus);
+
+    /**
+     * 보유 카드 부분 업데이트 (전달된 non-null 필드만).
+     * WHERE user_card_id AND user_id AND deleted_yn='N' 로 소유권을 한 번 더 보장한다.
+     */
+    int updateOwnedCard(UserCard userCard);
     
     // 신용/체크카드 통합 신청 현황 조회 (날짜순)
     List<MyCardApplicationResponse> findMyAllApplications(@Param("userId") Long userId);
