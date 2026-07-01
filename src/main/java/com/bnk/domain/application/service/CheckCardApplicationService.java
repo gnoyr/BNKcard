@@ -23,6 +23,7 @@ import com.bnk.domain.application.dto.request.ReviewResultRequest;
 import com.bnk.domain.application.dto.request.ScreeningResultRequest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.bnk.domain.application.dto.response.CheckApplicationResponse;
+import com.bnk.domain.application.log.CardApplicationEventLogger;
 import com.bnk.domain.application.mapper.CheckCardApplicationMapper;
 import com.bnk.domain.application.mapper.UserCardMapper;
 import com.bnk.domain.application.model.CheckCardApplication;
@@ -65,7 +66,10 @@ public class CheckCardApplicationService {
     private final AccountMapper              accountMapper;
     private final CheckCardLimitService      checkCardLimitService;
     private final NotificationService        notificationService;
+    private final CardApplicationEventLogger appEventLogger;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
+    private static final String TYPE = CardApplicationEventLogger.TYPE_CHECK;
 
     @Value("${verification.server.url}")
     private String verificationServerUrl;
@@ -76,6 +80,8 @@ public class CheckCardApplicationService {
     @Transactional
     public Long agreeTerms(Long userId, CheckCardApplicationRequest request) {
         if (checkCardApplicationMapper.hasActiveApplication(userId, request.getCardId())) {
+            appEventLogger.logFailure(TYPE, userId, request.getCardId(), null,
+                    "DUPLICATE_APPLICATION", "STEP1 약관동의: 이미 진행 중인 신청 존재", null);
             throw new BusinessException(ErrorCode.DUPLICATE_APPLICATION);
         }
         CheckCardApplication application = CheckCardApplication.builder()
@@ -106,6 +112,8 @@ public class CheckCardApplicationService {
 
         userTermsAgreementMapper.insertAgreements(agreements);
 
+        appEventLogger.log(TYPE, userId, request.getCardId(), checkAppId,
+                "TERMS_AGREED", "STEP1 약관동의 완료");
         return checkAppId;
     }
 
@@ -143,6 +151,13 @@ public class CheckCardApplicationService {
             throw new BusinessException(ErrorCode.APP_NOT_FOUND);
         }
 
+        if ("Y".equals(idVerifiedYn)) {
+            appEventLogger.log(TYPE, null, null, request.getCheckAppId(),
+                    "ID_VERIFIED", "STEP2 본인확인 성공");
+        } else {
+            appEventLogger.logFailure(TYPE, null, null, request.getCheckAppId(),
+                    "ID_VERIFY_FAILED", "STEP2 본인확인 실패(idVerifiedYn=" + idVerifiedYn + ")", null);
+        }
         return idVerifiedYn;
     }
 
@@ -175,6 +190,8 @@ public class CheckCardApplicationService {
         if ("REQUESTED".equals(currentStatus) || "REVIEWING".equals(currentStatus)
                 || "APPROVED".equals(currentStatus) || "ISSUED".equals(currentStatus)
                 || "REJECTED".equals(currentStatus) || "SCREENING_FAILED".equals(currentStatus)) {
+            appEventLogger.logFailure(TYPE, existing.getUserId(), existing.getCardId(), request.getCheckAppId(),
+                    "INVALID_STATUS", "STEP4 제출 거절: 현재상태=" + currentStatus, null);
             throw new BusinessException(ErrorCode.INVALID_APPLICATION_STATUS);
         }
         validateIdVerified(request.getCheckAppId());
@@ -183,12 +200,18 @@ public class CheckCardApplicationService {
         if (request.getLinkedAccountId() != null) {
             Account account = accountMapper.findByAccountId(request.getLinkedAccountId());
             if (account == null) {
+                appEventLogger.logFailure(TYPE, userId, existing.getCardId(), request.getCheckAppId(),
+                        "INVALID_ACCOUNT", "STEP4 연결계좌 없음(accountId=" + request.getLinkedAccountId() + ")", null);
                 throw new BusinessException(ErrorCode.INVALID_ACCOUNT);
             }
             if (!account.getUserId().equals(userId)) {
+                appEventLogger.logFailure(TYPE, userId, existing.getCardId(), request.getCheckAppId(),
+                        "ACCOUNT_NOT_OWNED", "STEP4 타인 계좌 연결 시도", null);
                 throw new BusinessException(ErrorCode.ACCOUNT_NOT_OWNED);
             }
             if (!"ACTIVE".equals(account.getAccountStatus())) {
+                appEventLogger.logFailure(TYPE, userId, existing.getCardId(), request.getCheckAppId(),
+                        "ACCOUNT_NOT_ACTIVE", "STEP4 비활성 계좌(status=" + account.getAccountStatus() + ")", null);
                 throw new BusinessException(ErrorCode.ACCOUNT_NOT_ACTIVE);
             }
         }
@@ -224,6 +247,9 @@ public class CheckCardApplicationService {
                 });
             }
         });
+
+        appEventLogger.log(TYPE, existing.getUserId(), existing.getCardId(), checkAppId,
+                "REQUESTED", "STEP4 신청 제출 완료 → 심사 의뢰 예약");
     }
 
     private void requestScreeningReview(Long checkAppId) {
@@ -246,6 +272,12 @@ public class CheckCardApplicationService {
         } catch (Exception e) {
             log.error("[체크카드] 심사 의뢰 실패: checkAppId={}", checkAppId, e);
             checkCardApplicationMapper.updateStatus(checkAppId, "SCREENING_FAILED");
+            CheckCardApplication failApp = null;
+            try { failApp = findOrThrow(checkAppId); } catch (Exception ignore) {}
+            appEventLogger.logFailure(TYPE,
+                    failApp != null ? failApp.getUserId() : null,
+                    failApp != null ? failApp.getCardId() : null,
+                    checkAppId, "SCREENING_FAILED", "심사 의뢰 실패", e.getMessage());
             try {
                 notificationService.notifyScreeningFailed(findOrThrow(checkAppId).getUserId(), checkAppId);
             } catch (Exception ne) {
@@ -260,7 +292,7 @@ public class CheckCardApplicationService {
     @Transactional
     public void saveScreeningResult(ScreeningResultRequest request) {
         // M2: 존재하지 않는 appId 콜백 시 silent no-op 방지
-        findOrThrow(request.getAppId());
+        CheckCardApplication app = findOrThrow(request.getAppId());
         CheckCardApplication application = CheckCardApplication.builder()
                 .checkAppId(request.getAppId())
                 .applicationStatus(request.getApplicationStatus())
@@ -270,6 +302,8 @@ public class CheckCardApplicationService {
         checkCardApplicationMapper.updateReviewResult(application);
 
         if ("APPROVED".equals(request.getApplicationStatus())) {
+            appEventLogger.log(TYPE, app.getUserId(), app.getCardId(), request.getAppId(),
+                    "APPROVED", "STEP5 심사 승인 → 발급 진행");
             issueCard(request.getAppId());
             try {
                 notificationService.notifyReviewResult(
@@ -278,12 +312,18 @@ public class CheckCardApplicationService {
                 log.error("[체크카드] 승인 알림 발송 실패: checkAppId={}", request.getAppId(), e);
             }
         } else if ("REJECTED".equals(request.getApplicationStatus())) {
+            appEventLogger.logFailure(TYPE, app.getUserId(), app.getCardId(), request.getAppId(),
+                    "REJECTED", "STEP5 심사 거절: " + request.getRejectionReason(), null);
             try {
                 notificationService.notifyReviewResult(
                         findOrThrow(request.getAppId()).getUserId(), request.getAppId(), false);
             } catch (Exception e) {
                 log.error("[체크카드] 거절 알림 발송 실패: checkAppId={}", request.getAppId(), e);
             }
+        } else {
+            appEventLogger.log(TYPE, app.getUserId(), app.getCardId(), request.getAppId(),
+                    "SCREENING_" + request.getApplicationStatus(),
+                    "STEP5 심사 상태=" + request.getApplicationStatus());
         }
     }
 
@@ -301,6 +341,8 @@ public class CheckCardApplicationService {
                     .reviewedBy(request.getReviewedBy())
                     .build();
             checkCardApplicationMapper.updateReviewResult(application);
+            appEventLogger.logFailure(TYPE, app.getUserId(), app.getCardId(), request.getAppId(),
+                    "REVIEW_REJECTED", "추가심사 거절: " + request.getRejectionReason(), null);
             try {
                 notificationService.notifyReviewResult(app.getUserId(), request.getAppId(), false);
             } catch (Exception e) {
@@ -318,6 +360,8 @@ public class CheckCardApplicationService {
                     .reviewedBy(request.getReviewedBy())
                     .build();
             checkCardApplicationMapper.updateReviewResult(application);
+            appEventLogger.log(TYPE, app.getUserId(), app.getCardId(), request.getAppId(),
+                    "REVIEW_APPROVED", "추가심사 승인 → 발급 진행");
             issueCard(request.getAppId());
             // L4: 발급 완료 알림
             try {
@@ -338,6 +382,8 @@ public class CheckCardApplicationService {
         // H4: 멱등성 보장 — 이미 발급된 경우 중복 발급 방지
         if ("ISSUED".equals(app.getApplicationStatus())) {
             log.warn("[체크카드] 이미 발급된 신청 건 중복 호출 차단: checkAppId={}", checkAppId);
+            appEventLogger.log(TYPE, app.getUserId(), app.getCardId(), checkAppId,
+                    "ALREADY_ISSUED", "발급 멱등 처리: 이미 발급됨");
             return;
         }
         if (!"APPROVED".equals(app.getApplicationStatus())) {
@@ -391,6 +437,8 @@ public class CheckCardApplicationService {
                     .rejectionReason("나이 조건 미충족 (만 12세 미만)")
                     .build();
             checkCardApplicationMapper.updateReviewResult(rejected);
+            appEventLogger.logFailure(TYPE, app.getUserId(), app.getCardId(), checkAppId,
+                    "REJECTED_AGE", "발급 거절: 나이 조건 미충족(만 12세 미만)", null);
             try {
                 notificationService.notifyReviewResult(app.getUserId(), checkAppId, false);
             } catch (Exception ne) {
@@ -427,7 +475,9 @@ public class CheckCardApplicationService {
  
         userCardMapper.insertUserCard(userCard);
         checkCardApplicationMapper.updateStatus(checkAppId, "ISSUED");
- 
+
+        appEventLogger.log(TYPE, app.getUserId(), app.getCardId(), checkAppId,
+                "ISSUED", "카드 발급 완료(userCardId=" + userCard.getUserCardId() + ", policy=" + policy.name() + ")");
         log.info("[체크카드] 발급 완료: checkAppId={}, userCardId={}", checkAppId, userCard.getUserCardId());
     }
     

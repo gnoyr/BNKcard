@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.bnk.domain.deviceauth.mapper.DeviceTrustMapper">
+
+    <!--
+        [암호화 컬럼 처리]
+        last_ip_address → typeHandler=AesTypeHandler : 쓰기=AES 암호화, 읽기=AES 복호화
+        device_id_hash  → TypeHandler 없음           : SHA-256 hex 평문 (신뢰 판정 키)
+        last_ip_hash    → TypeHandler 없음           : SHA-256 hex 평문 (새 IP 감지)
+
+        map-underscore-to-camel-case=true 이므로 snake_case 컬럼 → camelCase 자동 매핑.
+        typeHandler가 필요한 last_ip_address만 resultMap에 명시.
+    -->
+
+    <resultMap id="trustedDeviceMap" type="com.bnk.domain.deviceauth.model.UserTrustedDevice">
+        <id     property="deviceTrustId" column="device_trust_id"/>
+        <result property="userId"        column="user_id"/>
+        <result property="deviceIdHash"  column="device_id_hash"/>
+        <result property="deviceName"    column="device_name"/>
+        <result property="platformCode"  column="platform_code"/>
+        <!-- AES 복호화 자동 적용 -->
+        <result property="lastIpAddress" column="last_ip_address" typeHandler="aesTypeHandler"/>
+        <result property="lastIpHash"    column="last_ip_hash"/>
+        <result property="isInitial"     column="is_initial"/>
+        <result property="statusCode"    column="status_code"/>
+        <result property="lastUsedAt"    column="last_used_at"/>
+        <result property="registeredVia" column="registered_via"/>
+        <result property="createdAt"     column="created_at"/>
+        <result property="updatedAt"     column="updated_at"/>
+        <result property="deletedYn"     column="deleted_yn"/>
+        <result property="deletedAt"     column="deleted_at"/>
+    </resultMap>
+
+    <sql id="allColumns">
+        device_trust_id, user_id, device_id_hash, device_name, platform_code,
+        last_ip_address, last_ip_hash, is_initial, status_code, last_used_at,
+        registered_via, created_at, updated_at, deleted_yn, deleted_at
+    </sql>
+
+    <!-- 활성 신뢰 기기 단건 — device_id_hash 인덱스 조회 -->
+    <select id="findActiveByUserIdAndDeviceHash" resultMap="trustedDeviceMap">
+        SELECT <include refid="allColumns"/>
+        FROM   USER_TRUSTED_DEVICES
+        WHERE  user_id        = #{userId}
+          AND  device_id_hash = #{deviceIdHash}
+          AND  status_code    = 'ACTIVE'
+          AND  deleted_yn     = 'N'
+    </select>
+
+    <!-- 사용자 신뢰 기기 전체 목록 -->
+    <select id="findAllByUserId" resultMap="trustedDeviceMap">
+        SELECT <include refid="allColumns"/>
+        FROM   USER_TRUSTED_DEVICES
+        WHERE  user_id    = #{userId}
+          AND  deleted_yn = 'N'
+        ORDER BY is_initial DESC, created_at ASC
+    </select>
+
+    <!-- device_trust_id + user_id 단건 -->
+    <select id="findByDeviceTrustIdAndUserId" resultMap="trustedDeviceMap">
+        SELECT <include refid="allColumns"/>
+        FROM   USER_TRUSTED_DEVICES
+        WHERE  device_trust_id = #{deviceTrustId}
+          AND  user_id         = #{userId}
+          AND  deleted_yn      = 'N'
+    </select>
+
+    <!-- 활성 신뢰 기기 수 -->
+    <select id="countActiveByUserId" resultType="int">
+        SELECT COUNT(1)
+        FROM   USER_TRUSTED_DEVICES
+        WHERE  user_id     = #{userId}
+          AND  status_code = 'ACTIVE'
+          AND  deleted_yn  = 'N'
+    </select>
+
+    <!-- 중복 여부 — device_id_hash 기반 -->
+    <select id="existsByUserIdAndDeviceHash" resultType="boolean">
+        SELECT CASE WHEN COUNT(1) > 0 THEN 1 ELSE 0 END
+        FROM   USER_TRUSTED_DEVICES
+        WHERE  user_id        = #{userId}
+          AND  device_id_hash = #{deviceIdHash}
+          AND  deleted_yn     = 'N'
+    </select>
+
+    <!--
+        INSERT
+        last_ip_address → typeHandler=AesTypeHandler : AES-256-GCM 암호화 후 저장
+        device_id_hash / last_ip_hash → 평문 SHA-256 hex
+        device_trust_id → TRG_TRUSTED_DEVICES_BI 트리거가 SEQ_TRUSTED_DEVICES로 자동 채번
+    -->
+    <insert id="insert" parameterType="com.bnk.domain.deviceauth.model.UserTrustedDevice">
+        INSERT INTO USER_TRUSTED_DEVICES (
+            user_id,
+            device_id_hash,
+            device_name,
+            platform_code,
+            last_ip_address,
+            last_ip_hash,
+            is_initial,
+            status_code,
+            registered_via,
+            created_at,
+            deleted_yn
+        ) VALUES (
+            #{userId},
+            #{deviceIdHash},
+            #{deviceName},
+            #{platformCode},
+            #{lastIpAddress, typeHandler=AesTypeHandler},
+            #{lastIpHash},
+            #{isInitial},
+            #{statusCode},
+            #{registeredVia},
+            SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul',
+            'N'
+        )
+    </insert>
+
+    <!-- last_used_at 갱신 -->
+    <update id="updateLastUsedAt">
+        UPDATE USER_TRUSTED_DEVICES
+        SET    last_used_at = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+        WHERE  device_trust_id = #{deviceTrustId}
+    </update>
+
+    <!-- 마지막 접속 IP 갱신 -->
+    <update id="updateLastIp">
+        UPDATE USER_TRUSTED_DEVICES
+        SET    last_ip_address = #{lastIpAddress, typeHandler=AesTypeHandler},
+               last_ip_hash    = #{lastIpHash},
+               last_used_at    = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul'
+        WHERE  device_trust_id = #{deviceTrustId}
+    </update>
+
+    <!-- 기기명 수정 -->
+    <update id="updateDeviceName">
+        UPDATE USER_TRUSTED_DEVICES
+        SET    device_name = #{deviceName}
+        WHERE  device_trust_id = #{deviceTrustId}
+          AND  user_id         = #{userId}
+          AND  deleted_yn      = 'N'
+    </update>
+
+    <!-- 논리 삭제 -->
+    <update id="softDelete">
+        UPDATE USER_TRUSTED_DEVICES
+        SET    deleted_yn  = 'Y',
+               deleted_at  = SYSTIMESTAMP AT TIME ZONE 'Asia/Seoul',
+               status_code = 'DISABLED'
+        WHERE  device_trust_id = #{deviceTrustId}
+          AND  user_id         = #{userId}
+          AND  deleted_yn      = 'N'
+    </update>
+
+</mapper>

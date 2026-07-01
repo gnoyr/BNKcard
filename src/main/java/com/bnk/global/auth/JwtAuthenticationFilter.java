@@ -56,11 +56,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         "/api/auth/find-id",
         "/api/auth/find-password",
         "/api/auth/reset-password",
+        "/api/auth/verify-email-link",
+        "/api/auth/verify-status",
         "/api/admin/auth/login",
         "/api/admin/auth/logout",
         "/swagger-ui/**",
         "/v3/api-docs/**",
-        "/api/auth/ip-verify/**"
+        "/api/auth/device-verify/**"
     );
 
     private final AntPathMatcher pathMatcher = new AntPathMatcher();

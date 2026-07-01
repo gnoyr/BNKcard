@@ -1,17 +1,16 @@
-package com.bnk.domain.ipauth.dto.request;
+package com.bnk.domain.deviceauth.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/** POST /api/auth/ip-verify/email/confirm */
+/** POST /api/auth/device-verify/email/confirm */
 @Getter
 @NoArgsConstructor
-public class IpEmailConfirmRequest {
-    @NotNull  private Long   userId;
+public class DeviceEmailConfirmRequest {
     @NotBlank private String challengeToken;
     @NotBlank @Size(min = 6, max = 6, message = "인증 코드는 6자리입니다.") private String code;
-    @Size(max = 50) private String nickname;  // null 허용 — '내 기기' 기본값
+    /** 기기 별명 override (선택) — null이면 로그인 시 전달된 기기명 사용 */
+    @Size(max = 100) private String deviceName;
 }

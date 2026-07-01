@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (page === 'mypage-password') initPassword();
     else if (page === 'mypage-spending') initSpending();
     else if (page === 'mypage-credit-score') initCreditScore();
-    else if (page === 'mypage-trusted-ips') initTrustedIps();
+    else if (page === 'mypage-trusted-devices') initTrustedDevices();
 });
 
 /* ================================================================
@@ -549,7 +549,7 @@ async function initCreditScore() {
 /* ================================================================
    §8. 신뢰 기기(IP) 관리
    ================================================================ */
-async function initTrustedIps() {
+async function initTrustedDevices() {
     let _ipList = [];
     let _deleteTargetId = null;
 
@@ -558,7 +558,7 @@ async function initTrustedIps() {
 
     async function loadIpList() {
         try {
-            const data = await API.get('/api/users/me/trusted-ips');
+            const data = await API.get('/api/users/me/trusted-devices');
             _ipList = Array.isArray(data) ? data : (data?.items ?? data ?? []);
             renderList();
         } catch {
@@ -580,22 +580,27 @@ async function initTrustedIps() {
         if (!count) { list.innerHTML = emptyState('등록된 기기가 없습니다.'); return; }
 
         list.innerHTML = _ipList.map(item => {
-            const { id: tid, ipAddress, nickname, via, isInitial, isDisabled, createdAt, lastUsedAt } = item;
+            const tid = item.deviceTrustId;
+            const deviceName = item.deviceName;
+            const via = item.registeredVia;
+            const isInitial = item.isInitial;
+            const isDisabled = item.statusCode && item.statusCode !== 'ACTIVE';
+            const { lastIpMasked, platformCode, createdAt, lastUsedAt } = item;
             return `
 	            <li class="ip-item">
 	                <span class="ip-body">
 	                    <span class="ip-nickname-row">
-	                        <span class="ip-nickname" id="nn-${tid}">${esc(nickname ?? '이름 없음')}</span>
+	                        <span class="ip-nickname" id="nn-${tid}">${esc(deviceName ?? '이름 없음')}</span>
 	                        <input class="ip-nickname-input" id="nn-input-${tid}"
-	                               value="${esc(nickname ?? '')}" maxlength="20">
+	                               value="${esc(deviceName ?? '')}" maxlength="100">
 	                        ${isInitial ? '<span class="ip-badge-initial">최초 기기</span>' : ''}
 	                        ${isDisabled ? '<span class="ip-badge-disabled">비활성</span>' : ''}
 	                    </span>
-	                    <span class="ip-address">${esc(maskIp(ipAddress))}</span>
+	                    <span class="ip-address">${esc(fmtPlatform(platformCode))}${lastIpMasked ? '  ·  최근 IP ' + esc(lastIpMasked) : ''}</span>
 	                    <span class="ip-meta">
 	                        <span>${esc(fmtVia(via))}</span>
 	                        <span>등록 ${fmtDate(createdAt)}</span>
-	                        ${lastUsedAt ? `<span>최근 ${fmtDate(lastUsedAt)}</span>` : ''}
+	                        ${lastUsedAt ? `<span>최근 접속 ${fmtDate(lastUsedAt)}</span>` : ''}
 	                    </span>
 	                </span>
 	                <span class="ip-actions">
@@ -608,10 +613,6 @@ async function initTrustedIps() {
 	            </li>`;
         }).join('');
 
-        container.querySelectorAll('.spending-dot[data-color]').forEach(el => {
-            el.style.setProperty('background-color', el.dataset.color);
-        });
-
         list.querySelectorAll('.btn-ip-edit').forEach(b => b.addEventListener('click', () => enterEdit(b.dataset.id)));
         list.querySelectorAll('.btn-ip-save').forEach(b => b.addEventListener('click', () => saveNickname(b.dataset.id, b)));
         list.querySelectorAll('.btn-ip-del').forEach(b => b.addEventListener('click', () => {
@@ -620,14 +621,14 @@ async function initTrustedIps() {
         }));
     }
 
-    function maskIp(ip) {
-        if (!ip) return '';
-        const p = ip.split('.');
-        if (p.length === 4) p[3] = '***';
-        return p.join('.');
+    function fmtPlatform(p) {
+        return { IOS: 'iOS', ANDROID: 'Android', WEB: '웹 브라우저', UNKNOWN: '' }[p] ?? p ?? '';
     }
     function fmtVia(v) {
-        return { EMAIL: '이메일 인증', CI: 'CI 인증', MANUAL: '직접 등록', AUTO: '자동 등록' }[v] ?? v ?? '';
+        return {
+            SIGNUP: '회원가입 등록', EMAIL_VERIFY: '이메일 인증', CI_VERIFY: 'CI 인증',
+            EMAIL: '이메일 인증', CI: 'CI 인증', MANUAL: '직접 등록', AUTO: '자동 등록',
+        }[v] ?? v ?? '';
     }
 
     function fmtDate(v) { return v ? new Date(v).toLocaleDateString('ko-KR') : ''; }
@@ -659,12 +660,12 @@ async function initTrustedIps() {
         const span = document.getElementById(`nn-${tid}`);
         const input = document.getElementById(`nn-input-${tid}`);
         const name = input?.value?.trim() ?? '';
-        if (!name) { Toast.warning('별명을 입력해주세요.'); input?.focus(); return; }
+        if (!name) { Toast.warning('기기 이름을 입력해주세요.'); input?.focus(); return; }
         btnLoading(saveBtn, true);
         try {
-            await API.patch(`/api/users/me/trusted-ips/${tid}`, { nickname: name });
+            await API.patch(`/api/users/me/trusted-devices/${tid}`, { deviceName: name });
             if (span) span.textContent = name;
-            Toast.success('별명이 수정되었습니다.');
+            Toast.success('기기 이름이 수정되었습니다.');
             exitEdit(tid);
         } catch (err) {
             Toast.error(err.message || '수정 중 오류가 발생했습니다.');
@@ -681,13 +682,13 @@ async function initTrustedIps() {
             const btn = document.getElementById('deleteConfirmBtn');
             btnLoading(btn, true);
             try {
-                await API.del(`/api/users/me/trusted-ips/${_deleteTargetId}`);
+                await API.del(`/api/users/me/trusted-devices/${_deleteTargetId}`);
                 Toast.success('기기가 삭제되었습니다.');
                 closeModal('deleteModal'); _deleteTargetId = null;
                 await loadIpList();
             } catch (err) {
-                if (err.code === 'IP004') Toast.error('최초 가입 기기는 삭제할 수 없습니다.');
-                else if (err.code === 'IP008') Toast.error('기기를 찾을 수 없습니다.');
+                if (err.code === 'DEV004') Toast.error('최초 가입 기기는 삭제할 수 없습니다.');
+                else if (err.code === 'DEV007') Toast.error('기기를 찾을 수 없습니다.');
                 else Toast.error(err.message || '삭제 중 오류가 발생했습니다.');
             } finally { btnLoading(btn, false); }
         });

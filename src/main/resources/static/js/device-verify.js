@@ -1,16 +1,16 @@
 'use strict';
 /* ================================================================
-   ip-verify.js  |  IP 2단계 인증 페이지 스크립트
+   device-verify.js  |  새 기기 인증 페이지 스크립트
    의존: utils.js (BnkAPI, BnkToast, BnkDOM)
+   challengeToken 은 서버가 발급한 불투명 토큰. userId 는 서버가 도출한다.
    ================================================================ */
 
 /* ── 세션에서 챌린지 정보 복원 ── */
-const CHALLENGE_TOKEN = sessionStorage.getItem('ip_challenge_token');
-const USER_ID         = Number(sessionStorage.getItem('ip_challenge_userId'));
-const NEXT            = sessionStorage.getItem('ip_challenge_next') || '/';
+const CHALLENGE_TOKEN = sessionStorage.getItem('device_challenge_token');
+const NEXT            = sessionStorage.getItem('device_challenge_next') || '/';
 
 /* 세션 값 없으면 로그인 화면으로 */
-if (!CHALLENGE_TOKEN || !USER_ID) {
+if (!CHALLENGE_TOKEN) {
     location.href = '/login';
 }
 
@@ -32,9 +32,8 @@ function showErr(id, msg) {
 
 /* ── 로그인 완료 처리 ── */
 function onLoginSuccess() {
-    sessionStorage.removeItem('ip_challenge_token');
-    sessionStorage.removeItem('ip_challenge_userId');
-    sessionStorage.removeItem('ip_challenge_next');
+    sessionStorage.removeItem('device_challenge_token');
+    sessionStorage.removeItem('device_challenge_next');
     sessionStorage.setItem('bnk_login_at', String(Date.now()));
     location.href = NEXT;
 }
@@ -55,15 +54,14 @@ async function sendEmailCode() {
     BnkDOM.btnLoading(btn, true, '발송 중...');
     showErr('email-error', '');
     try {
-        var res = await BnkAPI.post('/api/auth/ip-verify/email/send', {
-            userId: USER_ID,
+        var res = await BnkAPI.post('/api/auth/device-verify/email/send', {
             challengeToken: CHALLENGE_TOKEN,
         });
         if (res.ok) {
             BnkToast.success('인증 코드가 발송되었습니다. (10분 유효)');
             startEmailTimer();
         } else {
-            if (res.data && res.data.code === 'IP001') {
+            if (res.data && res.data.code === 'DEV001') {
                 onSessionExpired();
             } else {
                 showErr('email-error', (res.data && res.data.message) || '발송에 실패했습니다.');
@@ -95,8 +93,8 @@ function startEmailTimer() {
 }
 
 async function confirmEmailCode() {
-    var code     = (document.getElementById('emailCode').value || '').trim().toUpperCase();
-    var nickname = (document.getElementById('emailNickname').value || '').trim() || null;
+    var code       = (document.getElementById('emailCode').value || '').trim().toUpperCase();
+    var deviceName = (document.getElementById('emailDeviceName').value || '').trim() || null;
 
     if (!code) { showErr('email-error', '인증 코드를 입력해 주세요.'); return; }
     showErr('email-error', '');
@@ -104,17 +102,16 @@ async function confirmEmailCode() {
     var btn = document.getElementById('btnEmailConfirm');
     BnkDOM.btnLoading(btn, true, '확인 중...');
     try {
-        var res = await BnkAPI.post('/api/auth/ip-verify/email/confirm', {
-            userId: USER_ID,
+        var res = await BnkAPI.post('/api/auth/device-verify/email/confirm', {
             challengeToken: CHALLENGE_TOKEN,
             code: code,
-            nickname: nickname,
+            deviceName: deviceName,
         });
         if (res.ok) {
             onLoginSuccess();
         } else {
             var errCode = res.data && res.data.code;
-            if (errCode === 'IP001') {
+            if (errCode === 'DEV001') {
                 onSessionExpired();
             } else {
                 showErr('email-error', (res.data && res.data.message) || '인증 코드가 올바르지 않습니다.');
@@ -144,10 +141,10 @@ function normalizeBirthDate(raw) {
 }
 
 async function confirmCi() {
-    var name      = (document.getElementById('ciName').value || '').trim();
-    var birthRaw  = (document.getElementById('ciBirthDate').value || '').trim();
-    var phone     = (document.getElementById('ciPhone').value || '').trim();
-    var nickname  = (document.getElementById('ciNickname').value || '').trim() || null;
+    var name       = (document.getElementById('ciName').value || '').trim();
+    var birthRaw   = (document.getElementById('ciBirthDate').value || '').trim();
+    var phone      = (document.getElementById('ciPhone').value || '').trim();
+    var deviceName = (document.getElementById('ciDeviceName').value || '').trim() || null;
 
     // 입력 검증
     if (!name) {
@@ -169,21 +166,20 @@ async function confirmCi() {
         // 백엔드는 residentFront(주민번호 앞 6자리=YYMMDD)를 기대한다.
         // birthDate "1992-03-15" → "920315" 로 변환.
         var residentFront = birthDate.replace(/-/g, '').slice(2); // YYYYMMDD → YYMMDD
-        var res = await BnkAPI.post('/api/auth/ip-verify/ci', {
-            userId: USER_ID,
+        var res = await BnkAPI.post('/api/auth/device-verify/ci', {
             challengeToken: CHALLENGE_TOKEN,
             name: name,
             residentFront: residentFront,
             phone: phone,
-            nickname: nickname,
+            deviceName: deviceName,
         });
         if (res.ok) {
             onLoginSuccess();
         } else {
             var errCode = res.data && res.data.code;
-            if (errCode === 'IP001') {
+            if (errCode === 'DEV001') {
                 onSessionExpired();
-            } else if (errCode === 'IP003') {
+            } else if (errCode === 'DEV003') {
                 showErr('ci-error', '인증 실패 횟수를 초과했습니다. 이메일 인증을 이용해 주세요.');
             } else {
                 showErr('ci-error', (res.data && res.data.message) || '입력하신 정보가 일치하지 않습니다.');

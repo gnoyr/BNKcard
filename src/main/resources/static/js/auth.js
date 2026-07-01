@@ -110,32 +110,26 @@
             hideError(err);
             BnkDOM.btnLoading(btn, true, '로그인 중...');
 
+            const dev = (window.BnkDevice ? BnkDevice.context() : { id: null, name: null, platform: 'WEB' });
             const res = await API.post('/api/auth/login', {
                 email,
                 password: pw,
                 deviceInfo: navigator.userAgent.substring(0, 100),
+                deviceId: dev.id,
+                deviceName: dev.name,
+                platform: dev.platform,
             });
 
             BnkDOM.btnLoading(btn, false);
 
 			if (res.ok) {
 			    const payload = res.data?.data ?? res.data;
-			    if (payload?.requireIpVerify) {
-			        sessionStorage.setItem('ip_challenge_token', payload.challengeToken);
-
-			        const tokenParts = payload.challengeToken ? payload.challengeToken.split(':') : [];
-			        const parsedUserId = tokenParts.length >= 3 ? Number(tokenParts[2]) : NaN;
-
-			        if (!parsedUserId || isNaN(parsedUserId)) {
-			            BnkToast.error('인증 정보가 올바르지 않습니다. 다시 로그인해 주세요.');
-			            BnkDOM.btnLoading(btn, false);
-			            return;
-			        }
-
-			        sessionStorage.setItem('ip_challenge_userId', String(parsedUserId));
+			    if (payload?.requireDeviceVerify) {
+			        // challengeToken 은 불투명 토큰. userId 는 서버가 토큰에서 도출한다.
+			        sessionStorage.setItem('device_challenge_token', payload.challengeToken);
 			        const next = new URLSearchParams(location.search).get('next');
-			        sessionStorage.setItem('ip_challenge_next', (next?.startsWith('/') && !next.startsWith('//')) ? next : '/');
-			        location.href = '/auth/ip-verify';
+			        sessionStorage.setItem('device_challenge_next', (next?.startsWith('/') && !next.startsWith('//')) ? next : '/');
+			        location.href = '/auth/device-verify';
 			        return;
 			    }
 
@@ -165,9 +159,26 @@
         let _ivDone = false;
         let _emailVerified = false;
         let _codeTimer = null;
+        let _verifyPoll = null;
 
         function _clearCodeTimer() {
             if (_codeTimer) { clearInterval(_codeTimer); _codeTimer = null; }
+        }
+
+        function _clearVerifyPoll() {
+            if (_verifyPoll) { clearInterval(_verifyPoll); _verifyPoll = null; }
+        }
+
+        /** 코드 인증/매직링크 인증 공통 성공 처리 */
+        function _markEmailVerified() {
+            if (_emailVerified) return;
+            _emailVerified = true;
+            _clearCodeTimer();
+            _clearVerifyPoll();
+            authToast.success('이메일 인증이 완료되었습니다.');
+            document.getElementById('verifyCode')?.setAttribute('disabled', '');
+            document.getElementById('btnVerifyCode')?.setAttribute('disabled', '');
+            document.getElementById('verify-success')?.classList.remove('is-hidden');
         }
 
         function _updateStepBar(step) {
@@ -342,9 +353,10 @@
 
                 const res = await API.post('/api/auth/send-verify-code', { email });
                 if (res.ok) {
-                    authToast.success('인증 코드가 발송되었습니다. 메일함을 확인해 주세요.');
+                    authToast.success('인증 코드가 발송되었습니다. 메일의 코드 입력 또는 "원터치 인증" 버튼을 이용하세요.');
                     document.getElementById('code-sent-msg')?.classList.remove('is-hidden');
                     this._startCodeTimer();
+                    this._startVerifyPolling(email); // 원터치 인증 버튼 클릭 시 자동 감지
                 } else {
                     BnkError.handle(res, err, {
                         409: '이미 가입된 이메일입니다. 로그인 페이지에서 로그인해 주세요.',
@@ -376,6 +388,22 @@
                 _codeTimer = setInterval(tick, 1000);
             },
 
+            /** 매직링크(원터치 인증) 완료를 3초 간격으로 폴링 (최대 5분). */
+            _startVerifyPolling(email) {
+                _clearVerifyPoll();
+                if (!email) return;
+                let ticks = 0;
+                _verifyPoll = setInterval(async () => {
+                    ticks++;
+                    if (_emailVerified || ticks > 100) { _clearVerifyPoll(); return; }
+                    try {
+                        const res = await API.get('/api/auth/verify-status?email=' + encodeURIComponent(email));
+                        const data = (res && res.ok) ? (res.data?.data ?? res.data) : null;
+                        if (data && data.verified === true) _markEmailVerified();
+                    } catch (e) { /* 폴링 실패는 무시하고 재시도 */ }
+                }, 3000);
+            },
+
             async _verifyCode() {
                 const email = document.getElementById('email')?.value.trim();
                 const code = document.getElementById('verifyCode')?.value.trim();
@@ -384,12 +412,7 @@
 
                 const res = await API.post('/api/auth/verify-email', { email, code });
                 if (res.ok) {
-                    _emailVerified = true;
-                    _clearCodeTimer();
-                    authToast.success('이메일 인증이 완료되었습니다.');
-                    document.getElementById('verifyCode')?.setAttribute('disabled', '');
-                    document.getElementById('btnVerifyCode')?.setAttribute('disabled', '');
-                    document.getElementById('verify-success')?.classList.remove('is-hidden');
+                    _markEmailVerified();
                 } else {
                     BnkError.handle(res, err, {
                         400: '인증 코드가 올바르지 않습니다.',

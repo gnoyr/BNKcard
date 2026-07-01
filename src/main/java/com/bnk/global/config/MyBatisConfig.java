@@ -53,7 +53,7 @@ import lombok.RequiredArgsConstructor;
     "com.bnk.domain.**.mapper",   // domain 하위 모든 mapper 패키지
     "com.bnk.global.log.mapper",  // EventLogMapper
     "com.bnk.global.util.audit",  // AuditLogMapper
-    "com.bnk.global.migration"    // TrustedIpMigrationMapper
+    "com.bnk.global.migration"    // 암호화 마이그레이션 Mapper
 })
 public class MyBatisConfig {
 

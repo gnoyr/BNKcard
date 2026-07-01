@@ -62,7 +62,7 @@ import lombok.extern.slf4j.Slf4j;
  *     /api/users/**            : 마이페이지 (내 정보 조회·수정, 카드 신청 등)
  *     /api/applications/**     : 카드 신청
  *     /api/auth/refresh        : 토큰 재발급 (인증 필요 경로)
- *     /api/auth/ip-verify/**   : IP 인증
+ *     /api/auth/device-verify/** : 새 기기 인증
  *
  *   ROLE_OPERATOR 이상 (관리자 공통)
  *     /api/admin/users/**      : 회원 목록 조회, 잠금 해제, 상태 변경
@@ -198,7 +198,7 @@ public class SecurityConfig {
                 // ── 2. 공개 HTML 페이지 (비인증 허용) ────────────────
                 .requestMatchers(
                     "/", "/login", "/signup", "/find-id", "/reset-password",
-                    "/copy-code", "/card/**",
+                    "/copy-code", "/verify-email", "/card/**",
                     "/auth/**",          // 인증 관련 HTML
                     "/terms/**",         // 약관 페이지
                     "/admin/login"       // 관리자 로그인 페이지
@@ -220,7 +220,9 @@ public class SecurityConfig {
                     "/api/auth/find-password",
                     "/api/auth/reset-password",
                     "/api/auth/refresh",
-                    "/api/auth/ip-verify/**"
+                    "/api/auth/verify-email-link",
+                    "/api/auth/verify-status",
+                    "/api/auth/device-verify/**"
                 ).permitAll()
 
                 // ── 5. 관리자 인증 API (비인증 허용) ─────────────────

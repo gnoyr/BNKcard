@@ -5,9 +5,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.bnk.domain.auth.dto.request.EmailVerifyRequest;
@@ -17,6 +19,7 @@ import com.bnk.domain.auth.dto.request.LoginRequest;
 import com.bnk.domain.auth.dto.request.ResetPasswordRequest;
 import com.bnk.domain.auth.dto.request.SendVerifyCodeRequest;
 import com.bnk.domain.auth.dto.request.SignupRequest;
+import com.bnk.domain.auth.dto.request.VerifyEmailLinkRequest;
 import com.bnk.domain.auth.dto.response.AuthTokenResult;
 import com.bnk.domain.auth.dto.response.FindIdResponse;
 import com.bnk.domain.auth.service.AuthService;
@@ -61,6 +64,26 @@ public class AuthController {
 	}
 
 	/**
+	 * 매직링크 원터치 인증 — 메일의 '원터치 인증' 버튼(/verify-email 페이지)에서 호출.
+	 * 성공 시 해당 이메일에 인증 완료 플래그를 세운다. 비로그인 허용.
+	 */
+	@PostMapping("/verify-email-link")
+	public ResponseEntity<ApiResponse<Map<String, String>>> verifyEmailLink(
+			@RequestBody @Valid VerifyEmailLinkRequest request) {
+		String maskedEmail = authService.verifyEmailByLink(request.getToken());
+		return ApiResponse.toOk(Map.of("email", maskedEmail));
+	}
+
+	/**
+	 * 이메일 인증 완료 여부 조회 (매직링크 폴링용). 비로그인 허용.
+	 */
+	@GetMapping("/verify-status")
+	public ResponseEntity<ApiResponse<Map<String, Boolean>>> verifyStatus(
+			@RequestParam String email) {
+		return ApiResponse.toOk(Map.of("verified", authService.isEmailVerified(email)));
+	}
+
+	/**
 	 * 회원가입 — 이메일 인증 완료 후 호출
 	 */
 	@PostMapping("/signup")
@@ -68,8 +91,9 @@ public class AuthController {
 			@RequestBody @Valid SignupRequest request,
 			HttpServletRequest httpRequest) {
 		Long userId = authService.signup(request);
-		// 회원가입 완료 후 최초 접속 IP 자동 등록 (이후 로그인과 동일하게 정규화된 IP로 저장)
-		authService.registerInitialIp(userId, ClientIpUtil.resolve(httpRequest));
+		// 회원가입 완료 후 가입 기기를 최초 신뢰 기기로 자동 등록 (deviceId 미전송 시 skip)
+		authService.registerInitialDevice(userId, request.getDeviceId(), request.getDeviceName(),
+				request.getPlatform(), ClientIpUtil.resolve(httpRequest));
 		return ApiResponse.toCreated(userId);
 	}
 
@@ -85,21 +109,20 @@ public class AuthController {
 
 	    AuthTokenResult result = authService.login(request, httpRequest);
 
-	    // IP 챌린지 체크 — result에서 userId를 꺼내기 위해 AccessCookie의 subject 대신
-	    // login()이 이미 user.getUserId()를 사용하므로, AuthService에 위임
-	    // 정규화된 IP를 사용해야 같은 단말이 매번 '새 기기'로 오인되지 않는다.
+	    // 기기 챌린지 체크 — 신뢰 판정 키는 IP가 아닌 클라이언트 기기 식별자(deviceId).
+	    // 모바일 IP 변동(WiFi↔LTE)에도 같은 기기는 재인증하지 않는다.
 	    String clientIp = ClientIpUtil.resolve(httpRequest);
 	    // AuthTokenResult에 userId가 없으므로 이메일로 userId 재조회
-	    // (login() 내부에서 이미 조회한 user 객체를 재활용하지 않으므로 최소 비용으로 재조회)
 	    Long userId = authService.findUserIdByEmail(request.getEmail());
 
-	    Optional<String> challengeOpt = authService.checkIpChallenge(userId, clientIp);
+	    Optional<String> challengeOpt = authService.checkDeviceChallenge(
+	            userId, request.getDeviceId(), request.getDeviceName(), request.getPlatform(), clientIp);
 	    if (challengeOpt.isPresent()) {
 	        return ResponseEntity.ok(ApiResponse.ok(Map.of(
-	            "requireIpVerify",   true,
-	            "userId",            userId,
-	            "challengeToken",    challengeOpt.get(),
-	            "availableMethods",  List.of("EMAIL", "CI")
+	            "requireDeviceVerify", true,
+	            "userId",              userId,
+	            "challengeToken",      challengeOpt.get(),
+	            "availableMethods",    List.of("EMAIL", "CI")
 	        )));
 	    }
 
