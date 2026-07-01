@@ -198,7 +198,7 @@ public class SecurityConfig {
                 // ── 2. 공개 HTML 페이지 (비인증 허용) ────────────────
                 .requestMatchers(
                     "/", "/login", "/signup", "/find-id", "/reset-password",
-                    "/copy-code", "/verify-email", "/card/**",
+                    "/copy-code", "/card/**",
                     "/auth/**",          // 인증 관련 HTML
                     "/terms/**",         // 약관 페이지
                     "/admin/login"       // 관리자 로그인 페이지
@@ -220,8 +220,6 @@ public class SecurityConfig {
                     "/api/auth/find-password",
                     "/api/auth/reset-password",
                     "/api/auth/refresh",
-                    "/api/auth/verify-email-link",
-                    "/api/auth/verify-status",
                     "/api/auth/device-verify/**"
                 ).permitAll()
 

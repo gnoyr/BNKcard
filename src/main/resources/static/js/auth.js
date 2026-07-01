@@ -159,22 +159,16 @@
         let _ivDone = false;
         let _emailVerified = false;
         let _codeTimer = null;
-        let _verifyPoll = null;
 
         function _clearCodeTimer() {
             if (_codeTimer) { clearInterval(_codeTimer); _codeTimer = null; }
         }
 
-        function _clearVerifyPoll() {
-            if (_verifyPoll) { clearInterval(_verifyPoll); _verifyPoll = null; }
-        }
-
-        /** 코드 인증/매직링크 인증 공통 성공 처리 */
+        /** 코드 인증 성공 처리 */
         function _markEmailVerified() {
             if (_emailVerified) return;
             _emailVerified = true;
             _clearCodeTimer();
-            _clearVerifyPoll();
             authToast.success('이메일 인증이 완료되었습니다.');
             document.getElementById('verifyCode')?.setAttribute('disabled', '');
             document.getElementById('btnVerifyCode')?.setAttribute('disabled', '');
@@ -353,10 +347,9 @@
 
                 const res = await API.post('/api/auth/send-verify-code', { email });
                 if (res.ok) {
-                    authToast.success('인증 코드가 발송되었습니다. 메일의 코드 입력 또는 "원터치 인증" 버튼을 이용하세요.');
+                    authToast.success('인증 코드가 발송되었습니다. 메일의 코드를 입력해 주세요.');
                     document.getElementById('code-sent-msg')?.classList.remove('is-hidden');
                     this._startCodeTimer();
-                    this._startVerifyPolling(email); // 원터치 인증 버튼 클릭 시 자동 감지
                 } else {
                     BnkError.handle(res, err, {
                         409: '이미 가입된 이메일입니다. 로그인 페이지에서 로그인해 주세요.',
@@ -386,22 +379,6 @@
                 }
                 tick();
                 _codeTimer = setInterval(tick, 1000);
-            },
-
-            /** 매직링크(원터치 인증) 완료를 3초 간격으로 폴링 (최대 5분). */
-            _startVerifyPolling(email) {
-                _clearVerifyPoll();
-                if (!email) return;
-                let ticks = 0;
-                _verifyPoll = setInterval(async () => {
-                    ticks++;
-                    if (_emailVerified || ticks > 100) { _clearVerifyPoll(); return; }
-                    try {
-                        const res = await API.get('/api/auth/verify-status?email=' + encodeURIComponent(email));
-                        const data = (res && res.ok) ? (res.data?.data ?? res.data) : null;
-                        if (data && data.verified === true) _markEmailVerified();
-                    } catch (e) { /* 폴링 실패는 무시하고 재시도 */ }
-                }, 3000);
             },
 
             async _verifyCode() {

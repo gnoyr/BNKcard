@@ -85,7 +85,6 @@ public class AuthService {
 	// KEY_RESET : 비밀번호 재설정 "pw:reset:{token}"
 	// ──────────────────────────────────────────────────────────────────
 	private static final String KEY_VERIFY = "email:verify:";
-	private static final String KEY_VERIFY_LINK = "email:verifylink:"; // 매직링크 토큰 → 이메일
 	private static final String KEY_VERIFIED = "email:verified:";
 	private static final String KEY_RESET = "pw:reset:";
 
@@ -109,41 +108,12 @@ public class AuthService {
 			throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
 		}
 
-		String code      = generateCode();
-		String linkToken = generateLinkToken();
+		String code = generateCode();
 
-		// 코드(직접 입력용)와 매직링크 토큰(원터치 인증용)을 함께 발급한다.
 		tokenStore.set(KEY_VERIFY + request.getEmail(), code, TTL_VERIFY_CODE_MIN);
-		tokenStore.set(KEY_VERIFY_LINK + linkToken, request.getEmail(), TTL_VERIFY_CODE_MIN);
-		mailService.sendVerificationEmail(request.getEmail(), code, linkToken);
+		mailService.sendVerificationEmail(request.getEmail(), code);
 		auditLogger.success(AuditLogger.AUTH, AuditLogger.EMAIL_VERIFY,
 				null, null, "인증코드 발송: " + request.getEmail());
-	}
-
-	// ──────────────────────────────────────────────────────────────────
-	// 매직링크 이메일 인증 (원터치)
-	// ──────────────────────────────────────────────────────────────────
-	/** 매직링크 토큰으로 이메일 인증 완료. @return 마스킹된 이메일 */
-	@Transactional
-	public String verifyEmailByLink(String token) {
-		String email = tokenStore.get(KEY_VERIFY_LINK + token);
-		if (email == null) {
-			auditLogger.failure(AuditLogger.AUTH, AuditLogger.EMAIL_VERIFY,
-					null, null, "매직링크 토큰 만료/무효");
-			throw new BusinessException(ErrorCode.VERIFY_TOKEN_INVALID);
-		}
-		tokenStore.delete(KEY_VERIFY_LINK + token);
-		tokenStore.delete(KEY_VERIFY + email);
-		tokenStore.set(KEY_VERIFIED + email, "Y", TTL_VERIFIED_FLAG_MIN);
-		auditLogger.success(AuditLogger.AUTH, AuditLogger.EMAIL_VERIFY,
-				null, null, "매직링크 이메일 인증 완료: " + email);
-		return MaskingUtil.maskEmail(email);
-	}
-
-	/** 이메일 인증 완료 여부(매직링크 폴링용). */
-	@Transactional(readOnly = true)
-	public boolean isEmailVerified(String email) {
-		return tokenStore.get(KEY_VERIFIED + email) != null;
 	}
 
 	// ──────────────────────────────────────────────────────────────────
@@ -547,13 +517,6 @@ public class AuthService {
 
 	private String generateCode() {
 		return String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
-	}
-
-	/** 매직링크용 예측 불가 토큰 (32바이트 → base64url). */
-	private String generateLinkToken() {
-		byte[] b = new byte[32];
-		SECURE_RANDOM.nextBytes(b);
-		return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(b);
 	}
 
 	private String resolveClientIp(HttpServletRequest request) {
